@@ -17,7 +17,7 @@ on:
 env:
   GODOT_VERSION: 4.6.3
   EXPORT_NAME: Phosprite
-  EXPORT_TEMPLATES_DIR: ~/Library/Application Support/Godot/export_templates/4.6.3.stable
+  # 不需要导出模板目录变量:在 step 内用 $HOME 展开,env 的 ~ 不会被 shell 展开。
 
 jobs:
   export-ios:
@@ -31,10 +31,12 @@ jobs:
 
       - name: Download and extract export templates 💾
         run: |
-          mkdir -v -p "${EXPORT_TEMPLATES_DIR}"
+          TEMPLATES_DIR="${HOME}/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -v -p "${TEMPLATES_DIR}"
           wget -q https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
           unzip -q Godot_v${GODOT_VERSION}-stable_export_templates.tpz
-          mv ./templates/* "${EXPORT_TEMPLATES_DIR}"
+          mv ./templates/* "${TEMPLATES_DIR}"
+          test -f "${TEMPLATES_DIR}/ios.zip"
 
       - name: Download Godot headless binary 🤖
         run: |
