@@ -1,0 +1,99 @@
+name: iOS build (unsigned)
+
+# P0-D：产出可在真机侧自行签名的未签名 IPA。
+# Windows 主开发机无法构建 iOS，此 workflow 是唯一的 iOS 构建路径。
+# 见 docs/phosprite_ipad_multiplatform_execution_plan.md 第 10.4 节。
+
+on:
+  push:
+    branches: [ main, phosprite-main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    branches: [ main, phosprite-main ]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.6.3
+  EXPORT_NAME: Phosprite
+  EXPORT_TEMPLATES_DIR: ~/Library/Application Support/Godot/export_templates/4.6.3.stable
+
+jobs:
+  export-ios:
+    name: iOS Export 📱
+    runs-on: macos-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Download and extract export templates 💾
+        run: |
+          mkdir -v -p "${EXPORT_TEMPLATES_DIR}"
+          wget -q https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          unzip -q Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          mv ./templates/* "${EXPORT_TEMPLATES_DIR}"
+
+      - name: Download Godot headless binary 🤖
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip
+          unzip -q Godot_v${GODOT_VERSION}-stable_macos.universal.zip
+          chmod +x ./Godot.app/Contents/MacOS/Godot
+
+      - name: Import resources once 📦
+        continue-on-error: true
+        run: ./Godot.app/Contents/MacOS/Godot --headless -v --import
+
+      # Godot 导出的是 Xcode 工程，不是 .ipa（preset 中 application/export_project_only=true）。
+      # 这样导出阶段完全不触及签名，签名与否由下面的 xcodebuild 决定。
+      - name: Export Xcode project 🔧
+        run: |
+          mkdir -v -p ./build/ios
+          ./Godot.app/Contents/MacOS/Godot --headless -v --export-release "iOS" ./build/ios/${EXPORT_NAME}.ipa
+
+      # 未签名 archive：CODE_SIGNING_ALLOWED=NO 让 xcodebuild 跳过所有签名与描述文件查找。
+      - name: Build unsigned .xcarchive 🔧
+        run: |
+          xcodebuild -project ./build/ios/${EXPORT_NAME}.xcodeproj \
+            -scheme ${EXPORT_NAME} \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath ./build/ios/${EXPORT_NAME}.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS=""
+
+      # 把 .xcarchive 里已编译好的 .app 直接重打包成未签名 IPA。
+      # 不走 -exportArchive：那一步强制要求可用的签名身份与 provisioning profile。
+      - name: Package unsigned .ipa 📦
+        run: |
+          cd ./build/ios
+          APP_PATH="${EXPORT_NAME}.xcarchive/Products/Applications/${EXPORT_NAME}.app"
+          test -d "${APP_PATH}"
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "${APP_PATH}" Payload/
+          # 未签名包不应残留任何签名元数据。
+          rm -rf Payload/${EXPORT_NAME}.app/_CodeSignature
+          zip -qry ${EXPORT_NAME}-unsigned.ipa Payload
+          rm -rf Payload
+          ls -la ${EXPORT_NAME}-unsigned.ipa
+
+      - name: Upload IPA artifact 🚀
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EXPORT_NAME }}-ios-unsigned
+          path: ./build/ios/${{ env.EXPORT_NAME }}-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Upload Xcode project artifact 🚀
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EXPORT_NAME }}-ios-xcode-project
+          path: ./build/ios/
+          retention-days: 7
