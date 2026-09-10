@@ -31,23 +31,48 @@ GitHub 会重定向旧 URL,但 `origin` 已改为新地址。
 
 **本地没有 Mac。** 所有 iOS 构建走 GitHub Actions `macos-latest`。
 
-### iPad 真机(尚未接入)
+### iPad 真机(已接入)
 
-- iPad Air 5、iPadOS 18.0、Apple Pencil 2
-- 侧载方式:AltStore 免费账号
+- iPad(UDID `00008103-001948500AE9401E`)、iPadOS、Apple Pencil 2
+- 侧载方式:AltStore 免费账号(Team ID `44MFR9W6NM`)
+- **必须在纯 ASCII 用户会话中签名**:中文用户名会让 AltServer 的
+  `ldid.dll` 崩在 `ldid.cpp(2609): _assert(): dir != NULL`。
+  见 `findings.md` 的"Windows 侧载环境"一节。
+
+### 纯 ASCII 签名环境(已建立)
+
+因中文用户名的硬阻塞,单独建了一套隔离环境:
+
+| 项 | 值 |
+|:---|:---|
+| 用户 | `dev`(本地管理员,无密码,`PasswordRequired=False`) |
+| 工作区 | `C:\phosprite\`(`ipa/`、`build/`) |
+| IPA 投放 | `C:\phosprite\ipa\Phosprite-unsigned.ipa` |
+| 隔离原理 | 用户名/Profile/TEMP/工作区全 ASCII;Apple 组件栈在
+  `C:\Users\dev\AppData\Local\AltServer\Apple\` 重新初始化 |
+
+**不要**在 `乱码碳` 会话运行 AltServer:它会抢占设备通道与监听端口,
+且加载的是中文路径下的 Apple 组件。
 
 ## 关键导出配置
 
 `export_presets.cfg` 中 `[preset.9]` 为 iOS preset:
 
 - `application/bundle_identifier="com.phosprite.app"`
-- `application/targeted_device_family=1` → 实际写入 `UIDeviceFamily=[2]`,**iPad-only**
+- `application/targeted_device_family=1` → **iPad-only**
+  (Godot 枚举为 `0=iPhone, 1=iPad, 2=iPhone & iPad`,注意与 Xcode 的
+  `TARGETED_DEVICE_FAMILY` 编码不同)。实测产物 `UIDeviceFamily=[2]`。
+  与方案 §23"iPadOS 第一优先 / iPhone 后置"一致。
 - `application/export_project_only=true` → Godot **只产出 Xcode 工程,不调用 xcodebuild,不签名**
 - `application/app_store_team_id="0000000000"` → **占位值**。Godot 导出校验强制要求非空;
   该值只写入工程文件,真实签名在 CI 由 xcodebuild 参数覆盖
 - 横竖屏 4 方向全开(方案 §12:只做旋转适应)
-- `user_data/accessible_from_files_app=false` → `UIFileSharingEnabled=false`。
-  P0-E 的 Files Picker 走 Document Picker,不依赖此标志
+- `user_data/accessible_from_files_app=true` + 显式注入
+  `UIFileSharingEnabled` / `LSSupportsOpeningDocumentsInPlace`
+  → 让 `user://`(= 沙箱 Documents)出现在 Files app
+- `entitlements/increased_memory_limit=false`(免费账号拿不到)
+- `UIRequiresFullScreen=true` 来自 Godot 模板默认值,未显式配置。
+  代价:不支持 iPad Split View / Slide Over。P0 保持现状,待 P1 评估。
 
 ## iOS 构建链路
 
@@ -69,7 +94,7 @@ macos-latest
 
 | 组件 | 版本 | 安装位置 |
 |:---|:---|:---|
-| AltServer | 1.7.4 | `C:\Program Files (x86)\AltServer\` |
+| AltServer | **1.7.5** | `C:\Program Files (x86)\AltServer\` |
 | iCloud(直装版) | 7.21.0.23 | `Common Files\Apple\Internet Services\` |
 | Apple Mobile Device Support | 20.0.0.35 | `Common Files\Apple\Mobile Device Support\` |
 | Bonjour | 3.1.0.1 | `C:\Program Files (x86)\Bonjour\` |
@@ -105,3 +130,8 @@ fatal: unable to access '...': The requested URL returned error: 403
 | `a75c390` | P0:项目初始化、身份隔离与 Contract Regression Suite |
 | `22ccf5b` | P0-D:新增 iOS 导出配置与未签名 IPA 构建流水线 |
 | `89ca784` | P0-D:修复 iOS CI 导出模板路径未展开导致构建失败 |
+| `76f6566` | docs: 项目记忆(技术栈基线、iOS 构建链路、AltStore 侧载环境) |
+| `656a471` | docs: 记录 Windows 侧载中文用户名阻塞的根因与修复 |
+| `a07538b` | docs: P0-D 真机验收进展(启动/渲染/触摸绘制/crash 通过) |
+| `0780c62` | P0-E: 修复沙箱平台的导出路径与 Files app 可见性 |
+| `caf8cf0` | style: 修正空行以满足 gdformat |
