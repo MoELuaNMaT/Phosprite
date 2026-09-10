@@ -53,7 +53,7 @@ layout_mode = 2
 
 [node name="PixeloramaSlogan" type="Label" parent="AboutUI/IconsButtons/SloganAndLinks/VBoxContainer" unique_id=1005985297]
 layout_mode = 2
-text = "Pixelorama - Pixelate your dreams!"
+text = "Phosprite - Pixel art, reimagined for iPad"
 label_settings = SubResource("LabelSettings_bkh2e")
 
 [node name="LinkButtons" type="HBoxContainer" parent="AboutUI/IconsButtons/SloganAndLinks/VBoxContainer" unique_id=1020709967]
@@ -191,7 +191,7 @@ layout_mode = 2
 
 [node name="MadeBy" type="Label" parent="AboutUI" unique_id=954354376]
 layout_mode = 2
-text = "Developed by Orama Interactive"
+text = "Built on Pixelorama by Orama Interactive and contributors"
 
 [node name="Copyright" type="Label" parent="AboutUI" unique_id=1672260869]
 layout_mode = 2

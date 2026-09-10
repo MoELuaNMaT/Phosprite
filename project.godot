@@ -10,13 +10,13 @@ config_version=5
 
 [application]
 
-config/name="Pixelorama"
-config/description="Unleash your creativity with Pixelorama, a powerful and accessible open-source pixel art multitool. Whether you want to create sprites, tiles, animations, or just express yourself in the language of pixel art, this software will realize your pixel-perfect dreams with a vast toolbox of features."
+config/name="Phosprite"
+config/description="Phosprite is a pixel art editor for iPad, built on Pixelorama's MIT-licensed pixel editing core by Orama Interactive and contributors."
 config/version="v1.2-stable"
-config/tags=PackedStringArray("pixelorama")
+config/tags=PackedStringArray("phosprite")
 run/main_scene="res://src/Main.tscn"
 config/use_custom_user_dir=true
-config/custom_user_dir_name="pixelorama"
+config/custom_user_dir_name="phosprite"
 config/project_settings_override="user://override.cfg"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.6")
@@ -1216,9 +1216,3 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 
-[steam]
-
-initialization/initialize_on_startup=false
-initialization/embed_callbacks=false
-initialization/app_id=2779170
-multiplayer_peer/max_channels=4

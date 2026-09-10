@@ -45,7 +45,7 @@ class CLI:
 		["rel-dir="]:
 		[dummy, "(Default='PWD') The directory using which relative paths are resolved."],
 		["--version", "--pixelorama-version"]:
-		[CLI.print_version, "Prints current Pixelorama version"],
+		[CLI.print_version, "Prints current Phosprite version"],
 		["--size"]: [CLI.print_project_size, "Prints size of the given project"],
 		["--framecount"]: [CLI.print_frame_count, "Prints total frames in the current project"],
 		["--export", "-e"]: [CLI.enable_export, "Indicates given project should be exported"],
@@ -73,7 +73,7 @@ class CLI:
 			(
 				"""
  =========================================================================\n
-Help for Pixelorama's CLI.
+Help for Phosprite's CLI.
 
 Usage:
 \t[b]%s[/b] [color=orange][SYSTEM OPTIONS][/color] -- [color=green][USER OPTIONS][/color] [FILES]...
@@ -83,7 +83,7 @@ Or use -h in place of [USER OPTIONS] to see [USER OPTIONS].
 
 some useful [b][SYSTEM OPTIONS][/b] are:
 [color=orange]--headless[/color]     Run in headless mode.
-[color=orange]--quit[/color]         Close pixelorama after current command.
+[color=orange]--quit[/color]         Close Phosprite after current command.
 
 
 [b][USER OPTIONS][/b]:\n
@@ -210,7 +210,7 @@ func _init() -> void:
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 
-	get_window().title = tr("untitled") + " - Pixelorama " + Global.current_version
+	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 
 	Global.current_project.layers.append(PixelLayer.new(Global.current_project))
 	Global.current_project.frames.append(Global.current_project.new_empty_frame())
@@ -239,7 +239,7 @@ func _ready() -> void:
 	_show_splash_screen()
 	Global.pixelorama_has_loaded = true
 	Global.pixelorama_opened.emit()
-	print("Time Pixelorama took to open: %sms" % Time.get_ticks_msec())
+	print("Time Phosprite took to open: %sms" % Time.get_ticks_msec())
 
 
 func _input(event: InputEvent) -> void:
@@ -403,6 +403,10 @@ func _show_splash_screen() -> void:
 
 
 func _handle_cmdline_arguments() -> void:
+	# Under the headless regression runner the command line carries `--script
+	# res://tests/runner.gd`, which is not a project file to open. Skip entirely.
+	if Global.headless_test_mode:
+		return
 	var args := OS.get_cmdline_args()
 	var working_directory := ""
 	var wdir_searching := false

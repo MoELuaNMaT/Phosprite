@@ -377,6 +377,10 @@ class Slot:
 
 
 func _ready() -> void:
+	# The headless regression runner never loads Main.tscn, so no tool buttons exist
+	# to bind. Skip all UI wiring to keep test output clean of null-instance errors.
+	if Global.headless_test_mode:
+		return
 	options_reset.connect(reset_options)
 	Global.cel_switched.connect(_cel_switched)
 	Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)

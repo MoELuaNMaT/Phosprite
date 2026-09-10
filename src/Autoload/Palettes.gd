@@ -27,6 +27,10 @@ var right_selected_color := -1
 
 
 func _ready() -> void:
+	# The headless regression runner never loads Main.tscn, so no project tab exists
+	# for palette selection. Skip loading to keep test output free of null errors.
+	if Global.headless_test_mode:
+		return
 	_load_palettes()
 
 

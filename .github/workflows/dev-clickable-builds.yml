@@ -1,11 +1,13 @@
 name: "dev-clickable-builds"
+# LEGACY_DEFERRED: Ubuntu Touch (Clickable) is not a P0/P1 platform for Phosprite.
+# This pipeline still targets Godot 3.5 and is intentionally not wired to any branch,
+# so it cannot become a gate for the product branch. Re-enable only with a real migration plan.
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
 
 env:
   GODOT_VERSION: 3.5
-  EXPORT_NAME: Pixelorama
+  EXPORT_NAME: Phosprite
 
 jobs:
   build_pck:

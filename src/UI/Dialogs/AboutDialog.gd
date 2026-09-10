@@ -327,7 +327,7 @@ func _notification(what: int) -> void:
 
 
 func _on_about_to_popup() -> void:
-	title = tr("About Pixelorama") + " " + Global.current_version
+	title = tr("About") + " " + Global.PRODUCT_NAME + " " + Global.current_version
 
 	var groups_root := groups.create_item()
 	#var developers_button := groups.create_item(groups_root)
@@ -390,7 +390,7 @@ func _on_website_pressed() -> void:
 
 
 func _on_github_pressed() -> void:
-	OS.shell_open("https://github.com/Orama-Interactive/Pixelorama")
+	OS.shell_open("https://github.com/MoELuaNMaT/Phosprite")
 
 
 func create_donors() -> void:

@@ -3,7 +3,7 @@ extends Panel
 enum ColorModes { RGBA, INDEXED }
 
 const DOCS_URL := "https://www.pixelorama.org/Introduction/"
-const ISSUES_URL := "https://github.com/Orama-Interactive/Pixelorama/issues"
+const ISSUES_URL := "https://github.com/MoELuaNMaT/Phosprite/issues"
 const SUPPORT_URL := "https://www.patreon.com/OramaInteractive"
 # gdlint: ignore=max-line-length
 const CHANGELOG_URL := "https://github.com/Orama-Interactive/Pixelorama/blob/master/CHANGELOG.md#v2---2026-07-29"
@@ -649,7 +649,7 @@ func _setup_help_menu() -> void:
 		"Restore Backup": &"",
 		"Open Editor Data Folder": "open_editor_data_folder",
 		"Changelog": "changelog",
-		"About Pixelorama": "about_pixelorama",
+		"About Phosprite": "about_pixelorama",
 		"Support Pixelorama's Development": &"",
 	}
 	var i := 0

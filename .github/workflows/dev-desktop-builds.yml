@@ -2,9 +2,9 @@ name: Development desktop builds
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
     paths-ignore: 
     - "Translations/*"
     - "installer/*.pot"
@@ -16,7 +16,7 @@ concurrency:
 
 env:
   GODOT_VERSION: 4.6.3
-  EXPORT_NAME: Pixelorama
+  EXPORT_NAME: Phosprite
 
 jobs:
   export-windows:

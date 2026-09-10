@@ -1,0 +1,45 @@
+name: Regression Tests 🧪
+
+# Runs the headless P0 contract suite (tests/runner.gd) on the frozen engine
+# version. This is a required gate: the P0 plan forbids starting iPad UX work
+# until the storage/identity contract is proven, so a red run here must block
+# the branch.
+on:
+  push:
+    branches-ignore:
+      - gh-pages
+      - l10n_master
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "project.godot"
+      - "export_presets.cfg"
+      - ".github/workflows/regression-tests.yml"
+
+concurrency:
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-tests
+  cancel-in-progress: true
+
+env:
+  # Must match ProjectSettings' engine baseline (Pixelorama v1.2 / Godot 4.6.3).
+  GODOT_VERSION: 4.6.3
+  TEST_SCRIPT: res://tests/runner.gd
+  TEST_FLAG: --phosprite-test-runner
+
+jobs:
+  regression-tests:
+    name: Headless contract suite
+    runs-on: ubuntu-latest
+    container:
+      image: docker://barichello/godot-ci:4.6.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Import project resources
+        run: godot --headless --path . --import
+      - name: Run contract suite
+        # The runner exits non-zero on any assertion failure, which fails the job.
+        run: godot --headless --path . --script "${TEST_SCRIPT}" -- "${TEST_FLAG}"

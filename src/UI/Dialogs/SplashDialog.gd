@@ -79,7 +79,7 @@ func _process(_delta: float) -> void:
 func _on_about_to_popup() -> void:
 	if Global.config_cache.has_section_key("preferences", "startup"):
 		show_on_startup.button_pressed = not Global.config_cache.get_value("preferences", "startup")
-	title = "Pixelorama" + " " + Global.current_version
+	title = Global.PRODUCT_NAME + " " + Global.current_version
 	if artworks.is_empty():
 		$Contents/SplashArt/ChangeArtBtnLeft.visible = false
 		$Contents/SplashArt/ChangeArtBtnRight.visible = false

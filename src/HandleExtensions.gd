@@ -169,13 +169,13 @@ func _load_extension(extension_file_or_folder_name: StringName, internal := fals
 						supported_api_versions.append(current_api_version)
 			if not ExtensionsApi.get_api_version() in supported_api_versions:
 				var err_text := (
-					"The extension %s will not work on this version of Pixelorama \n"
+					"The extension %s will not work on this version of Phosprite \n"
 					% file_name_no_ext
 				)
 				var required_text := str(
 					"Extension works on API versions: %s" % str(supported_api_versions),
 					"\n",
-					"But Pixelorama's API version is: %s" % current_api_version
+					"But Phosprite's API version is: %s" % current_api_version
 				)
 				Global.popup_error(str(err_text, required_text))
 				print("Incompatible API")

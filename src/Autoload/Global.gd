@@ -137,8 +137,10 @@ const RUNNING_FILE_PATH := "user://.running"
 const CONFIG_PATH := "user://config.ini"
 ## The file used to save preferences that use [method _save_to_override_file].
 const OVERRIDE_FILE := "user://override.cfg"
-## The name of folder containing Pixelorama preferences.
-const HOME_SUBDIR_NAME := "pixelorama"
+## The product display name used for window titles, splash and about text.
+const PRODUCT_NAME := "Phosprite"
+## The name of folder containing Phosprite preferences.
+const HOME_SUBDIR_NAME := "phosprite"
 ## The name of folder that contains subdirectories for users to place brushes, palettes, patterns.
 const CONFIG_SUBDIR_NAME := "pixelorama_data"
 ## The path of the directory where the UI layouts are being stored.
@@ -148,6 +150,13 @@ const FONTS_DIR_PATH := "user://fonts"
 
 ## It is path to the executable's base drectory.
 var root_directory := "."
+
+## True when running the headless regression runner (tests/runner.gd).
+##
+## The runner never loads Main.tscn, so every UI node reference stays null.
+## Reading this flag lets the UI bound bindings and autoload _ready() calls
+## degrade safely instead of raising null-instance errors in test output.
+var headless_test_mode := OS.get_cmdline_user_args().has("--phosprite-test-runner")
 var pixelorama_has_loaded := false
 ## The path where preferences and other subdirectories for stuff like layouts, extensions, logs etc.
 ## will get stored by Pixelorama.
@@ -700,29 +709,59 @@ var layer_button_node := preload("res://src/UI/Timeline/LayerButton.tscn")
 var cel_button_scene: PackedScene = load("res://src/UI/Timeline/CelButton.tscn")
 
 ## The control node (aka Main node). It has the [param Main.gd] script attached.
-@onready var control := get_tree().current_scene as Control
+##
+## These UI references are plain vars rather than @onready so they can be bound
+## once the editor scene exists. Normal startups load Main.tscn before autoloads
+## finish, but the headless test runner adds the scene later and calls
+## bind_ui_nodes() itself. Until then every reference stays null.
+var control: Control = null
 ## The project tabs bar. It has the [param Tabs.gd] script attached.
-@onready var tabs: TabBar = control.find_child("TabBar")
+var tabs: TabBar = null
 ## Contains viewport of the main canvas. It has the [param ViewportContainer.gd] script attached.
-@onready var main_viewport: SubViewportContainer = control.find_child("SubViewportContainer")
+var main_viewport: SubViewportContainer = null
 ## The main canvas node. It has the [param Canvas.gd] script attached.
-@onready var canvas: Canvas = main_viewport.find_child("Canvas")
+var canvas: Canvas = null
 ## Camera of the main canvas.
-@onready var camera: CanvasCamera = main_viewport.find_child("Camera2D")
+var camera: CanvasCamera = null
 ## Transparent checker of the main canvas. It has the [param TransparentChecker.gd] script attached.
-@onready var transparent_checker: ColorRect = control.find_child("TransparentChecker")
+var transparent_checker: ColorRect = null
 ## The top menu container. It has the [param TopMenuContainer.gd] script attached.
-@onready var top_menu_container: Panel = control.find_child("TopMenuContainer")
+var top_menu_container: Panel = null
 ## The animation timeline. It has the [param AnimationTimeline.gd] script attached.
-@onready var animation_timeline: Panel = control.find_child("Animation Timeline")
+var animation_timeline: Panel = null
 ## Popup dialog that displays brushes. It has the [param BrushesPopup.gd] script attached.
-@onready var brushes_popup: Popup = control.find_child("BrushesPopup")
+var brushes_popup: Popup = null
 ## Popup dialog that displays patterns. It has the [param PatternsPopup.gd] script attached.
-@onready var patterns_popup: Popup = control.find_child("PatternsPopup")
+var patterns_popup: Popup = null
 ## Dialog used to export images. It has the [param ExportDialog.gd] script attached.
-@onready var export_dialog: AcceptDialog = control.find_child("ExportDialog")
+var export_dialog: AcceptDialog = null
 ## An error dialog to show errors.
-@onready var error_dialog: AcceptDialog = control.find_child("ErrorDialog")
+var error_dialog: AcceptDialog = null
+
+
+## Resolves every editor UI reference against [param scene_root].
+##
+## Called from _ready() during normal startup, and again by tests/runner.gd after
+## it instantiates Main.tscn, because the scene may appear after this autoload.
+func bind_ui_nodes(scene_root: Node) -> void:
+	control = scene_root as Control
+	tabs = _ui_child(control, "TabBar")
+	main_viewport = _ui_child(control, "SubViewportContainer")
+	canvas = _ui_child(main_viewport, "Canvas")
+	camera = _ui_child(main_viewport, "Camera2D")
+	transparent_checker = _ui_child(control, "TransparentChecker")
+	top_menu_container = _ui_child(control, "TopMenuContainer")
+	animation_timeline = _ui_child(control, "Animation Timeline")
+	brushes_popup = _ui_child(control, "BrushesPopup")
+	patterns_popup = _ui_child(control, "PatternsPopup")
+	export_dialog = _ui_child(control, "ExportDialog")
+	error_dialog = _ui_child(control, "ErrorDialog")
+
+
+## Returns the child named [param child_name] under [param parent], or null when
+## either is missing, so a partially built scene never raises on binding.
+static func _ui_child(parent: Node, child_name: String) -> Node:
+	return null if parent == null else parent.find_child(child_name)
 
 
 class Grid:
@@ -849,10 +888,6 @@ func _ready() -> void:
 	default_fill_color = config_cache.get_value(
 		"preferences", "default_fill_color", default_fill_color
 	)
-	var proj_size := Vector2i(default_width, default_height)
-	projects.append(Project.new([], tr("untitled"), proj_size))
-	current_project = projects[0]
-	current_project.fill_color = default_fill_color
 
 	# Load preferences from the config file
 	if config_cache.has_section("preferences"):
@@ -867,10 +902,31 @@ func _ready() -> void:
 				set(pref, value)
 	if OS.is_sandboxed() or OS.has_feature("mobile"):
 		Global.use_native_file_dialogs = true
+
+	# Creating the starting project reaches into UI nodes (Global.tabs, Guide and
+	# Themes), so it only runs once an editor scene exists. Under the headless
+	# regression runner the scene is added later, by tests/runner.gd, which calls
+	# bind_ui_nodes() and bootstrap_first_project() itself.
+	if headless_test_mode:
+		return
+	bind_ui_nodes(get_tree().current_scene)
+	bootstrap_first_project()
+
+
+## Creates and activates the starting project. Requires an instantiated editor
+## scene, because Project touches Global.tabs and the canvas during _init.
+func bootstrap_first_project() -> void:
+	if not projects.is_empty():
+		return
+	var proj_size := Vector2i(default_width, default_height)
+	projects.append(Project.new([], tr("untitled"), proj_size))
+	current_project = projects[0]
+	current_project.fill_color = default_fill_color
 	current_project.initialize_attribution_data()
 	await get_tree().process_frame
 	project_switched.emit()
-	canvas.color_index.enabled = show_pixel_indices  # Initialize color index preview
+	if canvas != null:
+		canvas.color_index.enabled = show_pixel_indices  # Initialize color index preview
 
 
 func is_linux_or_bsd() -> bool:
@@ -889,7 +945,7 @@ func is_ctrl_or_cmd_pressed() -> bool:
 ## Print this when Pixelorama launches so it can be stored in the log files.
 ## This info may help us better debug issues certain users may have.
 func get_system_info() -> String:
-	var pixelorama_ver := "Pixelorama " + current_version
+	var pixelorama_ver := PRODUCT_NAME + " " + current_version
 	var distribution_name := OS.get_distribution_name()
 	if distribution_name.is_empty():
 		distribution_name = OS.get_name()

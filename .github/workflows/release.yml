@@ -6,7 +6,7 @@ on:
 
 env:
   GODOT_VERSION: 4.6.3
-  EXPORT_NAME: Pixelorama
+  EXPORT_NAME: Phosprite
   TAG: v1.2
   BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
 
@@ -133,7 +133,7 @@ jobs:
       - name: Setup environment 🔧
         run: |
           export GODOT_VERSION=${GODOT_VERSION}
-          export EXPORT_NAME=Pixelorama
+          export EXPORT_NAME=Phosprite
       - name: Download and extract export templates 💾
         run: |
           mkdir -v -p "/Users/runner/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
