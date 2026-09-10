@@ -57,10 +57,10 @@ var _preview_images: Array[Export.ProcessedImage]
 
 
 ## Whether the export path field holds a bare file name instead of a full path.
-## Web has no filesystem access, and sandboxed platforms (iOS, macOS sandbox,
-## Android) cannot hand out a writable directory path that survives a restart.
+## Mirrors Project._uses_user_directory() so the dialog and the project agree on
+## which platforms keep their documents in user://.
 func _uses_bare_file_name() -> bool:
-	return OS.get_name() == "Web" or OS.get_name() == "Android" or OS.is_sandboxed()
+	return Project._uses_user_directory()
 
 
 func _ready() -> void:

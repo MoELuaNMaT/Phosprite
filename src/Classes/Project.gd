@@ -124,6 +124,21 @@ var export_overwrite := false
 var backup_path := ""
 
 
+## Whether this platform has no writable system directory and must therefore
+## keep its documents in user://.
+##
+## Web has no filesystem access, Android routes through SAF content:// URIs, and
+## iOS sandboxes every app: OS.get_system_dir() returns "." there. macOS and
+## Linux report OS.is_sandboxed() truthfully, which covers their sandboxes.
+static func _uses_user_directory() -> bool:
+	return (
+		OS.get_name() == "Web"
+		or OS.get_name() == "Android"
+		or OS.get_name() == "iOS"
+		or OS.is_sandboxed()
+	)
+
+
 func _init(_frames: Array[Frame] = [], _name := tr("untitled"), _size := Vector2i(64, 64)) -> void:
 	frames = _frames
 	name = _name
@@ -163,10 +178,12 @@ func _init(_frames: Array[Frame] = [], _name := tr("untitled"), _size := Vector2
 	)
 	Global.canvas.add_child(diagonal_x_minus_y_symmetry_axis)
 
-	# Web has no filesystem access; sandboxed platforms (iOS, macOS sandbox,
-	# Android) cannot resolve a writable system directory, so their shared
-	# storage must go through user:// as well.
-	if OS.get_name() == "Web" or OS.is_sandboxed():
+	# Web has no filesystem access; Android routes through SAF content:// URIs
+	# and iOS sandboxes every app, so neither can resolve a writable system
+	# directory: OS.get_system_dir() returns "." on iOS. Their shared storage
+	# must go through user:// instead. OS.is_sandboxed() cannot stand in for
+	# iOS here, because the engine only implements it on macOS and Linux.
+	if _uses_user_directory():
 		export_directory_path = "user://"
 	else:
 		export_directory_path = Global.config_cache.get_value(

@@ -39,9 +39,9 @@ func test_user_dir_survives_path_join() -> void:
 	)
 
 
-## The dialog must classify platforms through one helper, so the three call
-## sites cannot drift apart.
-func test_export_dialog_uses_shared_bare_name_helper() -> void:
+## The dialog must delegate platform classification to Project, so the dialog and
+## the project cannot drift apart on which platforms use user://.
+func test_export_dialog_delegates_to_project_classification() -> void:
 	var src := FileAccess.get_file_as_string(EXPORT_DIALOG_SOURCE)
 	check_has(
 		src,
@@ -50,9 +50,28 @@ func test_export_dialog_uses_shared_bare_name_helper() -> void:
 	)
 	check_has(
 		src,
-		'return OS.get_name() == "Web" or OS.get_name() == "Android" or OS.is_sandboxed()',
-		"the helper must cover Web, Android and sandboxed platforms"
+		"return Project._uses_user_directory()",
+		"the helper must delegate to Project so both sides agree"
 	)
+
+
+## OS.is_sandboxed() only reports true on macOS and Linux, so it can never
+## identify iOS. The predicate must name iOS explicitly, otherwise the iPad
+## falls through to OS.get_system_dir(), which returns "." there.
+func test_user_directory_predicate_names_ios_explicitly() -> void:
+	var src := FileAccess.get_file_as_string(PROJECT_SOURCE)
+	check_has(
+		src,
+		"static func _uses_user_directory() -> bool:",
+		"Project must expose the shared platform predicate"
+	)
+	check_has(
+		src,
+		'OS.get_name() == "iOS"',
+		"the predicate must name iOS explicitly; is_sandboxed() cannot detect it"
+	)
+	for platform: String in ['"Web"', '"Android"']:
+		check_has(src, platform, "the predicate must keep covering %s" % platform)
 
 
 ## The path-changed handler must not write a base dir back into the project on
@@ -75,13 +94,20 @@ func test_path_changed_does_not_clobber_directory_on_bare_name_platforms() -> vo
 	)
 
 
-## Project creation must not ask a sandboxed platform for a desktop directory.
-func test_project_creation_avoids_system_dir_when_sandboxed() -> void:
+## Project creation must route user:// platforms away from the system directory,
+## because OS.get_system_dir() returns "." on iOS and would strand exports in an
+## unusable path.
+func test_project_creation_uses_shared_predicate() -> void:
 	var src := FileAccess.get_file_as_string(PROJECT_SOURCE)
 	check_has(
 		src,
-		'if OS.get_name() == "Web" or OS.is_sandboxed():',
-		"Project must route sandboxed platforms through the user:// branch"
+		"if _uses_user_directory():",
+		"Project must route user:// platforms through the shared predicate"
+	)
+	check_has(
+		src,
+		'export_directory_path = "user://"',
+		"the user:// branch must assign the export directory"
 	)
 
 
