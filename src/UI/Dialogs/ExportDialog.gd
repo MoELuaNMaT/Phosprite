@@ -55,6 +55,7 @@ var _preview_images: Array[Export.ProcessedImage]
 @onready var export_progress_bar := %ProgressBar as ProgressBar
 @onready var frame_timer: Timer = $FrameTimer
 
+
 ## Whether the export path field holds a bare file name instead of a full path.
 ## Web has no filesystem access, and sandboxed platforms (iOS, macOS sandbox,
 ## Android) cannot hand out a writable directory path that survives a restart.
