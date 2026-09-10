@@ -95,29 +95,38 @@ AltStore 重签时若处理不当,会出现签名校验失败或启动即崩。
 
 ## P0-D 真机验收(进行中)
 
-淘汰项说明:第 1、2 项已通过(见本文档顶部"中文用户名"一节)。
+| # | 验收项 | 状态 | 依据 |
+|---|---|---|---|
+| 1 | AltServer 重签 `Phosprite-unsigned.ipa` | ✅ 通过 | AltServer 完成重签并推送 |
+| 2 | 真机安装成功(嵌套 framework 未触发重签失败) | ✅ 通过 | 用户确认装到 iPad |
+| 3 | App 启动 | ✅ 通过 | 用户确认可启动 |
+| 4 | Shader / Canvas 正常 | ✅ 通过 | 用户确认界面显示正常 |
+| 5 | Touch Event 到达 | ✅ 通过 | 用户确认能绘制(触摸绘制成立) |
+| 6 | Pencil Event 到达(Apple Pencil 2) | ⬜ 待验证 | 需 Pencil 专测 |
+| 7 | 基础 Tool 可运行 | ✅ 通过 | 用户确认能绘制 |
+| 8 | 无 platform-only crash | ✅ 通过 | 用户确认无崩溃 |
+| 9 | 是否 OOM(免费账号无 increased_memory_limit) | ⬜ 待验证 | 需较大项目压力测试 |
 
-| # | 验收项 | 状态 |
-|---|---|---|
-| 1 | AltServer 重签 `Phosprite-unsigned.ipa` | ✅ 通过 |
-| 2 | 真机安装成功(嵌套 framework 未触发重签失败) | ✅ 通过 |
-| 3 | App 启动 | ⬜ 待验证 |
-| 4 | Shader / Canvas 正常 | ⬜ 待验证 |
-| 5 | Touch Event 到达 | ⬜ 待验证 |
-| 6 | Pencil Event 到达(Apple Pencil 2) | ⬜ 待验证 |
-| 7 | 基础 Tool 可运行 | ⬜ 待验证 |
-| 8 | 无 platform-only crash | ⬜ 待验证 |
-| 9 | 是否 OOM(免费账号无 increased_memory_limit) | ⬜ 待验证 |
+### 已排除的风险
 
-第 1、2 项通过的证据:
+- **嵌套 framework 重签**:`libswift_Concurrency.dylib` / MoltenVK
+  未导致重签失败或启动即崩。
+- **iOS 版 Shader 兼容**:渲染正常,无平台专有图形问题。
+- **基础输入链路**:触摸事件到达并驱动绘制。
 
-- AltServer 在 dev 会话生成完整 Apple 组件栈
-  (`C:\Users\dev\AppData\Local\AltServer\Apple\`,21:18);
-- 用户确认 AltStore 安装成功、开发者模式已开、IPA 推送成功;
-- `ldid.cpp(2609)` 断言不再出现。
+### 仍待验证
 
-第 2 项的意义:嵌套 framework(`libswift_Concurrency.dylib` / MoltenVK)
-**未**导致重签失败 —— 该风险已排除。
+- **Apple Pencil 2 输入**:厂商 Pencil 事件与手指事件是否都被正确接收、
+  是否存在指针类型识别问题(方案 §6.1 Input Adapter 的直接依据)。
+- **内存压力**:免费签名无 `increased_memory_limit`,需在 P0 Gate
+  完整闭环(多图层 + 多帧 + 播放动画)时观察是否 OOM。
+
+### 验证环境
+
+- 设备:iPad(UDID `00008103-001948500AE9401E`)
+- 签名:AltStore 免费账号,Team ID `44MFR9W6NM`
+- 产物:`C:\phosprite\ipa\Phosprite-unsigned.ipa`
+  (SHA256 `c3628e83d0fac5631fe4ea98e1c7735354117692fa99926b23436d26f2c1bc6f`)
 
 ---
 
