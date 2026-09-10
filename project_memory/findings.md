@@ -114,12 +114,17 @@ AltStore 重签时若处理不当,会出现签名校验失败或启动即崩。
 - **iOS 版 Shader 兼容**:渲染正常,无平台专有图形问题。
 - **基础输入链路**:触摸事件到达并驱动绘制。
 
+### 已完成的验证(用户实测)
+
+- 内存压力测试:1024×1024 画布 / 5 帧,**无 OOM**。免费签名下
+  该规模可用,`increased_memory_limit` 缺失在 P0 规模暂未构成阻塞。
+- P0 Gate 闭环:新建 → 绘制 → 保存 `.pxo` → 重启 App → 打开 → 导出 PNG,
+  **业务链路全部走通**。
+
 ### 仍待验证
 
 - **Apple Pencil 2 输入**:厂商 Pencil 事件与手指事件是否都被正确接收、
   是否存在指针类型识别问题(方案 §6.1 Input Adapter 的直接依据)。
-- **内存压力**:免费签名无 `increased_memory_limit`,需在 P0 Gate
-  完整闭环(多图层 + 多帧 + 播放动画)时观察是否 OOM。
 
 ### 验证环境
 
@@ -130,9 +135,62 @@ AltStore 重签时若处理不当,会出现签名校验失败或启动即崩。
 
 ---
 
-## P0-E Storage Spike(未开始)
+## P0-E Storage:三个实测缺陷(阻塞 P0 Gate)
 
-需验证:Files Picker、`.pxo` Open/Save/Save As、重新打开、PNG Export、
-overwrite、Files Provider、App background/foreground 后文件状态。
+用户在真机上走通保存/打开/导出后报告三个问题,均已定位根因:
 
-前置:先通过 P0-D。
+### 缺陷 1:默认导出/保存目录在 iOS 上无效
+
+```gdscript
+# src/Classes/Project.gd:166-171
+if OS.get_name() == "Web":
+    export_directory_path = "user://"
+else:
+    export_directory_path = Global.config_cache.get_value(
+        "data", "current_dir", OS.get_system_dir(OS.SYSTEM_DIR_DESKTOP)
+    )
+```
+
+`OS.get_system_dir(OS.SYSTEM_DIR_DESKTOP)` 在 iOS 上不返回沙箱 Documents,
+而是空串/无效路径 → 用户看到"默认目录是 iOS private 目录,无写入权限"。
+
+同一错误默认值在 `src/UI/Dialogs/ExportDialog.gd:318` 重复出现。
+
+### 缺陷 2:`user://` 在 iPad Files app 中不可见
+
+```ini
+# export_presets.cfg (preset.9 / iOS)
+user_data/accessible_from_files_app=false
+user_data/accessible_from_itunes_sharing=false
+```
+
+iOS 上 `user://` 映射到 App 沙箱 `Documents/`。上述两项为 `false` 时,
+该目录既不出现在 Files app,也不通过 iTunes 共享暴露 →
+用户看到"导出的图片没有在相册/Files 中显示"。
+
+### 缺陷 3:文件名输入框在切换窗口后被清空
+
+`ExportDialog.gd` 的 `path_line_edit.text` 每次 `show_tab()` 时按
+`export_directory_path.path_join(project.file_name)` 重建,
+而 `export_directory_path` 变更后未持有用户已输入的 `project.file_name`,
+切回窗口即回退为默认值。
+
+### 相关既有事实(调研结论)
+
+- `src/` 下 GDScript **无任何 iOS 分支**;`OS.get_name()` 判断只有
+  `"Web"`、`"Android"`(以及 `OS.has_feature("mobile")` 间接覆盖)。
+- 方案 §10.2 要求的 `UIDocumentPicker` / security-scoped URL /
+  atomic safe save **均未实现**,属于 P0 尚未交付项。
+- `Mobile` 平台唯一命中点是 `Global.gd:903-904`:
+  `if OS.is_sandboxed() or OS.has_feature("mobile"): use_native_file_dialogs = true`。
+
+### P0 Gate 判定
+
+方案 §11 原文要求闭环终点为"**导出 PNG 到 iPad Files**"。
+当前导出落在沙箱、Files/相册不可见 → **P0 Gate 判定未通过**。
+需先完成最小 storage 修复(默认目录 + Files 可见性)再复验。
+
+### 修复策略(用户已确认:最小修复优先)
+
+先做不引入 Native Bridge 的最小修复并验证文件可见性,
+完整 `UIDocumentPicker` + security-scoped URL 视验证结果再定。

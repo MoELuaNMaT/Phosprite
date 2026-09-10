@@ -163,7 +163,10 @@ func _init(_frames: Array[Frame] = [], _name := tr("untitled"), _size := Vector2
 	)
 	Global.canvas.add_child(diagonal_x_minus_y_symmetry_axis)
 
-	if OS.get_name() == "Web":
+	# Web has no filesystem access; sandboxed platforms (iOS, macOS sandbox,
+	# Android) cannot resolve a writable system directory, so their shared
+	# storage must go through user:// as well.
+	if OS.get_name() == "Web" or OS.is_sandboxed():
 		export_directory_path = "user://"
 	else:
 		export_directory_path = Global.config_cache.get_value(

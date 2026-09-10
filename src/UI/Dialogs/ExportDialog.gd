@@ -55,6 +55,12 @@ var _preview_images: Array[Export.ProcessedImage]
 @onready var export_progress_bar := %ProgressBar as ProgressBar
 @onready var frame_timer: Timer = $FrameTimer
 
+## Whether the export path field holds a bare file name instead of a full path.
+## Web has no filesystem access, and sandboxed platforms (iOS, macOS sandbox,
+## Android) cannot hand out a writable directory path that survives a restart.
+func _uses_bare_file_name() -> bool:
+	return OS.get_name() == "Web" or OS.get_name() == "Android" or OS.is_sandboxed()
+
 
 func _ready() -> void:
 	get_ok_button().size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -309,8 +315,10 @@ func _on_about_to_popup() -> void:
 	get_ok_button().text = "Export"
 	Global.transform_content_confirmed.emit()
 	var project := Global.current_project
-	# If we're on Web, don't let the user change the directory path
-	if OS.get_name() == "Web":
+	# Sandboxed platforms (iOS, macOS sandbox, Android) cannot expose a writable
+	# directory path to the user, so the export falls back to user:// when no
+	# directory has been picked yet.
+	if _uses_bare_file_name() and project.export_directory_path.is_empty():
 		project.export_directory_path = "user://"
 
 	if project.export_directory_path.is_empty():
@@ -323,7 +331,7 @@ func _on_about_to_popup() -> void:
 	options_interpolation.selected = Export.interpolation
 	directory_path_label.text = project.export_directory_path
 	var file_ext := Export.file_format_string(project.file_format)
-	if OS.get_name() == "Web" or OS.get_name() == "Android":
+	if _uses_bare_file_name():
 		path_line_edit.text = project.file_name + file_ext
 	else:
 		path_line_edit.text = project.export_directory_path.path_join(project.file_name) + file_ext
@@ -417,7 +425,9 @@ func _on_path_button_pressed() -> void:
 
 
 func _on_path_line_edit_text_changed(new_text: String) -> void:
-	if OS.get_name() != "Android":
+	# Where the field holds a bare file name, its base dir is meaningless
+	# ("." for a plain name) and must not clobber the resolved export directory.
+	if not _uses_bare_file_name():
 		Global.current_project.export_directory_path = new_text.get_base_dir()
 	Global.current_project.file_name = new_text.get_file().get_basename()
 	var file_format := Export.get_file_format_from_extension(new_text.get_extension())
