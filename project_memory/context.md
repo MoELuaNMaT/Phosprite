@@ -1,0 +1,107 @@
+# Phosprite 项目上下文
+
+## 技术栈与版本基线
+
+| 项目 | 版本 | 说明 |
+|:---|:---|:---|
+| 底座 | Pixelorama v1.2 stable (`86d299c`) | Fork 自 Orama-Interactive/Pixelorama |
+| 引擎 | Godot 4.6.3 stable | P0/P1 期间不得主动升级 |
+| 许可证 | MIT | 保留 Pixelorama Credits |
+| 产品名 | Phosprite | 独立品牌 |
+
+## 仓库与远端
+
+```text
+origin    https://github.com/MoELuaNMaT/Phosprite.git      (自己的 fork)
+upstream  https://github.com/Orama-Interactive/Pixelorama.git
+```
+
+注意:fork 最初叫 `MoELuaNMaT/Pixelorama`,后已重命名为 `MoELuaNMaT/Phosprite`。
+GitHub 会重定向旧 URL,但 `origin` 已改为新地址。
+
+## 环境配置
+
+### Windows 主开发机
+
+- Godot 二进制:`D:/_phosprite_tools/Godot_v4.6.3-stable_win64_console.exe`
+- 导出模板:`%APPDATA%/Godot/export_templates/4.6.3.stable/`(含 `ios.zip`)
+- 用途:日常代码、Godot Editor、UI/Logic 调试、Desktop Regression
+
+### macOS 构建节点
+
+**本地没有 Mac。** 所有 iOS 构建走 GitHub Actions `macos-latest`。
+
+### iPad 真机(尚未接入)
+
+- iPad Air 5、iPadOS 18.0、Apple Pencil 2
+- 侧载方式:AltStore 免费账号
+
+## 关键导出配置
+
+`export_presets.cfg` 中 `[preset.9]` 为 iOS preset:
+
+- `application/bundle_identifier="com.phosprite.app"`
+- `application/targeted_device_family=1` → 实际写入 `UIDeviceFamily=[2]`,**iPad-only**
+- `application/export_project_only=true` → Godot **只产出 Xcode 工程,不调用 xcodebuild,不签名**
+- `application/app_store_team_id="0000000000"` → **占位值**。Godot 导出校验强制要求非空;
+  该值只写入工程文件,真实签名在 CI 由 xcodebuild 参数覆盖
+- 横竖屏 4 方向全开(方案 §12:只做旋转适应)
+- `user_data/accessible_from_files_app=false` → `UIFileSharingEnabled=false`。
+  P0-E 的 Files Picker 走 Document Picker,不依赖此标志
+
+## iOS 构建链路
+
+`.github/workflows/ios-build.yml`,触发于 `main` / `phosprite-main` 的 push 与 PR。
+
+```text
+macos-latest
+  ├─ 装 Godot 4.6.3 + export templates(注意:必须用 ${HOME},env 里的 ~ 不会展开)
+  ├─ Godot --export-release "iOS" → Xcode 工程(不签名)
+  ├─ xcodebuild archive CODE_SIGNING_ALLOWED=NO → 未签名 .xcarchive
+  └─ 从 .xcarchive 取 .app 重打包 → Phosprite-unsigned.ipa(清除 _CodeSignature)
+```
+
+**不能**用 `xcodebuild -exportArchive`:它强制要求可用的签名身份与 provisioning profile。
+
+产物:artifact `Phosprite-ios-unsigned`,约 27 MB。
+
+## AltStore 侧载环境(Windows 主开发机)
+
+| 组件 | 版本 | 安装位置 |
+|:---|:---|:---|
+| AltServer | 1.7.4 | `C:\Program Files (x86)\AltServer\` |
+| iCloud(直装版) | 7.21.0.23 | `Common Files\Apple\Internet Services\` |
+| Apple Mobile Device Support | 20.0.0.35 | `Common Files\Apple\Mobile Device Support\` |
+| Bonjour | 3.1.0.1 | `C:\Program Files (x86)\Bonjour\` |
+| iTunes | 12.13.11.1 | `C:\Program Files\iTunes\` |
+
+服务:`Apple Mobile Device Service`、`Bonjour Service`,均 Running / Automatic。
+
+**重要陷阱**:`winget install Apple.iTunes` 只装了 `iTunes64.msi`,**跳过了内嵌的
+`AppleMobileDeviceSupport64.msi`**,导致 AltServer 无法识别设备
+(见 microsoft/winget-pkgs#18433)。正确做法是用官方 `iTunes64Setup.exe -layout`
+解出全部 MSI 后单独补装 AMDS。
+
+**必须用 Apple 官网直装版 iTunes/iCloud,不能用 Microsoft Store 版** ——
+Store 版做了混淆,缺少 AltServer 生成 Anisette 数据所需的文件访问能力。
+
+## CI 已知问题(非 P0 阻塞)
+
+`Development Web build` 在同一仓库上持续失败:
+
+```text
+remote: Permission to MoELuaNMaT/Phosprite.git denied to github-actions[bot].
+fatal: unable to access '...': The requested URL returned error: 403
+```
+
+根因是 fork 的 `GITHUB_TOKEN` 默认只读,无法向 `gh-pages` 强推。
+需要在仓库 Settings → Actions → General → Workflow permissions 改为
+"Read and write",或在 fork 上禁用 Pages 部署步骤。与 iOS 链路无关。
+
+## 提交历史
+
+| commit | 内容 |
+|:---|:---|
+| `a75c390` | P0:项目初始化、身份隔离与 Contract Regression Suite |
+| `22ccf5b` | P0-D:新增 iOS 导出配置与未签名 IPA 构建流水线 |
+| `89ca784` | P0-D:修复 iOS CI 导出模板路径未展开导致构建失败 |
