@@ -86,22 +86,22 @@ func _load_editor_scene() -> Node:
 		return null
 	var scene: Node = packed.instantiate()
 
-	# The editor's UI scripts read Global.current_project during their own _ready,
-	# so the project must exist before the scene enters the tree. The scene has to
-	# be the current scene for those scripts to resolve siblings, so it is attached
-	# first but kept out of the frame loop until the project is created: attaching
-	# marks it current, and Global.bootstrap_first_project() runs before the next
-	# processed frame can draw or run deferred UI callbacks.
 	var global: Node = root.get_node_or_null("Global")
 	if global == null:
 		print("WARNING: Global autoload missing; integration suites will fail.")
 		root.add_child(scene)
 		current_scene = scene
 		return scene
-	root.add_child(scene)
-	current_scene = scene
+
+	# The editor's UI scripts and Main._ready() read Global.current_project, so the
+	# project must exist before the scene's _ready cascade runs. Bind the UI and
+	# create the project while the scene is still detached, then hand the scene to
+	# the engine through change_scene_to_node(): it installs the scene as
+	# current_scene before the node enters the tree, which is what Tabs.gd resolves
+	# against, and its _ready cascade then appends the first layer and frame.
 	global.call("bind_ui_nodes", scene)
-	await global.call("bootstrap_first_project")
+	global.call("bootstrap_first_project")
+	change_scene_to_node(scene)
 
 	# Let the editor settle: the scene's own _ready cascade plus any deferred
 	# autoload callbacks that react to the freshly created project.
@@ -177,10 +177,16 @@ func _run_suite(script_path: String) -> void:
 			suite.call("reset")
 		suite.set("failures", _failures)
 		var result: Variant = suite.call(method_name)
-		# A coroutine result is a Signal-like object; awaiting it lets the test
-		# finish before failures are read.
-		if result is Signal:
-			await result
+		# The call hands back a GDScriptFunctionState for a test that suspends, not a
+		# Signal, so testing for a Signal here cut every coroutine test off at its
+		# first await and silently discarded the assertions that followed. Awaiting
+		# a plain value returns it unchanged, so every result is awaited.
+		await result
+		# A method body aborted by a runtime error returns the same value as a
+		# passing one, so a test that dies before its first check would be
+		# reported as ok while nothing was ever verified.
+		if int(suite.get("assertions")) == 0:
+			_failures.append("the test body reached no check, so nothing was verified")
 		if _failures.is_empty():
 			print("  ok   %s::%s" % [script_path.get_file(), method_name])
 		else:

@@ -30,19 +30,28 @@ func test_pxo_round_trip_preserves_project_data() -> void:
 	if project == null:
 		return
 
-	# Give the project distinctive data so a mismatch cannot pass by accident.
+	# Resize through the production path: assigning `size` directly leaves the cel
+	# images at their old dimensions, a state the editor never produces, and the
+	# saved archive then disagrees with itself about the canvas size.
 	var target_size := Vector2i(37, 19)
-	project.size = target_size
+	DrawingAlgos.resize_canvas(target_size.x, target_size.y, 0, 0)
 	project.name = "roundtrip"
 
-	var pixel_color := Color(0.25, 0.5, 0.75, 1.0)
-	var image := Image.create(target_size.x, target_size.y, false, Image.FORMAT_RGBA8)
-	image.fill(pixel_color)
+	# Byte-exact on purpose: .pxo stores 8 bits per channel, so a colour that is not
+	# representable in a byte would come back quantised and the comparison would
+	# have to be loosened to a tolerance instead of an equality.
+	var pixel_color := Color8(63, 127, 191)
 
-	var cel := project.layers[0].get_cel(0) as PixelCel
+	# A frame holds one cel per layer, indexed the same way the layers are, so the
+	# first layer's cel lives at the front of the first frame.
+	var cel := project.frames[0].cels[0] as PixelCel
 	check_true(cel != null, "default project must expose a pixel cel to draw into")
 	if cel == null:
 		return
+	# Fill the cel at its own size; a smaller image would leave the rest of the cel
+	# untouched and the pixel check could still pass at the wrong coordinates.
+	var image := Image.create(target_size.x, target_size.y, false, Image.FORMAT_RGBA8)
+	image.fill(pixel_color)
 	cel.get_image().blit_rect(image, Rect2i(Vector2i.ZERO, target_size), Vector2i.ZERO)
 
 	var saved: bool = OpenSave.save_pxo_file(ROUND_TRIP_PATH, false, false, project)
@@ -63,11 +72,10 @@ func test_pxo_round_trip_preserves_project_data() -> void:
 	check_eq(reopened.size.x, target_size.x, "restored project width must match the saved one")
 	check_eq(reopened.size.y, target_size.y, "restored project height must match the saved one")
 
-	var restored_cel := reopened.layers[0].get_cel(0) as PixelCel
+	var restored_cel := reopened.frames[0].cels[0] as PixelCel
 	check_true(restored_cel != null, "restored project must expose its pixel cel")
 	if restored_cel == null:
 		return
-
 	var restored_pixel := restored_cel.get_image().get_pixel(3, 3)
 	check_true(
 		restored_pixel.is_equal_approx(pixel_color),
