@@ -728,7 +728,7 @@ func file_menu_id_pressed(id: int) -> void:
 		Global.FileMenu.SAVE:
 			_save_project_file()
 		Global.FileMenu.SAVE_AS:
-			main.show_save_dialog()
+			main.request_save(main.SaveIntent.SAVE_AS, Global.current_project)
 		Global.FileMenu.EXPORT:
 			_export_file()
 		Global.FileMenu.EXPORT_AS:
@@ -761,11 +761,9 @@ func _save_project_file() -> void:
 			Global.current_project.has_changed = false
 		Global.notification_label("Resource Updated")
 		return
-	var path: String = Global.current_project.save_path
-	if path == "":
-		main.show_save_dialog()
-	else:
-		main.save_project(path, false)
+	# Main decides where the project goes: without a path the platform policy
+	# picks the destination, and a project that already has one is overwritten.
+	main.request_save(main.SaveIntent.SAVE, Global.current_project)
 
 
 func _export_file() -> void:

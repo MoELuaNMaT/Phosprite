@@ -3,7 +3,16 @@ extends Control
 ## Needed because it is not possible to detect if a native file dialog is open or not.
 signal save_file_dialog_opened(opened: bool)
 
+## The three ways a project can be saved. They cannot be told apart by
+## [member Project.save_path]: a first Save, a Save As and a quit Save all reach
+## the same entry point, but only the quit Save acts on a project other than the
+## current one, and only Save As asks the user for a file name.
+enum SaveIntent { SAVE, SAVE_AS, QUIT_SAVE }
+
 const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
+
+## Platform policy for where .pxo files live; see the script for the iPad rules.
+const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 
 var opensprite_file_selected := false
 var redone := false
@@ -586,16 +595,92 @@ func _on_OpenSprite_files_selected(paths: PackedStringArray) -> void:
 	save_sprite_dialog.current_dir = paths[0].get_base_dir()
 
 
-func show_save_dialog(project := Global.current_project) -> void:
+## Saves a project, deciding where it goes from the intent and the project state.
+##
+## [param target_project] is passed explicitly instead of being read from
+## [member Global.current_project]: quitting saves the unsaved projects one at a
+## time, so the project being saved is not necessarily the current one.
+##
+## On platforms where Phosprite manages project storage (iPadOS) a project that
+## has no path yet is written straight into the managed directory. Every other
+## platform, and Save As everywhere, still opens the file dialog.
+func request_save(intent: SaveIntent, target_project: Project) -> void:
+	match intent:
+		SaveIntent.SAVE_AS:
+			_show_save_dialog(target_project, true)
+		SaveIntent.SAVE:
+			if target_project.save_path != "":
+				save_project(target_project.save_path, false)
+			elif STORAGE_POLICY.uses_managed_project_storage():
+				_save_to_managed_directory(target_project)
+			else:
+				_show_save_dialog(target_project, false)
+		SaveIntent.QUIT_SAVE:
+			if not STORAGE_POLICY.uses_managed_project_storage():
+				# Other platforms keep asking for a location, as they always have.
+				_show_save_dialog(target_project, false)
+			elif target_project.save_path != "":
+				save_project(target_project.save_path, false)
+			else:
+				_save_to_managed_directory(target_project)
+
+
+## Opens the save dialog for [param project].
+##
+## [param asks_for_new_name] separates Save As from the first save of a project
+## that has no path yet. Both reach the dialog, but only Save As asks the user to
+## name a new file in the managed directory; on every other platform the dialog
+## itself is where the location is chosen, so it always behaves as before.
+func _show_save_dialog(project: Project, asks_for_new_name: bool) -> void:
+	var confine_to_managed_directory := (
+		asks_for_new_name and STORAGE_POLICY.uses_managed_project_storage()
+	)
+	# Prepare the managed directory before any dialog state changes: the abort
+	# path must not leave the UI dimmed for a dialog that never opens.
+	if confine_to_managed_directory and _ensure_projects_directory() != OK:
+		return
 	Global.dialog_open(true, true)
 	if OS.get_name() == "Web":
 		save_sprite_html5.popup_centered_clamped()
 		var save_filename_line_edit := save_sprite_html5.get_node("%FileNameLineEdit")
 		save_filename_line_edit.text = project.name
 	else:
-		save_sprite_dialog.current_file = project.name + ".pxo"
+		if confine_to_managed_directory:
+			# iPadOS has no user-navigable file system, so Save As is confined to
+			# the managed directory instead of exposing the sandbox path.
+			save_sprite_dialog.access = FileDialog.ACCESS_USERDATA
+			save_sprite_dialog.current_dir = STORAGE_POLICY.PROJECTS_DIRECTORY
+		save_sprite_dialog.current_file = project.name + STORAGE_POLICY.PROJECT_EXTENSION
 		save_sprite_dialog.popup_centered_clamped()
+		# Announced only for the dialog that can actually be answered: the tabs and
+		# the File menu are released by its file_selected/canceled signal, which the
+		# HTML5 confirmation dialog does not have.
 		save_file_dialog_opened.emit(true)
+
+
+## Writes [param project] into the managed directory under a fresh name.
+##
+## Used when there is no dialog to ask for a name — the first Save on a platform
+## without a file system, and the save that happens while quitting.
+func _save_to_managed_directory(project: Project) -> void:
+	if _ensure_projects_directory() != OK:
+		return
+	save_project(STORAGE_POLICY.make_initial_project_path(project), false)
+
+
+## Creates the managed project directory, reporting the failure to the user.
+## Saving is abandoned on failure rather than falling back to a directory the
+## user cannot reach from the Files app.
+func _ensure_projects_directory() -> Error:
+	var err := STORAGE_POLICY.ensure_projects_directory()
+	if err != OK:
+		Global.popup_error(
+			(
+				tr("Could not create the projects folder. Error code %s (%s)")
+				% [err, error_string(err)]
+			)
+		)
+	return err
 
 
 func _on_SaveSprite_file_selected(path: String) -> void:
@@ -692,7 +777,7 @@ func _on_QuitAndSaveDialog_custom_action(action: String) -> void:
 
 func _on_QuitAndSaveDialog_confirmed() -> void:
 	is_quitting_on_save = true
-	show_save_dialog(changed_projects_on_quit[0])
+	request_save(SaveIntent.QUIT_SAVE, changed_projects_on_quit[0])
 
 
 func _quit() -> void:
