@@ -194,3 +194,58 @@ iOS 上 `user://` 映射到 App 沙箱 `Documents/`。上述两项为 `false` �
 
 先做不引入 Native Bridge 的最小修复并验证文件可见性,
 完整 `UIDocumentPicker` + security-scoped URL 视验证结果再定。
+
+### 修复进展(GPT-006 审查后)
+
+上述三个缺陷已修复并通过 GPT 审查:
+**GPT-006 裁决 `VERDICT: PASS` / `S1 PASS` / `CLOSE: NO`**。
+
+唯一阻塞项是 **iPad 真机复验**:iOS 分支在 Windows 开发机上不可执行,
+目前只有源码断言 + 策略函数直调证据,不能把 "iOS build success"
+当作 "iOS storage behavior validated"。
+
+复验产物与六项最小 Gate 见会话内交接单
+`phosprite-p0e-device-verification-handoff.md`。
+
+---
+
+## 契约测试框架的三处假通过缺陷(已修复)
+
+P0-E 实现期发现,**套件绿灯不可信**,是 P0 Gate 复验的前置阻塞:
+
+### 1. 协程测试被截断(`tests/runner.gd`)
+
+```gdscript
+if result is Signal:
+    await result
+```
+
+GDScript 协程返回 **`GDScriptFunctionState`,不是 `Signal`**。
+因此每个含 `await` 的测试都在第一个 `await` 处被截断,
+**其后的断言从不执行,套件仍报 ok**。
+
+修复:无条件 `await`(`await` 普通值原样返回)。
+
+### 2. 中途崩溃的测试被报成通过(`tests/test_base.gd`)
+
+测试体若在首个断言前因运行时错误中止,返回值与通过时**完全相同**,无法区分。
+
+修复:新增 `assertions` 计数,每个 check 递增;`runner.gd` 在计数为 0 时判失败。
+
+### 3. pxo 往返测试的 fixture 自相矛盾(`tests/integration/test_pxo_round_trip.gd`)
+
+直接赋值 `project.size` 调整画布,但 **cel 图像尺寸不随之改变** ——
+编辑器正常流程不会产生这种状态,存档因此自相矛盾。
+
+修复:改走 `DrawingAlgos.resize_canvas()`,并按真实结构
+`reopened.frames[0].cels[0]` 读回。
+
+### 影响
+
+修复前套件 29 项"全绿"但含假通过;修复后 41 项 0 failures,
+**本次绿灯是首次可信绿灯**。
+
+**边界**:GPT 已裁决此次测试框架修改为 `ACCEPTED` 的
+verification-enabling amendment,但明确记录——
+今后不得以"改善测试"为由普遍扩大测试框架范围;
+本次成立是因为发现了能使当前 Gate 假通过的具体缺陷。

@@ -54,6 +54,43 @@ GitHub 会重定向旧 URL,但 `origin` 已改为新地址。
 **不要**在 `乱码碳` 会话运行 AltServer:它会抢占设备通道与监听端口,
 且加载的是中文路径下的 Apple 组件。
 
+## 保存路径架构(P0-E 起)
+
+iPadOS 没有用户可导航的文件系统,因此 iOS 上由 App 托管项目存储:
+
+| 侧 | 落点 |
+|:---|:---|
+| 统一入口 | `Main.request_save(intent, target_project)`,intent 为 `SaveIntent { SAVE, SAVE_AS, QUIT_SAVE }` |
+| 策略模块 | `src/PlatformServices/StoragePolicy.gd`(纯静态,无 autoload,禁止读 `Global`) |
+| 托管目录 | `user://Projects`(iOS 上即沙箱 Documents/Projects,Files app 可见) |
+| iOS 命名 | `make_initial_project_path()` 自动分配,冲突以文件系统为准递增 `_2`/`_3` |
+
+**为什么需要 intent**:首次 Save、Save As、退出保存三条路径共用同一个入口,
+无法用 `save_path == ""` 区分语义 —— 退出保存处理的是后台项目,
+`target_project` 必须显式传参,不能读 `Global.current_project`。
+
+iOS 行为:首次 Save 与退出保存直接落 `user://Projects`(不弹窗);
+Save As 在 `ACCESS_USERDATA` + `user://Projects` 下开内部 chooser(不暴露 `/private`)。
+其他平台分支与改动前逐条等价。
+
+## 契约测试套件
+
+入口:`tests/runner.gd`,headless 运行
+
+```bash
+godot --headless --path . --script res://tests/runner.gd -- --phosprite-test-runner
+```
+
+当前规模:**41 项**,0 failures。CI 门禁见 `.github/workflows/regression-tests.yml`。
+
+**改动测试框架时注意**(P0-E 修复的三处假通过缺陷,见 `findings.md`):
+- `runner.gd` 必须**无条件 `await`** 测试返回值 —— GDScript 协程返回
+  `GDScriptFunctionState` 而非 `Signal`,`is Signal` 判断会截断所有含 await 的测试;
+- `test_base.gd` 的 `assertions` 计数为 0 时判失败 —— 测试体在首个断言前
+  因运行时错误中止时,返回值与通过时完全相同;
+- 调整画布尺寸须走 `DrawingAlgos.resize_canvas()`,直接赋值 `project.size`
+  会让 cel 图像尺寸与画布不一致(编辑器正常流程不会产生的状态)。
+
 ## 关键导出配置
 
 `export_presets.cfg` 中 `[preset.9]` 为 iOS preset:
@@ -135,3 +172,6 @@ fatal: unable to access '...': The requested URL returned error: 403
 | `a07538b` | docs: P0-D 真机验收进展(启动/渲染/触摸绘制/crash 通过) |
 | `0780c62` | P0-E: 修复沙箱平台的导出路径与 Files app 可见性 |
 | `caf8cf0` | style: 修正空行以满足 gdformat |
+| `159be75` | fix: 修正 iOS 平台判定,导出/保存默认目录改回 user:// |
+| `c9db137` | test: 修正测试框架的假通过缺陷 |
+| `f3bbb7d` | feat: P0-E 保存路径统一入口(iPadOS 托管存储) |
