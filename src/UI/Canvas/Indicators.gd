@@ -11,7 +11,5 @@ func _draw() -> void:
 	# Touch has no hover phase, so the adapter keeps this visible only while a
 	# finger/Pencil actually owns content; physical mouse/trackpad keeps legacy hover.
 	var canvas := Global.canvas as Canvas
-	if Global.can_draw and (
-		not is_instance_valid(canvas) or canvas.should_draw_tool_indicator()
-	):
+	if Global.can_draw and (not is_instance_valid(canvas) or canvas.should_draw_tool_indicator()):
 		Tools.draw_indicator()
