@@ -7,12 +7,18 @@ extends RefCounted
 ## Individual tools must not need to know whether an event came from Pencil, finger or mouse.
 
 enum PointerKind { UNKNOWN, PENCIL, DIRECT, INDIRECT }
+enum FingerPolicy { UNRESTRICTED, FINGER_NAVIGATION_ONLY, PENCIL_PRIORITY }
 
 const POINTER_IDENTITY_SINGLETON := &"PhospritePointerIdentity"
+const PREFERENCE_SECTION := "preferences"
+const FINGER_POLICY_KEY := "finger_policy"
 const PENCIL_SEEN_SECTION := "input"
 const PENCIL_SEEN_KEY := "pencil_seen"
+const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const EMULATED_MOUSE_GRACE_MSEC := 120
 const TWO_FINGER_EPSILON := 0.01
+## UIKit's majorRadius is only a hint. Correctness never depends on this threshold.
+const PALM_RADIUS_HINT := 22.0
 
 var _touches: Dictionary = {}
 var _content_touch_id := -1
@@ -22,6 +28,7 @@ var _last_navigation_centroid := Vector2.ZERO
 var _last_navigation_distance := 0.0
 var _touch_activity_until_msec := 0
 var _pencil_seen := false
+var _finger_policy := DEFAULT_FINGER_POLICY
 var _initialized := false
 
 
@@ -32,6 +39,11 @@ func initialize() -> void:
 	_pencil_seen = bool(
 		Global.config_cache.get_value(PENCIL_SEEN_SECTION, PENCIL_SEEN_KEY, false)
 	)
+	_finger_policy = int(
+		Global.config_cache.get_value(PREFERENCE_SECTION, FINGER_POLICY_KEY, DEFAULT_FINGER_POLICY)
+	)
+	if _finger_policy < FingerPolicy.UNRESTRICTED or _finger_policy > FingerPolicy.PENCIL_PRIORITY:
+		_finger_policy = DEFAULT_FINGER_POLICY
 
 
 func is_enabled() -> bool:
@@ -59,9 +71,50 @@ func handle_event(canvas: Node2D, event: InputEvent) -> bool:
 	return false
 
 
+func install_preferences_ui(scene_root: Node) -> void:
+	if not is_enabled() or not is_instance_valid(scene_root):
+		return
+	var preferences_dialog := scene_root.find_child("PreferencesDialog", true, false)
+	if not is_instance_valid(preferences_dialog):
+		return
+	var options := preferences_dialog.find_child("ToolOptions", true, false) as GridContainer
+	if not is_instance_valid(options) or options.has_node("FingerPolicyLabel"):
+		return
+
+	var label := Label.new()
+	label.name = "FingerPolicyLabel"
+	label.text = "Finger input mode"
+	label.tooltip_text = "Controls whether direct touch can edit the canvas when using iPad."
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	# Preferences uses a three-column grid after it inserts restore buttons. This spacer keeps
+	# the runtime-only P1-B preference aligned without introducing a second settings system.
+	var spacer := Control.new()
+	spacer.name = "FingerPolicySpacer"
+
+	var option := OptionButton.new()
+	option.name = "FingerPolicyOptionButton"
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	option.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	option.tooltip_text = (
+		"Unrestricted allows direct touch editing. Navigation only keeps fingers for canvas "
+		+ "navigation. Pencil priority allows finger editing until Pencil has been used on this "
+		+ "installation, then reserves canvas content editing for Pencil."
+	)
+	option.add_item("Unrestricted", FingerPolicy.UNRESTRICTED)
+	option.add_item("Finger navigation only", FingerPolicy.FINGER_NAVIGATION_ONLY)
+	option.add_item("Pencil priority", FingerPolicy.PENCIL_PRIORITY)
+	option.select(option.get_item_index(_finger_policy))
+	option.item_selected.connect(_on_finger_policy_selected.bind(option))
+
+	options.add_child(label)
+	options.add_child(spacer)
+	options.add_child(option)
+
+
 func reset(canvas: Node2D) -> void:
 	if _content_touch_id != -1:
-		Tools.cancel_active_tool()
+		_cancel_active_tool()
 	_content_touch_id = -1
 	_pencil_touch_id = -1
 	_touches.clear()
@@ -77,11 +130,11 @@ static func direct_content_allowed(policy: int, pencil_seen: bool, pencil_active
 	if pencil_active:
 		return false
 	match policy:
-		Global.FingerPolicy.UNRESTRICTED:
+		FingerPolicy.UNRESTRICTED:
 			return true
-		Global.FingerPolicy.FINGER_NAVIGATION_ONLY:
+		FingerPolicy.FINGER_NAVIGATION_ONLY:
 			return false
-		Global.FingerPolicy.PENCIL_PRIORITY:
+		FingerPolicy.PENCIL_PRIORITY:
 			return not pencil_seen
 	return false
 
@@ -121,9 +174,17 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		_touches[event.index] = state
 		return
 
-	if _content_touch_id == -1 and direct_content_allowed(
-		Global.finger_policy, _pencil_seen, false
+	# A large contact is only an early palm-rejection hint in Pencil Priority. Exact Pencil
+	# ownership still comes from UITouch.type through the native bridge.
+	if (
+		_finger_policy == FingerPolicy.PENCIL_PRIORITY
+		and float(state["major_radius"]) >= PALM_RADIUS_HINT
 	):
+		state["suppressed"] = true
+		_touches[event.index] = state
+		return
+
+	if _content_touch_id == -1 and direct_content_allowed(_finger_policy, _pencil_seen, false):
 		_start_content(canvas, event.index, event.position)
 	else:
 		_try_begin_navigation()
@@ -180,7 +241,7 @@ func _begin_pencil_ownership(canvas: Node2D, touch_id: int) -> void:
 	_remember_pencil_seen()
 
 	if _content_touch_id != -1 and _content_touch_id != touch_id:
-		Tools.cancel_active_tool()
+		_cancel_active_tool()
 		_content_touch_id = -1
 
 	_navigation_ids.clear()
@@ -325,6 +386,25 @@ func _remember_pencil_seen() -> void:
 	var error := Global.config_cache.save(Global.CONFIG_PATH)
 	if error != OK:
 		push_warning("Could not persist Pencil input state: %s" % error_string(error))
+
+
+func _cancel_active_tool() -> void:
+	var button := Tools.active_button
+	if button == -1:
+		return
+	if Tools._slots.has(button) and is_instance_valid(Tools._slots[button].tool_node):
+		Tools._slots[button].tool_node.cancel_tool()
+	Tools.active_button = -1
+	Tools.pen_inverted = false
+	Tools.mouse_velocity = 0.0
+
+
+func _on_finger_policy_selected(index: int, option: OptionButton) -> void:
+	_finger_policy = option.get_item_id(index)
+	Global.config_cache.set_value(PREFERENCE_SECTION, FINGER_POLICY_KEY, _finger_policy)
+	var error := Global.config_cache.save(Global.CONFIG_PATH)
+	if error != OK:
+		push_warning("Could not save finger input mode: %s" % error_string(error))
 
 
 func _mark_touch_activity() -> void:
