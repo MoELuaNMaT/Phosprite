@@ -114,9 +114,7 @@ func test_optional_rotation_dead_zone_filters_jitter_without_threshold_jump() ->
 		"a twelve-degree screen-space turn with two-degree slop must rotate camera by ten degrees inverse"
 	)
 
-	var wrap_target := ADAPTER.navigation_target_angle(
-		0.0, PI - 0.02, -PI + 0.08, true, dead_zone
-	)
+	var wrap_target := ADAPTER.navigation_target_angle(0.0, PI - 0.02, -PI + 0.08, true, dead_zone)
 	check_almost_eq(
 		wrap_target,
 		-(0.1 - dead_zone),
@@ -140,11 +138,7 @@ func test_combined_pan_pinch_and_rotation_preserve_the_pair_anchor() -> void:
 		baseline_zoom, 1.35, false, Vector2(0.01, 0.01), Vector2(500.0, 500.0)
 	)
 	var target_angle := ADAPTER.navigation_target_angle(
-		baseline_angle,
-		0.0,
-		PI / 8.0,
-		true,
-		ADAPTER.NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
+		baseline_angle, 0.0, PI / 8.0, true, ADAPTER.NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
 	)
 	var target_offset := ADAPTER.navigation_offset_for_anchor(
 		anchor, current_centroid, viewport_size, target_zoom, target_angle
