@@ -287,7 +287,8 @@ static func navigation_target_angle(
 	var pair_delta := navigation_rotation_delta(
 		baseline_pair_angle, current_pair_angle, rotation_dead_zone_radians
 	)
-	return wrapf(baseline_camera_angle + pair_delta, -PI, PI)
+	# CanvasCamera's positive camera angle is the inverse of the raw screen-space pair turn.
+	return wrapf(baseline_camera_angle - pair_delta, -PI, PI)
 
 
 func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
