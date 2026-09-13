@@ -137,7 +137,7 @@ func install_preferences_ui(scene_root: Node) -> void:
 	var rotation_label := Label.new()
 	rotation_label.name = "TwoFingerRotationLabel"
 	rotation_label.text = "Two-finger canvas rotation"
-	rotation_label.tooltip_text = ("Optional iPad navigation gesture. Disabled by default to keep canvas orientation stable.")
+	rotation_label.tooltip_text = "Optional iPad gesture. Disabled by default."
 	rotation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var rotation_spacer := Control.new()
