@@ -63,6 +63,8 @@ jobs:
           # The release contains both the runtime/native iOS plugin and an
           # EditorPlugin that supplies its frameworks/linker flags. Enable the
           # latter only in this CI checkout, and enable SharePlugin in preset.9.
+          # P1-B0 also injects the temporary InputProbe autoload into this iOS
+          # checkout only; ordinary project.godot remains untouched in git.
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -78,7 +80,15 @@ jobs:
               existing = match.group(1).strip()
               replacement = f"enabled=PackedStringArray({existing}, {plugin_cfg})"
               project = project[:match.start()] + replacement + project[match.end():]
-              project_path.write_text(project, encoding="utf-8")
+
+          probe_autoload = 'InputProbe="*res://src/PlatformServices/InputProbe.gd"'
+          if probe_autoload not in project:
+              marker = "\n[debug]\n"
+              insert_at = project.find(marker)
+              if insert_at < 0:
+                  raise SystemExit("debug section marker not found in project.godot")
+              project = project[:insert_at] + f"\n{probe_autoload}\n" + project[insert_at:]
+          project_path.write_text(project, encoding="utf-8")
 
           preset_path = Path("export_presets.cfg")
           presets = preset_path.read_text(encoding="utf-8")
@@ -104,6 +114,7 @@ jobs:
           test -d ./ios/plugins/SharePlugin.release.xcframework
           test -d ./ios/plugins/SharePlugin.debug.xcframework
           grep -q 'res://addons/SharePlugin/plugin.cfg' project.godot
+          grep -q 'InputProbe="\*res://src/PlatformServices/InputProbe.gd"' project.godot
           grep -q 'plugins/SharePlugin=true' export_presets.cfg
 
       - name: Download and extract export templates 💾
