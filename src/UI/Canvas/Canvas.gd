@@ -14,6 +14,7 @@ var move_preview_location := Vector2i.ZERO
 var layer_texture_array := Texture2DArray.new()
 var layer_metadata_image := Image.new()
 var layer_metadata_texture := ImageTexture.new()
+var _input_adapter := CanvasInputAdapter.new()
 
 @onready var currently_visible_frame := $CurrentlyVisibleFrame as SubViewport
 @onready var current_frame_drawer := $CurrentlyVisibleFrame/CurrentFrameDrawer as Node2D
@@ -44,7 +45,11 @@ func _ready() -> void:
 	onion_past.blue_red_color = Global.onion_skinning_past_color
 	onion_future.type = onion_future.FUTURE
 	onion_future.blue_red_color = Global.onion_skinning_future_color
+	_input_adapter.initialize()
+	if _input_adapter.is_enabled() and not get_window().focus_exited.is_connected(_on_window_focus_exited):
+		get_window().focus_exited.connect(_on_window_focus_exited)
 	await get_tree().process_frame
+	_input_adapter.install_preferences_ui(get_tree().current_scene)
 	camera_zoom()
 
 
@@ -56,7 +61,7 @@ func _draw() -> void:
 		scale_tmp.x = -1
 	# If we just use the first cel and it happens to be a GroupCel
 	# nothing will get drawn
-	var cel_to_draw := Global.current_project.find_first_drawable_cel()
+	var cel_to_draw = Global.current_project.find_first_drawable_cel()
 	draw_set_transform(position_tmp, rotation, scale_tmp)
 	# Placeholder so we can have a material here
 	if is_instance_valid(cel_to_draw):
@@ -73,6 +78,9 @@ func _draw() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _input_adapter.handle_event(self, event):
+		return
+
 	# Move the cursor with the keyboard (numpad keys by default)
 	var mouse_movement := Input.get_vector(
 		&"move_mouse_left", &"move_mouse_right", &"move_mouse_up", &"move_mouse_down"
@@ -94,9 +102,18 @@ func _input(event: InputEvent) -> void:
 		get_viewport().warp_mouse(tmp_position)
 	current_pixel = get_local_mouse_position()
 
-	sprite_changed_this_frame = false
-	Tools.handle_draw(Vector2i(current_pixel.floor()), event)
+	_handle_tool_event(Vector2i(current_pixel.floor()), event)
 
+
+func handle_adapter_tool_event(screen_position: Vector2, event: InputEvent) -> void:
+	var canvas_position := get_global_transform_with_canvas().affine_inverse() * screen_position
+	current_pixel = canvas_position
+	_handle_tool_event(Vector2i(canvas_position.floor()), event)
+
+
+func _handle_tool_event(pixel: Vector2i, event: InputEvent) -> void:
+	sprite_changed_this_frame = false
+	Tools.handle_draw(pixel, event)
 	if sprite_changed_this_frame:
 		queue_redraw()
 		update_selected_cels_textures()
@@ -182,14 +199,18 @@ func draw_layers(force_recreate := false) -> void:
 		# not follow the pixel grid, and because RGF is not supported by all hardware
 		# see https://github.com/Orama-Interactive/Pixelorama/issues/1546.
 		layer_metadata_image = Image.create(project.layers.size(), 4, false, Image.FORMAT_RGH)
-		# Draw current frame layers
 		for i in project.layers.size():
 			var layer := project.layers[i]
 			var ordered_index := project.ordered_layers.find(layer.index)
 			var cel_image := Image.new()
 			_update_texture_array_layer(project, layer, cel_image, false)
 			textures[ordered_index] = cel_image
-			# Store the origin
+			layer_metadata_image.set_pixel(
+				ordered_index,
+				0,
+				Color(layer.blend_mode / 100.0, float(layer.is_blended_by_ancestor()), 0.0, 0.0)
+			)
+			layer_metadata_image.set_pixel(ordered_index, 1, Color(layer.get_opacity(), 0.0, 0.0, 0.0))
 			if [project.current_frame, i] in project.selected_cels:
 				var origin := Vector2(move_preview_location).abs() / Vector2(cel_image.get_size())
 				layer_metadata_image.set_pixel(
@@ -208,16 +229,10 @@ func draw_layers(force_recreate := false) -> void:
 					var test_array := [project.current_frame, i]
 					if not test_array in project.selected_cels:
 						var include := false
-						# Some layers are required for mandatory update because they are part of
-						# an undo/redo action that is being performed right now. The may not be
-						# currently selected but still require an update
 						if i in mandatory_update_layers:
 							include = true
 						else:
 							var parents := layer.get_ancestors()
-							# Even if the layer itself is not changed, if it is part of a group layer
-							# with passthrough mode, it will still need an update if it's group cel is
-							# selected.
 							for parent in parents:
 								if parent.blend_mode == BaseLayer.BlendModes.PASS_THROUGH:
 									var test_array_parent := [project.current_frame, parent.index]
@@ -230,9 +245,7 @@ func draw_layers(force_recreate := false) -> void:
 				_update_texture_array_layer(project, layer, cel_image, true)
 				var parent_layer := layer.get_blender_ancestor()
 				if layer != parent_layer:
-					# True when the layer has parents. In that case, update its top-most parent.
 					_update_texture_array_layer(project, parent_layer, Image.new(), true)
-				# Update the origin
 				var origin := Vector2(move_preview_location).abs() / Vector2(cel_image.get_size())
 				layer_metadata_image.set_pixel(
 					ordered_index, 2, Color(origin.x, origin.y, 0.0, 0.0)
@@ -285,3 +298,7 @@ func _on_project_switched() -> void:
 	var project := Global.current_project
 	if not project.resized.is_connected(camera_zoom):
 		project.resized.connect(camera_zoom.bind(project))
+
+
+func _on_window_focus_exited() -> void:
+	_input_adapter.reset(self)
