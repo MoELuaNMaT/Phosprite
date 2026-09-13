@@ -71,10 +71,10 @@ func test_combined_pan_and_pinch_preserve_the_pair_anchor() -> void:
 	)
 
 
-func test_rotation_plumbing_exists_but_stays_disabled_by_default() -> void:
+func test_optional_rotation_stays_disabled_by_default() -> void:
 	check_true(
-		not ADAPTER.TWO_FINGER_ROTATION_ENABLED,
-		"P1-C2 must not enable two-finger rotation in production"
+		not ADAPTER.DEFAULT_TWO_FINGER_ROTATION_ENABLED,
+		"P1-C3 must keep two-finger rotation disabled by default"
 	)
 	var geometry := ADAPTER.navigation_pair_geometry(Vector2.ZERO, Vector2.RIGHT)
 	check_almost_eq(float(geometry["angle"]), 0.0, 0.00001, "pair geometry must expose angle")
@@ -87,20 +87,92 @@ func test_rotation_plumbing_exists_but_stays_disabled_by_default() -> void:
 		enabled_target,
 		0.25 + PI / 3.0,
 		0.00001,
-		"the reserved rotation degree of freedom must follow pair-angle delta when enabled"
+		"enabled rotation without a dead zone must follow the pair-angle delta exactly"
 	)
 
 
-func test_replacement_pair_resets_c2_activation_state() -> void:
+func test_optional_rotation_dead_zone_filters_jitter_without_threshold_jump() -> void:
+	var dead_zone := ADAPTER.NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
+	var baseline_camera := 0.25
+	var jitter_target := ADAPTER.navigation_target_angle(
+		baseline_camera, 0.0, PI / 180.0, true, dead_zone
+	)
+	check_almost_eq(
+		jitter_target,
+		baseline_camera,
+		0.00001,
+		"one-degree pair-angle jitter must stay inside the optional rotation dead zone"
+	)
+
+	var deliberate_target := ADAPTER.navigation_target_angle(
+		baseline_camera, 0.0, PI / 15.0, true, dead_zone
+	)
+	check_almost_eq(
+		deliberate_target,
+		baseline_camera + PI / 18.0,
+		0.00001,
+		"a twelve-degree turn with a two-degree dead zone must produce ten degrees of rotation"
+	)
+
+	var wrap_target := ADAPTER.navigation_target_angle(
+		0.0, PI - 0.02, -PI + 0.08, true, dead_zone
+	)
+	check_almost_eq(
+		wrap_target,
+		0.1 - dead_zone,
+		0.00001,
+		"rotation delta must remain continuous across the -PI/PI boundary"
+	)
+
+
+func test_combined_pan_pinch_and_rotation_preserve_the_pair_anchor() -> void:
+	var viewport_size := Vector2(1024.0, 768.0)
+	var baseline_centroid := Vector2(420.0, 300.0)
+	var baseline_zoom := Vector2(2.0, 2.0)
+	var baseline_offset := Vector2(64.0, 48.0)
+	var baseline_angle := 0.23
+	var anchor := ADAPTER.screen_to_canvas_point(
+		baseline_centroid, viewport_size, baseline_zoom, baseline_offset, baseline_angle
+	)
+
+	var current_centroid := Vector2(486.0, 344.0)
+	var target_zoom := ADAPTER.navigation_zoom_from_ratio(
+		baseline_zoom, 1.35, false, Vector2(0.01, 0.01), Vector2(500.0, 500.0)
+	)
+	var target_angle := ADAPTER.navigation_target_angle(
+		baseline_angle,
+		0.0,
+		PI / 8.0,
+		true,
+		ADAPTER.NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
+	)
+	var target_offset := ADAPTER.navigation_offset_for_anchor(
+		anchor, current_centroid, viewport_size, target_zoom, target_angle
+	)
+	var round_trip := ADAPTER.screen_to_canvas_point(
+		current_centroid, viewport_size, target_zoom, target_offset, target_angle
+	)
+	check_true(
+		round_trip.distance_to(anchor) < 0.0001,
+		"combined pan+pinch+rotation must preserve the same fixed Canvas anchor"
+	)
+
+
+func test_replacement_pair_resets_c2_state_and_c3_rotation_baseline() -> void:
 	var adapter := ADAPTER.new()
+	adapter._two_finger_rotation_enabled = true
 	adapter._touches = {
 		1: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2.ZERO, "suppressed": false},
 		2:
 		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(10.0, 0.0), "suppressed": false},
 		3:
-		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(20.0, 0.0), "suppressed": false},
+		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(0.0, 20.0), "suppressed": false},
 	}
 	adapter._begin_navigation_pair(PackedInt32Array([1, 2]))
+	check_true(
+		adapter._navigation_rotation_enabled_for_pair,
+		"a pair must snapshot the optional rotation preference when it begins"
+	)
 	adapter._navigation_pan_active = true
 	adapter._navigation_pinch_active = true
 	adapter._touches.erase(2)
@@ -112,6 +184,16 @@ func test_replacement_pair_resets_c2_activation_state() -> void:
 	)
 	check_true(not adapter._navigation_pan_active, "replacement must reset pan acquisition")
 	check_true(not adapter._navigation_pinch_active, "replacement must reset pinch acquisition")
+	check_true(
+		adapter._navigation_rotation_enabled_for_pair,
+		"replacement must snapshot the current optional rotation preference again"
+	)
+	check_almost_eq(
+		adapter._navigation_baseline_pair_angle,
+		PI / 2.0,
+		0.00001,
+		"replacement must establish a fresh pair-angle baseline"
+	)
 
 
 func test_runtime_path_is_baseline_driven_and_has_no_touch_tween() -> void:
@@ -133,4 +215,23 @@ func test_runtime_path_is_baseline_driven_and_has_no_touch_tween() -> void:
 	check_true(
 		not ("Global.smooth_zoom" in src),
 		"continuous touch navigation must not add preference-driven smoothing latency"
+	)
+
+
+func test_rotation_preference_is_persistent_and_pair_scoped() -> void:
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	check_has(
+		src,
+		"TWO_FINGER_ROTATION_KEY",
+		"P1-C3 must persist the optional rotation preference through config_cache"
+	)
+	check_has(
+		src,
+		"TwoFingerRotationCheckBox",
+		"P1-C3 must expose the optional rotation toggle in iPad preferences"
+	)
+	check_has(
+		src,
+		"_navigation_rotation_enabled_for_pair = _two_finger_rotation_enabled",
+		"rotation enablement must be snapshotted at pair begin to avoid mid-gesture mode jumps"
 	)
