@@ -53,7 +53,8 @@ jobs:
           test -n "${GDIP_PATH}"
           PLUGIN_ROOT="${GDIP_PATH%/ios/plugins/SharePlugin.gdip}"
           test -f "${PLUGIN_ROOT}/addons/SharePlugin/plugin.cfg"
-          test -d "${PLUGIN_ROOT}/ios/plugins/SharePlugin.xcframework"
+          test -d "${PLUGIN_ROOT}/ios/plugins/SharePlugin.release.xcframework"
+          test -d "${PLUGIN_ROOT}/ios/plugins/SharePlugin.debug.xcframework"
 
           rsync -a "${PLUGIN_ROOT}/addons/" ./addons/
           mkdir -p ./ios/plugins
@@ -100,7 +101,8 @@ jobs:
           PY
 
           test -f ./ios/plugins/SharePlugin.gdip
-          test -d ./ios/plugins/SharePlugin.xcframework
+          test -d ./ios/plugins/SharePlugin.release.xcframework
+          test -d ./ios/plugins/SharePlugin.debug.xcframework
           grep -q 'res://addons/SharePlugin/plugin.cfg' project.godot
           grep -q 'plugins/SharePlugin=true' export_presets.cfg
 
