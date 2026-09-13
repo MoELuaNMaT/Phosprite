@@ -4,6 +4,7 @@ const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"
 const CANVAS_SOURCE := "res://src/UI/Canvas/Canvas.gd"
 const CAMERA_SOURCE := "res://src/UI/Canvas/CanvasCamera.gd"
+const INDICATORS_SOURCE := "res://src/UI/Canvas/Indicators.gd"
 const IOS_WORKFLOW_SOURCE := "res://.github/workflows/ios-build.yml"
 const NATIVE_SOURCE := "res://ios/pointer_identity_src/phosprite_pointer_identity.mm"
 const NATIVE_HEADER := "res://ios/pointer_identity_src/phosprite_pointer_identity.h"
@@ -66,6 +67,52 @@ func test_adapter_owns_ios_touch_and_multitouch_navigation() -> void:
 		src,
 		"return event.device == -1",
 		"Canvas must filter Godot DEVICE_ID_EMULATION touch-to-mouse duplicates"
+	)
+
+
+func test_touch_tool_preview_follows_content_ownership_lifecycle() -> void:
+	var adapter := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	var canvas := FileAccess.get_file_as_string(CANVAS_SOURCE)
+	var indicators := FileAccess.get_file_as_string(INDICATORS_SOURCE)
+
+	check_has(
+		adapter,
+		"canvas.set_adapter_tool_preview_active(true)",
+		"touch content begin must explicitly show the tool preview"
+	)
+	check_has(
+		adapter,
+		"canvas.set_adapter_tool_preview_active(false)",
+		"touch content end/reset must explicitly hide the tool preview"
+	)
+	check_has(
+		canvas,
+		"func should_draw_tool_indicator() -> bool:",
+		"Canvas must expose the touch-aware indicator visibility contract"
+	)
+	check_has(
+		canvas,
+		"_sync_tool_cursor_visibility(active)",
+		"the same touch lifecycle must drive the floating tool icon visibility"
+	)
+	check_has(
+		indicators,
+		"canvas.should_draw_tool_indicator()",
+		"the blue pixel indicator must stop drawing after touch content ends"
+	)
+
+
+func test_physical_pointer_can_restore_legacy_hover_preview() -> void:
+	var canvas := FileAccess.get_file_as_string(CANVAS_SOURCE)
+	check_has(
+		canvas,
+		"event.device != -1",
+		"touch-emulated mouse must not restore the PC-style hover preview"
+	)
+	check_has(
+		canvas,
+		"activate_legacy_pointer_preview()",
+		"a physical mouse/trackpad event must be able to restore legacy hover semantics"
 	)
 
 
