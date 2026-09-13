@@ -46,7 +46,9 @@ func test_share_export_waits_for_animated_artifact() -> void:
 func test_share_export_hides_filesystem_destination_ui() -> void:
 	var src := FileAccess.get_file_as_string(EXPORT_DIALOG_SOURCE)
 	check_has(src, "path_button.hide()", "iOS must not expose the Browse destination button")
-	check_has(src, 'file_path_label.text = tr("File name:")', "iOS must label the field as a file name")
+	check_has(
+		src, 'file_path_label.text = tr("File name:")', "iOS must label the field as a file name"
+	)
 	check_has(
 		src,
 		"if SHARE_SERVICE.is_share_export_platform():\n\t\treturn",
@@ -65,8 +67,13 @@ func test_ios_ci_pins_share_plugin_release() -> void:
 	check_has(workflow, "plugins/SharePlugin=true", "the iOS export preset must enable SharePlugin")
 	check_has(
 		workflow,
-		"SharePlugin.xcframework",
-		"CI must require the native iOS framework before exporting"
+		"SharePlugin.release.xcframework",
+		"CI must require the native release iOS framework before exporting"
+	)
+	check_has(
+		workflow,
+		"SharePlugin.debug.xcframework",
+		"CI must verify the native debug iOS framework shipped by the release"
 	)
 
 
