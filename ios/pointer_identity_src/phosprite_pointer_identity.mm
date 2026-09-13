@@ -25,26 +25,23 @@ int pointer_kind_for_touch(UITouch *p_touch) {
 }
 
 void phosprite_touches_began(id p_self, SEL p_cmd, NSSet *p_touches, UIEvent *p_event) {
+	PhospritePointerIdentity *bridge = PhospritePointerIdentity::get_singleton();
+	SEL get_touch_id_selector = NSSelectorFromString(@"getTouchIDForTouch:");
+	if (bridge && [p_self respondsToSelector:get_touch_id_selector]) {
+		GetTouchIdFn get_touch_id = reinterpret_cast<GetTouchIdFn>(objc_msgSend);
+		for (UITouch *touch in p_touches) {
+			// Allocate/reuse the exact touch id Godot will use, then publish identity
+			// before the original handler can deliver InputEventScreenTouch to GDScript.
+			int touch_id = get_touch_id(p_self, get_touch_id_selector, touch);
+			if (touch_id < 0) {
+				continue;
+			}
+			bridge->enqueue_begin_info(touch_id, pointer_kind_for_touch(touch), touch.majorRadius);
+		}
+	}
+
 	if (original_touches_began) {
 		original_touches_began(p_self, p_cmd, p_touches, p_event);
-	}
-
-	PhospritePointerIdentity *bridge = PhospritePointerIdentity::get_singleton();
-	if (!bridge) {
-		return;
-	}
-
-	SEL get_touch_id_selector = NSSelectorFromString(@"getTouchIDForTouch:");
-	if (![p_self respondsToSelector:get_touch_id_selector]) {
-		return;
-	}
-	GetTouchIdFn get_touch_id = reinterpret_cast<GetTouchIdFn>(objc_msgSend);
-	for (UITouch *touch in p_touches) {
-		int touch_id = get_touch_id(p_self, get_touch_id_selector, touch);
-		if (touch_id < 0) {
-			continue;
-		}
-		bridge->enqueue_begin_info(touch_id, pointer_kind_for_touch(touch), touch.majorRadius);
 	}
 }
 } // namespace
