@@ -14,8 +14,6 @@ const PREFERENCE_SECTION := "preferences"
 const FINGER_POLICY_KEY := "finger_policy"
 const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const TWO_FINGER_EPSILON := 0.01
-## UIKit's majorRadius is only a conservative early palm-rejection hint.
-const PALM_RADIUS_HINT := 22.0
 
 var _touches: Dictionary = {}
 var _content_touch_id := -1
@@ -56,7 +54,7 @@ func handle_event(canvas: Node2D, event: InputEvent) -> bool:
 		return true
 	if event is InputEventGesture:
 		# iPad navigation is derived from raw ScreenTouch/ScreenDrag. Do not let an
-		# additional gesture event cancel an active Pencil tool or double-navigate.
+		# additional gesture event cancel an active tool, double-navigate or move the cursor.
 		return true
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		# Godot marks touch-generated mouse events with DEVICE_ID_EMULATION (-1).
@@ -92,8 +90,8 @@ func install_preferences_ui(scene_root: Node) -> void:
 	option.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	option.tooltip_text = (
 		"Unrestricted allows direct touch editing. Navigation only reserves fingers for canvas "
-		+ "navigation. Pencil priority allows finger editing while Pencil is not editing, and "
-		+ "gives Pencil exclusive content ownership while it is active."
+		+ "navigation. Pencil priority allows finger editing while Pencil is idle. While Pencil "
+		+ "owns the canvas, direct touches are ignored until they are released."
 	)
 	option.add_item("Unrestricted", FingerPolicy.UNRESTRICTED)
 	option.add_item("Finger navigation only", FingerPolicy.FINGER_NAVIGATION_ONLY)
@@ -112,11 +110,10 @@ func reset(canvas: Node2D) -> void:
 	_content_touch_id = -1
 	_pencil_touch_id = -1
 	_touches.clear()
-	_navigation_ids.clear()
-	_last_navigation_centroid = Vector2.ZERO
-	_last_navigation_distance = 0.0
+	_clear_navigation()
 	_clear_pointer_identity_pending()
 	if is_instance_valid(canvas):
+		canvas.set_adapter_tool_preview_active(false)
 		canvas.queue_redraw()
 
 
@@ -142,7 +139,6 @@ func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 
 func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	var info := _consume_pointer_info(event.index)
-	var identity_verified := not info.is_empty()
 	var kind := int(info.get("kind", PointerKind.UNKNOWN))
 	if kind == PointerKind.UNKNOWN:
 		# The production iOS build supplies formal UITouch.type identity. Keeping
@@ -150,13 +146,16 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		kind = PointerKind.DIRECT
 	var state := {
 		"kind": kind,
-		"identity_verified": identity_verified,
 		"position": event.position,
 		"previous_position": event.position,
 		"suppressed": false,
-		"major_radius": float(info.get("major_radius", 0.0)),
 	}
 	_touches[event.index] = state
+
+	# A touch that does not acquire content ownership must not inherit a stale PC-style
+	# hover preview from Godot's emulated mouse stream.
+	if _content_touch_id == -1:
+		canvas.set_adapter_tool_preview_active(false)
 
 	if kind == PointerKind.PENCIL:
 		_begin_pencil_ownership(canvas, event.index)
@@ -165,19 +164,11 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	if kind != PointerKind.DIRECT:
 		return
 
-	# A large direct-touch contact is excluded as a conservative palm hint in the
-	# Pencil-priority mode. Exact Pencil identity never depends on this threshold.
-	if (
-		_finger_policy == FingerPolicy.PENCIL_PRIORITY
-		and float(state["major_radius"]) >= PALM_RADIUS_HINT
-	):
+	if _pencil_touch_id != -1:
+		# Pencil has exclusive canvas ownership. A direct touch that begins during
+		# that ownership stays suppressed until its own release; it is never revived mid-contact.
 		state["suppressed"] = true
 		_touches[event.index] = state
-		return
-
-	if _pencil_touch_id != -1:
-		# Pencil owns content, but direct touches stay eligible for two-finger navigation.
-		_try_begin_navigation()
 		return
 
 	if _content_touch_id == -1 and direct_content_allowed(_finger_policy, false):
@@ -208,27 +199,16 @@ func _handle_drag(canvas: Node2D, event: InputEventScreenDrag) -> void:
 	var state: Dictionary = _touches[event.index]
 	state["previous_position"] = state["position"]
 	state["position"] = event.position
+	_touches[event.index] = state
 
-	# Pressure/tilt are only a development fallback when the native identity plugin
-	# is absent. A formally identified direct touch is never reclassified heuristically.
-	if (
-		not bool(state["identity_verified"])
-		and int(state["kind"]) != PointerKind.PENCIL
-		and _drag_looks_like_pencil(event)
-	):
-		state["kind"] = PointerKind.PENCIL
-		state["suppressed"] = false
-		_touches[event.index] = state
-		_begin_pencil_ownership(canvas, event.index)
-		if _content_touch_id != event.index:
-			_start_content(canvas, event.index, event.position)
-	else:
-		_touches[event.index] = state
-
+	# Pointer identity is decided only at touch begin by the native UITouch.type bridge.
+	# Pressure and tilt are payload for a verified Pencil stroke, never identity heuristics.
 	if bool(state["suppressed"]):
 		return
 	if _content_touch_id == event.index:
 		_dispatch_motion(canvas, event, int(state["kind"]))
+		return
+	if _pencil_touch_id != -1:
 		return
 
 	if _navigation_ids.size() < 2:
@@ -246,11 +226,11 @@ func _begin_pencil_ownership(canvas: Node2D, touch_id: int) -> void:
 		_cancel_active_tool()
 		_content_touch_id = -1
 
-	# Pencil content may coexist with two-finger navigation. Rebase navigation from
-	# any currently held direct touches after ownership changes.
-	_navigation_ids.clear()
-	_last_navigation_distance = 0.0
-	_try_begin_navigation()
+	# Pencil takes exclusive canvas ownership. Existing direct touches are suppressed
+	# until each one is physically released, so a resting finger/palm cannot immediately
+	# reacquire navigation when Pencil starts or stops.
+	_suppress_direct_touches_until_release()
+	_clear_navigation()
 	if is_instance_valid(canvas):
 		canvas.queue_redraw()
 
@@ -259,8 +239,8 @@ func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> 
 	if _content_touch_id != -1 and _content_touch_id != touch_id:
 		return
 	_content_touch_id = touch_id
-	if touch_id != _pencil_touch_id:
-		_navigation_ids.clear()
+	_clear_navigation()
+	canvas.set_adapter_tool_preview_active(true)
 	var event := InputEventMouseButton.new()
 	event.device = -1
 	event.position = screen_position
@@ -283,6 +263,7 @@ func _end_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> vo
 	event.pressed = false
 	canvas.handle_adapter_tool_event(screen_position, event)
 	_content_touch_id = -1
+	canvas.set_adapter_tool_preview_active(false)
 
 
 func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> void:
@@ -302,9 +283,9 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 
 
 func _try_begin_navigation() -> void:
-	# A direct-touch content stroke cannot be reinterpreted as navigation mid-stroke.
-	# Pencil content is different: Pencil may draw while two fingers navigate.
-	if _content_touch_id != -1 and _content_touch_id != _pencil_touch_id:
+	# Navigation never coexists with active content ownership. In particular, Pencil
+	# takes exclusive canvas ownership and suppresses held direct touches until release.
+	if _pencil_touch_id != -1 or _content_touch_id != -1:
 		return
 	var direct_ids := PackedInt32Array()
 	for id: int in _touches:
@@ -319,9 +300,8 @@ func _try_begin_navigation() -> void:
 
 
 func _rebase_navigation() -> void:
-	if _content_touch_id != -1 and _content_touch_id != _pencil_touch_id:
-		_navigation_ids.clear()
-		_last_navigation_distance = 0.0
+	if _pencil_touch_id != -1 or _content_touch_id != -1:
+		_clear_navigation()
 		return
 	var valid_ids := PackedInt32Array()
 	for id: int in _navigation_ids:
@@ -330,8 +310,7 @@ func _rebase_navigation() -> void:
 			if int(state["kind"]) == PointerKind.DIRECT and not bool(state["suppressed"]):
 				valid_ids.append(id)
 	if valid_ids.size() < 2:
-		_navigation_ids.clear()
-		_last_navigation_distance = 0.0
+		_clear_navigation()
 		_try_begin_navigation()
 		return
 	_navigation_ids = valid_ids
@@ -367,6 +346,21 @@ func _navigation_points() -> Array[Vector2]:
 	return [first["position"], second["position"]]
 
 
+func _suppress_direct_touches_until_release() -> void:
+	for id: int in _touches:
+		var state: Dictionary = _touches[id]
+		if int(state["kind"]) != PointerKind.DIRECT:
+			continue
+		state["suppressed"] = true
+		_touches[id] = state
+
+
+func _clear_navigation() -> void:
+	_navigation_ids.clear()
+	_last_navigation_centroid = Vector2.ZERO
+	_last_navigation_distance = 0.0
+
+
 func _consume_pointer_info(touch_id: int) -> Dictionary:
 	if not Engine.has_singleton(POINTER_IDENTITY_SINGLETON):
 		return {}
@@ -379,11 +373,6 @@ func _clear_pointer_identity_pending() -> void:
 	if not Engine.has_singleton(POINTER_IDENTITY_SINGLETON):
 		return
 	Engine.get_singleton(POINTER_IDENTITY_SINGLETON).call("clear_pending")
-
-
-func _drag_looks_like_pencil(event: InputEventScreenDrag) -> bool:
-	# Development-only degradation path when formal native identity is unavailable.
-	return event.pressure > 0.0 or not event.tilt.is_zero_approx()
 
 
 func _cancel_active_tool() -> void:
