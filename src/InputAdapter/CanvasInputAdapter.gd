@@ -143,7 +143,9 @@ static func direct_content_navigation_takeover_allowed(
 	)
 
 
-static func navigation_pair_geometry(first_position: Vector2, second_position: Vector2) -> Dictionary:
+static func navigation_pair_geometry(
+	first_position: Vector2, second_position: Vector2
+) -> Dictionary:
 	return {
 		"centroid": (first_position + second_position) * 0.5,
 		"distance": first_position.distance_to(second_position),
