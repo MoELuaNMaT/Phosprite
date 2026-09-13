@@ -42,11 +42,129 @@ func test_direct_content_policy_matrix() -> void:
 	)
 
 
+func test_direct_content_can_upgrade_to_two_finger_navigation() -> void:
+	check_true(
+		ADAPTER.direct_content_navigation_takeover_allowed(
+			ADAPTER.PointerKind.DIRECT, false, false, 2
+		),
+		"a direct-touch content stroke must yield to a newly formed two-finger pair"
+	)
+	check_true(
+		not ADAPTER.direct_content_navigation_takeover_allowed(
+			ADAPTER.PointerKind.DIRECT, false, false, 1
+		),
+		"one direct touch alone must stay content instead of self-promoting to navigation"
+	)
+	check_true(
+		not ADAPTER.direct_content_navigation_takeover_allowed(
+			ADAPTER.PointerKind.PENCIL, false, false, 2
+		),
+		"Pencil content must never be promoted into a finger navigation pair"
+	)
+	check_true(
+		not ADAPTER.direct_content_navigation_takeover_allowed(
+			ADAPTER.PointerKind.DIRECT, true, false, 2
+		),
+		"active Pencil ownership must block direct-touch navigation takeover"
+	)
+	check_true(
+		not ADAPTER.direct_content_navigation_takeover_allowed(
+			ADAPTER.PointerKind.DIRECT, false, true, 3
+		),
+		"an existing navigation pair must not be replaced by an additional finger"
+	)
+
+
+func test_navigation_pair_geometry_uses_centroid_and_distance() -> void:
+	var geometry := ADAPTER.navigation_pair_geometry(Vector2.ZERO, Vector2(6, 8))
+	check_eq(geometry["centroid"], Vector2(3, 4), "pair centroid must be the two-touch midpoint")
+	check_eq(geometry["distance"], 10.0, "pair distance must be measured between both touches")
+
+
+func test_navigation_pair_baseline_is_pair_scoped_and_rebased_on_replacement() -> void:
+	var adapter := ADAPTER.new()
+	adapter._touches = {
+		1: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2.ZERO, "suppressed": false},
+		2: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(6, 8), "suppressed": false},
+		3: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(8, 0), "suppressed": false},
+	}
+	adapter._begin_navigation_pair(PackedInt32Array([1, 2]))
+	check_eq(
+		adapter._navigation_baseline_centroid,
+		Vector2(3, 4),
+		"a new pair must capture its own centroid baseline"
+	)
+	check_eq(
+		adapter._navigation_baseline_distance,
+		10.0,
+		"a new pair must capture its own distance baseline"
+	)
+
+	var first_state: Dictionary = adapter._touches[1]
+	first_state["position"] = Vector2(2, 0)
+	adapter._touches[1] = first_state
+	adapter._rebase_navigation()
+	check_eq(
+		adapter._navigation_baseline_centroid,
+		Vector2(3, 4),
+		"the same active pair must keep its original pair-level baseline"
+	)
+	check_eq(
+		adapter._navigation_baseline_distance,
+		10.0,
+		"moving the same pair must not silently redefine its baseline"
+	)
+
+	adapter._touches.erase(2)
+	adapter._rebase_navigation()
+	check_eq(
+		adapter._navigation_ids,
+		PackedInt32Array([1, 3]),
+		"a waiting direct touch may replace a released pair member"
+	)
+	check_eq(
+		adapter._navigation_baseline_centroid,
+		Vector2(5, 0),
+		"a replacement pair must establish a fresh centroid baseline"
+	)
+	check_eq(
+		adapter._navigation_baseline_distance,
+		6.0,
+		"a replacement pair must establish a fresh distance baseline"
+	)
+	check_eq(
+		adapter._last_navigation_centroid,
+		adapter._navigation_baseline_centroid,
+		"replacement must begin with zero navigation delta"
+	)
+	check_eq(
+		adapter._last_navigation_distance,
+		adapter._navigation_baseline_distance,
+		"replacement must begin with zero scale delta"
+	)
+
+
 func test_adapter_owns_ios_touch_and_multitouch_navigation() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	check_has(src, "InputEventScreenTouch", "adapter must consume raw iOS touch begin/end")
 	check_has(src, "InputEventScreenDrag", "adapter must consume raw iOS touch movement")
 	check_has(src, "_try_begin_navigation", "adapter must arbitrate two-finger navigation")
+	check_has(
+		src,
+		"_try_promote_direct_content_to_navigation",
+		"a second direct touch must be able to upgrade direct content into navigation"
+	)
+	check_has(src, "_begin_navigation_pair", "navigation must have an explicit pair lifecycle")
+	check_has(
+		src,
+		"_navigation_baseline_centroid",
+		"navigation must retain a pair-level centroid baseline"
+	)
+	check_has(
+		src,
+		"_navigation_baseline_distance",
+		"navigation must retain a pair-level distance baseline"
+	)
 	check_has(src, "_begin_pencil_ownership", "adapter must give Pencil explicit canvas ownership")
 	check_has(
 		src,
@@ -55,13 +173,18 @@ func test_adapter_owns_ios_touch_and_multitouch_navigation() -> void:
 	)
 	check_has(
 		src,
-		"_pencil_touch_id != -1 or _content_touch_id != -1",
-		"two-finger navigation must not coexist with active Pencil or content ownership"
+		"_pencil_touch_id != -1 or _content_touch_id != -1 or _navigation_ids.size() == 2",
+		"new navigation acquisition must not coexist with Pencil, content or an existing pair"
 	)
 	check_has(
 		src,
 		'state["suppressed"] = true',
 		"direct touches beginning during Pencil ownership must stay suppressed"
+	)
+	check_has(
+		src,
+		"Once a navigation pair owns the canvas, additional fingers stay unowned.",
+		"an additional finger must not steal content ownership from an active pair"
 	)
 	check_has(
 		src,
