@@ -18,7 +18,9 @@ func test_input_probe_contract() -> void:
 	check_has(src, "InputEventMouseMotion", "the probe must capture mouse/stylus motion data")
 	check_has(src, "InputEventMagnifyGesture", "the probe must capture pinch gestures")
 	check_has(src, "InputEventPanGesture", "the probe must capture pan gestures")
-	check_has(src, "SHARE_SERVICE.share_file", "the iPad log must be retrievable through Share Sheet")
+	check_has(
+		src, "SHARE_SERVICE.share_file", "the iPad log must be retrievable through Share Sheet"
+	)
 
 
 func test_ios_ci_injects_probe_only_into_ios_checkout() -> void:
