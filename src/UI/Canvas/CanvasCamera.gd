@@ -8,6 +8,7 @@ signal offset_changed
 enum Cameras { MAIN, SECOND, SMALL }
 
 const CAMERA_SPEED_RATE := 15.0
+const TWO_FINGER_EPSILON := 0.01
 
 @export var index := 0
 
@@ -42,8 +43,58 @@ var rotation_slider: ValueSlider
 var zoom_slider: ValueSlider
 var should_tween := true
 var auto_release_gui_focus := true
+var _two_finger_transform_active := false
+var _two_finger_start_offset := Vector2.ZERO
+var _two_finger_start_zoom := Vector2.ONE
+var _two_finger_start_angle := 0.0
+var _two_finger_start_centroid := Vector2.ZERO
+var _two_finger_start_distance := 0.0
 
 @onready var viewport := get_viewport()
+
+
+static func solve_two_finger_transform(
+	start_offset: Vector2,
+	start_zoom: Vector2,
+	start_angle: float,
+	viewport_size: Vector2,
+	start_centroid: Vector2,
+	start_distance: float,
+	current_centroid: Vector2,
+	current_distance: float,
+	min_zoom: Vector2,
+	max_zoom: Vector2,
+	rotation_delta := 0.0
+) -> Dictionary:
+	if start_distance <= TWO_FINGER_EPSILON or current_distance <= TWO_FINGER_EPSILON:
+		return {}
+	if start_zoom.x <= 0.0 or start_zoom.y <= 0.0:
+		return {}
+
+	var scale_factor := current_distance / start_distance
+	var min_scale := maxf(min_zoom.x / start_zoom.x, min_zoom.y / start_zoom.y)
+	var max_scale := minf(max_zoom.x / start_zoom.x, max_zoom.y / start_zoom.y)
+	if max_scale < min_scale:
+		return {}
+	scale_factor = clampf(scale_factor, min_scale, max_scale)
+
+	var target_zoom := start_zoom * scale_factor
+	var target_angle := wrapf(start_angle + rotation_delta, -PI, PI)
+	var half_viewport := viewport_size * 0.5
+	var anchor := (
+		start_offset
+		+ (start_centroid - half_viewport).rotated(start_angle) * (Vector2.ONE / start_zoom)
+	)
+	var target_offset := (
+		anchor
+		- (current_centroid - half_viewport).rotated(target_angle) * (Vector2.ONE / target_zoom)
+	)
+	return {
+		"offset": target_offset,
+		"zoom": target_zoom,
+		"angle": target_angle,
+		"anchor": anchor,
+	}
 
 
 func _ready() -> void:
@@ -155,6 +206,48 @@ func zoom_camera(dir: float, event_pos := mouse_pos) -> void:
 		)
 
 
+func begin_two_finger_transform(start_centroid: Vector2, start_distance: float) -> bool:
+	if not is_instance_valid(viewport_container) or start_distance <= TWO_FINGER_EPSILON:
+		return false
+	_two_finger_transform_active = true
+	_two_finger_start_offset = offset
+	_two_finger_start_zoom = zoom
+	_two_finger_start_angle = camera_angle
+	_two_finger_start_centroid = start_centroid
+	_two_finger_start_distance = start_distance
+	return true
+
+
+func update_two_finger_transform(
+	current_centroid: Vector2, current_distance: float, rotation_delta := 0.0
+) -> void:
+	if not _two_finger_transform_active:
+		return
+	var result := solve_two_finger_transform(
+		_two_finger_start_offset,
+		_two_finger_start_zoom,
+		_two_finger_start_angle,
+		viewport_container.size,
+		_two_finger_start_centroid,
+		_two_finger_start_distance,
+		current_centroid,
+		current_distance,
+		zoom_out_max,
+		zoom_in_max,
+		rotation_delta
+	)
+	if result.is_empty():
+		return
+	camera_angle = result["angle"]
+	zoom = result["zoom"]
+	offset = result["offset"]
+	update_transparent_checker_offset()
+
+
+func end_two_finger_transform() -> void:
+	_two_finger_transform_active = false
+
+
 func zoom_100() -> void:
 	zoom = Vector2.ONE
 	offset = Global.current_project.size / 2
@@ -250,6 +343,7 @@ func _rotation_slider_value_changed(value: float) -> void:
 
 
 func _project_switched() -> void:
+	end_two_finger_transform()
 	offset = Global.current_project.cameras_offset[index]
 	camera_angle = Global.current_project.cameras_rotation[index]
 	zoom = Global.current_project.cameras_zoom[index]
