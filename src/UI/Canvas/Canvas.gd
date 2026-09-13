@@ -15,6 +15,8 @@ var layer_texture_array := Texture2DArray.new()
 var layer_metadata_image := Image.new()
 var layer_metadata_texture := ImageTexture.new()
 var _input_adapter := CanvasInputAdapter.new()
+var _adapter_pointer_mode := false
+var _adapter_tool_preview_active := false
 
 @onready var currently_visible_frame := $CurrentlyVisibleFrame as SubViewport
 @onready var current_frame_drawer := $CurrentlyVisibleFrame/CurrentFrameDrawer as Node2D
@@ -83,6 +85,12 @@ func _draw() -> void:
 func _input(event: InputEvent) -> void:
 	if _input_adapter.handle_event(self, event):
 		return
+	if (
+		_input_adapter.is_enabled()
+		and (event is InputEventMouseMotion or event is InputEventMouseButton)
+		and event.device != -1
+	):
+		activate_legacy_pointer_preview()
 
 	# Move the cursor with the keyboard (numpad keys by default)
 	var mouse_movement := Input.get_vector(
@@ -112,6 +120,39 @@ func handle_adapter_tool_event(screen_position: Vector2, event: InputEvent) -> v
 	var canvas_position := get_global_transform_with_canvas().affine_inverse() * screen_position
 	current_pixel = canvas_position
 	_handle_tool_event(Vector2i(canvas_position.floor()), event)
+
+
+func set_adapter_tool_preview_active(active: bool) -> void:
+	if not _input_adapter.is_enabled():
+		return
+	_adapter_pointer_mode = true
+	_adapter_tool_preview_active = active
+	_sync_tool_cursor_visibility(active)
+	if is_instance_valid(indicators):
+		indicators.queue_redraw()
+
+
+func activate_legacy_pointer_preview() -> void:
+	if not _input_adapter.is_enabled():
+		return
+	_adapter_pointer_mode = false
+	_adapter_tool_preview_active = false
+	_sync_tool_cursor_visibility(true)
+	if is_instance_valid(indicators):
+		indicators.queue_redraw()
+
+
+func should_draw_tool_indicator() -> bool:
+	return not _adapter_pointer_mode or _adapter_tool_preview_active
+
+
+func _sync_tool_cursor_visibility(visible: bool) -> void:
+	if not is_instance_valid(Global.control):
+		return
+	Global.control.left_cursor.visible = visible and Global.show_left_tool_icon
+	Global.control.right_cursor.visible = (
+		visible and Global.show_right_tool_icon and not Global.single_tool_mode
+	)
 
 
 func _handle_tool_event(pixel: Vector2i, event: InputEvent) -> void:
