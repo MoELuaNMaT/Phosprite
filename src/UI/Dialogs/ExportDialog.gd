@@ -50,7 +50,8 @@ var _preview_images: Array[Export.ProcessedImage]
 @onready var file_format_options: OptionButton = $"%FileFormat"
 @onready var options_interpolation: OptionButton = $"%Interpolation"
 @onready var file_path_label := $VBoxContainer/VSplitContainer/VBoxContainer/FilePath/Label as Label
-@onready var path_button := $VBoxContainer/VSplitContainer/VBoxContainer/FilePath/PathButton as Button
+@onready
+var path_button := $VBoxContainer/VSplitContainer/VBoxContainer/FilePath/PathButton as Button
 
 @onready var file_exists_alert_popup: AcceptDialog = $FileExistsAlert
 @onready var path_validation_alert_popup: AcceptDialog = $PathValidationAlert
@@ -433,18 +434,25 @@ func export() -> void:
 	var share_export := SHARE_SERVICE.is_share_export_platform()
 	if share_export:
 		if not _supports_single_share_artifact(project):
-			Global.popup_error(
-				tr(
-					"Share Export currently supports one output file at a time. "
-					+ "Use an animated format or a spritesheet when exporting multiple frames/layers."
+			(
+				Global
+				. popup_error(
+					tr(
+						(
+							"Share Export currently supports one output file at a time. "
+							+ "Use an animated format or a spritesheet when exporting multiple frames/layers."
+						)
+					)
 				)
 			)
 			return
 		var staging_err := SHARE_SERVICE.reset_staging_directory()
 		if staging_err != OK:
 			Global.popup_error(
-				tr("Could not prepare the Share Export folder. Error code %s (%s)")
-				% [staging_err, error_string(staging_err)]
+				(
+					tr("Could not prepare the Share Export folder. Error code %s (%s)")
+					% [staging_err, error_string(staging_err)]
+				)
 			)
 			return
 		project.export_directory_path = SHARE_SERVICE.STAGING_DIRECTORY
