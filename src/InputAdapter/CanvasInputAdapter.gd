@@ -113,6 +113,7 @@ func reset(canvas: Node2D) -> void:
 	_clear_navigation()
 	_clear_pointer_identity_pending()
 	if is_instance_valid(canvas):
+		canvas.set_adapter_tool_preview_active(false)
 		canvas.queue_redraw()
 
 
@@ -150,6 +151,11 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		"suppressed": false,
 	}
 	_touches[event.index] = state
+
+	# A touch that does not acquire content ownership must not inherit a stale PC-style
+	# hover preview from Godot's emulated mouse stream.
+	if _content_touch_id == -1:
+		canvas.set_adapter_tool_preview_active(false)
 
 	if kind == PointerKind.PENCIL:
 		_begin_pencil_ownership(canvas, event.index)
@@ -234,6 +240,7 @@ func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> 
 		return
 	_content_touch_id = touch_id
 	_clear_navigation()
+	canvas.set_adapter_tool_preview_active(true)
 	var event := InputEventMouseButton.new()
 	event.device = -1
 	event.position = screen_position
@@ -256,6 +263,7 @@ func _end_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> vo
 	event.pressed = false
 	canvas.handle_adapter_tool_event(screen_position, event)
 	_content_touch_id = -1
+	canvas.set_adapter_tool_preview_active(false)
 
 
 func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> void:
