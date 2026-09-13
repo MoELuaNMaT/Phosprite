@@ -31,6 +31,68 @@ jobs:
         with:
           submodules: true
 
+      # P1-B Pointer Identity 只补 Godot 4.6.3 当前没有暴露给 GDScript 的
+      # UITouch.type。它不处理绘制、压感、手势或工具分发。
+      - name: Build pinned Pointer Identity plugin ✏️
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_ROOT="${RUNNER_TEMP}/phosprite-pointer-identity"
+          rm -rf "${BUILD_ROOT}"
+          git clone --depth 1 https://github.com/godot-sdk-integrations/godot-ios-plugins.git "${BUILD_ROOT}"
+          rm -rf "${BUILD_ROOT}/godot"
+          git clone --depth 1 --branch "${GODOT_VERSION}-stable" \
+            https://github.com/godotengine/godot.git "${BUILD_ROOT}/godot"
+
+          PLUGIN_DIR="${BUILD_ROOT}/plugins/phosprite_pointer_identity"
+          mkdir -p "${PLUGIN_DIR}"
+          cp ios/pointer_identity_src/phosprite_pointer_identity.h "${PLUGIN_DIR}/"
+          cp ios/pointer_identity_src/phosprite_pointer_identity.mm "${PLUGIN_DIR}/"
+          cp ios/pointer_identity_src/phosprite_pointer_identity_module.cpp "${PLUGIN_DIR}/"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("${RUNNER_TEMP}/phosprite-pointer-identity/SConstruct")
+          text = path.read_text(encoding="utf-8")
+          needle = "'photo_picker']))"
+          replacement = "'photo_picker', 'phosprite_pointer_identity']))"
+          if needle not in text:
+              raise SystemExit("Godot iOS plugin SConstruct plugin enum changed")
+          path.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+          PY
+
+          python3 -m pip install --quiet scons
+          cd "${BUILD_ROOT}"
+          chmod +x scripts/timeout scripts/generate_headers.sh
+          # Upstream intentionally stops the Godot build after 90s; by then generated
+          # headers exist. Validate the required result instead of treating timeout as failure.
+          ./scripts/generate_headers.sh 4.0 || true
+          test -f godot/core/version_generated.gen.h
+          test -f godot/core/object/class_db.h
+
+          scons \
+            target=release \
+            arch=arm64 \
+            simulator=no \
+            plugin=phosprite_pointer_identity \
+            version=4.0 \
+            target_path="${BUILD_ROOT}/bin" \
+            -j2
+
+          LIB_PATH="$(find "${BUILD_ROOT}/bin" -name 'libphosprite_pointer_identity.arm64-ios.release.a' -print -quit)"
+          test -n "${LIB_PATH}"
+          cd "${GITHUB_WORKSPACE}"
+          mkdir -p ios/plugins
+          rm -rf ios/plugins/PhospritePointerIdentity.xcframework
+          xcodebuild -create-xcframework \
+            -library "${LIB_PATH}" \
+            -output ios/plugins/PhospritePointerIdentity.xcframework
+          cp ios/pointer_identity_src/PhospritePointerIdentity.gdip \
+            ios/plugins/PhospritePointerIdentity.gdip
+          test -f ios/plugins/PhospritePointerIdentity.gdip
+          test -d ios/plugins/PhospritePointerIdentity.xcframework
+
       # Share Export 使用 Godot Mobile Plugins 的 MIT Share Plugin。
       # 固定 v5.2：该版本针对 Godot 4.6 构建；校验官方 release 的 SHA-256，
       # 避免 CI 静默获取变化的 native binary。插件只在 iOS 构建时注入，
@@ -62,9 +124,8 @@ jobs:
 
           # The release contains both the runtime/native iOS plugin and an
           # EditorPlugin that supplies its frameworks/linker flags. Enable the
-          # latter only in this CI checkout, and enable SharePlugin in preset.9.
-          # P1-B0 also injects the temporary InputProbe autoload into this iOS
-          # checkout only; ordinary project.godot remains untouched in git.
+          # latter only in this CI checkout. Enable both required native plugins
+          # in preset.9 without changing ordinary desktop project configuration.
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -80,15 +141,7 @@ jobs:
               existing = match.group(1).strip()
               replacement = f"enabled=PackedStringArray({existing}, {plugin_cfg})"
               project = project[:match.start()] + replacement + project[match.end():]
-
-          probe_autoload = 'InputProbe="*res://src/PlatformServices/InputProbe.gd"'
-          if probe_autoload not in project:
-              marker = "\n[debug]\n"
-              insert_at = project.find(marker)
-              if insert_at < 0:
-                  raise SystemExit("debug section marker not found in project.godot")
-              project = project[:insert_at] + f"\n{probe_autoload}\n" + project[insert_at:]
-          project_path.write_text(project, encoding="utf-8")
+              project_path.write_text(project, encoding="utf-8")
 
           preset_path = Path("export_presets.cfg")
           presets = preset_path.read_text(encoding="utf-8")
@@ -100,12 +153,17 @@ jobs:
           if end < 0:
               end = len(presets)
           section = presets[start:end]
-          if "plugins/SharePlugin=true" not in section:
-              marker = "\nentitlements/increased_memory_limit="
-              insert_at = section.find(marker)
-              if insert_at < 0:
-                  raise SystemExit("iOS entitlement marker not found")
-              section = section[:insert_at] + "\nplugins/SharePlugin=true\n" + section[insert_at:]
+          required_plugins = (
+              "plugins/SharePlugin=true",
+              "plugins/PhospritePointerIdentity=true",
+          )
+          marker = "\nentitlements/increased_memory_limit="
+          insert_at = section.find(marker)
+          if insert_at < 0:
+              raise SystemExit("iOS entitlement marker not found")
+          additions = [line for line in required_plugins if line not in section]
+          if additions:
+              section = section[:insert_at] + "\n" + "\n".join(additions) + "\n" + section[insert_at:]
               presets = presets[:start] + section + presets[end:]
               preset_path.write_text(presets, encoding="utf-8")
           PY
@@ -113,9 +171,11 @@ jobs:
           test -f ./ios/plugins/SharePlugin.gdip
           test -d ./ios/plugins/SharePlugin.release.xcframework
           test -d ./ios/plugins/SharePlugin.debug.xcframework
+          test -f ./ios/plugins/PhospritePointerIdentity.gdip
+          test -d ./ios/plugins/PhospritePointerIdentity.xcframework
           grep -q 'res://addons/SharePlugin/plugin.cfg' project.godot
-          grep -q 'InputProbe="\*res://src/PlatformServices/InputProbe.gd"' project.godot
           grep -q 'plugins/SharePlugin=true' export_presets.cfg
+          grep -q 'plugins/PhospritePointerIdentity=true' export_presets.cfg
 
       - name: Download and extract export templates 💾
         run: |
@@ -143,12 +203,14 @@ jobs:
           mkdir -v -p ./build/ios
           ./Godot.app/Contents/MacOS/Godot --headless -v --export-release "iOS" ./build/ios/${EXPORT_NAME}.ipa
 
-      - name: Verify SharePlugin export integration 🔎
+      - name: Verify iOS plugin export integration 🔎
         run: |
           PBXPROJ="./build/ios/${EXPORT_NAME}.xcodeproj/project.pbxproj"
           test -f "${PBXPROJ}"
           grep -q 'SharePlugin' "${PBXPROJ}"
+          grep -q 'PhospritePointerIdentity' "${PBXPROJ}"
           find ./build/ios -iname '*SharePlugin*' -print
+          find ./build/ios -iname '*PhospritePointerIdentity*' -print
 
       # 未签名 archive：CODE_SIGNING_ALLOWED=NO 让 xcodebuild 跳过所有签名与描述文件查找。
       - name: Build unsigned .xcarchive 🔧
