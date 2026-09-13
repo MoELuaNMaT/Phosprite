@@ -63,7 +63,9 @@ func test_adapter_owns_ios_touch_and_multitouch_navigation() -> void:
 func test_existing_tools_remain_behind_canvas_adapter_boundary() -> void:
 	var canvas := FileAccess.get_file_as_string(CANVAS_SOURCE)
 	var camera := FileAccess.get_file_as_string(CAMERA_SOURCE)
-	check_has(canvas, "_input_adapter.handle_event(self, event)", "Canvas must route iOS input first")
+	check_has(
+		canvas, "_input_adapter.handle_event(self, event)", "Canvas must route iOS input first"
+	)
 	check_has(
 		canvas,
 		"Tools.handle_draw(pixel, event)",
@@ -85,7 +87,9 @@ func test_native_bridge_only_supplies_pointer_identity() -> void:
 	var header := FileAccess.get_file_as_string(NATIVE_HEADER)
 	check_has(native, "UITouchTypePencil", "native bridge must use UIKit's formal Pencil identity")
 	check_has(native, "UITouchTypeDirect", "native bridge must preserve direct-touch identity")
-	check_has(native, "getTouchIDForTouch:", "bridge must reuse Godot's already assigned touch index")
+	check_has(
+		native, "getTouchIDForTouch:", "bridge must reuse Godot's already assigned touch index"
+	)
 	check_has(native, "touch.majorRadius", "bridge may expose UIKit contact radius as a hint")
 	check_has(
 		header,
