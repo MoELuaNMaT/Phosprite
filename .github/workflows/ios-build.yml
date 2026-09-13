@@ -17,6 +17,8 @@ on:
 env:
   GODOT_VERSION: 4.6.3
   EXPORT_NAME: Phosprite
+  SHARE_PLUGIN_VERSION: 5.2
+  SHARE_PLUGIN_SHA256: 3bcc46dd250532067345812bc03d3e43d4013f3ffe08354217225b0affedb77f
   # 不需要导出模板目录变量:在 step 内用 $HOME 展开,env 的 ~ 不会被 shell 展开。
 
 jobs:
@@ -28,6 +30,81 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+
+      # Share Export 使用 Godot Mobile Plugins 的 MIT Share Plugin。
+      # 固定 v5.2：该版本针对 Godot 4.6 构建；校验官方 release 的 SHA-256，
+      # 避免 CI 静默获取变化的 native binary。插件只在 iOS 构建时注入，
+      # Windows 主开发环境无需携带 xcframework。
+      - name: Install pinned Godot Share plugin 📤
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN_ZIP="${RUNNER_TEMP}/SharePlugin-iOS-v${SHARE_PLUGIN_VERSION}.zip"
+          PLUGIN_DIR="${RUNNER_TEMP}/share-plugin"
+          rm -rf "${PLUGIN_DIR}"
+          mkdir -p "${PLUGIN_DIR}"
+          curl -fL \
+            "https://github.com/godot-mobile-plugins/godot-share/releases/download/v${SHARE_PLUGIN_VERSION}/SharePlugin-iOS-v${SHARE_PLUGIN_VERSION}.zip" \
+            -o "${PLUGIN_ZIP}"
+          echo "${SHARE_PLUGIN_SHA256}  ${PLUGIN_ZIP}" | shasum -a 256 -c -
+          unzip -q "${PLUGIN_ZIP}" -d "${PLUGIN_DIR}"
+
+          GDIP_PATH="$(find "${PLUGIN_DIR}" -path '*/ios/plugins/SharePlugin.gdip' -print -quit)"
+          test -n "${GDIP_PATH}"
+          PLUGIN_ROOT="${GDIP_PATH%/ios/plugins/SharePlugin.gdip}"
+          test -f "${PLUGIN_ROOT}/addons/SharePlugin/plugin.cfg"
+          test -d "${PLUGIN_ROOT}/ios/plugins/SharePlugin.release.xcframework"
+          test -d "${PLUGIN_ROOT}/ios/plugins/SharePlugin.debug.xcframework"
+
+          rsync -a "${PLUGIN_ROOT}/addons/" ./addons/
+          mkdir -p ./ios/plugins
+          rsync -a "${PLUGIN_ROOT}/ios/plugins/" ./ios/plugins/
+
+          # The release contains both the runtime/native iOS plugin and an
+          # EditorPlugin that supplies its frameworks/linker flags. Enable the
+          # latter only in this CI checkout, and enable SharePlugin in preset.9.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          project_path = Path("project.godot")
+          project = project_path.read_text(encoding="utf-8")
+          plugin_cfg = '"res://addons/SharePlugin/plugin.cfg"'
+          if plugin_cfg not in project:
+              pattern = re.compile(r'(?m)^enabled=PackedStringArray\((.*)\)$')
+              match = pattern.search(project)
+              if not match:
+                  raise SystemExit("editor_plugins/enabled not found in project.godot")
+              existing = match.group(1).strip()
+              replacement = f"enabled=PackedStringArray({existing}, {plugin_cfg})"
+              project = project[:match.start()] + replacement + project[match.end():]
+              project_path.write_text(project, encoding="utf-8")
+
+          preset_path = Path("export_presets.cfg")
+          presets = preset_path.read_text(encoding="utf-8")
+          header = "[preset.9.options]"
+          start = presets.find(header)
+          if start < 0:
+              raise SystemExit("iOS preset options not found")
+          end = presets.find("\n[preset.", start + len(header))
+          if end < 0:
+              end = len(presets)
+          section = presets[start:end]
+          if "plugins/SharePlugin=true" not in section:
+              marker = "\nentitlements/increased_memory_limit="
+              insert_at = section.find(marker)
+              if insert_at < 0:
+                  raise SystemExit("iOS entitlement marker not found")
+              section = section[:insert_at] + "\nplugins/SharePlugin=true\n" + section[insert_at:]
+              presets = presets[:start] + section + presets[end:]
+              preset_path.write_text(presets, encoding="utf-8")
+          PY
+
+          test -f ./ios/plugins/SharePlugin.gdip
+          test -d ./ios/plugins/SharePlugin.release.xcframework
+          test -d ./ios/plugins/SharePlugin.debug.xcframework
+          grep -q 'res://addons/SharePlugin/plugin.cfg' project.godot
+          grep -q 'plugins/SharePlugin=true' export_presets.cfg
 
       - name: Download and extract export templates 💾
         run: |
@@ -54,6 +131,13 @@ jobs:
         run: |
           mkdir -v -p ./build/ios
           ./Godot.app/Contents/MacOS/Godot --headless -v --export-release "iOS" ./build/ios/${EXPORT_NAME}.ipa
+
+      - name: Verify SharePlugin export integration 🔎
+        run: |
+          PBXPROJ="./build/ios/${EXPORT_NAME}.xcodeproj/project.pbxproj"
+          test -f "${PBXPROJ}"
+          grep -q 'SharePlugin' "${PBXPROJ}"
+          find ./build/ios -iname '*SharePlugin*' -print
 
       # 未签名 archive：CODE_SIGNING_ALLOWED=NO 让 xcodebuild 跳过所有签名与描述文件查找。
       - name: Build unsigned .xcarchive 🔧

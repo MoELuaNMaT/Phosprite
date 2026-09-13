@@ -4,6 +4,8 @@ extends ConfirmationDialog
 signal resume_export_function
 signal about_to_preview(dict: Dictionary)
 
+const SHARE_SERVICE := preload("res://src/PlatformServices/ShareService.gd")
+
 var preview_current_frame := 0
 var preview_frames: Array[Texture2D] = []
 
@@ -47,6 +49,9 @@ var _preview_images: Array[Export.ProcessedImage]
 @onready var path_line_edit: LineEdit = $"%PathLineEdit"
 @onready var file_format_options: OptionButton = $"%FileFormat"
 @onready var options_interpolation: OptionButton = $"%Interpolation"
+@onready var file_path_label := $VBoxContainer/VSplitContainer/VBoxContainer/FilePath/Label as Label
+@onready
+var path_button := $VBoxContainer/VSplitContainer/VBoxContainer/FilePath/PathButton as Button
 
 @onready var file_exists_alert_popup: AcceptDialog = $FileExistsAlert
 @onready var path_validation_alert_popup: AcceptDialog = $PathValidationAlert
@@ -75,7 +80,14 @@ func _ready() -> void:
 		file_exists_alert_popup.add_button("Cancel Export", true, "cancel")
 	else:
 		file_exists_alert_popup.add_button("Cancel Export", false, "cancel")
-		if OS.get_name() == "Android":
+		if SHARE_SERVICE.is_share_export_platform():
+			# iPad chooses its destination in the native Share Sheet. Keep the
+			# filename/format controls, but never expose a sandbox path or Browse.
+			file_path_label.text = tr("File name:")
+			path_button.hide()
+			directory_path_label.hide()
+			file_format_options.show()
+		elif OS.get_name() == "Android":
 			path_dialog_popup.file_mode = FileDialog.FILE_MODE_OPEN_DIR
 			directory_path_label.visible = true
 		elif OS.get_name() == "Web":
@@ -316,10 +328,11 @@ func _on_about_to_popup() -> void:
 	get_ok_button().text = "Export"
 	Global.transform_content_confirmed.emit()
 	var project := Global.current_project
-	# Sandboxed platforms (iOS, macOS sandbox, Android) cannot expose a writable
-	# directory path to the user, so the export falls back to user:// when no
-	# directory has been picked yet.
-	if _uses_bare_file_name() and project.export_directory_path.is_empty():
+	if SHARE_SERVICE.is_share_export_platform():
+		# Destination is selected later in iOS Share Sheet. The Pixelorama exporter
+		# still needs a real writable directory, so point it at private staging.
+		project.export_directory_path = SHARE_SERVICE.STAGING_DIRECTORY
+	elif _uses_bare_file_name() and project.export_directory_path.is_empty():
 		project.export_directory_path = "user://"
 
 	if project.export_directory_path.is_empty():
@@ -336,7 +349,8 @@ func _on_about_to_popup() -> void:
 		path_line_edit.text = project.file_name + file_ext
 	else:
 		path_line_edit.text = project.export_directory_path.path_join(project.file_name) + file_ext
-	path_dialog_popup.current_dir = project.export_directory_path
+	if not SHARE_SERVICE.is_share_export_platform():
+		path_dialog_popup.current_dir = project.export_directory_path
 	Export.cache_blended_frames()
 	show_tab()
 
@@ -415,12 +429,74 @@ func _on_confirmed() -> void:
 
 
 func export() -> void:
-	Global.current_project.export_overwrite = false
-	if await Export.export_processed_images(false, self, Global.current_project):
+	var project := Global.current_project
+	project.export_overwrite = false
+	var share_export := SHARE_SERVICE.is_share_export_platform()
+	if share_export:
+		if not _supports_single_share_artifact(project):
+			(
+				Global
+				. popup_error(
+					tr(
+						(
+							"Share Export currently supports one output file at a time. "
+							+ "Use an animated format or a spritesheet when exporting multiple frames/layers."
+						)
+					)
+				)
+			)
+			return
+		var staging_err := SHARE_SERVICE.reset_staging_directory()
+		if staging_err != OK:
+			Global.popup_error(
+				(
+					tr("Could not prepare the Share Export folder. Error code %s (%s)")
+					% [staging_err, error_string(staging_err)]
+				)
+			)
+			return
+		project.export_directory_path = SHARE_SERVICE.STAGING_DIRECTORY
+
+	if not await Export.export_processed_images(false, self, project):
+		return
+	if not share_export:
 		hide()
+		return
+
+	# GIF/APNG may be encoded on Export's worker thread. Its public export method
+	# can return after the worker starts, so wait without blocking the main loop,
+	# then join the finished worker before resolving the artifact on disk.
+	while Export.gif_export_thread.is_alive():
+		await get_tree().process_frame
+	if Export.gif_export_thread.is_started():
+		Export.gif_export_thread.wait_to_finish()
+
+	var extension := Export.file_format_string(project.file_format, true)
+	var artifacts := SHARE_SERVICE.find_staged_files(extension)
+	if artifacts.size() != 1:
+		Global.popup_error(
+			tr("Share Export expected one finished file, but found %d.") % artifacts.size()
+		)
+		return
+	if not SHARE_SERVICE.share_file(artifacts[0], tr("Phosprite Export")):
+		Global.popup_error(tr("The iOS Share Sheet is unavailable in this build."))
+		return
+
+	# On iOS Export is a share action, not a persistent destination. Do not let
+	# Pixelorama's next quick-export bypass the dialog/Share Sheet.
+	project.was_exported = false
+	if is_instance_valid(Global.top_menu_container):
+		Global.top_menu_container.call("_update_file_menu_buttons", project)
+	hide()
+
+
+func _supports_single_share_artifact(project: Project) -> bool:
+	return Export.is_single_file_format(project) or Export.processed_images.size() == 1
 
 
 func _on_path_button_pressed() -> void:
+	if SHARE_SERVICE.is_share_export_platform():
+		return
 	path_dialog_popup.popup_centered_clamped()
 	path_dialog_popup.current_file = path_line_edit.text.get_file()
 
