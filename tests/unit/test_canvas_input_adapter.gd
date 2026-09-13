@@ -22,20 +22,22 @@ func test_direct_content_policy_matrix() -> void:
 		ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.UNRESTRICTED, false, false),
 		"unrestricted mode must allow finger content when Pencil is inactive"
 	)
-	check_false(
-		ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.FINGER_NAVIGATION_ONLY, false, false),
+	check_true(
+		not ADAPTER.direct_content_allowed(
+			ADAPTER.FingerPolicy.FINGER_NAVIGATION_ONLY, false, false
+		),
 		"navigation-only mode must never let direct touch edit content"
 	)
 	check_true(
 		ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.PENCIL_PRIORITY, false, false),
 		"Pencil Priority keeps finger editing available before Pencil has been used"
 	)
-	check_false(
-		ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.PENCIL_PRIORITY, true, false),
+	check_true(
+		not ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.PENCIL_PRIORITY, true, false),
 		"Pencil Priority must reserve content for Pencil after a Pencil session is known"
 	)
-	check_false(
-		ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.UNRESTRICTED, false, true),
+	check_true(
+		not ADAPTER.direct_content_allowed(ADAPTER.FingerPolicy.UNRESTRICTED, false, true),
 		"active Pencil ownership must suppress direct content even in unrestricted mode"
 	)
 
@@ -76,8 +78,10 @@ func test_native_bridge_only_supplies_pointer_identity() -> void:
 	check_has(native, "UITouchTypeDirect", "native bridge must preserve direct-touch identity")
 	check_has(native, "getTouchIDForTouch:", "bridge must reuse Godot's already assigned touch index")
 	check_has(native, "touch.majorRadius", "bridge may expose UIKit contact radius as a hint")
-	check_not_has(native, "touch_drag(", "native bridge must not implement Godot drawing movement")
-	check_not_has(native, "Tools", "native bridge must not know about Phosprite tools")
+	check_true(
+		not ("touch_drag(" in native), "native bridge must not implement Godot drawing movement"
+	)
+	check_true(not ("Tools" in native), "native bridge must not know about Phosprite tools")
 
 
 func test_ios_ci_builds_bridge_against_exact_godot_version() -> void:
@@ -98,8 +102,7 @@ func test_ios_ci_builds_bridge_against_exact_godot_version() -> void:
 		"PhospritePointerIdentity.xcframework",
 		"CI must build and verify the native plugin framework"
 	)
-	check_not_has(
-		workflow,
-		'InputProbe="*res://src/PlatformServices/InputProbe.gd"',
+	check_true(
+		not ('InputProbe="*res://src/PlatformServices/InputProbe.gd"' in workflow),
 		"the temporary B0 evidence probe must not ship in the P1-B runtime"
 	)
