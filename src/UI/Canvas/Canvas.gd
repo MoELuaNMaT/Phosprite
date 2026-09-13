@@ -46,7 +46,10 @@ func _ready() -> void:
 	onion_future.type = onion_future.FUTURE
 	onion_future.blue_red_color = Global.onion_skinning_future_color
 	_input_adapter.initialize()
-	if _input_adapter.is_enabled() and not get_window().focus_exited.is_connected(_on_window_focus_exited):
+	if (
+		_input_adapter.is_enabled()
+		and not get_window().focus_exited.is_connected(_on_window_focus_exited)
+	):
 		get_window().focus_exited.connect(_on_window_focus_exited)
 	await get_tree().process_frame
 	_input_adapter.install_preferences_ui(get_tree().current_scene)
