@@ -85,9 +85,9 @@ func test_optional_rotation_stays_disabled_by_default() -> void:
 	var enabled_target := ADAPTER.navigation_target_angle(0.25, 0.0, PI / 3.0, true)
 	check_almost_eq(
 		enabled_target,
-		0.25 + PI / 3.0,
+		0.25 - PI / 3.0,
 		0.00001,
-		"enabled rotation without a dead zone must follow the pair-angle delta exactly"
+		"positive screen-space pair rotation must map to the inverse CanvasCamera angle delta"
 	)
 
 
@@ -109,9 +109,9 @@ func test_optional_rotation_dead_zone_filters_jitter_without_threshold_jump() ->
 	)
 	check_almost_eq(
 		deliberate_target,
-		baseline_camera + PI / 18.0,
+		baseline_camera - PI / 18.0,
 		0.00001,
-		"a twelve-degree turn with a two-degree dead zone must produce ten degrees of rotation"
+		"a twelve-degree screen-space turn with two-degree slop must rotate camera by ten degrees inverse"
 	)
 
 	var wrap_target := ADAPTER.navigation_target_angle(
@@ -119,9 +119,9 @@ func test_optional_rotation_dead_zone_filters_jitter_without_threshold_jump() ->
 	)
 	check_almost_eq(
 		wrap_target,
-		0.1 - dead_zone,
+		-(0.1 - dead_zone),
 		0.00001,
-		"rotation delta must remain continuous across the -PI/PI boundary"
+		"rotation delta must remain continuous and direction-correct across the -PI/PI boundary"
 	)
 
 
