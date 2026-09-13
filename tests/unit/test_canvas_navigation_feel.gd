@@ -95,16 +95,10 @@ func test_replacement_pair_resets_c2_activation_state() -> void:
 	var adapter := ADAPTER.new()
 	adapter._touches = {
 		1: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2.ZERO, "suppressed": false},
-		2: {
-			"kind": ADAPTER.PointerKind.DIRECT,
-			"position": Vector2(10.0, 0.0),
-			"suppressed": false
-		},
-		3: {
-			"kind": ADAPTER.PointerKind.DIRECT,
-			"position": Vector2(20.0, 0.0),
-			"suppressed": false
-		},
+		2:
+		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(10.0, 0.0), "suppressed": false},
+		3:
+		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(20.0, 0.0), "suppressed": false},
 	}
 	adapter._begin_navigation_pair(PackedInt32Array([1, 2]))
 	adapter._navigation_pan_active = true
