@@ -228,12 +228,15 @@ func _matched_actions(event: InputEvent) -> Array[Dictionary]:
 	for action: StringName in RELEVANT_ACTIONS:
 		if not event.is_action(action):
 			continue
-		matched.append(
-			{
-				"name": String(action),
-				"pressed": event.is_action_pressed(action),
-				"released": event.is_action_released(action),
-			}
+		(
+			matched
+			. append(
+				{
+					"name": String(action),
+					"pressed": event.is_action_pressed(action),
+					"released": event.is_action_released(action),
+				}
+			)
 		)
 	return matched
 
