@@ -62,11 +62,11 @@ PhospritePointerIdentity *PhospritePointerIdentity::get_singleton() {
 
 Dictionary PhospritePointerIdentity::consume_begin_info(int p_touch_id) {
 	Dictionary result;
-	if (p_touch_id < 0 || p_touch_id >= MAX_TOUCHES || begin_queues[p_touch_id].empty()) {
+	if (p_touch_id < 0 || p_touch_id >= MAX_TOUCHES || !has_begin_info[p_touch_id]) {
 		return result;
 	}
-	BeginInfo info = begin_queues[p_touch_id].front();
-	begin_queues[p_touch_id].pop_front();
+	BeginInfo info = begin_info[p_touch_id];
+	has_begin_info[p_touch_id] = false;
 	result["kind"] = info.kind;
 	result["major_radius"] = info.major_radius;
 	return result;
@@ -74,7 +74,7 @@ Dictionary PhospritePointerIdentity::consume_begin_info(int p_touch_id) {
 
 void PhospritePointerIdentity::clear_pending() {
 	for (int i = 0; i < MAX_TOUCHES; i++) {
-		begin_queues[i].clear();
+		has_begin_info[i] = false;
 	}
 }
 
@@ -82,13 +82,9 @@ void PhospritePointerIdentity::enqueue_begin_info(int p_touch_id, int p_kind, fl
 	if (p_touch_id < 0 || p_touch_id >= MAX_TOUCHES) {
 		return;
 	}
-	BeginInfo info;
-	info.kind = p_kind;
-	info.major_radius = p_major_radius;
-	begin_queues[p_touch_id].push_back(info);
-	while (begin_queues[p_touch_id].size() > 8) {
-		begin_queues[p_touch_id].pop_front();
-	}
+	begin_info[p_touch_id].kind = p_kind;
+	begin_info[p_touch_id].major_radius = p_major_radius;
+	has_begin_info[p_touch_id] = true;
 }
 
 PhospritePointerIdentity::PhospritePointerIdentity() {
