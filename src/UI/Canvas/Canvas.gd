@@ -205,12 +205,7 @@ func draw_layers(force_recreate := false) -> void:
 			var cel_image := Image.new()
 			_update_texture_array_layer(project, layer, cel_image, false)
 			textures[ordered_index] = cel_image
-			layer_metadata_image.set_pixel(
-				ordered_index,
-				0,
-				Color(layer.blend_mode / 100.0, float(layer.is_blended_by_ancestor()), 0.0, 0.0)
-			)
-			layer_metadata_image.set_pixel(ordered_index, 1, Color(layer.get_opacity(), 0.0, 0.0, 0.0))
+			# Store the origin
 			if [project.current_frame, i] in project.selected_cels:
 				var origin := Vector2(move_preview_location).abs() / Vector2(cel_image.get_size())
 				layer_metadata_image.set_pixel(
