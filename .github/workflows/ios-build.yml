@@ -52,8 +52,9 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import os
 
-          path = Path("${RUNNER_TEMP}/phosprite-pointer-identity/SConstruct")
+          path = Path(os.environ["RUNNER_TEMP"]) / "phosprite-pointer-identity" / "SConstruct"
           text = path.read_text(encoding="utf-8")
           needle = "'photo_picker']))"
           replacement = "'photo_picker', 'phosprite_pointer_identity']))"
@@ -77,7 +78,7 @@ jobs:
             simulator=no \
             plugin=phosprite_pointer_identity \
             version=4.0 \
-            target_path="${BUILD_ROOT}/bin" \
+            target_path="${BUILD_ROOT}/bin/" \
             -j2
 
           LIB_PATH="$(find "${BUILD_ROOT}/bin" -name 'libphosprite_pointer_identity.arm64-ios.release.a' -print -quit)"
