@@ -15,12 +15,28 @@ const FINGER_POLICY_KEY := "finger_policy"
 const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const TWO_FINGER_EPSILON := 0.01
 
+# P1-C2 uses small acquisition-only dead zones. Once a degree of freedom activates,
+# navigation is direct from the fixed pair baseline: no inertia, no smoothing tween
+# and no incremental accumulation from the previous drag event.
+const NAVIGATION_PAN_DEAD_ZONE_PX := 0.75
+const NAVIGATION_PINCH_DEAD_ZONE_FRACTION := 0.005
+const TWO_FINGER_ROTATION_ENABLED := false
+
 var _touches: Dictionary = {}
 var _content_touch_id := -1
 var _pencil_touch_id := -1
 var _navigation_ids := PackedInt32Array()
 var _navigation_baseline_centroid := Vector2.ZERO
 var _navigation_baseline_distance := 0.0
+var _navigation_baseline_pair_angle := 0.0
+var _navigation_baseline_zoom := Vector2.ONE
+var _navigation_baseline_offset := Vector2.ZERO
+var _navigation_baseline_camera_angle := 0.0
+var _navigation_anchor_canvas := Vector2.ZERO
+var _navigation_camera_baseline_valid := false
+var _navigation_pan_active := false
+var _navigation_pinch_active := false
+# Kept as pair-begin snapshots for P1-C1 compatibility/debugging. C2 never accumulates from them.
 var _last_navigation_centroid := Vector2.ZERO
 var _last_navigation_distance := 0.0
 var _finger_policy := DEFAULT_FINGER_POLICY
@@ -146,10 +162,78 @@ static func direct_content_navigation_takeover_allowed(
 static func navigation_pair_geometry(
 	first_position: Vector2, second_position: Vector2
 ) -> Dictionary:
+	var delta := second_position - first_position
 	return {
 		"centroid": (first_position + second_position) * 0.5,
-		"distance": first_position.distance_to(second_position),
+		"distance": delta.length(),
+		"angle": delta.angle(),
 	}
+
+
+static func navigation_scale_ratio(baseline_distance: float, current_distance: float) -> float:
+	if baseline_distance <= TWO_FINGER_EPSILON or current_distance <= TWO_FINGER_EPSILON:
+		return 1.0
+	return current_distance / baseline_distance
+
+
+static func navigation_pan_exceeds_dead_zone(
+	baseline_centroid: Vector2, current_centroid: Vector2
+) -> bool:
+	return baseline_centroid.distance_to(current_centroid) >= NAVIGATION_PAN_DEAD_ZONE_PX
+
+
+static func navigation_pinch_exceeds_dead_zone(
+	baseline_distance: float, current_distance: float
+) -> bool:
+	var ratio := navigation_scale_ratio(baseline_distance, current_distance)
+	var upper_ratio := 1.0 + NAVIGATION_PINCH_DEAD_ZONE_FRACTION
+	return ratio >= upper_ratio or ratio <= 1.0 / upper_ratio
+
+
+static func navigation_zoom_from_ratio(
+	baseline_zoom: Vector2,
+	scale_ratio: float,
+	integer_zoom: bool,
+	zoom_out_max: Vector2,
+	zoom_in_max: Vector2
+) -> Vector2:
+	var target_scalar := baseline_zoom.x * maxf(scale_ratio, TWO_FINGER_EPSILON)
+	if integer_zoom:
+		target_scalar = maxf(1.0, roundf(target_scalar))
+	target_scalar = clampf(target_scalar, zoom_out_max.x, zoom_in_max.x)
+	return Vector2.ONE * target_scalar
+
+
+static func screen_to_canvas_point(
+	screen_position: Vector2,
+	viewport_size: Vector2,
+	zoom: Vector2,
+	offset: Vector2,
+	camera_angle: float
+) -> Vector2:
+	return offset + ((screen_position - viewport_size * 0.5) / zoom).rotated(camera_angle)
+
+
+static func navigation_offset_for_anchor(
+	anchor_canvas: Vector2,
+	centroid: Vector2,
+	viewport_size: Vector2,
+	target_zoom: Vector2,
+	camera_angle: float
+) -> Vector2:
+	return anchor_canvas - ((centroid - viewport_size * 0.5) / target_zoom).rotated(camera_angle)
+
+
+static func navigation_target_angle(
+	baseline_camera_angle: float,
+	baseline_pair_angle: float,
+	current_pair_angle: float,
+	rotation_enabled: bool
+) -> float:
+	if not rotation_enabled:
+		return baseline_camera_angle
+	var pair_delta := wrapf(current_pair_angle - baseline_pair_angle, -PI, PI)
+	return wrapf(baseline_camera_angle + pair_delta, -PI, PI)
 
 
 func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
@@ -366,10 +450,37 @@ func _begin_navigation_pair(pair_ids: PackedInt32Array) -> void:
 		return
 	_navigation_ids = PackedInt32Array([pair_ids[0], pair_ids[1]])
 	var geometry := _navigation_geometry()
+	_set_navigation_geometry_baseline(geometry)
+	_capture_navigation_camera_baseline()
+
+
+func _set_navigation_geometry_baseline(geometry: Dictionary) -> void:
 	_navigation_baseline_centroid = geometry["centroid"]
 	_navigation_baseline_distance = geometry["distance"]
+	_navigation_baseline_pair_angle = geometry["angle"]
 	_last_navigation_centroid = _navigation_baseline_centroid
 	_last_navigation_distance = _navigation_baseline_distance
+	_navigation_pan_active = false
+	_navigation_pinch_active = false
+
+
+func _capture_navigation_camera_baseline() -> bool:
+	var camera := Global.camera as CanvasCamera
+	if not is_instance_valid(camera) or not is_instance_valid(camera.viewport_container):
+		_navigation_camera_baseline_valid = false
+		return false
+	_navigation_baseline_zoom = camera.zoom
+	_navigation_baseline_offset = camera.offset
+	_navigation_baseline_camera_angle = camera.camera_angle
+	_navigation_anchor_canvas = screen_to_canvas_point(
+		_navigation_baseline_centroid,
+		camera.viewport_container.size,
+		_navigation_baseline_zoom,
+		_navigation_baseline_offset,
+		_navigation_baseline_camera_angle
+	)
+	_navigation_camera_baseline_valid = true
+	return true
 
 
 func _rebase_navigation() -> void:
@@ -393,21 +504,65 @@ func _update_navigation() -> void:
 	if _navigation_ids.size() != 2:
 		return
 	var camera := Global.camera as CanvasCamera
-	if not is_instance_valid(camera):
+	if not is_instance_valid(camera) or not is_instance_valid(camera.viewport_container):
 		return
+
 	var geometry := _navigation_geometry()
+	if not _navigation_camera_baseline_valid:
+		# This is only a defensive fallback for a pair captured before the camera was ready.
+		# Rebase to the current pair/camera and emit no transform on this frame.
+		_set_navigation_geometry_baseline(geometry)
+		_capture_navigation_camera_baseline()
+		return
+
 	var centroid: Vector2 = geometry["centroid"]
 	var distance: float = geometry["distance"]
-	var centroid_delta := centroid - _last_navigation_centroid
-	if not centroid_delta.is_zero_approx():
-		camera.offset -= centroid_delta.rotated(camera.camera_angle) / camera.zoom
-		camera.update_transparent_checker_offset()
-	if _last_navigation_distance > TWO_FINGER_EPSILON and distance > TWO_FINGER_EPSILON:
-		var scale_factor := distance / _last_navigation_distance
-		if not is_equal_approx(scale_factor, 1.0):
-			camera.zoom_camera(log(scale_factor) * 8.0, centroid)
-	_last_navigation_centroid = centroid
-	_last_navigation_distance = distance
+	if not _navigation_pan_active:
+		_navigation_pan_active = navigation_pan_exceeds_dead_zone(
+			_navigation_baseline_centroid, centroid
+		)
+	if not _navigation_pinch_active:
+		_navigation_pinch_active = navigation_pinch_exceeds_dead_zone(
+			_navigation_baseline_distance, distance
+		)
+
+	var effective_centroid := _navigation_baseline_centroid
+	if _navigation_pan_active:
+		effective_centroid = centroid
+	var scale_ratio := 1.0
+	if _navigation_pinch_active:
+		scale_ratio = navigation_scale_ratio(_navigation_baseline_distance, distance)
+
+	var target_angle := navigation_target_angle(
+		_navigation_baseline_camera_angle,
+		_navigation_baseline_pair_angle,
+		float(geometry["angle"]),
+		TWO_FINGER_ROTATION_ENABLED
+	)
+	var target_zoom := navigation_zoom_from_ratio(
+		_navigation_baseline_zoom,
+		scale_ratio,
+		Global.integer_zoom,
+		camera.zoom_out_max,
+		camera.zoom_in_max
+	)
+	var target_offset := navigation_offset_for_anchor(
+		_navigation_anchor_canvas,
+		effective_centroid,
+		camera.viewport_container.size,
+		target_zoom,
+		target_angle
+	)
+
+	# Continuous touch gestures must track the fingers directly. Pixelorama's mouse/wheel
+	# smooth-zoom tween is intentionally bypassed here because it adds visible input latency.
+	if not is_equal_approx(camera.camera_angle, target_angle):
+		camera.camera_angle = target_angle
+	if not camera.zoom.is_equal_approx(target_zoom):
+		camera.zoom = target_zoom
+	if not camera.offset.is_equal_approx(target_offset):
+		camera.offset = target_offset
+	camera.update_transparent_checker_offset()
 
 
 func _navigation_geometry() -> Dictionary:
@@ -434,6 +589,14 @@ func _clear_navigation() -> void:
 	_navigation_ids.clear()
 	_navigation_baseline_centroid = Vector2.ZERO
 	_navigation_baseline_distance = 0.0
+	_navigation_baseline_pair_angle = 0.0
+	_navigation_baseline_zoom = Vector2.ONE
+	_navigation_baseline_offset = Vector2.ZERO
+	_navigation_baseline_camera_angle = 0.0
+	_navigation_anchor_canvas = Vector2.ZERO
+	_navigation_camera_baseline_valid = false
+	_navigation_pan_active = false
+	_navigation_pinch_active = false
 	_last_navigation_centroid = Vector2.ZERO
 	_last_navigation_distance = 0.0
 
