@@ -63,7 +63,11 @@ jobs:
           path.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
           PY
 
-          python3 -m pip install --quiet scons
+          # macOS hosted runners use a PEP 668 managed Homebrew Python. Keep SCons
+          # isolated instead of mutating the system Python environment.
+          python3 -m venv "${BUILD_ROOT}/.venv"
+          source "${BUILD_ROOT}/.venv/bin/activate"
+          python -m pip install --quiet scons
           cd "${BUILD_ROOT}"
           chmod +x scripts/timeout scripts/generate_headers.sh
           # Upstream intentionally stops the Godot build after 90s; by then generated
