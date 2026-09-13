@@ -59,7 +59,7 @@ func test_adapter_owns_ios_touch_and_multitouch_navigation() -> void:
 	)
 	check_has(
 		src,
-		"state[\"suppressed\"] = true",
+		'state["suppressed"] = true',
 		"direct touches beginning during Pencil ownership must stay suppressed"
 	)
 	check_has(
