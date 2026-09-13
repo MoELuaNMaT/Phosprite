@@ -1,0 +1,17 @@
+[config]
+name="PhospritePointerIdentity"
+binary="PhospritePointerIdentity.xcframework"
+
+initialization="register_phosprite_pointer_identity_types"
+deinitialization="unregister_phosprite_pointer_identity_types"
+
+[dependencies]
+linked=[]
+embedded=[]
+system=["UIKit.framework"]
+
+capabilities=[]
+
+files=[]
+
+[plist]

@@ -64,6 +64,17 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if (
+		OS.get_name() == "iOS"
+		and (
+			event is InputEventScreenTouch
+			or event is InputEventScreenDrag
+			or event is InputEventGesture
+		)
+	):
+		# P1-B derives iPad navigation from raw multitouch in CanvasInputAdapter.
+		# Consuming the legacy gesture path here prevents double pan/zoom and Pencil cancellation.
+		return
 	if not DisplayServer.is_touchscreen_available() and auto_release_gui_focus:
 		get_window().gui_release_focus()
 	if !Global.can_draw:
