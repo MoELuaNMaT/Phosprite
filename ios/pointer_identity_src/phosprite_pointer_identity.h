@@ -4,8 +4,6 @@
 #include "core/object/class_db.h"
 #include "core/variant/dictionary.h"
 
-#include <deque>
-
 class PhospritePointerIdentity : public Object {
 	GDCLASS(PhospritePointerIdentity, Object);
 
@@ -25,7 +23,8 @@ private:
 
 	static constexpr int MAX_TOUCHES = 32;
 	static PhospritePointerIdentity *singleton;
-	std::deque<BeginInfo> begin_queues[MAX_TOUCHES];
+	BeginInfo begin_info[MAX_TOUCHES];
+	bool has_begin_info[MAX_TOUCHES] = {};
 
 	static void _bind_methods();
 
