@@ -19,6 +19,8 @@ var _touches: Dictionary = {}
 var _content_touch_id := -1
 var _pencil_touch_id := -1
 var _navigation_ids := PackedInt32Array()
+var _navigation_baseline_centroid := Vector2.ZERO
+var _navigation_baseline_distance := 0.0
 var _last_navigation_centroid := Vector2.ZERO
 var _last_navigation_distance := 0.0
 var _finger_policy := DEFAULT_FINGER_POLICY
@@ -130,6 +132,24 @@ static func direct_content_allowed(policy: int, pencil_active: bool) -> bool:
 	return false
 
 
+static func direct_content_navigation_takeover_allowed(
+	content_kind: int, pencil_active: bool, navigation_active: bool, direct_touch_count: int
+) -> bool:
+	return (
+		content_kind == PointerKind.DIRECT
+		and not pencil_active
+		and not navigation_active
+		and direct_touch_count >= 2
+	)
+
+
+static func navigation_pair_geometry(first_position: Vector2, second_position: Vector2) -> Dictionary:
+	return {
+		"centroid": (first_position + second_position) * 0.5,
+		"distance": first_position.distance_to(second_position),
+	}
+
+
 func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	if event.pressed:
 		_begin_touch(canvas, event)
@@ -171,7 +191,19 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		_touches[event.index] = state
 		return
 
-	if _content_touch_id == -1 and direct_content_allowed(_finger_policy, false):
+	# Once a navigation pair owns the canvas, additional fingers stay unowned. They may
+	# become a replacement member only after one of the active pair members is released.
+	if _navigation_ids.size() == 2:
+		return
+
+	if _content_touch_id != -1:
+		# In Unrestricted/Pencil Priority the first direct touch may legitimately begin
+		# editing. A second direct touch upgrades that interaction to navigation by
+		# cancelling (not committing) the in-progress tool operation and pairing both touches.
+		_try_promote_direct_content_to_navigation(canvas)
+		return
+
+	if direct_content_allowed(_finger_policy, false):
 		_start_content(canvas, event.index, event.position)
 	else:
 		_try_begin_navigation()
@@ -282,21 +314,60 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 	canvas.handle_adapter_tool_event(drag.position, event)
 
 
+func _try_promote_direct_content_to_navigation(canvas: Node2D) -> bool:
+	if _content_touch_id == -1 or not _touches.has(_content_touch_id):
+		return false
+	var direct_ids := _eligible_direct_touch_ids()
+	var content_state: Dictionary = _touches[_content_touch_id]
+	if not direct_content_navigation_takeover_allowed(
+		int(content_state["kind"]),
+		_pencil_touch_id != -1,
+		_navigation_ids.size() == 2,
+		direct_ids.size()
+	):
+		return false
+
+	_cancel_active_tool()
+	_content_touch_id = -1
+	if is_instance_valid(canvas):
+		canvas.set_adapter_tool_preview_active(false)
+		canvas.queue_redraw()
+	_begin_navigation_pair(PackedInt32Array([direct_ids[0], direct_ids[1]]))
+	return true
+
+
 func _try_begin_navigation() -> void:
 	# Navigation never coexists with active content ownership. In particular, Pencil
 	# takes exclusive canvas ownership and suppresses held direct touches until release.
-	if _pencil_touch_id != -1 or _content_touch_id != -1:
+	if _pencil_touch_id != -1 or _content_touch_id != -1 or _navigation_ids.size() == 2:
 		return
+	var direct_ids := _eligible_direct_touch_ids()
+	if direct_ids.size() < 2:
+		return
+	_begin_navigation_pair(PackedInt32Array([direct_ids[0], direct_ids[1]]))
+
+
+func _eligible_direct_touch_ids() -> PackedInt32Array:
 	var direct_ids := PackedInt32Array()
 	for id: int in _touches:
 		var state: Dictionary = _touches[id]
 		if int(state["kind"]) == PointerKind.DIRECT and not bool(state["suppressed"]):
 			direct_ids.append(id)
-	if direct_ids.size() < 2:
-		return
 	direct_ids.sort()
-	_navigation_ids = PackedInt32Array([direct_ids[0], direct_ids[1]])
-	_rebase_navigation()
+	return direct_ids
+
+
+func _begin_navigation_pair(pair_ids: PackedInt32Array) -> void:
+	if pair_ids.size() != 2:
+		return
+	if not _touches.has(pair_ids[0]) or not _touches.has(pair_ids[1]):
+		return
+	_navigation_ids = PackedInt32Array([pair_ids[0], pair_ids[1]])
+	var geometry := _navigation_geometry()
+	_navigation_baseline_centroid = geometry["centroid"]
+	_navigation_baseline_distance = geometry["distance"]
+	_last_navigation_centroid = _navigation_baseline_centroid
+	_last_navigation_distance = _navigation_baseline_distance
 
 
 func _rebase_navigation() -> void:
@@ -309,14 +380,11 @@ func _rebase_navigation() -> void:
 			var state: Dictionary = _touches[id]
 			if int(state["kind"]) == PointerKind.DIRECT and not bool(state["suppressed"]):
 				valid_ids.append(id)
-	if valid_ids.size() < 2:
-		_clear_navigation()
-		_try_begin_navigation()
+	if valid_ids.size() == 2:
+		# The same pair is still active; its pair-level baseline must remain unchanged.
 		return
-	_navigation_ids = valid_ids
-	var points := _navigation_points()
-	_last_navigation_centroid = (points[0] + points[1]) * 0.5
-	_last_navigation_distance = points[0].distance_to(points[1])
+	_clear_navigation()
+	_try_begin_navigation()
 
 
 func _update_navigation() -> void:
@@ -325,9 +393,9 @@ func _update_navigation() -> void:
 	var camera := Global.camera as CanvasCamera
 	if not is_instance_valid(camera):
 		return
-	var points := _navigation_points()
-	var centroid := (points[0] + points[1]) * 0.5
-	var distance := points[0].distance_to(points[1])
+	var geometry := _navigation_geometry()
+	var centroid: Vector2 = geometry["centroid"]
+	var distance: float = geometry["distance"]
 	var centroid_delta := centroid - _last_navigation_centroid
 	if not centroid_delta.is_zero_approx():
 		camera.offset -= centroid_delta.rotated(camera.camera_angle) / camera.zoom
@@ -338,6 +406,11 @@ func _update_navigation() -> void:
 			camera.zoom_camera(log(scale_factor) * 8.0, centroid)
 	_last_navigation_centroid = centroid
 	_last_navigation_distance = distance
+
+
+func _navigation_geometry() -> Dictionary:
+	var points := _navigation_points()
+	return navigation_pair_geometry(points[0], points[1])
 
 
 func _navigation_points() -> Array[Vector2]:
@@ -357,6 +430,8 @@ func _suppress_direct_touches_until_release() -> void:
 
 func _clear_navigation() -> void:
 	_navigation_ids.clear()
+	_navigation_baseline_centroid = Vector2.ZERO
+	_navigation_baseline_distance = 0.0
 	_last_navigation_centroid = Vector2.ZERO
 	_last_navigation_distance = 0.0
 
