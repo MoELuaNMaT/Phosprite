@@ -1,10 +1,10 @@
 extends ConfirmationDialog
 
-const SHARE_SERVICE := preload("res://src/PlatformServices/ShareService.gd")
-
 ## Called when user resumes export after filename collision
 signal resume_export_function
 signal about_to_preview(dict: Dictionary)
+
+const SHARE_SERVICE := preload("res://src/PlatformServices/ShareService.gd")
 
 var preview_current_frame := 0
 var preview_frames: Array[Texture2D] = []
