@@ -42,10 +42,7 @@ static func find_staged_files(extension: String) -> PackedStringArray:
 ## Opens the native iOS share sheet for one already-written artifact.
 ## The plugin consumes a physical sandbox path, not Godot's user:// URI.
 static func share_file(
-	path: String,
-	title := "Phosprite Export",
-	subject := "",
-	content := ""
+	path: String, title := "Phosprite Export", subject := "", content := ""
 ) -> bool:
 	if not FileAccess.file_exists(path):
 		push_error("Share export artifact does not exist: %s" % path)
@@ -57,15 +54,18 @@ static func share_file(
 	if plugin == null or not plugin.has_method("share"):
 		push_error("%s does not expose share()" % PLUGIN_SINGLETON_NAME)
 		return false
-	plugin.call(
-		"share",
-		{
-			"title": title,
-			"subject": subject,
-			"content": content,
-			"file_path": ProjectSettings.globalize_path(path),
-			"mime_type": mime_type_for_path(path),
-		}
+	(
+		plugin
+		. call(
+			"share",
+			{
+				"title": title,
+				"subject": subject,
+				"content": content,
+				"file_path": ProjectSettings.globalize_path(path),
+				"mime_type": mime_type_for_path(path),
+			}
+		)
 	)
 	return true
 
