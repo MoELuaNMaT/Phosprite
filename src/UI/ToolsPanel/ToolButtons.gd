@@ -2,6 +2,19 @@ extends FlowContainer
 
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
+const IOS_SELECTION_MENU_LONG_PRESS_SECONDS := 0.45
+const IOS_SELECTION_RECENT_SECTION := "preferences"
+const IOS_SELECTION_RECENT_KEY := "ios_recent_selection_tool"
+const IOS_SELECTION_DEFAULT := &"RectSelect"
+const IOS_SELECTION_TOOLS := [
+	&"ColorSelect",
+	&"EllipseSelect",
+	&"Lasso",
+	&"MagicWand",
+	&"PaintSelect",
+	&"PolygonSelect",
+	&"RectSelect",
+]
 
 var pen_inverted := false
 ## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
@@ -9,12 +22,27 @@ var _ignore_shortcuts := false
 ## Direct-touch taps are resolved here instead of depending on touch-to-mouse emulation.
 var _touch_tool_candidates: Dictionary = {}
 var _touch_ui_mode := false
+var _ios_selection_family_button: BaseButton
+var _ios_selection_menu: PopupMenu
+var _ios_selection_recent_tool := IOS_SELECTION_DEFAULT
+var _ios_selection_touch_generation := 0
+
+
+static func is_ios_selection_tool(tool_name: StringName) -> bool:
+	return tool_name in IOS_SELECTION_TOOLS
+
+
+static func normalize_ios_recent_selection_tool(value: Variant) -> StringName:
+	var tool_name := StringName(str(value))
+	return tool_name if is_ios_selection_tool(tool_name) else IOS_SELECTION_DEFAULT
 
 
 func _ready() -> void:
 	# Ensure to only call _input() if the cursor is inside the main canvas viewport
 	Global.main_viewport.mouse_entered.connect(func(): _ignore_shortcuts = false)
 	Global.main_viewport.mouse_exited.connect(func(): _ignore_shortcuts = true)
+	if OS.get_name() == "iOS":
+		call_deferred("_install_ios_selection_family")
 
 
 func _input(event: InputEvent) -> void:
@@ -93,11 +121,21 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 			return false
 		_enter_touch_tool_ui()
 		get_viewport().gui_cancel_drag()
+		_ios_selection_touch_generation += 1
+		var is_selection_family := _is_ios_selection_family_button(button)
 		_touch_tool_candidates[event.index] = {
 			"tool_name": StringName(button.name),
 			"origin": event.position,
 			"cancelled": false,
+			"selection_family": is_selection_family,
+			"menu_opened": false,
+			"generation": _ios_selection_touch_generation,
 		}
+		if is_selection_family:
+			var timer := get_tree().create_timer(IOS_SELECTION_MENU_LONG_PRESS_SECONDS)
+			timer.timeout.connect(
+				_try_open_ios_selection_menu.bind(event.index, _ios_selection_touch_generation)
+			)
 		return true
 
 	if not _touch_tool_candidates.has(event.index):
@@ -108,6 +146,8 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 	get_viewport().gui_cancel_drag()
 	if bool(candidate.get("cancelled", false)):
 		return true
+	if bool(candidate.get("selection_family", false)) and bool(candidate.get("menu_opened", false)):
+		return true
 	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
 		return true
 	var released_over := _tool_button_at(event.position)
@@ -116,8 +156,11 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 
 	# Direct touch currently activates the Primary slot. The Primary/Secondary data model
 	# remains unchanged; D1 deliberately does not define how a future touch UI switches slots.
-	Tools.assign_tool(String(candidate["tool_name"]), MOUSE_BUTTON_LEFT)
-	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
+	if bool(candidate.get("selection_family", false)):
+		_activate_ios_selection_tool(_ios_selection_recent_tool)
+	else:
+		Tools.assign_tool(String(candidate["tool_name"]), MOUSE_BUTTON_LEFT)
+		Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
 	return true
 
 
@@ -189,6 +232,131 @@ func _restore_pointer_tool_ui() -> void:
 		if Tools.tools.has(String(button.name)):
 			button.tooltip_text = Tools.tools[String(button.name)].generate_hint_tooltip()
 		button.queue_redraw()
+	_sync_ios_selection_family_visual()
+
+
+func _install_ios_selection_family() -> void:
+	await get_tree().process_frame
+	if OS.get_name() != "iOS" or not Tools.tools.has(String(IOS_SELECTION_DEFAULT)):
+		return
+	_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node
+	if not is_instance_valid(_ios_selection_family_button):
+		return
+	_ios_selection_recent_tool = normalize_ios_recent_selection_tool(
+		Global.config_cache.get_value(
+			IOS_SELECTION_RECENT_SECTION, IOS_SELECTION_RECENT_KEY, IOS_SELECTION_DEFAULT
+		)
+	)
+	_ios_selection_menu = PopupMenu.new()
+	_ios_selection_menu.name = "SelectionFamilyMenu"
+	for index in IOS_SELECTION_TOOLS.size():
+		var tool_name: StringName = IOS_SELECTION_TOOLS[index]
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		_ios_selection_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
+	_ios_selection_menu.id_pressed.connect(_on_ios_selection_menu_id_pressed)
+	get_parent().add_child(_ios_selection_menu)
+	if not Tools.tool_changed.is_connected(_on_ios_tool_changed):
+		Tools.tool_changed.connect(_on_ios_tool_changed)
+	if not Global.single_tool_mode_changed.is_connected(_on_ios_single_tool_mode_changed):
+		Global.single_tool_mode_changed.connect(_on_ios_single_tool_mode_changed)
+	_sync_ios_selection_family_visual()
+
+
+func _is_ios_selection_family_button(button: BaseButton) -> bool:
+	return (
+		is_instance_valid(_ios_selection_family_button)
+		and button == _ios_selection_family_button
+	)
+
+
+func _try_open_ios_selection_menu(touch_id: int, generation: int) -> void:
+	if not _touch_tool_candidates.has(touch_id) or not is_instance_valid(_ios_selection_menu):
+		return
+	var candidate: Dictionary = _touch_tool_candidates[touch_id]
+	if (
+		int(candidate.get("generation", -1)) != generation
+		or bool(candidate.get("cancelled", false))
+		or not bool(candidate.get("selection_family", false))
+	):
+		return
+	candidate["menu_opened"] = true
+	_touch_tool_candidates[touch_id] = candidate
+	var family_rect := _ios_selection_family_button.get_global_rect()
+	_ios_selection_menu.position = Vector2i(
+		family_rect.position + Vector2(family_rect.size.x + 4.0, 0.0)
+	)
+	_ios_selection_menu.popup()
+
+
+func _on_ios_selection_menu_id_pressed(id: int) -> void:
+	if id < 0 or id >= IOS_SELECTION_TOOLS.size():
+		return
+	_activate_ios_selection_tool(IOS_SELECTION_TOOLS[id])
+
+
+func _activate_ios_selection_tool(tool_name: StringName) -> void:
+	var normalized := normalize_ios_recent_selection_tool(tool_name)
+	_set_ios_selection_recent_tool(normalized)
+	Tools.assign_tool(String(normalized), MOUSE_BUTTON_LEFT)
+	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
+	_sync_ios_selection_family_visual()
+
+
+func _set_ios_selection_recent_tool(tool_name: StringName) -> void:
+	var normalized := normalize_ios_recent_selection_tool(tool_name)
+	if _ios_selection_recent_tool == normalized:
+		return
+	_ios_selection_recent_tool = normalized
+	Global.config_cache.set_value(
+		IOS_SELECTION_RECENT_SECTION, IOS_SELECTION_RECENT_KEY, String(_ios_selection_recent_tool)
+	)
+	var error := Global.config_cache.save(Global.CONFIG_PATH)
+	if error != OK:
+		push_warning("Could not save recent Selection tool: %s" % error_string(error))
+
+
+func _on_ios_tool_changed(tool_name: String, button: int) -> void:
+	if OS.get_name() != "iOS":
+		return
+	var selection_name := StringName(tool_name)
+	if button == MOUSE_BUTTON_LEFT and is_ios_selection_tool(selection_name):
+		_set_ios_selection_recent_tool(selection_name)
+	_sync_ios_selection_family_visual()
+
+
+func _on_ios_single_tool_mode_changed(_mode: bool) -> void:
+	call_deferred("_sync_ios_selection_family_visual")
+
+
+func _sync_ios_selection_family_visual() -> void:
+	if OS.get_name() != "iOS" or not is_instance_valid(_ios_selection_family_button):
+		return
+	for tool_name in IOS_SELECTION_TOOLS:
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		if not is_instance_valid(tool.button_node):
+			continue
+		tool.button_node.visible = tool_name == IOS_SELECTION_DEFAULT
+	var recent_tool: Tools.Tool = Tools.tools[String(_ios_selection_recent_tool)]
+	var icon := _ios_selection_family_button.get_node("ToolIcon") as TextureRect
+	icon.texture = recent_tool.icon
+	if not _touch_ui_mode:
+		_ios_selection_family_button.tooltip_text = "Selection: %s" % tr(recent_tool.display_name)
+	var left_name := StringName()
+	var right_name := StringName()
+	if Tools._slots.has(MOUSE_BUTTON_LEFT) and is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node):
+		left_name = StringName(Tools._slots[MOUSE_BUTTON_LEFT].tool_node.name)
+	if Tools._slots.has(MOUSE_BUTTON_RIGHT) and is_instance_valid(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node):
+		right_name = StringName(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node.name)
+	var left_background := _ios_selection_family_button.get_node("BackgroundLeft") as NinePatchRect
+	var right_background := _ios_selection_family_button.get_node("BackgroundRight") as NinePatchRect
+	left_background.visible = is_ios_selection_tool(left_name)
+	if Global.single_tool_mode:
+		right_background.visible = false
+		left_background.anchor_right = 1.0
+	else:
+		right_background.visible = is_ios_selection_tool(right_name)
+		left_background.anchor_right = 0.5
+	_ios_selection_family_button.queue_redraw()
 
 
 func _on_tool_pressed(tool_pressed: BaseButton) -> void:
