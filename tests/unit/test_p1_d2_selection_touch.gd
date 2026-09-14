@@ -99,9 +99,7 @@ func test_selection_family_compaction_is_transactional_and_structural() -> void:
 		"detached Selection child buttons must remain alive for the existing Tools model"
 	)
 	check_has(
-		src,
-		"button.visible = false",
-		"detached Selection children must remain visually hidden"
+		src, "button.visible = false", "detached Selection children must remain visually hidden"
 	)
 	check_has(
 		src,
