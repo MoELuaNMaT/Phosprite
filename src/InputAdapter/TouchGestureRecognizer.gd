@@ -106,12 +106,14 @@ func release(pointer_id: int, position: Vector2, timestamp_msec: int) -> Array[D
 		_pointers.erase(pointer_id)
 		return events
 
+	# A long press may already have fired from advance_time() while the contact
+	# remained down. Releasing it is terminal and must never create a tap candidate.
+	if bool(state["long_press_emitted"]):
+		_pointers.erase(pointer_id)
+		return events
+
 	var elapsed := maxi(0, timestamp_msec - int(state["started_msec"]))
-	if (
-		not bool(state["long_press_emitted"])
-		and bool(state["tap_eligible"])
-		and elapsed >= config.long_press_duration_msec
-	):
+	if bool(state["tap_eligible"]) and elapsed >= config.long_press_duration_msec:
 		_flush_pending_tap_into(events)
 		state["long_press_emitted"] = true
 		events.append(_make_event(Gesture.LONG_PRESS, pointer_id, state, timestamp_msec))
@@ -199,7 +201,10 @@ func _commit_tap_candidate(
 		var interval := timestamp_msec - int(_pending_tap["timestamp_msec"])
 		var previous_position := _pending_tap["position"] as Vector2
 		var within_interval := interval >= 0 and interval <= config.double_tap_interval_msec
-		var within_distance := previous_position.distance_to(state["position"] as Vector2) <= config.double_tap_distance_px
+		var within_distance := (
+			previous_position.distance_to(state["position"] as Vector2)
+			<= config.double_tap_distance_px
+		)
 		if within_interval and within_distance:
 			events.append(_make_event(Gesture.DOUBLE_TAP, pointer_id, state, timestamp_msec))
 			_pending_tap.clear()
@@ -233,10 +238,7 @@ func _flush_pending_tap_into(events: Array[Dictionary]) -> void:
 	}
 	events.append(
 		_make_event(
-			Gesture.TAP,
-			int(_pending_tap["pointer_id"]),
-			state,
-			int(_pending_tap["timestamp_msec"])
+			Gesture.TAP, int(_pending_tap["pointer_id"]), state, int(_pending_tap["timestamp_msec"])
 		)
 	)
 	_pending_tap.clear()
