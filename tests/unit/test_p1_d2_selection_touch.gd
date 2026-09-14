@@ -68,42 +68,59 @@ func test_selection_family_is_ios_only_and_persists_recent_child() -> void:
 	)
 
 
-func test_selection_family_owns_final_visibility_after_startup_refresh() -> void:
+func test_selection_family_compaction_is_transactional_and_structural() -> void:
 	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
 	check_has(
 		src,
-		"_connect_ios_selection_visibility_guards()",
-		"Selection compaction must subscribe to the real toolbar visibility boundary"
+		"_ios_selection_buttons_ready()",
+		"Selection compaction must wait until all seven runtime tool buttons exist"
 	)
 	check_has(
 		src,
-		"tool.button_node.visibility_changed.connect(_on_ios_selection_child_visibility_changed)",
-		"generic startup/layer visibility refreshes must trigger Selection re-compaction"
+		"tool.button_node.get_parent() != self",
+		"readiness must reject partially-created or already-moved toolbar buttons"
+	)
+	var readiness_guard := src.find("if not _ios_selection_buttons_ready():")
+	var family_assignment := src.find(
+		"_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node"
+	)
+	check_true(
+		readiness_guard >= 0 and family_assignment > readiness_guard,
+		"the family proxy must not be committed before the seven-button readiness gate"
+	)
+	check_has(
+		src,
+		"remove_child(button)",
+		"six Selection children must leave the generic ToolButtons visibility owner"
+	)
+	check_has(
+		src,
+		"_ios_selection_hidden_buttons.add_child(button)",
+		"detached Selection child buttons must remain alive for the existing Tools model"
+	)
+	check_has(
+		src,
+		"button.visible = false",
+		"detached Selection children must remain visually hidden"
 	)
 	check_has(
 		src,
 		'call_deferred("_install_ios_selection_family")',
-		"the idempotent installer must retry when startup ordering delays tool-button creation"
+		"startup must retain a bounded deferred retry path for tool-registry ordering"
+	)
+	check_true(
+		not ("visibility_changed.connect(_on_ios_selection_child_visibility_changed)" in src),
+		"Selection compaction must not fight generic toolbar visibility through a feedback loop"
 	)
 	check_has(
 		src,
-		"var is_family_button := tool_name == IOS_SELECTION_DEFAULT",
-		"exactly one persistent toolbar button must represent the seven Selection children"
+		"tool_visible = _ios_selection_family_button.visible",
+		"collapsed Selection children must continue to participate in keyboard shortcut handling"
 	)
 	check_has(
 		src,
-		"tool.button_node.visible = is_family_button",
-		"a late generic visibility pass must not leave Selection children exposed"
-	)
-	check_has(
-		src,
-		"child_left.visible = false",
-		"persisted recent Selection children must not retain a second Primary highlight"
-	)
-	check_has(
-		src,
-		"child_right.visible = false",
-		"persisted recent Selection children must not retain a second Secondary highlight"
+		"tool_name = String(_ios_selection_recent_tool)",
+		"native pointer activation of the proxy must select the represented recent child"
 	)
 
 
