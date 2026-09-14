@@ -181,7 +181,10 @@ func _on_ios_screen_sampler_pressed() -> void:
 
 
 func _touch_hits_color_controls(screen_position: Vector2) -> bool:
-	if is_instance_valid(color_buttons) and color_buttons.get_global_rect().has_point(screen_position):
+	if (
+		is_instance_valid(color_buttons)
+		and color_buttons.get_global_rect().has_point(screen_position)
+	):
 		return true
 	return (
 		is_instance_valid(_screen_sampler_button)

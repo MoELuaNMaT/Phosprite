@@ -60,7 +60,9 @@ func test_pending_long_press_hides_normal_pixel_preview() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	var start_pending := src.find("func _start_pending_content")
 	var start_timeout := src.find("func _try_begin_long_press", start_pending)
-	check_true(start_pending >= 0 and start_timeout > start_pending, "adapter must expose pending content")
+	check_true(
+		start_pending >= 0 and start_timeout > start_pending, "adapter must expose pending content"
+	)
 	if start_pending >= 0 and start_timeout > start_pending:
 		var body := src.substr(start_pending, start_timeout - start_pending)
 		check_has(
