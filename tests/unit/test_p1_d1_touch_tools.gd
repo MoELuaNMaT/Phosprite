@@ -79,7 +79,9 @@ func test_long_press_release_samples_the_lift_position() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	var end_content := src.find("func _end_content")
 	var dispatch_motion := src.find("func _dispatch_motion", end_content)
-	check_true(end_content >= 0 and dispatch_motion > end_content, "adapter must expose _end_content")
+	check_true(
+		end_content >= 0 and dispatch_motion > end_content, "adapter must expose _end_content"
+	)
 	if end_content >= 0 and dispatch_motion > end_content:
 		var body := src.substr(end_content, dispatch_motion - end_content)
 		check_has(
