@@ -151,13 +151,18 @@ func test_polygon_touch_completion_and_cancel_are_explicit() -> void:
 
 func test_selection_modes_remain_the_existing_four_mode_model() -> void:
 	var src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
+	check_has(
+		src,
+		"enum Mode { DEFAULT, ADD, SUBTRACT, INTERSECT }",
+		"Selection must retain the existing four-mode state model"
+	)
 	for label in [
 		"Replace selection",
 		"Add to selection",
 		"Subtract from selection",
-		"Intersect with selection"
+		"Intersection of selections"
 	]:
-		check_has(src, label, "all four approved Selection modes must remain explicitly available")
+		check_has(src, label, "all four existing Selection modes must remain visible in the UI")
 	check_has(
 		src,
 		"func _on_modes_item_selected",
