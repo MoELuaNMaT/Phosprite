@@ -6,6 +6,7 @@ const IOS_SELECTION_MENU_LONG_PRESS_SECONDS := 0.45
 const IOS_SELECTION_RECENT_SECTION := "preferences"
 const IOS_SELECTION_RECENT_KEY := "ios_recent_selection_tool"
 const IOS_SELECTION_DEFAULT := &"RectSelect"
+const IOS_SELECTION_INSTALL_MAX_RETRIES := 8
 const IOS_SELECTION_TOOLS := [
 	&"ColorSelect",
 	&"EllipseSelect",
@@ -23,10 +24,11 @@ var _ignore_shortcuts := false
 var _touch_tool_candidates: Dictionary = {}
 var _touch_ui_mode := false
 var _ios_selection_family_button: BaseButton
+var _ios_selection_hidden_buttons: Node
 var _ios_selection_menu: PopupMenu
 var _ios_selection_recent_tool := IOS_SELECTION_DEFAULT
 var _ios_selection_touch_generation := 0
-var _ios_selection_syncing := false
+var _ios_selection_install_retry_count := 0
 
 
 static func is_ios_selection_tool(tool_name: StringName) -> bool:
@@ -43,8 +45,9 @@ func _ready() -> void:
 	Global.main_viewport.mouse_entered.connect(func(): _ignore_shortcuts = false)
 	Global.main_viewport.mouse_exited.connect(func(): _ignore_shortcuts = true)
 	if OS.get_name() == "iOS":
-		# The tool registry finishes its own startup visibility pass later. Installation is
-		# idempotent, and per-button visibility guards re-assert compaction after that pass.
+		# Installation is transactional: until all seven runtime buttons exist, D1's normal
+		# toolbar remains untouched. Once installed, the six child buttons are moved out of
+		# the generic toolbar container so later availability refreshes cannot expose them.
 		if not Global.pixelorama_opened.is_connected(_on_ios_pixelorama_opened):
 			Global.pixelorama_opened.connect(_on_ios_pixelorama_opened)
 		call_deferred("_install_ios_selection_family")
@@ -83,9 +86,17 @@ func _input(event: InputEvent) -> void:
 	)
 
 	for tool_name in Tools.tools:  # Handle tool shortcuts
-		if not get_node(tool_name).visible:
-			continue
 		var t: Tools.Tool = Tools.tools[tool_name]
+		var tool_button := t.button_node
+		var tool_visible := is_instance_valid(tool_button) and tool_button.visible
+		if (
+			OS.get_name() == "iOS"
+			and is_ios_selection_tool(StringName(tool_name))
+			and is_instance_valid(_ios_selection_family_button)
+		):
+			tool_visible = _ios_selection_family_button.visible
+		if not tool_visible:
+			continue
 		var right_tool_shortcut := "right_" + t.shortcut + "_tool"
 		if not Global.single_tool_mode and InputMap.has_action(right_tool_shortcut):
 			if event.is_action_pressed(right_tool_shortcut, false, true) and not _ignore_shortcuts:
@@ -240,47 +251,70 @@ func _restore_pointer_tool_ui() -> void:
 	_sync_ios_selection_family_visual()
 
 
+func _ios_selection_buttons_ready() -> bool:
+	for tool_name in IOS_SELECTION_TOOLS:
+		if not Tools.tools.has(String(tool_name)):
+			return false
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		if not is_instance_valid(tool.button_node) or tool.button_node.get_parent() != self:
+			return false
+	return true
+
+
 func _install_ios_selection_family() -> void:
-	await get_tree().process_frame
-	if OS.get_name() != "iOS" or not Tools.tools.has(String(IOS_SELECTION_DEFAULT)):
+	if OS.get_name() != "iOS":
 		return
-	if not is_instance_valid(_ios_selection_family_button):
-		_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node
-	if not is_instance_valid(_ios_selection_family_button):
+	if is_instance_valid(_ios_selection_family_button):
+		_sync_ios_selection_family_visual()
 		return
+	if not _ios_selection_buttons_ready():
+		if _ios_selection_install_retry_count < IOS_SELECTION_INSTALL_MAX_RETRIES:
+			_ios_selection_install_retry_count += 1
+			await get_tree().process_frame
+			call_deferred("_install_ios_selection_family")
+		return
+
+	_ios_selection_install_retry_count = 0
+	_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node
 	_ios_selection_recent_tool = normalize_ios_recent_selection_tool(
 		Global.config_cache.get_value(
 			IOS_SELECTION_RECENT_SECTION, IOS_SELECTION_RECENT_KEY, IOS_SELECTION_DEFAULT
 		)
 	)
-	if not is_instance_valid(_ios_selection_menu):
-		_ios_selection_menu = PopupMenu.new()
-		_ios_selection_menu.name = "SelectionFamilyMenu"
-		for index in IOS_SELECTION_TOOLS.size():
-			var tool_name: StringName = IOS_SELECTION_TOOLS[index]
-			var tool: Tools.Tool = Tools.tools[String(tool_name)]
-			_ios_selection_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
-		_ios_selection_menu.id_pressed.connect(_on_ios_selection_menu_id_pressed)
-		get_parent().add_child(_ios_selection_menu)
+	_detach_ios_selection_children()
+
+	_ios_selection_menu = PopupMenu.new()
+	_ios_selection_menu.name = "SelectionFamilyMenu"
+	for index in IOS_SELECTION_TOOLS.size():
+		var tool_name: StringName = IOS_SELECTION_TOOLS[index]
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		_ios_selection_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
+	_ios_selection_menu.id_pressed.connect(_on_ios_selection_menu_id_pressed)
+	get_parent().add_child(_ios_selection_menu)
+
 	if not Tools.tool_changed.is_connected(_on_ios_tool_changed):
 		Tools.tool_changed.connect(_on_ios_tool_changed)
 	if not Global.single_tool_mode_changed.is_connected(_on_ios_single_tool_mode_changed):
 		Global.single_tool_mode_changed.connect(_on_ios_single_tool_mode_changed)
 	if not Global.cel_switched.is_connected(_on_ios_cel_switched):
 		Global.cel_switched.connect(_on_ios_cel_switched)
-	_connect_ios_selection_visibility_guards()
 	_sync_ios_selection_family_visual()
 
 
-func _connect_ios_selection_visibility_guards() -> void:
+func _detach_ios_selection_children() -> void:
+	if not is_instance_valid(_ios_selection_hidden_buttons):
+		_ios_selection_hidden_buttons = Node.new()
+		_ios_selection_hidden_buttons.name = "IOSSelectionHiddenButtons"
+		get_parent().add_child(_ios_selection_hidden_buttons)
 	for tool_name in IOS_SELECTION_TOOLS:
-		var tool: Tools.Tool = Tools.tools[String(tool_name)]
-		if not is_instance_valid(tool.button_node):
+		if tool_name == IOS_SELECTION_DEFAULT:
 			continue
-		if not tool.button_node.visibility_changed.is_connected(
-			_on_ios_selection_child_visibility_changed
-		):
-			tool.button_node.visibility_changed.connect(_on_ios_selection_child_visibility_changed)
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		var button := tool.button_node
+		if button.get_parent() == self:
+			remove_child(button)
+			_ios_selection_hidden_buttons.add_child(button)
+		button.visible = false
 
 
 func _is_ios_selection_family_button(button: BaseButton) -> bool:
@@ -345,14 +379,11 @@ func _on_ios_tool_changed(tool_name: String, button: int) -> void:
 
 
 func _on_ios_pixelorama_opened() -> void:
-	# Retry the idempotent installer as well as syncing. This covers startup orders where
-	# ToolButtons becomes ready before Tools has assigned its button nodes.
+	# Covers startup orders where ToolButtons becomes ready before Tools creates all buttons.
 	call_deferred("_install_ios_selection_family")
 
 
 func _on_ios_cel_switched() -> void:
-	# Tools may change button visibility when the active layer type changes. Run after
-	# those listeners and keep the seven Selection children represented by one entry.
 	call_deferred("_sync_ios_selection_family_visual")
 
 
@@ -360,35 +391,20 @@ func _on_ios_single_tool_mode_changed(_mode: bool) -> void:
 	call_deferred("_sync_ios_selection_family_visual")
 
 
-func _on_ios_selection_child_visibility_changed() -> void:
-	if _ios_selection_syncing or OS.get_name() != "iOS":
-		return
-	# Generic tool availability refreshes are allowed to run first, but they cannot be
-	# the final authority for the iOS Selection family. Collapse again on the next idle turn.
-	call_deferred("_sync_ios_selection_family_visual")
-
-
 func _sync_ios_selection_family_visual() -> void:
-	if OS.get_name() != "iOS":
+	if OS.get_name() != "iOS" or not is_instance_valid(_ios_selection_family_button):
 		return
-	if not is_instance_valid(_ios_selection_family_button):
-		call_deferred("_install_ios_selection_family")
-		return
-	_ios_selection_syncing = true
 	for tool_name in IOS_SELECTION_TOOLS:
+		if tool_name == IOS_SELECTION_DEFAULT:
+			continue
 		var tool: Tools.Tool = Tools.tools[String(tool_name)]
 		if not is_instance_valid(tool.button_node):
 			continue
-		var is_family_button := tool_name == IOS_SELECTION_DEFAULT
-		tool.button_node.visible = is_family_button
-		if not is_family_button:
-			# update_tool_buttons() may have restored a persisted Selection child's highlight
-			# before the generic visibility pass. Hidden family children must never retain a
-			# second visible-looking selected state when they are exposed during startup.
-			var child_left := tool.button_node.get_node("BackgroundLeft") as NinePatchRect
-			var child_right := tool.button_node.get_node("BackgroundRight") as NinePatchRect
-			child_left.visible = false
-			child_right.visible = false
+		tool.button_node.visible = false
+		var child_left := tool.button_node.get_node("BackgroundLeft") as NinePatchRect
+		var child_right := tool.button_node.get_node("BackgroundRight") as NinePatchRect
+		child_left.visible = false
+		child_right.visible = false
 	var recent_tool: Tools.Tool = Tools.tools[String(_ios_selection_recent_tool)]
 	var icon := _ios_selection_family_button.get_node("ToolIcon") as TextureRect
 	icon.texture = recent_tool.icon
@@ -418,7 +434,6 @@ func _sync_ios_selection_family_visual() -> void:
 		right_background.visible = is_ios_selection_tool(right_name)
 		left_background.anchor_right = 0.5
 	_ios_selection_family_button.queue_redraw()
-	_ios_selection_syncing = false
 
 
 func _on_tool_pressed(tool_pressed: BaseButton) -> void:
@@ -433,4 +448,7 @@ func _on_tool_pressed(tool_pressed: BaseButton) -> void:
 			else button
 		)
 	if button in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-		Tools.assign_tool(tool_pressed.name, button)
+		var tool_name := String(tool_pressed.name)
+		if OS.get_name() == "iOS" and _is_ios_selection_family_button(tool_pressed):
+			tool_name = String(_ios_selection_recent_tool)
+		Tools.assign_tool(tool_name, button)
