@@ -1,6 +1,7 @@
 extends FlowContainer
 
 const TOUCH_TAP_SLOP_PX := 12.0
+const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
 
 var pen_inverted := false
 ## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
@@ -91,9 +92,11 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 		if not is_instance_valid(button):
 			return false
 		_enter_touch_tool_ui()
+		get_viewport().gui_cancel_drag()
 		_touch_tool_candidates[event.index] = {
 			"tool_name": StringName(button.name),
 			"origin": event.position,
+			"cancelled": false,
 		}
 		return true
 
@@ -102,6 +105,9 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 	var candidate: Dictionary = _touch_tool_candidates[event.index]
 	_touch_tool_candidates.erase(event.index)
 	_enter_touch_tool_ui()
+	get_viewport().gui_cancel_drag()
+	if bool(candidate.get("cancelled", false)):
+		return true
 	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
 		return true
 	var released_over := _tool_button_at(event.position)
@@ -118,9 +124,14 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 func _handle_tool_drag(event: InputEventScreenDrag) -> bool:
 	if not _touch_tool_candidates.has(event.index):
 		return false
+	_enter_touch_tool_ui()
+	get_viewport().gui_cancel_drag()
 	var candidate: Dictionary = _touch_tool_candidates[event.index]
 	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
-		_touch_tool_candidates.erase(event.index)
+		# Keep ownership until release. Dropping the candidate here lets later synthetic
+		# mouse motion escape into the legacy UI and exposes the selected-tool cursor icon.
+		candidate["cancelled"] = true
+		_touch_tool_candidates[event.index] = candidate
 	return true
 
 
@@ -134,8 +145,21 @@ func _tool_button_at(screen_position: Vector2) -> BaseButton:
 	return null
 
 
+func _set_touch_mouse_filter(control: Control, disabled: bool) -> void:
+	if not control.has_meta(TOUCH_FILTER_META):
+		control.set_meta(TOUCH_FILTER_META, control.mouse_filter)
+	if disabled:
+		control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	else:
+		control.mouse_filter = int(control.get_meta(TOUCH_FILTER_META, Control.MOUSE_FILTER_PASS))
+	for child in control.get_children():
+		if child is Control:
+			_set_touch_mouse_filter(child as Control, disabled)
+
+
 func _enter_touch_tool_ui() -> void:
 	_touch_ui_mode = true
+	get_viewport().gui_cancel_drag()
 	for child in get_children():
 		var button := child as BaseButton
 		if not is_instance_valid(button):
@@ -143,9 +167,13 @@ func _enter_touch_tool_ui() -> void:
 		# Keep synthetic mouse hit-testing disabled after touch. This removes both the
 		# sticky hover state and delayed tooltip without changing global GUI emulation.
 		button.tooltip_text = ""
-		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_set_touch_mouse_filter(button, true)
 		button.release_focus()
 		button.queue_redraw()
+	# Pixelorama's custom tool cursor is the icon that otherwise appears to be dragged
+	# out of the toolbar. Touching the tool palette must leave no pointer preview behind.
+	if is_instance_valid(Global.canvas):
+		Global.canvas.set_adapter_tool_preview_active(false)
 
 
 func _restore_pointer_tool_ui() -> void:
@@ -157,7 +185,7 @@ func _restore_pointer_tool_ui() -> void:
 		var button := child as BaseButton
 		if not is_instance_valid(button):
 			continue
-		button.mouse_filter = Control.MOUSE_FILTER_PASS
+		_set_touch_mouse_filter(button, false)
 		if Tools.tools.has(String(button.name)):
 			button.tooltip_text = Tools.tools[String(button.name)].generate_hint_tooltip()
 		button.queue_redraw()

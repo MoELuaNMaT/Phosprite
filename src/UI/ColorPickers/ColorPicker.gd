@@ -2,6 +2,7 @@ extends Container
 
 const VALUE_ARROW := preload("res://assets/graphics/misc/value_arrow_right.svg")
 const VALUE_ARROW_EXPANDED := preload("res://assets/graphics/misc/value_arrow.svg")
+const TOUCH_TOOLTIP_META := &"phosprite_touch_tooltip"
 
 ## The HBoxContainer parent of the picker shapes.
 var shapes_container: HBoxContainer
@@ -24,9 +25,13 @@ var swatches_button: HBoxContainer
 var color_slider_types_hbox: HBoxContainer
 var color_sliders_grid: GridContainer
 var _skip_color_picker_update := false
+var _screen_sampler_button: BaseButton
+var _touch_color_ui_mode := false
 
 @onready var color_picker := %ColorPicker as ColorPicker
 @onready var color_buttons := %ColorButtons as HBoxContainer
+@onready var left_color_button := %LeftColorButton as Button
+@onready var right_color_button := %RightColorButton as Button
 @onready var left_color_rect := %LeftColorRect as ColorRect
 @onready var right_color_rect := %RightColorRect as ColorRect
 @onready var average_color := %AverageColor as ColorRect
@@ -73,6 +78,9 @@ func _ready() -> void:
 	# We are hiding the color preview rectangle, adding the hex LineEdit, the
 	# left/right color buttons and the color switch, default and average buttons.
 	var sampler_cont := picker_vbox_container.get_child(1, true) as HBoxContainer
+	_screen_sampler_button = sampler_cont.get_child(0, true) as BaseButton
+	if OS.get_name() == "iOS" and is_instance_valid(_screen_sampler_button):
+		_install_ios_screen_sampler()
 	# The color preview rectangle that we're hiding.
 	var color_texture_rect := sampler_cont.get_child(1, true) as TextureRect
 	color_texture_rect.visible = false
@@ -121,6 +129,20 @@ func _notification(what: int) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if OS.get_name() == "iOS":
+		var touch_position := Vector2.INF
+		if event is InputEventScreenTouch:
+			touch_position = (event as InputEventScreenTouch).position
+		elif event is InputEventScreenDrag:
+			touch_position = (event as InputEventScreenDrag).position
+		if touch_position != Vector2.INF and _touch_hits_color_controls(touch_position):
+			_enter_touch_color_ui()
+		elif (
+			(event is InputEventMouseMotion or event is InputEventMouseButton)
+			and event.device != -1
+		):
+			_restore_pointer_color_ui()
+
 	var hue_value := _mm_change_hue.get_action_distance(event)
 	var sat_value := _mm_change_sat.get_action_distance(event)
 	var value_value := _mm_change_value.get_action_distance(event)
@@ -138,6 +160,65 @@ func _input(event: InputEvent) -> void:
 	c.v += value_value
 	c.a += alpha_value
 	Tools.assign_color(c, Tools.picking_color_for, false)
+
+
+func _install_ios_screen_sampler() -> void:
+	# Godot's unsupported-platform fallback samples DisplayServer mouse/screen pixels.
+	# On iPad that path can resolve to black, so keep the existing button/icon but route
+	# it into Phosprite's canvas sampler instead.
+	for connection: Dictionary in _screen_sampler_button.get_signal_connection_list(&"pressed"):
+		var callback: Callable = connection.get("callable", Callable())
+		if callback.is_valid() and _screen_sampler_button.is_connected(&"pressed", callback):
+			_screen_sampler_button.disconnect(&"pressed", callback)
+	_screen_sampler_button.pressed.connect(_on_ios_screen_sampler_pressed)
+
+
+func _on_ios_screen_sampler_pressed() -> void:
+	CanvasInputAdapter.request_touch_color_sample()
+	_enter_touch_color_ui()
+	if is_instance_valid(Global.canvas):
+		Global.canvas.set_adapter_tool_preview_active(false)
+
+
+func _touch_hits_color_controls(screen_position: Vector2) -> bool:
+	if is_instance_valid(color_buttons) and color_buttons.get_global_rect().has_point(screen_position):
+		return true
+	return (
+		is_instance_valid(_screen_sampler_button)
+		and _screen_sampler_button.get_global_rect().has_point(screen_position)
+	)
+
+
+func _touch_color_controls() -> Array[Control]:
+	var controls: Array[Control] = []
+	if is_instance_valid(color_buttons):
+		controls.append(color_buttons)
+		for child in color_buttons.find_children("*", "Control", true, false):
+			if child is Control:
+				controls.append(child as Control)
+	if is_instance_valid(_screen_sampler_button):
+		controls.append(_screen_sampler_button)
+	return controls
+
+
+func _enter_touch_color_ui() -> void:
+	_touch_color_ui_mode = true
+	get_viewport().gui_cancel_drag()
+	for control in _touch_color_controls():
+		if not control.has_meta(TOUCH_TOOLTIP_META):
+			control.set_meta(TOUCH_TOOLTIP_META, control.tooltip_text)
+		control.tooltip_text = ""
+		control.release_focus()
+
+
+func _restore_pointer_color_ui() -> void:
+	if not _touch_color_ui_mode:
+		return
+	_touch_color_ui_mode = false
+	for control in _touch_color_controls():
+		if control.has_meta(TOUCH_TOOLTIP_META):
+			control.tooltip_text = String(control.get_meta(TOUCH_TOOLTIP_META, ""))
+			control.remove_meta(TOUCH_TOOLTIP_META)
 
 
 func _on_color_picker_color_changed(color: Color) -> void:
@@ -270,7 +351,12 @@ func _on_expand_button_toggled(toggled_on: bool) -> void:
 func _average(color_1: Color, color_2: Color) -> void:
 	var average := (color_1 + color_2) / 2.0
 	var copy_button := average_color.get_parent() as Control
-	copy_button.tooltip_text = str(tr("Average Color:"), "\n#", average.to_html())
+	var tooltip := str(tr("Average Color:"), "\n#", average.to_html())
+	if OS.get_name() == "iOS" and _touch_color_ui_mode:
+		copy_button.set_meta(TOUCH_TOOLTIP_META, tooltip)
+		copy_button.tooltip_text = ""
+	else:
+		copy_button.tooltip_text = tooltip
 	average_color.color = average
 
 
