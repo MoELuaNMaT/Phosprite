@@ -1,8 +1,8 @@
 extends BaseTool
 
-const COLOR_SAMPLING := preload("res://src/Tools/UtilityTools/ColorSampling.gd")
-
 enum { TOP_COLOR, CURRENT_LAYER }
+
+const COLOR_SAMPLING := preload("res://src/Tools/UtilityTools/ColorSampling.gd")
 
 var _prev_mode := 0
 var _color_slot := 0
