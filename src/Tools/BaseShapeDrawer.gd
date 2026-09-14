@@ -1,11 +1,18 @@
 extends BaseDrawTool
 
+const CANVAS_INPUT_ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
+const TOUCH_PERFECT_HOLD_SECONDS := 1.0
+
 var _start := Vector2i.ZERO
 var _offset := Vector2i.ZERO
 var _dest := Vector2i.ZERO
 var _fill_inside := false
 var _drawing := false
 var _displace_origin := false
+var _touch_hold_generation := 0
+var _touch_hold_armed := false
+var _touch_hold_anchor_screen := Vector2.ZERO
+var _touch_perfect_locked := false
 
 
 func _init() -> void:
@@ -73,6 +80,7 @@ func _input(event: InputEvent) -> void:
 
 
 func draw_start(pos: Vector2i) -> void:
+	_reset_touch_perfect_hold()
 	pos = snap_position(pos)
 	super.draw_start(pos)
 
@@ -101,6 +109,7 @@ func draw_move(pos: Vector2i) -> void:
 		_dest = pos
 		_offset = pos
 		_set_cursor_text(_get_result_rect(_start, pos))
+		_update_touch_perfect_hold()
 
 
 func draw_end(pos: Vector2i) -> void:
@@ -129,6 +138,65 @@ func _reset_tool() -> void:
 	Global.canvas.previews_sprite.texture = null
 	_displace_origin = false
 	cursor_text = ""
+	_reset_touch_perfect_hold()
+
+
+func _reset_touch_perfect_hold() -> void:
+	_touch_hold_generation += 1
+	_touch_hold_armed = false
+	_touch_hold_anchor_screen = Vector2.ZERO
+	_touch_perfect_locked = false
+
+
+func _update_touch_perfect_hold() -> void:
+	if not _is_adapter_touch_shape_drag() or _touch_perfect_locked:
+		return
+	var current_screen := _current_touch_screen_position()
+	if (
+		_touch_hold_armed
+		and not CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+			_touch_hold_anchor_screen, current_screen
+		)
+	):
+		return
+	_touch_hold_generation += 1
+	_touch_hold_armed = true
+	_touch_hold_anchor_screen = current_screen
+	var generation := _touch_hold_generation
+	var timer := get_tree().create_timer(TOUCH_PERFECT_HOLD_SECONDS)
+	timer.timeout.connect(_try_lock_touch_perfect_shape.bind(generation))
+
+
+func _try_lock_touch_perfect_shape(generation: int) -> void:
+	if (
+		generation != _touch_hold_generation
+		or not _touch_hold_armed
+		or _touch_perfect_locked
+		or not _is_adapter_touch_shape_drag()
+	):
+		return
+	var current_screen := _current_touch_screen_position()
+	if CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+		_touch_hold_anchor_screen, current_screen
+	):
+		return
+	_touch_hold_armed = false
+	_touch_perfect_locked = true
+	# Refresh the preview immediately at the stationary touch point. The lock then remains
+	# active until this shape finishes, matching Rect/Ellipse Selection on iOS.
+	draw_move(Vector2i(Global.canvas.current_pixel.floor()))
+	Global.canvas.previews.queue_redraw()
+
+
+func _is_adapter_touch_shape_drag() -> bool:
+	if OS.get_name() != "iOS" or not _drawing or not is_instance_valid(Global.canvas):
+		return false
+	var adapter = Global.canvas._input_adapter
+	return adapter != null and int(adapter._content_touch_id) != -1
+
+
+func _current_touch_screen_position() -> Vector2:
+	return Global.canvas.get_global_transform_with_canvas() * Global.canvas.current_pixel
 
 
 func draw_preview() -> void:
@@ -170,12 +238,13 @@ func _draw_shape(origin: Vector2i, dest: Vector2i) -> void:
 ## where the shape will be drawn and what is its size
 func _get_result_rect(origin: Vector2i, dest: Vector2i) -> Rect2i:
 	var rect := Rect2i()
+	var perfect_shape := Input.is_action_pressed(&"shape_perfect") or _touch_perfect_locked
 
 	# Center the rect on the mouse
 	if Input.is_action_pressed(&"shape_center"):
 		var new_size := dest - origin
 		# Make rect 1:1 while centering it on the mouse
-		if Input.is_action_pressed(&"shape_perfect"):
+		if perfect_shape:
 			var square_size := maxi(absi(new_size.x), absi(new_size.y))
 			new_size = Vector2i(square_size, square_size)
 
@@ -183,7 +252,7 @@ func _get_result_rect(origin: Vector2i, dest: Vector2i) -> Rect2i:
 		dest = origin + 2 * new_size
 
 	# Make rect 1:1 while not trying to center it
-	if Input.is_action_pressed(&"shape_perfect"):
+	if perfect_shape:
 		var square_size := mini(absi(origin.x - dest.x), absi(origin.y - dest.y))
 		rect.position.x = origin.x if origin.x < dest.x else origin.x - square_size
 		rect.position.y = origin.y if origin.y < dest.y else origin.y - square_size
