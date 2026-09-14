@@ -36,7 +36,8 @@ var _ios_screen_sampler_armed := false
 @onready var color_buttons := %ColorButtons as HBoxContainer
 @onready var left_color_button := %LeftColorButton as Button
 @onready var right_color_button := %RightColorButton as Button
-@onready var color_switch := $ScrollContainer/VerticalContainer/ColorButtons/ColorSwitch as TextureButton
+@onready
+var color_switch := $ScrollContainer/VerticalContainer/ColorButtons/ColorSwitch as TextureButton
 @onready var left_color_rect := %LeftColorRect as ColorRect
 @onready var right_color_rect := %RightColorRect as ColorRect
 @onready var average_color := %AverageColor as ColorRect
@@ -214,15 +215,20 @@ func _handle_color_control_drag(event: InputEventScreenDrag) -> bool:
 
 
 func _color_control_action_at(screen_position: Vector2) -> StringName:
-	if is_instance_valid(left_color_button) and left_color_button.get_global_rect().has_point(
-		screen_position
+	if (
+		is_instance_valid(left_color_button)
+		and left_color_button.get_global_rect().has_point(screen_position)
 	):
 		return &"left"
-	if is_instance_valid(right_color_button) and right_color_button.get_global_rect().has_point(
-		screen_position
+	if (
+		is_instance_valid(right_color_button)
+		and right_color_button.get_global_rect().has_point(screen_position)
 	):
 		return &"right"
-	if is_instance_valid(color_switch) and color_switch.get_global_rect().has_point(screen_position):
+	if (
+		is_instance_valid(color_switch)
+		and color_switch.get_global_rect().has_point(screen_position)
+	):
 		return &"swap"
 	if (
 		is_instance_valid(_screen_sampler_button)
