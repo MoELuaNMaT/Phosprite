@@ -75,7 +75,12 @@ func draw_end(pos: Vector2i) -> void:
 		return
 	pos = snap_position(pos)
 	if !_move and _draw_points:
-		if _consume_ios_touch_double_tap():
+		# Desktop historically closes only when the snapped pixel exactly equals the first
+		# point. On touch that makes the visible start target effectively impossible to hit,
+		# so iOS accepts the same shared 12 px touch radius and snaps the close to point zero.
+		if _is_ios_touch_close_to_first_point():
+			pos = _draw_points[0]
+		elif _consume_ios_touch_double_tap():
 			$DoubleClickTimer.start()
 			_draw_points.append_array(Geometry2D.bresenham_line(_draw_points[-1], _draw_points[0]))
 			_ready_to_apply = true
@@ -165,6 +170,16 @@ func _clear() -> void:
 	if is_instance_valid(_touch_cancel_button):
 		_touch_cancel_button.visible = false
 	Global.canvas.previews.queue_redraw()
+
+
+func _is_ios_touch_close_to_first_point() -> bool:
+	if _draw_points.size() <= 1 or not _is_adapter_touch_polygon_input():
+		return false
+	var canvas_transform := Global.canvas.get_global_transform_with_canvas()
+	var first_point_screen := canvas_transform * (Vector2(_draw_points[0]) + Vector2.ONE * 0.5)
+	return not CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+		first_point_screen, _current_touch_screen_position()
+	)
 
 
 func _consume_ios_touch_double_tap() -> bool:
