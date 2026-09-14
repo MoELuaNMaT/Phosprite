@@ -490,7 +490,9 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 
 
 func _sample_primary_color(canvas: Node2D, screen_position: Vector2) -> void:
-	var canvas_position := canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
+	var canvas_position := (
+		canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
+	)
 	COLOR_SAMPLING.pick_color(
 		Vector2i(canvas_position.floor()), MOUSE_BUTTON_LEFT, COLOR_SAMPLING.TOP_COLOR
 	)
