@@ -101,7 +101,14 @@ func install_preferences_ui(scene_root: Node) -> void:
 	if not is_instance_valid(preferences_dialog):
 		return
 	var options := preferences_dialog.find_child("ToolOptions", true, false) as GridContainer
-	if not is_instance_valid(options) or options.has_node("FingerPolicyLabel"):
+	if not is_instance_valid(options):
+		return
+	_install_finger_policy_preference(options)
+	_install_two_finger_rotation_preference(options)
+
+
+func _install_finger_policy_preference(options: GridContainer) -> void:
+	if options.has_node("FingerPolicyLabel"):
 		return
 
 	var label := Label.new()
@@ -133,6 +140,11 @@ func install_preferences_ui(scene_root: Node) -> void:
 	options.add_child(label)
 	options.add_child(spacer)
 	options.add_child(option)
+
+
+func _install_two_finger_rotation_preference(options: GridContainer) -> void:
+	if options.has_node("TwoFingerRotationLabel"):
+		return
 
 	var rotation_label := Label.new()
 	rotation_label.name = "TwoFingerRotationLabel"

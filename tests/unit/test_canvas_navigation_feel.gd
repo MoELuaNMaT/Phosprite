@@ -2,6 +2,7 @@ extends "res://tests/test_base.gd"
 
 const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"
+const CANVAS_SOURCE := "res://src/UI/Canvas/Canvas.gd"
 
 
 func test_navigation_dead_zones_are_small_and_independent() -> void:
@@ -228,4 +229,39 @@ func test_rotation_preference_is_persistent_and_pair_scoped() -> void:
 		src,
 		"_navigation_rotation_enabled_for_pair = _two_finger_rotation_enabled",
 		"rotation enablement must be snapshotted at pair begin to avoid mid-gesture mode jumps"
+	)
+
+
+func test_ipad_preferences_installation_handles_late_dialog_creation() -> void:
+	var adapter_src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	check_has(
+		adapter_src,
+		"_install_finger_policy_preference(options)",
+		"finger policy preference must install independently"
+	)
+	check_has(
+		adapter_src,
+		"_install_two_finger_rotation_preference(options)",
+		"rotation preference must install independently"
+	)
+	check_true(
+		not ('or options.has_node("FingerPolicyLabel")' in adapter_src),
+		"an existing P1-B row must not block the P1-C3 row"
+	)
+
+	var canvas_src := FileAccess.get_file_as_string(CANVAS_SOURCE)
+	check_has(
+		canvas_src,
+		"get_tree().node_added.connect(_on_scene_tree_node_added)",
+		"iOS Canvas must watch for Preferences nodes created after startup"
+	)
+	check_has(
+		canvas_src,
+		'node.name != &"PreferencesDialog" and node.name != &"ToolOptions"',
+		"late-install watcher must stay scoped to the Preferences subtree"
+	)
+	check_has(
+		canvas_src,
+		'call_deferred("_install_adapter_preferences")',
+		"Preferences installation must wait until the added subtree finishes entering the tree"
 	)
