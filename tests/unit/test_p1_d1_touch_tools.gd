@@ -55,6 +55,40 @@ func test_long_press_does_not_draw_then_undo() -> void:
 	)
 
 
+func test_long_press_timer_is_bound_to_exact_touch_contact() -> void:
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	check_has(src, "_touch_generation += 1", "each touch begin needs a new contact generation")
+	check_has(
+		src,
+		'"generation": _touch_generation',
+		"the captured touch state must retain its contact generation"
+	)
+	check_has(
+		src,
+		"_try_begin_long_press.bind(canvas, touch_id, generation)",
+		"the delayed timeout must capture the exact contact generation"
+	)
+	check_has(
+		src,
+		'int(state.get("generation", -1)) != generation',
+		"a stale timeout must not activate after iOS reuses a touch index"
+	)
+
+
+func test_long_press_release_samples_the_lift_position() -> void:
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	var end_content := src.find("func _end_content")
+	var dispatch_motion := src.find("func _dispatch_motion", end_content)
+	check_true(end_content >= 0 and dispatch_motion > end_content, "adapter must expose _end_content")
+	if end_content >= 0 and dispatch_motion > end_content:
+		var body := src.substr(end_content, dispatch_motion - end_content)
+		check_has(
+			body,
+			"_sample_primary_color(canvas, screen_position)",
+			"long-press release must sample the final lift position even without a final drag event"
+		)
+
+
 func test_tool_buttons_use_native_touch_and_clear_touch_hover_state() -> void:
 	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
 	check_has(src, "InputEventScreenTouch", "tool selection must consume direct touch")
