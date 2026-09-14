@@ -42,6 +42,10 @@ func _ready() -> void:
 	Global.main_viewport.mouse_entered.connect(func(): _ignore_shortcuts = false)
 	Global.main_viewport.mouse_exited.connect(func(): _ignore_shortcuts = true)
 	if OS.get_name() == "iOS":
+		# Tools performs a final visibility pass after its own startup awaits. Re-assert the
+		# compact Selection family at the actual application-open boundary, not only here.
+		if not Global.pixelorama_opened.is_connected(_on_ios_pixelorama_opened):
+			Global.pixelorama_opened.connect(_on_ios_pixelorama_opened)
 		call_deferred("_install_ios_selection_family")
 
 
@@ -259,6 +263,8 @@ func _install_ios_selection_family() -> void:
 		Tools.tool_changed.connect(_on_ios_tool_changed)
 	if not Global.single_tool_mode_changed.is_connected(_on_ios_single_tool_mode_changed):
 		Global.single_tool_mode_changed.connect(_on_ios_single_tool_mode_changed)
+	if not Global.cel_switched.is_connected(_on_ios_cel_switched):
+		Global.cel_switched.connect(_on_ios_cel_switched)
 	_sync_ios_selection_family_visual()
 
 
@@ -321,6 +327,16 @@ func _on_ios_tool_changed(tool_name: String, button: int) -> void:
 	if button == MOUSE_BUTTON_LEFT and is_ios_selection_tool(selection_name):
 		_set_ios_selection_recent_tool(selection_name)
 	_sync_ios_selection_family_visual()
+
+
+func _on_ios_pixelorama_opened() -> void:
+	call_deferred("_sync_ios_selection_family_visual")
+
+
+func _on_ios_cel_switched() -> void:
+	# Tools may change button visibility when the active layer type changes. Run after
+	# those listeners and keep the seven Selection children represented by one entry.
+	call_deferred("_sync_ios_selection_family_visual")
 
 
 func _on_ios_single_tool_mode_changed(_mode: bool) -> void:
