@@ -1,8 +1,6 @@
 class_name TouchGestureRecognizer
 extends RefCounted
 
-const GestureConfig := preload("res://src/InputAdapter/TouchGestureConfig.gd")
-
 enum Gesture {
 	NONE,
 	TAP,
@@ -13,6 +11,8 @@ enum Gesture {
 	DRAG_END,
 	CANCEL,
 }
+
+const GestureConfig := preload("res://src/InputAdapter/TouchGestureConfig.gd")
 
 var config: TouchGestureConfig
 var _pointers: Dictionary = {}
