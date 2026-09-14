@@ -81,8 +81,7 @@ func test_rect_and_ellipse_perfect_hold_reuse_d1_touch_slop() -> void:
 			"perfect-shape hold must reuse the D1 touch-slop rule"
 		)
 		check_true(
-			not ("TOUCH_PERFECT_SLOP" in src),
-			"D2 must not invent a second touch-slop constant"
+			not ("TOUCH_PERFECT_SLOP" in src), "D2 must not invent a second touch-slop constant"
 		)
 		check_has(
 			src,
@@ -135,7 +134,7 @@ func test_polygon_touch_completion_and_cancel_are_explicit() -> void:
 	)
 	check_has(
 		src,
-		'if pos == _draw_points[0] and _draw_points.size() > 1',
+		"if pos == _draw_points[0] and _draw_points.size() > 1",
 		"tapping the first point must retain the existing close-and-apply behavior"
 	)
 	check_has(
@@ -153,7 +152,10 @@ func test_polygon_touch_completion_and_cancel_are_explicit() -> void:
 func test_selection_modes_remain_the_existing_four_mode_model() -> void:
 	var src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
 	for label in [
-		"Replace selection", "Add to selection", "Subtract from selection", "Intersect with selection"
+		"Replace selection",
+		"Add to selection",
+		"Subtract from selection",
+		"Intersect with selection"
 	]:
 		check_has(src, label, "all four approved Selection modes must remain explicitly available")
 	check_has(
