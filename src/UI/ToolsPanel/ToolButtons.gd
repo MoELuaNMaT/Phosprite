@@ -26,6 +26,7 @@ var _ios_selection_family_button: BaseButton
 var _ios_selection_menu: PopupMenu
 var _ios_selection_recent_tool := IOS_SELECTION_DEFAULT
 var _ios_selection_touch_generation := 0
+var _ios_selection_syncing := false
 
 
 static func is_ios_selection_tool(tool_name: StringName) -> bool:
@@ -42,8 +43,8 @@ func _ready() -> void:
 	Global.main_viewport.mouse_entered.connect(func(): _ignore_shortcuts = false)
 	Global.main_viewport.mouse_exited.connect(func(): _ignore_shortcuts = true)
 	if OS.get_name() == "iOS":
-		# Tools performs a final visibility pass after its own startup awaits. Re-assert the
-		# compact Selection family at the actual application-open boundary, not only here.
+		# The tool registry finishes its own startup visibility pass later. Installation is
+		# idempotent, and per-button visibility guards re-assert compaction after that pass.
 		if not Global.pixelorama_opened.is_connected(_on_ios_pixelorama_opened):
 			Global.pixelorama_opened.connect(_on_ios_pixelorama_opened)
 		call_deferred("_install_ios_selection_family")
@@ -243,7 +244,8 @@ func _install_ios_selection_family() -> void:
 	await get_tree().process_frame
 	if OS.get_name() != "iOS" or not Tools.tools.has(String(IOS_SELECTION_DEFAULT)):
 		return
-	_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node
+	if not is_instance_valid(_ios_selection_family_button):
+		_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node
 	if not is_instance_valid(_ios_selection_family_button):
 		return
 	_ios_selection_recent_tool = normalize_ios_recent_selection_tool(
@@ -251,21 +253,34 @@ func _install_ios_selection_family() -> void:
 			IOS_SELECTION_RECENT_SECTION, IOS_SELECTION_RECENT_KEY, IOS_SELECTION_DEFAULT
 		)
 	)
-	_ios_selection_menu = PopupMenu.new()
-	_ios_selection_menu.name = "SelectionFamilyMenu"
-	for index in IOS_SELECTION_TOOLS.size():
-		var tool_name: StringName = IOS_SELECTION_TOOLS[index]
-		var tool: Tools.Tool = Tools.tools[String(tool_name)]
-		_ios_selection_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
-	_ios_selection_menu.id_pressed.connect(_on_ios_selection_menu_id_pressed)
-	get_parent().add_child(_ios_selection_menu)
+	if not is_instance_valid(_ios_selection_menu):
+		_ios_selection_menu = PopupMenu.new()
+		_ios_selection_menu.name = "SelectionFamilyMenu"
+		for index in IOS_SELECTION_TOOLS.size():
+			var tool_name: StringName = IOS_SELECTION_TOOLS[index]
+			var tool: Tools.Tool = Tools.tools[String(tool_name)]
+			_ios_selection_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
+		_ios_selection_menu.id_pressed.connect(_on_ios_selection_menu_id_pressed)
+		get_parent().add_child(_ios_selection_menu)
 	if not Tools.tool_changed.is_connected(_on_ios_tool_changed):
 		Tools.tool_changed.connect(_on_ios_tool_changed)
 	if not Global.single_tool_mode_changed.is_connected(_on_ios_single_tool_mode_changed):
 		Global.single_tool_mode_changed.connect(_on_ios_single_tool_mode_changed)
 	if not Global.cel_switched.is_connected(_on_ios_cel_switched):
 		Global.cel_switched.connect(_on_ios_cel_switched)
+	_connect_ios_selection_visibility_guards()
 	_sync_ios_selection_family_visual()
+
+
+func _connect_ios_selection_visibility_guards() -> void:
+	for tool_name in IOS_SELECTION_TOOLS:
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		if not is_instance_valid(tool.button_node):
+			continue
+		if not tool.button_node.visibility_changed.is_connected(
+			_on_ios_selection_child_visibility_changed
+		):
+			tool.button_node.visibility_changed.connect(_on_ios_selection_child_visibility_changed)
 
 
 func _is_ios_selection_family_button(button: BaseButton) -> bool:
@@ -330,7 +345,9 @@ func _on_ios_tool_changed(tool_name: String, button: int) -> void:
 
 
 func _on_ios_pixelorama_opened() -> void:
-	call_deferred("_sync_ios_selection_family_visual")
+	# Retry the idempotent installer as well as syncing. This covers startup orders where
+	# ToolButtons becomes ready before Tools has assigned its button nodes.
+	call_deferred("_install_ios_selection_family")
 
 
 func _on_ios_cel_switched() -> void:
@@ -343,14 +360,35 @@ func _on_ios_single_tool_mode_changed(_mode: bool) -> void:
 	call_deferred("_sync_ios_selection_family_visual")
 
 
-func _sync_ios_selection_family_visual() -> void:
-	if OS.get_name() != "iOS" or not is_instance_valid(_ios_selection_family_button):
+func _on_ios_selection_child_visibility_changed() -> void:
+	if _ios_selection_syncing or OS.get_name() != "iOS":
 		return
+	# Generic tool availability refreshes are allowed to run first, but they cannot be
+	# the final authority for the iOS Selection family. Collapse again on the next idle turn.
+	call_deferred("_sync_ios_selection_family_visual")
+
+
+func _sync_ios_selection_family_visual() -> void:
+	if OS.get_name() != "iOS":
+		return
+	if not is_instance_valid(_ios_selection_family_button):
+		call_deferred("_install_ios_selection_family")
+		return
+	_ios_selection_syncing = true
 	for tool_name in IOS_SELECTION_TOOLS:
 		var tool: Tools.Tool = Tools.tools[String(tool_name)]
 		if not is_instance_valid(tool.button_node):
 			continue
-		tool.button_node.visible = tool_name == IOS_SELECTION_DEFAULT
+		var is_family_button := tool_name == IOS_SELECTION_DEFAULT
+		tool.button_node.visible = is_family_button
+		if not is_family_button:
+			# update_tool_buttons() may have restored a persisted Selection child's highlight
+			# before the generic visibility pass. Hidden family children must never retain a
+			# second visible-looking selected state when they are exposed during startup.
+			var child_left := tool.button_node.get_node("BackgroundLeft") as NinePatchRect
+			var child_right := tool.button_node.get_node("BackgroundRight") as NinePatchRect
+			child_left.visible = false
+			child_right.visible = false
 	var recent_tool: Tools.Tool = Tools.tools[String(_ios_selection_recent_tool)]
 	var icon := _ios_selection_family_button.get_node("ToolIcon") as TextureRect
 	icon.texture = recent_tool.icon
@@ -380,6 +418,7 @@ func _sync_ios_selection_family_visual() -> void:
 		right_background.visible = is_ios_selection_tool(right_name)
 		left_background.anchor_right = 0.5
 	_ios_selection_family_button.queue_redraw()
+	_ios_selection_syncing = false
 
 
 func _on_tool_pressed(tool_pressed: BaseButton) -> void:
