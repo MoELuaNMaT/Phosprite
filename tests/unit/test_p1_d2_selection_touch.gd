@@ -68,22 +68,42 @@ func test_selection_family_is_ios_only_and_persists_recent_child() -> void:
 	)
 
 
-func test_selection_family_reasserts_compaction_after_startup_visibility_pass() -> void:
+func test_selection_family_owns_final_visibility_after_startup_refresh() -> void:
 	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
 	check_has(
 		src,
-		"Global.pixelorama_opened.connect(_on_ios_pixelorama_opened)",
-		"initial compaction must run again after the application's final startup visibility pass"
+		"_connect_ios_selection_visibility_guards()",
+		"Selection compaction must subscribe to the real toolbar visibility boundary"
 	)
 	check_has(
 		src,
-		"Global.cel_switched.connect(_on_ios_cel_switched)",
-		"layer/cel visibility refreshes must not expand the seven Selection buttons again"
+		"tool.button_node.visibility_changed.connect(_on_ios_selection_child_visibility_changed)",
+		"generic startup/layer visibility refreshes must trigger Selection re-compaction"
 	)
 	check_has(
 		src,
-		'call_deferred("_sync_ios_selection_family_visual")',
-		"compaction re-sync must run after the generic visibility listeners"
+		'call_deferred("_install_ios_selection_family")',
+		"the idempotent installer must retry when startup ordering delays tool-button creation"
+	)
+	check_has(
+		src,
+		"var is_family_button := tool_name == IOS_SELECTION_DEFAULT",
+		"exactly one persistent toolbar button must represent the seven Selection children"
+	)
+	check_has(
+		src,
+		"tool.button_node.visible = is_family_button",
+		"a late generic visibility pass must not leave Selection children exposed"
+	)
+	check_has(
+		src,
+		"child_left.visible = false",
+		"persisted recent Selection children must not retain a second Primary highlight"
+	)
+	check_has(
+		src,
+		"child_right.visible = false",
+		"persisted recent Selection children must not retain a second Secondary highlight"
 	)
 
 
