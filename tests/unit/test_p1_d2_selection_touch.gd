@@ -6,6 +6,7 @@ const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const RECT_SOURCE := "res://src/Tools/SelectionTools/RectSelect.gd"
 const ELLIPSE_SOURCE := "res://src/Tools/SelectionTools/EllipseSelect.gd"
 const POLYGON_SOURCE := "res://src/Tools/SelectionTools/PolygonSelect.gd"
+const BASE_SHAPE_SOURCE := "res://src/Tools/BaseShapeDrawer.gd"
 const BASE_SELECTION_SOURCE := "res://src/Tools/BaseSelectionTool.gd"
 const TRANSFORM_SOURCE := "res://src/UI/Canvas/TransformationHandles.gd"
 
@@ -67,6 +68,25 @@ func test_selection_family_is_ios_only_and_persists_recent_child() -> void:
 	)
 
 
+func test_selection_family_reasserts_compaction_after_startup_visibility_pass() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		"Global.pixelorama_opened.connect(_on_ios_pixelorama_opened)",
+		"initial compaction must run again after the application's final startup visibility pass"
+	)
+	check_has(
+		src,
+		"Global.cel_switched.connect(_on_ios_cel_switched)",
+		"layer/cel visibility refreshes must not expand the seven Selection buttons again"
+	)
+	check_has(
+		src,
+		'call_deferred("_sync_ios_selection_family_visual")',
+		"compaction re-sync must run after the generic visibility listeners"
+	)
+
+
 func test_rect_and_ellipse_perfect_hold_reuse_d1_touch_slop() -> void:
 	for path in [RECT_SOURCE, ELLIPSE_SOURCE]:
 		var src := FileAccess.get_file_as_string(path)
@@ -120,6 +140,35 @@ func test_perfect_hold_is_touch_owned_and_stationary_timer_driven() -> void:
 	)
 
 
+func test_rectangle_and_ellipse_draw_tools_share_touch_perfect_hold() -> void:
+	var src := FileAccess.get_file_as_string(BASE_SHAPE_SOURCE)
+	check_has(
+		src,
+		"TOUCH_PERFECT_HOLD_SECONDS := 1.0",
+		"Rectangle/Ellipse drawing must use the same 1000 ms dwell as Selection"
+	)
+	check_has(
+		src,
+		"CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop",
+		"drawing shapes must reuse the shared D1 touch slop"
+	)
+	check_has(
+		src,
+		"_touch_perfect_locked = true",
+		"drawing shape 1:1 mode must remain locked through the current drag"
+	)
+	check_has(
+		src,
+		'Input.is_action_pressed(&"shape_perfect") or _touch_perfect_locked',
+		"touch perfect-shape acquisition must extend rather than replace desktop modifiers"
+	)
+	check_has(
+		src,
+		"draw_move(Vector2i(Global.canvas.current_pixel.floor()))",
+		"Rectangle/Ellipse preview must refresh immediately when dwell completes"
+	)
+
+
 func test_polygon_touch_completion_and_cancel_are_explicit() -> void:
 	var src := FileAccess.get_file_as_string(POLYGON_SOURCE)
 	check_has(
@@ -130,12 +179,22 @@ func test_polygon_touch_completion_and_cancel_are_explicit() -> void:
 	check_has(
 		src,
 		"CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop",
-		"double-tap matching must reuse the shared touch slop"
+		"double-tap and first-point matching must reuse the shared touch slop"
+	)
+	check_has(
+		src,
+		"_is_ios_touch_close_to_first_point()",
+		"the visible first point must be a touch-sized close target instead of exact-pixel only"
+	)
+	check_has(
+		src,
+		"pos = _draw_points[0]",
+		"a touch hit on the first point must snap to the existing exact close/apply boundary"
 	)
 	check_has(
 		src,
 		"if pos == _draw_points[0] and _draw_points.size() > 1",
-		"tapping the first point must retain the existing close-and-apply behavior"
+		"touch tolerance must preserve the existing polygon close-and-apply behavior"
 	)
 	check_has(
 		src,
