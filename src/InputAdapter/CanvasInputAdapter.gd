@@ -9,11 +9,14 @@ extends RefCounted
 enum PointerKind { UNKNOWN, PENCIL, DIRECT, INDIRECT }
 enum FingerPolicy { UNRESTRICTED, FINGER_NAVIGATION_ONLY, PENCIL_PRIORITY }
 
+const COLOR_SAMPLING := preload("res://src/Tools/UtilityTools/ColorSampling.gd")
 const POINTER_IDENTITY_SINGLETON := &"PhospritePointerIdentity"
 const PREFERENCE_SECTION := "preferences"
 const FINGER_POLICY_KEY := "finger_policy"
 const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const TWO_FINGER_EPSILON := 0.01
+const FINGER_LONG_PRESS_SECONDS := 0.45
+const FINGER_LONG_PRESS_SLOP_PX := 12.0
 
 # P1-C2 uses small acquisition-only dead zones. Once a degree of freedom activates,
 # navigation is direct from the fixed pair baseline: no inertia, no smoothing tween
@@ -159,6 +162,16 @@ static func direct_content_navigation_takeover_allowed(
 	)
 
 
+static func should_defer_finger_content_for_long_press(primary_tool_name: StringName) -> bool:
+	# A selected Color Picker must remain a normal immediate Tap/Drag tool. Other Primary
+	# tools defer only the first direct-touch stroke until tap/drag/long-press is disambiguated.
+	return primary_tool_name != &"ColorPicker"
+
+
+static func long_press_motion_exceeds_slop(origin: Vector2, current: Vector2) -> bool:
+	return origin.distance_to(current) >= FINGER_LONG_PRESS_SLOP_PX
+
+
 static func navigation_pair_geometry(
 	first_position: Vector2, second_position: Vector2
 ) -> Dictionary:
@@ -255,6 +268,9 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		"position": event.position,
 		"previous_position": event.position,
 		"suppressed": false,
+		"content_pending": false,
+		"long_press_pick": false,
+		"content_origin": event.position,
 	}
 	_touches[event.index] = state
 
@@ -290,7 +306,10 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		return
 
 	if direct_content_allowed(_finger_policy, false):
-		_start_content(canvas, event.index, event.position)
+		if should_defer_finger_content_for_long_press(_primary_tool_name()):
+			_start_pending_content(canvas, event.index, event.position)
+		else:
+			_start_content(canvas, event.index, event.position)
 	else:
 		_try_begin_navigation()
 
@@ -324,6 +343,17 @@ func _handle_drag(canvas: Node2D, event: InputEventScreenDrag) -> void:
 	if bool(state["suppressed"]):
 		return
 	if _content_touch_id == event.index:
+		if bool(state.get("long_press_pick", false)):
+			_sample_primary_color(canvas, event.position)
+			return
+		if bool(state.get("content_pending", false)):
+			var origin := Vector2(state["content_origin"])
+			if long_press_motion_exceeds_slop(origin, event.position):
+				state["content_pending"] = false
+				_touches[event.index] = state
+				_start_content(canvas, event.index, origin)
+				_dispatch_motion(canvas, event, int(state["kind"]))
+			return
 		_dispatch_motion(canvas, event, int(state["kind"]))
 		return
 	if _pencil_touch_id != -1:
@@ -353,12 +383,60 @@ func _begin_pencil_ownership(canvas: Node2D, touch_id: int) -> void:
 		canvas.queue_redraw()
 
 
+func _start_pending_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> void:
+	if _content_touch_id != -1 and _content_touch_id != touch_id:
+		return
+	_content_touch_id = touch_id
+	_clear_navigation()
+	canvas.set_adapter_tool_preview_active(true)
+	if not _touches.has(touch_id):
+		return
+	var state: Dictionary = _touches[touch_id]
+	state["content_pending"] = true
+	state["long_press_pick"] = false
+	state["content_origin"] = screen_position
+	_touches[touch_id] = state
+	var timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_SECONDS)
+	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id))
+
+
+func _try_begin_long_press(canvas: Node2D, touch_id: int) -> void:
+	if not is_instance_valid(canvas) or _content_touch_id != touch_id or not _touches.has(touch_id):
+		return
+	if _pencil_touch_id != -1 or _navigation_ids.size() == 2:
+		return
+	var state: Dictionary = _touches[touch_id]
+	if (
+		int(state["kind"]) != PointerKind.DIRECT
+		or bool(state["suppressed"])
+		or not bool(state.get("content_pending", false))
+	):
+		return
+	var origin := Vector2(state["content_origin"])
+	var current := Vector2(state["position"])
+	if long_press_motion_exceeds_slop(origin, current):
+		return
+	state["content_pending"] = false
+	state["long_press_pick"] = true
+	_touches[touch_id] = state
+	_sample_primary_color(canvas, current)
+
+
 func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> void:
 	if _content_touch_id != -1 and _content_touch_id != touch_id:
 		return
 	_content_touch_id = touch_id
 	_clear_navigation()
 	canvas.set_adapter_tool_preview_active(true)
+	if _touches.has(touch_id):
+		var state: Dictionary = _touches[touch_id]
+		state["content_pending"] = false
+		state["long_press_pick"] = false
+		_touches[touch_id] = state
+	_dispatch_content_press(canvas, screen_position)
+
+
+func _dispatch_content_press(canvas: Node2D, screen_position: Vector2) -> void:
 	var event := InputEventMouseButton.new()
 	event.device = -1
 	event.position = screen_position
@@ -372,6 +450,17 @@ func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> 
 func _end_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> void:
 	if _content_touch_id != touch_id:
 		return
+	var state: Dictionary = _touches.get(touch_id, {})
+	if bool(state.get("long_press_pick", false)):
+		_content_touch_id = -1
+		canvas.set_adapter_tool_preview_active(false)
+		return
+	if bool(state.get("content_pending", false)):
+		# A short stationary finger contact is a normal Primary tap. Resolve it only
+		# on release so a future long press never needs to undo an already-mutated stroke.
+		screen_position = Vector2(state["content_origin"])
+		_start_content(canvas, touch_id, screen_position)
+
 	var event := InputEventMouseButton.new()
 	event.device = -1
 	event.position = screen_position
@@ -398,6 +487,22 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 	event.tilt = drag.tilt if kind == PointerKind.PENCIL else Vector2.ZERO
 	event.pen_inverted = drag.pen_inverted if kind == PointerKind.PENCIL else false
 	canvas.handle_adapter_tool_event(drag.position, event)
+
+
+func _sample_primary_color(canvas: Node2D, screen_position: Vector2) -> void:
+	var canvas_position := canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
+	COLOR_SAMPLING.pick_color(
+		Vector2i(canvas_position.floor()), MOUSE_BUTTON_LEFT, COLOR_SAMPLING.TOP_COLOR
+	)
+
+
+func _primary_tool_name() -> StringName:
+	if not Tools._slots.has(MOUSE_BUTTON_LEFT):
+		return &""
+	var slot = Tools._slots[MOUSE_BUTTON_LEFT]
+	if not is_instance_valid(slot.tool_node):
+		return &""
+	return StringName(slot.tool_node.name)
 
 
 func _try_promote_direct_content_to_navigation(canvas: Node2D) -> bool:
@@ -494,7 +599,7 @@ func _rebase_navigation() -> void:
 			if int(state["kind"]) == PointerKind.DIRECT and not bool(state["suppressed"]):
 				valid_ids.append(id)
 	if valid_ids.size() == 2:
-		# The same pair is still active; its pair-level baseline must remain unchanged.
+		# The same active pair must keep its original pair-level baseline unchanged.
 		return
 	_clear_navigation()
 	_try_begin_navigation()
