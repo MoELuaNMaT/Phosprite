@@ -28,6 +28,7 @@ const TWO_FINGER_ROTATION_ENABLED := false
 var _touches: Dictionary = {}
 var _content_touch_id := -1
 var _pencil_touch_id := -1
+var _touch_generation := 0
 var _navigation_ids := PackedInt32Array()
 var _navigation_baseline_centroid := Vector2.ZERO
 var _navigation_baseline_distance := 0.0
@@ -263,6 +264,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		# The production iOS build supplies formal UITouch.type identity. Keeping
 		# UNKNOWN as direct touch makes editor/development builds usable without it.
 		kind = PointerKind.DIRECT
+	_touch_generation += 1
 	var state := {
 		"kind": kind,
 		"position": event.position,
@@ -271,6 +273,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		"content_pending": false,
 		"long_press_pick": false,
 		"content_origin": event.position,
+		"generation": _touch_generation,
 	}
 	_touches[event.index] = state
 
@@ -396,16 +399,19 @@ func _start_pending_content(canvas: Node2D, touch_id: int, screen_position: Vect
 	state["long_press_pick"] = false
 	state["content_origin"] = screen_position
 	_touches[touch_id] = state
+	var generation := int(state.get("generation", -1))
 	var timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_SECONDS)
-	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id))
+	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id, generation))
 
 
-func _try_begin_long_press(canvas: Node2D, touch_id: int) -> void:
+func _try_begin_long_press(canvas: Node2D, touch_id: int, generation: int) -> void:
 	if not is_instance_valid(canvas) or _content_touch_id != touch_id or not _touches.has(touch_id):
 		return
 	if _pencil_touch_id != -1 or _navigation_ids.size() == 2:
 		return
 	var state: Dictionary = _touches[touch_id]
+	if int(state.get("generation", -1)) != generation:
+		return
 	if (
 		int(state["kind"]) != PointerKind.DIRECT
 		or bool(state["suppressed"])
@@ -452,6 +458,8 @@ func _end_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> vo
 		return
 	var state: Dictionary = _touches.get(touch_id, {})
 	if bool(state.get("long_press_pick", false)):
+		# The release position is authoritative even if UIKit did not deliver a final drag event.
+		_sample_primary_color(canvas, screen_position)
 		_content_touch_id = -1
 		canvas.set_adapter_tool_preview_active(false)
 		return
