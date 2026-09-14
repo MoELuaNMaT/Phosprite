@@ -1,0 +1,199 @@
+name: P1-C3 Preferences Fix
+
+on:
+  push:
+    branches:
+      - p1-c3-optional-rotation
+    paths:
+      - ".github/workflows/p1-c3-preferences-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: p1-c3-optional-rotation
+          fetch-depth: 0
+      - name: Apply focused preferences lifecycle fix
+        shell: python
+        run: |
+          from pathlib import Path
+
+          adapter_path = Path("src/InputAdapter/CanvasInputAdapter.gd")
+          adapter = adapter_path.read_text()
+          start = adapter.index("func install_preferences_ui(scene_root: Node) -> void:\n")
+          end = adapter.index("\n\nfunc reset(canvas: Node2D) -> void:\n", start)
+          replacement = '''func install_preferences_ui(scene_root: Node) -> void:
+          \tif not is_enabled() or not is_instance_valid(scene_root):
+          \t\treturn
+          \tvar preferences_dialog := scene_root.find_child("PreferencesDialog", true, false)
+          \tif not is_instance_valid(preferences_dialog):
+          \t\treturn
+          \tvar options := preferences_dialog.find_child("ToolOptions", true, false) as GridContainer
+          \tif not is_instance_valid(options):
+          \t\treturn
+          \t_install_finger_policy_preference(options)
+          \t_install_two_finger_rotation_preference(options)
+
+
+          func _install_finger_policy_preference(options: GridContainer) -> void:
+          \tif options.has_node("FingerPolicyLabel"):
+          \t\treturn
+
+          \tvar label := Label.new()
+          \tlabel.name = "FingerPolicyLabel"
+          \tlabel.text = "Finger input mode"
+          \tlabel.tooltip_text = "Controls whether direct touch can edit the canvas when using iPad."
+          \tlabel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+          \t# Preferences uses a three-column grid after it inserts restore buttons. This spacer keeps
+          \t# the P1-B preference aligned while persisting through the same config cache as other prefs.
+          \tvar spacer := Control.new()
+          \tspacer.name = "FingerPolicySpacer"
+
+          \tvar option := OptionButton.new()
+          \toption.name = "FingerPolicyOptionButton"
+          \toption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+          \toption.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+          \toption.tooltip_text = (
+          \t\t"Unrestricted allows direct touch editing. Navigation only reserves fingers for canvas "
+          \t\t+ "navigation. Pencil priority allows finger editing while Pencil is idle. While Pencil "
+          \t\t+ "owns the canvas, direct touches are ignored until they are released."
+          \t)
+          \toption.add_item("Unrestricted", FingerPolicy.UNRESTRICTED)
+          \toption.add_item("Finger navigation only", FingerPolicy.FINGER_NAVIGATION_ONLY)
+          \toption.add_item("Pencil priority", FingerPolicy.PENCIL_PRIORITY)
+          \toption.select(option.get_item_index(_finger_policy))
+          \toption.item_selected.connect(_on_finger_policy_selected.bind(option))
+
+          \toptions.add_child(label)
+          \toptions.add_child(spacer)
+          \toptions.add_child(option)
+
+
+          func _install_two_finger_rotation_preference(options: GridContainer) -> void:
+          \tif options.has_node("TwoFingerRotationLabel"):
+          \t\treturn
+
+          \tvar rotation_label := Label.new()
+          \trotation_label.name = "TwoFingerRotationLabel"
+          \trotation_label.text = "Two-finger canvas rotation"
+          \trotation_label.tooltip_text = "Optional iPad gesture. Disabled by default."
+          \trotation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+          \tvar rotation_spacer := Control.new()
+          \trotation_spacer.name = "TwoFingerRotationSpacer"
+
+          \tvar rotation_toggle := CheckBox.new()
+          \trotation_toggle.name = "TwoFingerRotationCheckBox"
+          \trotation_toggle.text = "Enable"
+          \trotation_toggle.button_pressed = _two_finger_rotation_enabled
+          \trotation_toggle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+          \trotation_toggle.tooltip_text = (
+          \t\t"When enabled, a two-finger turn rotates the canvas around the same fixed point used by "
+          \t\t+ "pan and pinch. The setting is snapshotted when a new two-finger gesture begins."
+          \t)
+          \trotation_toggle.toggled.connect(_on_two_finger_rotation_toggled)
+
+          \toptions.add_child(rotation_label)
+          \toptions.add_child(rotation_spacer)
+          \toptions.add_child(rotation_toggle)
+          '''
+          adapter_path.write_text(adapter[:start] + replacement + adapter[end:])
+
+          canvas_path = Path("src/UI/Canvas/Canvas.gd")
+          canvas = canvas_path.read_text()
+          old_ready = '''\t_input_adapter.initialize()
+          \tif (
+          \t\t_input_adapter.is_enabled()
+          \t\tand not get_window().focus_exited.is_connected(_on_window_focus_exited)
+          \t):
+          \t\tget_window().focus_exited.connect(_on_window_focus_exited)
+          \tawait get_tree().process_frame
+          \t_input_adapter.install_preferences_ui(get_tree().current_scene)
+          \tcamera_zoom()
+          '''
+          new_ready = '''\t_input_adapter.initialize()
+          \tif _input_adapter.is_enabled():
+          \t\tif not get_window().focus_exited.is_connected(_on_window_focus_exited):
+          \t\t\tget_window().focus_exited.connect(_on_window_focus_exited)
+          \t\tif not get_tree().node_added.is_connected(_on_scene_tree_node_added):
+          \t\t\tget_tree().node_added.connect(_on_scene_tree_node_added)
+          \tawait get_tree().process_frame
+          \t_install_adapter_preferences()
+          \tcamera_zoom()
+          '''
+          if old_ready not in canvas:
+              raise SystemExit("Canvas _ready contract changed; refusing blind patch")
+          canvas = canvas.replace(old_ready, new_ready, 1)
+          canvas += '''\n\nfunc _install_adapter_preferences() -> void:
+          \tif not _input_adapter.is_enabled() or not is_inside_tree():
+          \t\treturn
+          \t_input_adapter.install_preferences_ui(get_tree().current_scene)
+
+
+          func _on_scene_tree_node_added(node: Node) -> void:
+          \tif not _input_adapter.is_enabled():
+          \t\treturn
+          \tif node.name != &"PreferencesDialog" and node.name != &"ToolOptions":
+          \t\treturn
+          \tcall_deferred("_install_adapter_preferences")
+          '''
+          canvas_path.write_text(canvas)
+
+          test_path = Path("tests/unit/test_canvas_navigation_feel.gd")
+          test = test_path.read_text()
+          old_const = 'const ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"\n'
+          new_const = old_const + 'const CANVAS_SOURCE := "res://src/UI/Canvas/Canvas.gd"\n'
+          if old_const not in test:
+              raise SystemExit("Navigation feel test constants changed; refusing blind patch")
+          test = test.replace(old_const, new_const, 1)
+          test += '''\n\nfunc test_ipad_preferences_installation_handles_late_dialog_creation() -> void:
+          \tvar adapter_src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+          \tcheck_has(
+          \t\tadapter_src,
+          \t\t"_install_finger_policy_preference(options)",
+          \t\t"finger policy preference must install independently"
+          \t)
+          \tcheck_has(
+          \t\tadapter_src,
+          \t\t"_install_two_finger_rotation_preference(options)",
+          \t\t"rotation preference must install independently"
+          \t)
+          \tcheck_true(
+          \t\tnot ('or options.has_node("FingerPolicyLabel")' in adapter_src),
+          \t\t"an existing P1-B row must not block the P1-C3 row"
+          \t)
+
+          \tvar canvas_src := FileAccess.get_file_as_string(CANVAS_SOURCE)
+          \tcheck_has(
+          \t\tcanvas_src,
+          \t\t"get_tree().node_added.connect(_on_scene_tree_node_added)",
+          \t\t"iOS Canvas must watch for Preferences nodes created after startup"
+          \t)
+          \tcheck_has(
+          \t\tcanvas_src,
+          \t\t'node.name != &"PreferencesDialog" and node.name != &"ToolOptions"',
+          \t\t"late-install watcher must stay scoped to the Preferences subtree"
+          \t)
+          \tcheck_has(
+          \t\tcanvas_src,
+          \t\t'call_deferred("_install_adapter_preferences")',
+          \t\t"Preferences installation must wait until the added subtree finishes entering the tree"
+          \t)
+          '''
+          test_path.write_text(test)
+      - name: Remove helper workflow
+        run: git rm .github/workflows/p1-c3-preferences-fix.yml
+      - name: Commit focused fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/InputAdapter/CanvasInputAdapter.gd src/UI/Canvas/Canvas.gd tests/unit/test_canvas_navigation_feel.gd
+          git commit -m "fix: install iPad preferences after dialog creation"
+          git push origin HEAD:p1-c3-optional-rotation
