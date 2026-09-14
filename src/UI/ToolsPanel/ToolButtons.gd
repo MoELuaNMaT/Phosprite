@@ -1,8 +1,13 @@
 extends FlowContainer
 
+const TOUCH_TAP_SLOP_PX := 12.0
+
 var pen_inverted := false
 ## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
 var _ignore_shortcuts := false
+## Direct-touch taps are resolved here instead of depending on touch-to-mouse emulation.
+var _touch_tool_candidates: Dictionary = {}
+var _touch_ui_mode := false
 
 
 func _ready() -> void:
@@ -12,9 +17,25 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if OS.get_name() == "iOS":
+		if event is InputEventScreenTouch:
+			if _handle_tool_touch(event as InputEventScreenTouch):
+				get_viewport().set_input_as_handled()
+			return
+		if event is InputEventScreenDrag:
+			if _handle_tool_drag(event as InputEventScreenDrag):
+				get_viewport().set_input_as_handled()
+			return
+
 	if event is InputEventMouseMotion:
+		# DEVICE_ID_EMULATION (-1) is the synthetic mouse stream produced by touch.
+		# It must not restore a hover/tooltip immediately after a tool was tapped.
+		if event.device != -1:
+			_restore_pointer_tool_ui()
 		pen_inverted = event.pen_inverted
 		return
+	if event is InputEventMouseButton and event.device != -1:
+		_restore_pointer_tool_ui()
 	if not Global.can_draw:
 		return
 	if get_tree().current_scene.is_writing_text:
@@ -60,6 +81,86 @@ func _input(event: InputEvent) -> void:
 				Tools.quick_assign_tool_revert(MOUSE_BUTTON_RIGHT)
 				Tools.quick_assign_tool_revert(MOUSE_BUTTON_LEFT)
 				return
+
+
+func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
+	if not Global.can_draw or get_tree().current_scene.is_writing_text:
+		return false
+	if event.pressed:
+		var button := _tool_button_at(event.position)
+		if not is_instance_valid(button):
+			return false
+		_enter_touch_tool_ui()
+		_touch_tool_candidates[event.index] = {
+			"tool_name": StringName(button.name),
+			"origin": event.position,
+		}
+		return true
+
+	if not _touch_tool_candidates.has(event.index):
+		return false
+	var candidate: Dictionary = _touch_tool_candidates[event.index]
+	_touch_tool_candidates.erase(event.index)
+	_enter_touch_tool_ui()
+	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
+		return true
+	var released_over := _tool_button_at(event.position)
+	if not is_instance_valid(released_over) or released_over.name != candidate["tool_name"]:
+		return true
+
+	# Direct touch currently activates the Primary slot. The Primary/Secondary data model
+	# remains unchanged; D1 deliberately does not define how a future touch UI switches slots.
+	Tools.assign_tool(String(candidate["tool_name"]), MOUSE_BUTTON_LEFT)
+	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
+	return true
+
+
+func _handle_tool_drag(event: InputEventScreenDrag) -> bool:
+	if not _touch_tool_candidates.has(event.index):
+		return false
+	var candidate: Dictionary = _touch_tool_candidates[event.index]
+	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
+		_touch_tool_candidates.erase(event.index)
+	return true
+
+
+func _tool_button_at(screen_position: Vector2) -> BaseButton:
+	for child in get_children():
+		var button := child as BaseButton
+		if not is_instance_valid(button) or not button.visible:
+			continue
+		if button.get_global_rect().has_point(screen_position):
+			return button
+	return null
+
+
+func _enter_touch_tool_ui() -> void:
+	_touch_ui_mode = true
+	for child in get_children():
+		var button := child as BaseButton
+		if not is_instance_valid(button):
+			continue
+		# Keep synthetic mouse hit-testing disabled after touch. This removes both the
+		# sticky hover state and delayed tooltip without changing global GUI emulation.
+		button.tooltip_text = ""
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.release_focus()
+		button.queue_redraw()
+
+
+func _restore_pointer_tool_ui() -> void:
+	if not _touch_ui_mode:
+		return
+	_touch_ui_mode = false
+	_touch_tool_candidates.clear()
+	for child in get_children():
+		var button := child as BaseButton
+		if not is_instance_valid(button):
+			continue
+		button.mouse_filter = Control.MOUSE_FILTER_PASS
+		if Tools.tools.has(String(button.name)):
+			button.tooltip_text = Tools.tools[String(button.name)].generate_hint_tooltip()
+		button.queue_redraw()
 
 
 func _on_tool_pressed(tool_pressed: BaseButton) -> void:
