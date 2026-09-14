@@ -264,8 +264,7 @@ func _install_ios_selection_family() -> void:
 
 func _is_ios_selection_family_button(button: BaseButton) -> bool:
 	return (
-		is_instance_valid(_ios_selection_family_button)
-		and button == _ios_selection_family_button
+		is_instance_valid(_ios_selection_family_button) and button == _ios_selection_family_button
 	)
 
 
@@ -343,12 +342,20 @@ func _sync_ios_selection_family_visual() -> void:
 		_ios_selection_family_button.tooltip_text = "Selection: %s" % tr(recent_tool.display_name)
 	var left_name := StringName()
 	var right_name := StringName()
-	if Tools._slots.has(MOUSE_BUTTON_LEFT) and is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node):
+	if (
+		Tools._slots.has(MOUSE_BUTTON_LEFT)
+		and is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node)
+	):
 		left_name = StringName(Tools._slots[MOUSE_BUTTON_LEFT].tool_node.name)
-	if Tools._slots.has(MOUSE_BUTTON_RIGHT) and is_instance_valid(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node):
+	if (
+		Tools._slots.has(MOUSE_BUTTON_RIGHT)
+		and is_instance_valid(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node)
+	):
 		right_name = StringName(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node.name)
 	var left_background := _ios_selection_family_button.get_node("BackgroundLeft") as NinePatchRect
-	var right_background := _ios_selection_family_button.get_node("BackgroundRight") as NinePatchRect
+	var right_background := (
+		_ios_selection_family_button.get_node("BackgroundRight") as NinePatchRect
+	)
 	left_background.visible = is_ios_selection_tool(left_name)
 	if Global.single_tool_mode:
 		right_background.visible = false
