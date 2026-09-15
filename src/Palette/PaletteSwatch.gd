@@ -102,8 +102,9 @@ func show_selected_highlight(new_value: bool, mouse_button: int) -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
-	if DisplayServer.is_touchscreen_available() and not (
-		show_left_highlight or show_right_highlight
+	if (
+		DisplayServer.is_touchscreen_available()
+		and not (show_left_highlight or show_right_highlight)
 	):
 		return null
 	if empty:
@@ -138,7 +139,8 @@ func _on_gui_input(event: InputEvent) -> void:
 			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 				pressed.emit(event.button_index)
 		elif event.is_pressed():
-			if DisplayServer.is_touchscreen_available() and (
-				show_left_highlight or show_right_highlight
+			if (
+				DisplayServer.is_touchscreen_available()
+				and (show_left_highlight or show_right_highlight)
 			):
 				accept_event()
