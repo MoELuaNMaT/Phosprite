@@ -56,10 +56,7 @@ func _input(event: InputEvent) -> void:
 		_handle_ios_palette_touch(event as InputEventScreenTouch)
 	elif event is InputEventScreenDrag:
 		_handle_ios_palette_drag(event as InputEventScreenDrag)
-	elif (
-		(event is InputEventMouseMotion or event is InputEventMouseButton)
-		and event.device != -1
-	):
+	elif (event is InputEventMouseMotion or event is InputEventMouseButton) and event.device != -1:
 		_restore_pointer_palette_ui()
 
 
@@ -284,8 +281,9 @@ func _handle_ios_palette_touch(event: InputEventScreenTouch) -> bool:
 	if bool(candidate.get("cancelled", false)):
 		return true
 	var origin: Vector2 = candidate.get("origin", event.position)
-	if origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX and not bool(
-		candidate.get("reordering", false)
+	if (
+		origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX
+		and not bool(candidate.get("reordering", false))
 	):
 		return true
 	var action: StringName = candidate.get("action", &"")
@@ -350,13 +348,18 @@ func _ios_palette_action_at(screen_position: Vector2) -> StringName:
 	var panel := _ios_palette_panel()
 	if not is_instance_valid(panel):
 		return &""
-	var add_button := panel.get_node_or_null("PaletteVBoxContainer/PaletteButtons/AddColor") as Control
+	var add_button := (
+		panel.get_node_or_null("PaletteVBoxContainer/PaletteButtons/AddColor") as Control
+	)
 	if is_instance_valid(add_button) and add_button.get_global_rect().has_point(screen_position):
 		return &"add"
 	var delete_button := (
 		panel.get_node_or_null("PaletteVBoxContainer/PaletteButtons/DeleteColor") as Control
 	)
-	if is_instance_valid(delete_button) and delete_button.get_global_rect().has_point(screen_position):
+	if (
+		is_instance_valid(delete_button)
+		and delete_button.get_global_rect().has_point(screen_position)
+	):
 		return &"delete"
 	return &""
 
@@ -365,8 +368,9 @@ func _ios_palette_index_at(screen_position: Vector2) -> int:
 	if not is_instance_valid(current_palette):
 		return -1
 	var scroll_container := get_parent() as Control
-	if is_instance_valid(scroll_container) and not scroll_container.get_global_rect().has_point(
-		screen_position
+	if (
+		is_instance_valid(scroll_container)
+		and not scroll_container.get_global_rect().has_point(screen_position)
 	):
 		return -1
 	for grid_index in swatches.size():
