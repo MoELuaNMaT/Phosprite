@@ -54,7 +54,7 @@ func test_touch_handle_target_is_44px_and_nearest_wins() -> void:
 	check_has(
 		router,
 		"TOUCH_HANDLE_DIAMETER_PX := 44.0",
-		"touch handle acquisition must use the approved 44 px invisible target"
+		"touch handle acquisition must use the D2C 44 px invisible target"
 	)
 	check_has(
 		router,
@@ -67,9 +67,7 @@ func test_touch_handle_target_is_44px_and_nearest_wins() -> void:
 		"adapter screen coordinates must be converted into TransformationHandles local space"
 	)
 	check_has(
-		router,
-		"if Global.mirror_view:",
-		"touch hit testing must preserve mirrored-canvas behavior"
+		router, "if Global.mirror_view:", "touch hit testing must preserve mirrored-canvas behavior"
 	)
 	check_has(
 		router,
