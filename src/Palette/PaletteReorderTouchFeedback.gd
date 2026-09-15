@@ -10,6 +10,7 @@ var _tracked_touches: Dictionary = {}
 var _active_touch := -1
 var _managed_scroll := 0.0
 var _preview: PaletteSwatch = null
+var _source_swatch: PaletteSwatch = null
 
 @onready var palette_grid := (
 	get_parent().get_node("PaletteVBoxContainer/ScrollContainer/PaletteGrid") as PaletteGrid
@@ -103,6 +104,8 @@ func _create_preview(palette_index: int) -> void:
 	var source := palette_grid.swatches[grid_index]
 	if not is_instance_valid(source) or source.empty:
 		return
+	_source_swatch = source
+	_source_swatch.show_dragging_outline = true
 	var preview := PaletteSwatch.new()
 	preview.color_index = source.color_index
 	preview.set_swatch_size(source.size)
@@ -110,6 +113,7 @@ func _create_preview(palette_index: int) -> void:
 	preview.empty = false
 	preview.show_left_highlight = false
 	preview.show_right_highlight = false
+	preview.show_dragging_outline = false
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview.modulate = Color(1.0, 1.0, 1.0, PREVIEW_OPACITY)
 	preview.z_index = 4096
@@ -150,6 +154,9 @@ func _finish_reorder_feedback() -> void:
 
 
 func _clear_preview() -> void:
+	if is_instance_valid(_source_swatch):
+		_source_swatch.show_dragging_outline = false
+	_source_swatch = null
 	if is_instance_valid(_preview):
 		_preview.queue_free()
 	_preview = null
