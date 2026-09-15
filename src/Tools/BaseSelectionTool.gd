@@ -195,6 +195,16 @@ func draw_end(pos: Vector2i) -> void:
 	cursor_text = ""
 
 
+func cancel_tool() -> void:
+	super()
+	# Adapter ownership can end without a synthesized mouse release (for example when a
+	# second finger takes over navigation or the app loses focus). A Selection handle is
+	# transient input state, so cancellation must release it without committing/reverting
+	# the existing transform preview.
+	if is_instance_valid(transformation_handles):
+		transformation_handles.active_handle = null
+
+
 func apply_selection(_position: Vector2i) -> void:
 	# if a shortcut is activated then that will be obeyed instead
 	match _mode_selected:
