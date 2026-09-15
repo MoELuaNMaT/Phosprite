@@ -6,6 +6,16 @@ const CEL_SOURCE := "res://src/UI/Timeline/CelButton.gd"
 const FRAME_SOURCE := "res://src/UI/Timeline/FrameButton.gd"
 
 
+func test_e2_timeline_touch_manager_parses_cleanly() -> void:
+	var script := GDScript.new()
+	script.source_code = FileAccess.get_file_as_string(MANAGER_SOURCE)
+	check_eq(
+		script.reload(),
+		OK,
+		"Timeline touch manager must compile; otherwise E1 Select and E2 reorder disappear together"
+	)
+
+
 func test_e2_uses_d4b_long_press_and_slop_contract() -> void:
 	check_eq(MANAGER.IOS_TOUCH_REORDER_HOLD_MSEC, 450, "E2 long press must match D4-B")
 	check_eq(MANAGER.IOS_TOUCH_TAP_SLOP_PX, 12.0, "pre-ownership scroll slop must stay 12px")
