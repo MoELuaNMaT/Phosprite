@@ -1,6 +1,7 @@
 extends "res://tests/test_base.gd"
 
 const CANVAS_SOURCE := "res://src/UI/Canvas/Canvas.gd"
+const INPUT_ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"
 const ROUTER_SOURCE := "res://src/InputAdapter/TouchTransformHandleRouter.gd"
 const BASE_SELECTION_SOURCE := "res://src/Tools/BaseSelectionTool.gd"
 
@@ -112,4 +113,30 @@ func test_selection_modes_and_content_transform_keep_existing_model() -> void:
 		base,
 		"Global.transform_content_canceled.emit()",
 		"Cancel must roll back through the existing transform signal"
+	)
+
+
+func test_adapter_cancellation_releases_acquired_transform_handle() -> void:
+	var base := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
+	var adapter := FileAccess.get_file_as_string(INPUT_ADAPTER_SOURCE)
+	check_has(
+		base,
+		"func cancel_tool() -> void:",
+		"Selection must own cleanup of its transient handle state when content ownership is canceled"
+	)
+	check_has(
+		base,
+		"transformation_handles.active_handle = null",
+		"Selection cancellation must release an acquired transform handle and restore Global.can_draw"
+	)
+	check_has(
+		adapter,
+		"func reset(canvas: Node2D) -> void:\n\tif _content_touch_id != -1:\n\t\t_cancel_active_tool()",
+		"focus/reset cancellation must continue through the selected tool cancellation boundary"
+	)
+	var takeover_start := adapter.find("func _try_promote_direct_content_to_navigation")
+	var takeover_cancel := adapter.find("_cancel_active_tool()", takeover_start)
+	check_true(
+		takeover_start >= 0 and takeover_cancel > takeover_start,
+		"second-finger navigation takeover must cancel the active Selection tool before navigation"
 	)
