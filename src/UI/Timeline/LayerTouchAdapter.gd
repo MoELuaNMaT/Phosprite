@@ -26,7 +26,10 @@ func _input(event: InputEvent) -> void:
 	if not _is_ready_for_touch() or not _layer_button.is_visible_in_tree():
 		return
 	if event is InputEventScreenTouch:
-		_handle_ios_layer_touch(event as InputEventScreenTouch)
+		var touch := event as InputEventScreenTouch
+		if _active_rename_owns_touch(touch):
+			return
+		_handle_ios_layer_touch(touch)
 	elif event is InputEventScreenDrag:
 		_handle_ios_layer_drag(event as InputEventScreenDrag)
 	elif (event is InputEventMouseMotion or event is InputEventMouseButton) and event.device != -1:
@@ -46,6 +49,18 @@ func _install_ios_layer_touch() -> void:
 		_popup_menu.add_item(tr("Rename"), RENAME_MENU_ID)
 	if not _popup_menu.id_pressed.is_connected(_on_popup_menu_id_pressed):
 		_popup_menu.id_pressed.connect(_on_popup_menu_id_pressed)
+
+
+func _active_rename_owns_touch(event: InputEventScreenTouch) -> bool:
+	if not event.pressed or not _layer_button.line_edit.visible:
+		return false
+	if _layer_button.line_edit.get_global_rect().has_point(event.position):
+		return true
+	# Hiding the iOS keyboard does not release LineEdit focus. The next direct touch outside
+	# the editor must do so explicitly, allowing the existing focus_exited rename transaction
+	# to commit before that same touch continues into the rest of the UI.
+	_layer_button.line_edit.release_focus()
+	return false
 
 
 func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
