@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://brrmadr5hbecl" path="res://src/Palette/PaletteGrid.gd" id="5"]
 [ext_resource type="Texture2D" uid="uid://des606sdhau2i" path="res://assets/graphics/layers/lock.png" id="5_unk2t"]
 [ext_resource type="Script" uid="uid://bxugfciwcodjx" path="res://src/Palette/PalettePanel.gd" id="8"]
+[ext_resource type="Script" path="res://src/Palette/PaletteReorderTouchFeedback.gd" id="9_reorder_touch"]
 
 [sub_resource type="InputEventAction" id="InputEventAction_4n3yg"]
 action = &"edit_palette"
@@ -196,6 +197,9 @@ size_flags_vertical = 3
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 script = ExtResource("5")
+
+[node name="PaletteReorderTouchFeedback" type="Node" parent="."]
+script = ExtResource("9_reorder_touch")
 
 [node name="HiddenColorPickerButton" type="ColorPickerButton" parent="." unique_id=169510189]
 unique_name_in_owner = true
