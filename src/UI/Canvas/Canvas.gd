@@ -197,7 +197,7 @@ func update_texture(
 
 	if frame_i < project.frames.size() and layer_i < project.layers.size():
 		var current_cel := project.frames[frame_i].cels[layer_i]
-		current_cel.update_texture()
+		current_cel.update_texture(undo)
 		# Needed so that changes happening to the non-selected layer(s) are also visible
 		# e.g. when undoing/redoing, when applying image effects to the entire frame, etc
 		if frame_i != project.current_frame:
