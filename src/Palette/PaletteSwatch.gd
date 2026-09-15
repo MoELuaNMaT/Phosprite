@@ -102,7 +102,9 @@ func show_selected_highlight(new_value: bool, mouse_button: int) -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
-	if DisplayServer.is_touchscreen_available() and not show_left_highlight:
+	if DisplayServer.is_touchscreen_available() and not (
+		show_left_highlight or show_right_highlight
+	):
 		return null
 	if empty:
 		return ["Swatch", null]
