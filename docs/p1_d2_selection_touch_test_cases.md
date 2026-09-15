@@ -21,13 +21,15 @@ Target: iPad / iOS production build unless a case explicitly says desktop.
 | D2-15 | Polygon cancel | Start an open polygon and tap `Cancel polygon`. | In-progress polygon is discarded, preview clears, existing committed selection is not replaced by the unfinished polygon. |
 | D2-16 | Selection modes | For RectSelect or EllipseSelect, apply Replace, Add, Subtract and Intersect from the existing Mode control. | All four modes produce their existing semantics; no touch-only parallel mode state appears. |
 | D2-17 | Transform move | Create a selection, drag inside selected content with touch, then Confirm and repeat with Cancel. | Move preview is touch-operable; Confirm commits and Cancel restores the pre-transform state. |
-| D2-18 | Transform handles | On an active transform, acquire scale, rotate and skew handles with touch and manipulate each. | Each existing transform handle responds and updates the same preview/commit model used on desktop. |
+| D2-18 | Transform handles | On an active transform, acquire scale, rotate and skew handles with touch and manipulate each. Also try touches near adjacent handle types. | Each existing transform handle responds and updates the same preview/commit model used on desktop. Visual handle size is unchanged; iOS adapter input uses an invisible 44 px acquisition target and overlapping targets resolve to the nearest handle. |
 | D2-19 | Two-finger navigation regression | During normal canvas use, perform two-finger pan/pinch. | P1-C navigation behavior remains unchanged; P1-D2 does not enable two-finger rotation. |
 | D2-20 | Primary/Secondary regression | Set distinct Primary and Secondary tools/colors, then use the Selection family entry. | Touch Selection changes Primary only; Secondary data/model is preserved. |
 
 ## Automated regression coverage
 
 `tests/unit/test_p1_d2_selection_touch.gd` checks the exact seven-tool family, recent-child fallback/persistence hooks, iOS-only compaction, 1000 ms Perfect Shape dwell, reuse of D1 touch slop, timer-driven stationary acquisition, Polygon double-tap/cancel hooks, the four existing Selection modes, and preservation of the existing transform model.
+
+`tests/unit/test_p1_d2c_selection_transform_touch.gd` additionally checks that CanvasAdapter events are offered to transform handles before normal Selection drawing, acquired handles consume that adapter event, the router reuses the existing handle press/drag/release state machine, the invisible touch target remains 44 px with nearest-handle resolution, and Selection move/Confirm/Cancel still use the existing transform model.
 
 ## Release gate
 
