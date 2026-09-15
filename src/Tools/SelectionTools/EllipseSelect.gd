@@ -1,10 +1,17 @@
 extends BaseSelectionTool
 
+const CANVAS_INPUT_ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
+const TOUCH_PERFECT_HOLD_SECONDS := 1.0
+
 var _rect := Rect2i(0, 0, 0, 0)
 
 var _square := false  ## Mouse Click + Shift
 var _expand_from_center := false  ## Mouse Click + Ctrl
 var _displace_origin = false  ## Mouse Click + Alt
+var _touch_hold_generation := 0
+var _touch_hold_armed := false
+var _touch_hold_anchor_screen := Vector2.ZERO
+var _touch_perfect_locked := false
 
 
 func _input(event: InputEvent) -> void:
@@ -23,6 +30,11 @@ func _input(event: InputEvent) -> void:
 			_displace_origin = false
 
 
+func draw_start(pos: Vector2i) -> void:
+	_reset_touch_perfect_hold()
+	super.draw_start(pos)
+
+
 func draw_move(pos: Vector2i) -> void:
 	if transformation_handles.arrow_key_move:
 		return
@@ -34,6 +46,7 @@ func draw_move(pos: Vector2i) -> void:
 		_rect = _get_result_rect(_start_pos, pos)
 		_set_cursor_text(_rect)
 		_offset = pos
+		_update_touch_perfect_hold()
 
 
 func draw_end(pos: Vector2i) -> void:
@@ -54,7 +67,67 @@ func _reset_tool() -> void:
 	_square = false
 	_expand_from_center = false
 	_displace_origin = false
+	_reset_touch_perfect_hold()
 	Global.canvas.previews_sprite.texture = null
+
+
+func _reset_touch_perfect_hold() -> void:
+	_touch_hold_generation += 1
+	_touch_hold_armed = false
+	_touch_hold_anchor_screen = Vector2.ZERO
+	_touch_perfect_locked = false
+
+
+func _update_touch_perfect_hold() -> void:
+	if not _is_adapter_touch_selection_drag() or _touch_perfect_locked:
+		return
+	var current_screen := _current_touch_screen_position()
+	if (
+		_touch_hold_armed
+		and not CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+			_touch_hold_anchor_screen, current_screen
+		)
+	):
+		return
+	_touch_hold_generation += 1
+	_touch_hold_armed = true
+	_touch_hold_anchor_screen = current_screen
+	var generation := _touch_hold_generation
+	var timer := get_tree().create_timer(TOUCH_PERFECT_HOLD_SECONDS)
+	timer.timeout.connect(_try_lock_touch_perfect_shape.bind(generation))
+
+
+func _try_lock_touch_perfect_shape(generation: int) -> void:
+	if (
+		generation != _touch_hold_generation
+		or not _touch_hold_armed
+		or _touch_perfect_locked
+		or not _is_adapter_touch_selection_drag()
+	):
+		return
+	var current_screen := _current_touch_screen_position()
+	if CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+		_touch_hold_anchor_screen, current_screen
+	):
+		return
+	_square = true
+	_touch_hold_armed = false
+	_touch_perfect_locked = true
+	# Re-evaluate immediately at the stationary touch point. No additional drag event is
+	# required, which is the reason this cannot be implemented as another motion threshold.
+	draw_move(Vector2i(Global.canvas.current_pixel.floor()))
+	Global.canvas.previews.queue_redraw()
+
+
+func _is_adapter_touch_selection_drag() -> bool:
+	if OS.get_name() != "iOS" or _move or not is_instance_valid(Global.canvas):
+		return false
+	var adapter = Global.canvas._input_adapter
+	return adapter != null and int(adapter._content_touch_id) != -1
+
+
+func _current_touch_screen_position() -> Vector2:
+	return Global.canvas.get_global_transform_with_canvas() * Global.canvas.current_pixel
 
 
 func draw_preview() -> void:

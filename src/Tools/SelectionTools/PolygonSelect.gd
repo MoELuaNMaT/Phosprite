@@ -1,13 +1,35 @@
 extends BaseSelectionTool
 
+const CANVAS_INPUT_ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
+const TOUCH_DOUBLE_TAP_MSEC := 350
+
 var _last_position := Vector2i(Vector2.INF)
 var _draw_points: Array[Vector2i] = []
 var _ready_to_apply := false
+var _touch_last_tap_msec := -1
+var _touch_last_tap_screen := Vector2.ZERO
+var _touch_cancel_button: Button
 
 
 func _init() -> void:
 	# To prevent tool from remaining active when switching projects
 	Global.project_about_to_switch.connect(_clear)
+
+
+func _ready() -> void:
+	super()
+	if OS.get_name() != "iOS":
+		return
+	_touch_cancel_button = Button.new()
+	_touch_cancel_button.name = "TouchCancelPolygon"
+	_touch_cancel_button.text = tr("Cancel polygon")
+	_touch_cancel_button.tooltip_text = tr("Cancel the current polygon selection")
+	_touch_cancel_button.custom_minimum_size = Vector2(0, 44)
+	_touch_cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_touch_cancel_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_touch_cancel_button.visible = false
+	_touch_cancel_button.pressed.connect(cancel_tool)
+	add_child(_touch_cancel_button)
 
 
 func _input(event: InputEvent) -> void:
@@ -37,6 +59,8 @@ func draw_start(pos: Vector2i) -> void:
 		_ongoing_selection = true
 		_draw_points.append(pos)
 		_last_position = pos
+	if _ongoing_selection and is_instance_valid(_touch_cancel_button):
+		_touch_cancel_button.visible = true
 
 
 func draw_move(pos: Vector2i) -> void:
@@ -51,6 +75,17 @@ func draw_end(pos: Vector2i) -> void:
 		return
 	pos = snap_position(pos)
 	if !_move and _draw_points:
+		# Desktop historically closes only when the snapped pixel exactly equals the first
+		# point. On touch that makes the visible start target effectively impossible to hit,
+		# so iOS accepts the same shared 12 px touch radius and snaps the close to point zero.
+		if _is_ios_touch_close_to_first_point():
+			pos = _draw_points[0]
+		elif _consume_ios_touch_double_tap():
+			$DoubleClickTimer.start()
+			_draw_points.append_array(Geometry2D.bresenham_line(_draw_points[-1], _draw_points[0]))
+			_ready_to_apply = true
+			super.draw_end(pos)
+			return
 		if _draw_points.size() > 1 or _draw_points[-1] != pos:
 			_draw_points.append_array(Geometry2D.bresenham_line(_draw_points[-1], pos))
 		if pos == _draw_points[0] and _draw_points.size() > 1:
@@ -130,7 +165,49 @@ func _clear() -> void:
 	Global.canvas.previews_sprite.texture = null
 	_draw_points.clear()
 	_ready_to_apply = false
+	_touch_last_tap_msec = -1
+	_touch_last_tap_screen = Vector2.ZERO
+	if is_instance_valid(_touch_cancel_button):
+		_touch_cancel_button.visible = false
 	Global.canvas.previews.queue_redraw()
+
+
+func _is_ios_touch_close_to_first_point() -> bool:
+	if _draw_points.size() <= 1 or not _is_adapter_touch_polygon_input():
+		return false
+	var canvas_transform := Global.canvas.get_global_transform_with_canvas()
+	var first_point_screen := canvas_transform * (Vector2(_draw_points[0]) + Vector2.ONE * 0.5)
+	return not CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+		first_point_screen, _current_touch_screen_position()
+	)
+
+
+func _consume_ios_touch_double_tap() -> bool:
+	if not _is_adapter_touch_polygon_input():
+		return false
+	var now := Time.get_ticks_msec()
+	var current_screen := _current_touch_screen_position()
+	var is_double_tap := (
+		_touch_last_tap_msec >= 0
+		and now - _touch_last_tap_msec <= TOUCH_DOUBLE_TAP_MSEC
+		and not CANVAS_INPUT_ADAPTER.long_press_motion_exceeds_slop(
+			_touch_last_tap_screen, current_screen
+		)
+	)
+	_touch_last_tap_msec = now
+	_touch_last_tap_screen = current_screen
+	return is_double_tap
+
+
+func _is_adapter_touch_polygon_input() -> bool:
+	if OS.get_name() != "iOS" or not is_instance_valid(Global.canvas):
+		return false
+	var adapter = Global.canvas._input_adapter
+	return adapter != null and int(adapter._content_touch_id) != -1
+
+
+func _current_touch_screen_position() -> Vector2:
+	return Global.canvas.get_global_transform_with_canvas() * Global.canvas.current_pixel
 
 
 func lasso_selection(
