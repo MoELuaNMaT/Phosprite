@@ -5,7 +5,10 @@ enum LayerAction { MOVE_UP = 2000, MOVE_DOWN, DUPLICATE, MERGE_DOWN, EFFECTS }
 const IOS_TOUCH_TARGET_PX := 44.0
 const IOS_ADD_LAYER_TARGET_WIDTH := IOS_TOUCH_TARGET_PX * 2.0
 const IOS_LAYER_TOOLBAR_SEPARATION := 4
-const LAYER_BUTTONS_PATH := "TimelineContainer/TimelineButtons/LayerTools/MarginContainer/LayerSettingsContainer/LayerButtons"
+const LAYER_BUTTONS_PATH := (
+	"TimelineContainer/TimelineButtons/LayerTools/"
+	+ "MarginContainer/LayerSettingsContainer/LayerButtons"
+)
 
 var _timeline: Control
 var _layer_buttons: HBoxContainer
