@@ -81,21 +81,27 @@ func test_layer_rename_commits_on_next_touch_outside_editor() -> void:
 	)
 
 
-func test_layer_touch_scroll_movement_is_not_claimed_by_d4a() -> void:
+func test_layer_touch_scroll_movement_is_not_claimed_before_d4b_reorder_ownership() -> void:
 	var src := FileAccess.get_file_as_string(LAYER_TOUCH_SOURCE)
 	check_has(
 		src,
 		'candidate["cancelled"] = true',
-		"movement beyond touch slop must cancel tap/double-touch recognition"
+		"movement beyond touch slop must still cancel tap/double-touch recognition"
+	)
+	check_has(
+		src,
+		"Before reorder ownership, vertical movement belongs to the Timeline ScrollContainer",
+		"D4-B must preserve D4-A's pre-ownership Timeline scrolling boundary"
+	)
+	check_has(
+		src,
+		"held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC",
+		"D4-B may claim a Layer drag only after the separately gated long-press threshold"
 	)
 	check_has(
 		src,
 		"return false",
-		"D4-A drag cancellation must leave scrolling available to the surrounding Timeline"
-	)
-	check_true(not ("reordering" in src), "D4-A must not pre-implement D4-B reorder ownership")
-	check_true(
-		not ("_drop_data" in src), "D4-A must not bypass the existing Layer drop transaction"
+		"movement before reorder ownership must remain available to the Timeline ScrollContainer"
 	)
 
 
