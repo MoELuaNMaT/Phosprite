@@ -9,7 +9,7 @@ const TOUCH_HANDLE_RADIUS_PX := TOUCH_HANDLE_DIAMETER_PX * 0.5
 const MIN_ZOOM := 0.0001
 
 
-static func handle_event(canvas: Node2D, screen_position: Vector2, event: InputEvent) -> bool:
+static func handle_event(canvas, screen_position: Vector2, event: InputEvent) -> bool:
 	if event is not InputEventMouseButton and event is not InputEventMouseMotion:
 		return false
 	if not is_instance_valid(canvas) or not is_instance_valid(canvas.selection):
@@ -56,7 +56,7 @@ static func handle_event(canvas: Node2D, screen_position: Vector2, event: InputE
 	return false
 
 
-static func _nearest_touch_handle(transformation_handles: Node2D, local_position: Vector2):
+static func _nearest_touch_handle(transformation_handles, local_position: Vector2):
 	var zoom_x := maxf(absf(Global.camera.zoom.x), MIN_ZOOM)
 	var best_handle = null
 	var best_distance_px := INF
