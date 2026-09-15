@@ -11,6 +11,7 @@
 [ext_resource type="Texture2D" uid="uid://dv5y24sb8lxg2" path="res://assets/graphics/layers/layer_active_effect.png" id="8_7wf6f"]
 [ext_resource type="Texture2D" uid="uid://cjvk47bd56156" path="res://assets/graphics/layers/type_icons/layer_pixel.png" id="8_ce16y"]
 [ext_resource type="Script" path="res://src/UI/Timeline/LayerTouchAdapter.gd" id="9_touch"]
+[ext_resource type="Script" path="res://src/UI/Timeline/LayerPanelTouchBootstrap.gd" id="10_touch_layout"]
 
 [node name="LayerButton" type="HBoxContainer" unique_id=1570434002]
 anchors_preset = 15
@@ -24,6 +25,9 @@ script = ExtResource("1_6hlpe")
 
 [node name="LayerTouchAdapter" type="Node" parent="."]
 script = ExtResource("9_touch")
+
+[node name="LayerPanelTouchBootstrap" type="Node" parent="."]
+script = ExtResource("10_touch_layout")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1094638573]
 custom_minimum_size = Vector2(84, 0)
