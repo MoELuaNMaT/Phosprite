@@ -191,7 +191,9 @@ func test_invalid_release_and_touch_cancel_are_no_op_transactions() -> void:
 
 func test_desktop_native_drag_contract_remains_available() -> void:
 	var src := FileAccess.get_file_as_string(LAYER_MAIN_SOURCE)
-	check_has(src, "func _get_drag_data(_position: Vector2) -> Variant:", "desktop native drag remains")
+	check_has(
+		src, "func _get_drag_data(_position: Vector2) -> Variant:", "desktop native drag remains"
+	)
 	check_has(src, "set_drag_preview(box)", "desktop native drag preview remains unchanged")
 	check_has(
 		src,
