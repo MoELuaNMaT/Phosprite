@@ -111,7 +111,7 @@ func _create_preview(palette_index: int) -> void:
 	preview.show_left_highlight = false
 	preview.show_right_highlight = false
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.modulate.a = PREVIEW_OPACITY
+	preview.modulate = Color(1.0, 1.0, 1.0, PREVIEW_OPACITY)
 	preview.z_index = 4096
 	get_tree().root.add_child(preview)
 	_preview = preview
