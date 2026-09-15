@@ -2,6 +2,9 @@ class_name Canvas
 extends Node2D
 
 const CURSOR_SPEED_RATE := 6.0
+const TOUCH_TRANSFORM_HANDLE_ROUTER := preload(
+	"res://src/InputAdapter/TouchTransformHandleRouter.gd"
+)
 
 var current_pixel := Vector2.ZERO
 var sprite_changed_this_frame := false  ## For optimization purposes
@@ -117,6 +120,8 @@ func _input(event: InputEvent) -> void:
 
 
 func handle_adapter_tool_event(screen_position: Vector2, event: InputEvent) -> void:
+	if TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, screen_position, event):
+		return
 	var canvas_position := get_global_transform_with_canvas().affine_inverse() * screen_position
 	current_pixel = canvas_position
 	_handle_tool_event(Vector2i(canvas_position.floor()), event)
@@ -192,7 +197,7 @@ func update_texture(
 
 	if frame_i < project.frames.size() and layer_i < project.layers.size():
 		var current_cel := project.frames[frame_i].cels[layer_i]
-		current_cel.update_texture(undo)
+		current_cel.update_texture()
 		# Needed so that changes happening to the non-selected layer(s) are also visible
 		# e.g. when undoing/redoing, when applying image effects to the entire frame, etc
 		if frame_i != project.current_frame:
