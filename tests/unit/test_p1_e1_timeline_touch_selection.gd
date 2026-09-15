@@ -20,16 +20,18 @@ func test_e1_installs_one_ios_timeline_selection_manager() -> void:
 	)
 
 
-func test_e1_is_ios_only_and_keeps_e2_drag_ownership_out_of_scope() -> void:
+func test_e1_is_ios_only_and_e2_reuses_the_same_touch_manager() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(src, 'OS.get_name() != "iOS"', "E1 manager must be iOS-only")
+	check_has(src, 'OS.get_name() != "iOS"', "Timeline touch manager must remain iOS-only")
 	check_has(
 		src,
-		"E1 never acquires drag ownership",
-		"ScreenDrag must remain scroll cancellation only until E2",
+		"Before long-press ownership, movement belongs to the existing Timeline scroll views",
+		"E1 scroll arbitration must remain intact before E2 long-press ownership",
 	)
-	check_true(not ("_drop_data" in src), "E1 must not implement Cel/Frame drop transactions")
-	check_true(not ("undo_redo" in src), "E1 must not create a second Timeline transaction path")
+	check_true(
+		not ("undo_redo" in src),
+		"the shared E1/E2 touch manager must delegate business transactions to native controls",
+	)
 
 
 func test_timeline_multi_select_has_an_explicit_touch_entry() -> void:
