@@ -117,7 +117,9 @@ func test_double_tap_restores_pre_first_tap_selection_before_opening_menu() -> v
 		'"current_layer": project.current_layer',
 		"double-tap rollback must preserve the pre-first-tap current Layer",
 	)
-	var restore_pos := src.find("_restore_last_tap_selection_snapshot()\n\t\t_show_existing_context_menu")
+	var restore_pos := src.find(
+		"_restore_last_tap_selection_snapshot()\n\t\t_show_existing_context_menu"
+	)
 	check_true(
 		restore_pos >= 0,
 		"confirmed double tap must restore the first tap before opening the existing menu",
