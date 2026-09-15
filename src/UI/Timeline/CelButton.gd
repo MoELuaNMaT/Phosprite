@@ -188,7 +188,7 @@ func _on_PopupMenu_id_pressed(id: int) -> void:
 					if layer != cel_index[1]:  # Skip selected cels not on the same layer
 						continue
 					var s_cel := project.frames[cel_index[0]].cels[cel_index[1]]
-					if s_cel.link_set == null:  # Skip selected cels that aren't linked
+					if s_cel.link_set == null:  # Skip cels that aren't linked
 						continue
 					project.undo_redo.add_do_method(
 						project.layers[layer].link_cel.bind(s_cel, null)
