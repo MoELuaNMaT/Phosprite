@@ -94,7 +94,7 @@ func test_palette_touch_reorder_is_long_hold_and_scroll_safe() -> void:
 	)
 	check_has(
 		src,
-		"candidate[\"cancelled\"] = true",
+		'candidate["cancelled"] = true',
 		"movement before the long hold must cancel the Palette tap/reorder candidate"
 	)
 	check_has(
