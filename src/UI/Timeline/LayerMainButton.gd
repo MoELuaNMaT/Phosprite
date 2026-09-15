@@ -14,14 +14,8 @@ func _ready() -> void:
 func _get_drag_data(_position: Vector2) -> Variant:
 	if DisplayServer.is_touchscreen_available() and not button_pressed:
 		return null
-	var layers := _get_layer_indices()
-	for layer_i in layers:  # Add child layers, if we have selected groups
-		var layer := Global.current_project.layers[layer_i]
-		for child in layer.get_children(true):
-			var child_index := Global.current_project.layers.find(child)
-			if not child_index in layers:  # Do not add the same index multiple times
-				layers.append(child_index)
-	layers.sort()
+	var data := _build_layer_drag_data()
+	var layers: PackedInt32Array = data[1]
 
 	var box := VBoxContainer.new()
 	for i in layers.size():
@@ -31,6 +25,18 @@ func _get_drag_data(_position: Vector2) -> Variant:
 		button.text = Global.current_project.layers[layers[-1 - i]].name
 		box.add_child(button)
 	set_drag_preview(box)
+	return data
+
+
+func _build_layer_drag_data() -> Array:
+	var layers := _get_layer_indices()
+	for layer_i in layers:  # Add child layers, if we have selected groups
+		var layer := Global.current_project.layers[layer_i]
+		for child in layer.get_children(true):
+			var child_index := Global.current_project.layers.find(child)
+			if not child_index in layers:  # Do not add the same index multiple times
+				layers.append(child_index)
+	layers.sort()
 	return ["Layer", layers]
 
 
@@ -66,7 +72,7 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 	var region: Rect2
 	var depth := curr_layer.get_hierarchy_depth()
 	var last_layer := Global.current_project.layers[drop_layers[-1]]
-	if Global.is_ctrl_or_cmd_pressed() and drop_layers.size() == 1:  # Swap layers
+	if _is_swap_drag(data):
 		if last_layer.is_ancestor_of(curr_layer) or curr_layer.is_ancestor_of(last_layer):
 			Global.animation_timeline.drag_highlight.visible = false
 			return false
@@ -129,7 +135,7 @@ func _drop_data(pos: Vector2, data) -> void:
 		drop_from_parents.append(layers[drop_from_indices[i]].parent)
 
 	project.undo_redo.create_action("Change Layer Order")
-	if Global.is_ctrl_or_cmd_pressed() and initial_drop_layers.size() == 1:  # Swap layers
+	if _is_swap_drag(data):
 		# a and b both need "from", "to", and "to_parents"
 		# a is this layer (and children), b is the dropped layers
 		var a := {"from": range(layer_index - curr_layer.get_child_count(true), layer_index + 1)}
@@ -214,6 +220,12 @@ func _drop_data(pos: Vector2, data) -> void:
 	project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
 	project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
 	project.undo_redo.commit_action()
+
+
+func _is_swap_drag(data: Array) -> bool:
+	var allow_modifier_swap := data.size() < 3 or bool(data[2])
+	var drop_layers: PackedInt32Array = data[1]
+	return allow_modifier_swap and Global.is_ctrl_or_cmd_pressed() and drop_layers.size() == 1
 
 
 func _get_region_rect(y_begin: float, y_end: float) -> Rect2:
