@@ -64,10 +64,18 @@ func test_low_frequency_layer_actions_move_into_one_more_menu() -> void:
 
 func test_more_menu_reuses_existing_layer_business_handlers() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(src, '_timeline.call("change_layer_order", true)', "Move Up must reuse existing handler")
-	check_has(src, '_timeline.call("change_layer_order", false)', "Move Down must reuse existing handler")
-	check_has(src, '_timeline.call("_on_CloneLayer_pressed")', "Duplicate must reuse existing handler")
-	check_has(src, '_timeline.call("_on_MergeDownLayer_pressed")', "Merge must reuse existing handler")
+	check_has(
+		src, '_timeline.call("change_layer_order", true)', "Move Up must reuse existing handler"
+	)
+	check_has(
+		src, '_timeline.call("change_layer_order", false)', "Move Down must reuse existing handler"
+	)
+	check_has(
+		src, '_timeline.call("_on_CloneLayer_pressed")', "Duplicate must reuse existing handler"
+	)
+	check_has(
+		src, '_timeline.call("_on_MergeDownLayer_pressed")', "Merge must reuse existing handler"
+	)
 	check_has(src, '_timeline.call("_on_layer_fx_pressed")', "Layer FX must reuse existing handler")
 	check_true(not ("undo_redo" in src), "D4-C must not introduce a second Layer transaction")
 	check_true(not ("move_layers" in src), "D4-C must not introduce Layer movement logic")
@@ -76,10 +84,14 @@ func test_more_menu_reuses_existing_layer_business_handlers() -> void:
 func test_more_menu_disabled_state_follows_existing_buttons() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(src, "_move_up_layer.disabled", "Move Up menu state must follow the existing Button")
-	check_has(src, "_move_down_layer.disabled", "Move Down menu state must follow the existing Button")
+	check_has(
+		src, "_move_down_layer.disabled", "Move Down menu state must follow the existing Button"
+	)
 	check_has(src, "_merge_down_layer.disabled", "Merge menu state must follow the existing Button")
 	check_has(src, "_layer_fx.disabled", "Layer FX menu state must follow the existing Button")
-	check_has(src, "popup.about_to_popup.connect(_sync_action_states)", "state must refresh before open")
+	check_has(
+		src, "popup.about_to_popup.connect(_sync_action_states)", "state must refresh before open"
+	)
 
 
 func test_d4c_is_ios_only_and_does_not_touch_timeline_frame_controls() -> void:
