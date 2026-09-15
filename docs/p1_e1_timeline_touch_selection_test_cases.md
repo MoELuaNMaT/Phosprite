@@ -29,23 +29,27 @@
 ## 3. Cel 双击上下文菜单
 
 操作：
+- 先记录当前 Cel 多选集合和当前 Frame / Layer。
 - 对同一个 Cel 快速双击。
 
 预期：
-- 第一次触摸先选中该 Cel。
-- 第二次触摸打开现有 Cel PopupMenu。
+- 第一击仍按普通单击即时响应。
+- 第二击确认双击后，先恢复到第一击之前的 Cel 多选集合和当前 Frame / Layer，再打开现有 Cel PopupMenu。
+- 因此双击结束后的选择状态应与双击开始前完全一致，不应额外加入或移除目标 Cel。
 - 菜单仍包含该 Cel 类型原有的 Properties / Select pixels / Delete / Link / Unlink / Clone 等可用项目。
-- 不增加新的 Cel 业务事务。
+- 不增加新的 Cel 业务事务或 UndoRedo 记录。
 
 ## 4. Frame Header 双击上下文菜单
 
 操作：
+- 先记录当前 Cel 多选集合和当前 Frame / Layer。
 - 对同一个 Frame 编号快速双击。
 
 预期：
-- 第一次触摸先选择该 Frame。
-- 第二次触摸打开现有 Frame PopupMenu。
-- Remove / Move Left / Move Right / Reverse 等菜单禁用状态应符合当前 Frame 和选择状态。
+- 第一击仍按普通 Frame 单击即时响应。
+- 第二击确认双击后，先恢复到第一击之前的 Cel 多选集合和当前 Frame / Layer，再打开现有 Frame PopupMenu。
+- 因此双击结束后的选择状态应与双击开始前完全一致，不应额外选择或取消该整帧。
+- Remove / Move Left / Move Right / Reverse 等菜单禁用状态应依据恢复后的真实选择状态刷新。
 - 第一帧的 Move Left 不可用；最后一帧的 Move Right 不可用；只有一个 Frame 时 Remove 不可用。
 
 ## 5. 进入 / 退出 Timeline 多选模式
@@ -87,13 +91,17 @@
 ## 8. 多选 + 双击菜单共存
 
 操作：
-- 打开多选模式。
-- 单击某 Cel 将其加入选择。
-- 对同一 Cel 再进行一次完整的双击操作。
+- 打开多选模式并形成至少 3 个 Cel 的多选集合。
+- 记录此时的完整多选集合与当前 Frame / Layer。
+- 对“已选中的 Cel”和“未选中的 Cel”分别测试完整双击。
+- 对“已完整选中的 Frame”和“未完整选中的 Frame”分别测试完整双击。
 
 预期：
-- 双击的第二击只负责打开菜单，不应再次 Toggle 一次选择导致状态翻转。
-- Frame Header 同样成立。
+- 第一击可以产生即时单击反馈，但第二击确认双击时必须撤销第一击对选择造成的变化。
+- 菜单打开后，`selected_cels`、current Frame、current Layer 与双击开始前一致。
+- 已选 Cel 不应因双击被取消；未选 Cel 不应因双击被加入。
+- 已选整帧不应因双击被取消；未选整帧不应因双击被加入。
+- Cel 与 Frame Header 都复用原有 PopupMenu，不创建新的菜单事务。
 
 ## 9. Timeline 滚动不被 E1 抢占
 
@@ -147,12 +155,13 @@
 
 1. Cel 普通单击。
 2. Frame Header 普通单击。
-3. Cel 双击菜单。
-4. Frame 双击菜单。
+3. Cel 双击菜单，并确认双击前后选择集合不变。
+4. Frame 双击菜单，并确认双击前后选择集合不变。
 5. 开启多选后选择 3 个 Cel，再取消其中 1 个。
 6. 多选模式点击一个 Frame，确认整帧选中。
-7. 从 Cel 上直接拖动，确认是滚动而不是选择/重排。
-8. 关闭多选，再点击 Cel，确认恢复单选。
-9. 快速回归一次 Layer 长按重排。
+7. 在多选模式下分别双击已选 / 未选 Cel 与 Frame，确认菜单打开但选择状态恢复。
+8. 从 Cel 上直接拖动，确认是滚动而不是选择/重排。
+9. 关闭多选，再点击 Cel，确认恢复单选。
+10. 快速回归一次 Layer 长按重排。
 
 全部通过即可判定 P1-E1 真机 Gate PASS。
