@@ -58,6 +58,29 @@ func test_layer_context_menu_exposes_rename_through_existing_editor() -> void:
 	check_true(not ("three_dot" in src), "D4-A must not add a parallel three-dot action model")
 
 
+func test_layer_rename_commits_on_next_touch_outside_editor() -> void:
+	var src := FileAccess.get_file_as_string(LAYER_TOUCH_SOURCE)
+	check_has(
+		src,
+		"_active_rename_owns_touch(touch)",
+		"direct touch must arbitrate an active inline Rename before normal Layer touch handling"
+	)
+	check_has(
+		src,
+		"_layer_button.line_edit.get_global_rect().has_point(event.position)",
+		"touches inside the active rename editor must remain owned by the LineEdit"
+	)
+	check_has(
+		src,
+		"_layer_button.line_edit.release_focus()",
+		"the next touch outside Rename must release focus and reuse focus_exited save semantics"
+	)
+	check_true(
+		not ("_save_layer_name(" in src),
+		"the touch adapter must not introduce a second rename save or Undo transaction"
+	)
+
+
 func test_layer_touch_scroll_movement_is_not_claimed_by_d4a() -> void:
 	var src := FileAccess.get_file_as_string(LAYER_TOUCH_SOURCE)
 	check_has(
