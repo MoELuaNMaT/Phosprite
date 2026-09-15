@@ -47,7 +47,9 @@ func test_layer_double_touch_selects_then_opens_existing_context_menu() -> void:
 
 func test_layer_context_menu_exposes_rename_through_existing_editor() -> void:
 	var src := FileAccess.get_file_as_string(LAYER_TOUCH_SOURCE)
-	check_has(src, 'add_item(tr("Rename"), RENAME_MENU_ID)', "touch context menu must expose Rename")
+	check_has(
+		src, 'add_item(tr("Rename"), RENAME_MENU_ID)', "touch context menu must expose Rename"
+	)
 	check_has(
 		src,
 		"_layer_button._show_rename_edit()",
@@ -69,7 +71,9 @@ func test_layer_touch_scroll_movement_is_not_claimed_by_d4a() -> void:
 		"D4-A drag cancellation must leave scrolling available to the surrounding Timeline"
 	)
 	check_true(not ("reordering" in src), "D4-A must not pre-implement D4-B reorder ownership")
-	check_true(not ("_drop_data" in src), "D4-A must not bypass the existing Layer drop transaction")
+	check_true(
+		not ("_drop_data" in src), "D4-A must not bypass the existing Layer drop transaction"
+	)
 
 
 func test_layer_touch_suppresses_synthetic_mouse_and_restores_real_pointer() -> void:
@@ -89,11 +93,7 @@ func test_layer_touch_suppresses_synthetic_mouse_and_restores_real_pointer() -> 
 		"event.device != -1",
 		"a real pointer event must restore native mouse/trackpad Layer behavior"
 	)
-	check_has(
-		src,
-		"_restore_pointer_layer_ui()",
-		"pointer restoration must be explicit"
-	)
+	check_has(src, "_restore_pointer_layer_ui()", "pointer restoration must be explicit")
 
 
 func test_desktop_layer_double_click_and_right_click_semantics_remain_unchanged() -> void:
@@ -115,7 +115,5 @@ func test_layer_scene_installs_touch_adapter_without_replacing_layer_button() ->
 		"LayerButton scene must install the D4-A adapter"
 	)
 	check_has(
-		scene,
-		'script = ExtResource("1_6hlpe")',
-		"LayerButton must keep its existing core script"
+		scene, 'script = ExtResource("1_6hlpe")', "LayerButton must keep its existing core script"
 	)
