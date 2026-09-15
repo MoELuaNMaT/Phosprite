@@ -12,9 +12,7 @@ func test_e2_uses_d4b_long_press_and_slop_contract() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	var drag_handler_pos := src.find("func _handle_screen_drag")
 	var hold_pos := src.find("held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC", drag_handler_pos)
-	var slop_pos := src.find(
-		"origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX", hold_pos
-	)
+	var slop_pos := src.find("origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX", hold_pos)
 	check_true(
 		drag_handler_pos >= 0 and hold_pos >= 0 and slop_pos > hold_pos,
 		"a held touch must acquire reorder before slop cancels it"
