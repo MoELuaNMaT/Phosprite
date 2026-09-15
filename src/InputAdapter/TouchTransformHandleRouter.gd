@@ -28,7 +28,7 @@ static func handle_event(canvas, screen_position: Vector2, event: InputEvent) ->
 	if not project.layers[project.current_layer].can_layer_get_drawn():
 		return false
 
-	var local_position := (
+	var local_position: Vector2 = (
 		transformation_handles.get_global_transform_with_canvas().affine_inverse() * screen_position
 	)
 	if Global.mirror_view:
@@ -56,7 +56,7 @@ static func handle_event(canvas, screen_position: Vector2, event: InputEvent) ->
 
 
 static func _nearest_touch_handle(transformation_handles, local_position: Vector2):
-	var zoom_x := maxf(absf(Global.camera.zoom.x), MIN_ZOOM)
+	var zoom_x: float = maxf(absf(Global.camera.zoom.x), MIN_ZOOM)
 	var best_handle = null
 	var best_distance_px := INF
 	for index in transformation_handles.handles.size():
@@ -64,10 +64,10 @@ static func _nearest_touch_handle(transformation_handles, local_position: Vector
 		# The pivot handle is intentionally hidden until a rotation or skew exists.
 		if index == 0 and not transformation_handles.is_rotated_or_skewed():
 			continue
-		var local_distance := transformation_handles.get_handle_position(handle).distance_to(
+		var local_distance: float = transformation_handles.get_handle_position(handle).distance_to(
 			local_position
 		)
-		var distance_px := local_distance * zoom_x
+		var distance_px: float = local_distance * zoom_x
 		if distance_px <= TOUCH_HANDLE_RADIUS_PX and distance_px < best_distance_px:
 			best_distance_px = distance_px
 			best_handle = handle
