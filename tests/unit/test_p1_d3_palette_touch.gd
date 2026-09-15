@@ -46,8 +46,13 @@ func test_palette_touch_add_delete_reuse_existing_panel_handlers() -> void:
 	)
 	check_has(
 		panel,
-		"current_palette_get_selected_color_index(\n\t\t\t\tevent.button_index",
-		"the shared Delete Color handler must still resolve the selected index by slot"
+		"current_palette_get_selected_color_index(",
+		"the shared Delete Color handler must still query the existing selected-index model"
+	)
+	check_has(
+		panel,
+		"event.button_index",
+		"desktop Add/Delete must remain parameterized by the original pointer button"
 	)
 
 
