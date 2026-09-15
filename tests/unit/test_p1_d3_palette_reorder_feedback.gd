@@ -2,6 +2,7 @@ extends "res://tests/test_base.gd"
 
 const FEEDBACK_SOURCE := "res://src/Palette/PaletteReorderTouchFeedback.gd"
 const PALETTE_GRID_SOURCE := "res://src/Palette/PaletteGrid.gd"
+const PALETTE_SWATCH_SOURCE := "res://src/Palette/PaletteSwatch.gd"
 const PALETTE_PANEL_SCENE := "res://src/Palette/PalettePanel.tscn"
 
 
@@ -45,6 +46,41 @@ func test_reorder_preview_follows_the_active_touch() -> void:
 		src,
 		"_clear_preview()",
 		"reorder feedback must clean up the transient preview after the gesture",
+	)
+
+
+func test_reorder_source_swatch_gets_distinct_dashed_outline() -> void:
+	var feedback := FileAccess.get_file_as_string(FEEDBACK_SOURCE)
+	var swatch := FileAccess.get_file_as_string(PALETTE_SWATCH_SOURCE)
+	check_has(
+		feedback,
+		"_source_swatch.show_dragging_outline = true",
+		"the swatch left in the source slot must gain a drag-in-progress visual state",
+	)
+	check_has(
+		feedback,
+		"_source_swatch.show_dragging_outline = false",
+		"the source marker must clear on release or cancellation",
+	)
+	check_has(
+		feedback,
+		"preview.show_dragging_outline = false",
+		"the following preview must not duplicate the source-slot dashed marker",
+	)
+	check_has(
+		swatch,
+		"if show_dragging_outline and not empty:",
+		"PaletteSwatch must render dragging independently of selection highlights",
+	)
+	check_has(
+		swatch,
+		"_draw_dragging_outline()",
+		"the dragged source state must have a dedicated outline renderer",
+	)
+	check_has(
+		swatch,
+		"DRAG_OUTLINE_INSET_PX := 4",
+		"the dashed marker must stay inset from the existing Primary/Secondary selection frame",
 	)
 
 
