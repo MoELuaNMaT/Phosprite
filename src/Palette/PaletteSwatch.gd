@@ -138,5 +138,7 @@ func _on_gui_input(event: InputEvent) -> void:
 			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 				pressed.emit(event.button_index)
 		elif event.is_pressed():
-			if DisplayServer.is_touchscreen_available() and show_left_highlight:
+			if DisplayServer.is_touchscreen_available() and (
+				show_left_highlight or show_right_highlight
+			):
 				accept_event()
