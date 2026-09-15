@@ -188,7 +188,7 @@ func _on_PopupMenu_id_pressed(id: int) -> void:
 					if layer != cel_index[1]:  # Skip selected cels not on the same layer
 						continue
 					var s_cel := project.frames[cel_index[0]].cels[cel_index[1]]
-					if s_cel.link_set == null:  # Skip cels that aren't linked
+					if s_cel.link_set == null:  # Skip selected cels that aren't linked
 						continue
 					project.undo_redo.add_do_method(
 						project.layers[layer].link_cel.bind(s_cel, null)
@@ -356,12 +356,25 @@ func _get_drag_data(_position: Vector2) -> Variant:
 	texture_rect.texture = cel_texture.texture
 	button.add_child(texture_rect)
 	set_drag_preview(button)
-	return ["Cel", _get_cel_indices()]
+	return _build_cel_drag_data()
+
+
+func _build_cel_drag_data(modifier_swap_override = null) -> Array:
+	var data: Array = ["Cel", _get_cel_indices()]
+	if modifier_swap_override != null:
+		data.append(bool(modifier_swap_override))
+	return data
+
+
+func _drag_uses_modifier_swap(data: Array) -> bool:
+	if data.size() >= 3:
+		return bool(data[2])
+	return Global.is_ctrl_or_cmd_pressed()
 
 
 func _can_drop_data(pos: Vector2, data) -> bool:
 	var project := Global.current_project
-	if typeof(data) != TYPE_ARRAY:
+	if typeof(data) != TYPE_ARRAY or data.size() < 2:
 		Global.animation_timeline.drag_highlight.visible = false
 		return false
 	if data[0] != "Cel":
@@ -409,7 +422,7 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 	for l in drop_layers:
 		if l != layer:
 			different_layers = true
-	var is_swapping := Global.is_ctrl_or_cmd_pressed() or different_layers
+	var is_swapping := _drag_uses_modifier_swap(data) or different_layers
 
 	if is_swapping:
 		for cel_idx in drop_cels:
@@ -452,10 +465,10 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 			# Don't highlight this button right now (it is done later, a few lines ahead)
 			Global.animation_timeline.set_cels_highlight(copy_drop_cels, offset)
 		else:  # Move cels
-			if _get_region_rect(0, 0.5).has_point(get_global_mouse_position()):  # Left
+			if pos.x < size.x / 2.0:
 				region = _get_region_rect(-0.125, 0.125)
 				region.position.x -= 2  # Container spacing
-			else:  # Right
+			else:
 				region = _get_region_rect(0.875, 1.125)
 				region.position.x += 2  # Container spacing
 		Global.animation_timeline.drag_highlight.global_position = region.position
@@ -467,7 +480,7 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 	return false
 
 
-func _drop_data(_pos: Vector2, data) -> void:
+func _drop_data(pos: Vector2, data) -> void:
 	var drop_cels: Array = data[1]
 	drop_cels.sort_custom(_sort_cel_indices_by_frame)
 	var drop_frames: PackedInt32Array = []
@@ -486,7 +499,7 @@ func _drop_data(_pos: Vector2, data) -> void:
 		offset.y = layer - Array(drop_layers).max()
 	var project := Global.current_project
 	project.undo_redo.create_action("Move Cels")
-	if Global.is_ctrl_or_cmd_pressed() or different_layers:  # Swap cels
+	if _drag_uses_modifier_swap(data) or different_layers:  # Swap cels
 		var swap_cel_positions := []
 		for cel_idx in drop_cels:
 			var drop_point_frame: int = cel_idx[0] + offset.x
@@ -512,9 +525,9 @@ func _drop_data(_pos: Vector2, data) -> void:
 		project.undo_redo.add_do_property(project, "selected_cels", swap_cel_positions)
 	else:  # Move cels
 		var to_frame: int
-		if _get_region_rect(0, 0.5).has_point(get_global_mouse_position()):  # Left
+		if pos.x < size.x / 2.0:
 			to_frame = frame
-		else:  # Right
+		else:
 			to_frame = frame + 1
 		for drop_frame in drop_frames:
 			if drop_frame < frame:
