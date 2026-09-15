@@ -1,9 +1,13 @@
 extends Node
 
 const LAYER_PANEL_TOUCH_MANAGER := preload("res://src/UI/Timeline/LayerPanelTouchManager.gd")
+const TIMELINE_TOUCH_SELECTION_MANAGER := preload(
+	"res://src/UI/Timeline/TimelineTouchSelectionManager.gd"
+)
 const IOS_SIDE_TOUCH_WIDTH := 44.0
 const IOS_SIDE_CONTROL_SLOTS := 3.0
 const PANEL_MANAGER_NAME := "LayerPanelTouchManager"
+const TIMELINE_SELECTION_MANAGER_NAME := "TimelineTouchSelectionManager"
 
 
 func _ready() -> void:
@@ -30,8 +34,13 @@ func _install_ios_layer_panel_touch() -> void:
 	if not is_instance_valid(timeline):
 		await get_tree().process_frame
 		timeline = Global.animation_timeline
-	if not is_instance_valid(timeline) or timeline.has_node(PANEL_MANAGER_NAME):
+	if not is_instance_valid(timeline):
 		return
-	var manager := LAYER_PANEL_TOUCH_MANAGER.new() as Node
-	manager.name = PANEL_MANAGER_NAME
-	timeline.add_child(manager)
+	if not timeline.has_node(PANEL_MANAGER_NAME):
+		var panel_manager := LAYER_PANEL_TOUCH_MANAGER.new() as Node
+		panel_manager.name = PANEL_MANAGER_NAME
+		timeline.add_child(panel_manager)
+	if not timeline.has_node(TIMELINE_SELECTION_MANAGER_NAME):
+		var selection_manager := TIMELINE_TOUCH_SELECTION_MANAGER.new() as Node
+		selection_manager.name = TIMELINE_SELECTION_MANAGER_NAME
+		timeline.add_child(selection_manager)
