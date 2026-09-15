@@ -100,6 +100,35 @@ func test_double_tap_opens_existing_cel_and_frame_context_menus() -> void:
 	)
 
 
+func test_double_tap_restores_pre_first_tap_selection_before_opening_menu() -> void:
+	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	check_has(
+		src,
+		'"selected_cels": project.selected_cels.duplicate(true)',
+		"the first tap must retain an exact selection snapshot for double-tap rollback",
+	)
+	check_has(
+		src,
+		'"current_frame": project.current_frame',
+		"double-tap rollback must preserve the pre-first-tap current Frame",
+	)
+	check_has(
+		src,
+		'"current_layer": project.current_layer',
+		"double-tap rollback must preserve the pre-first-tap current Layer",
+	)
+	var restore_pos := src.find("_restore_last_tap_selection_snapshot()\n\t\t_show_existing_context_menu")
+	check_true(
+		restore_pos >= 0,
+		"confirmed double tap must restore the first tap before opening the existing menu",
+	)
+	check_has(
+		src,
+		"_last_tap_selection_snapshot.clear()",
+		"completed/cancelled gestures must not leak rollback state into the next tap",
+	)
+
+
 func test_touch_selection_suppresses_synthetic_mouse_but_preserves_physical_pointer() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(
