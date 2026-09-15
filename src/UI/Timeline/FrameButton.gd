@@ -28,7 +28,7 @@ func _update_tooltip() -> void:
 	var duration_sec := frame_class.get_duration_in_seconds(Global.current_project.fps)
 	var duration_str := str(duration_sec)
 	if "." in duration_str:  # If its a decimal value
-		duration_str = "%.2f" % duration_sec  # Up to 2 decimal places
+		duration_str = "%.2f" % duration_sec  # Up to 2 decimals
 	tooltip_text = "%s: %sx (%s sec)" % [tr("Duration"), str(duration), duration_str]
 
 
