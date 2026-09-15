@@ -340,8 +340,12 @@ func _draw_source_outline(outline: Control) -> void:
 		[bottom_left, top_left],
 	]
 	for edge in edges:
-		outline.draw_dashed_line(edge[0], edge[1], Color(0.0, 0.0, 0.0, 0.85), 3.0, SOURCE_OUTLINE_DASH_PX)
-		outline.draw_dashed_line(edge[0], edge[1], Color(1.0, 1.0, 1.0, 0.95), 1.0, SOURCE_OUTLINE_DASH_PX)
+		outline.draw_dashed_line(
+			edge[0], edge[1], Color(0.0, 0.0, 0.0, 0.85), 3.0, SOURCE_OUTLINE_DASH_PX
+		)
+		outline.draw_dashed_line(
+			edge[0], edge[1], Color(1.0, 1.0, 1.0, 0.95), 1.0, SOURCE_OUTLINE_DASH_PX
+		)
 
 
 func _finish_reorder() -> void:
