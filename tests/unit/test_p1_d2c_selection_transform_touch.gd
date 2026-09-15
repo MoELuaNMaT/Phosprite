@@ -22,7 +22,7 @@ func test_adapter_routes_transform_handles_before_selection_tool_draw() -> void:
 	check_has(
 		canvas,
 		"if TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, screen_position, event):\n\t\treturn",
-		"an acquired transform handle must consume the adapter event so Selection content move does not also start"
+		"acquired handles must consume adapter events before Selection content move"
 	)
 
 
