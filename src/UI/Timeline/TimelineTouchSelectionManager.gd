@@ -262,12 +262,13 @@ func _prepare_source_selection_for_reorder(kind: int, source: Control) -> void:
 
 
 func _build_reorder_data(kind: int, source: Control) -> Array:
+	var data = null
 	if kind == TouchTargetKind.CEL and source.has_method("_build_cel_drag_data"):
 		# The third payload field explicitly disables Ctrl/Cmd-forced Swap for Finger drag.
-		return source.call("_build_cel_drag_data", false) as Array
-	if kind == TouchTargetKind.FRAME and source.has_method("_build_frame_drag_data"):
-		return source.call("_build_frame_drag_data", false) as Array
-	return []
+		data = source.call("_build_cel_drag_data", false)
+	elif kind == TouchTargetKind.FRAME and source.has_method("_build_frame_drag_data"):
+		data = source.call("_build_frame_drag_data", false)
+	return data if typeof(data) == TYPE_ARRAY else []
 
 
 func _commit_reorder_if_valid() -> void:
@@ -422,10 +423,23 @@ func _hold_managed_scroll_inside_visible_area(screen_position: Vector2) -> void:
 func _horizontal_visible_rect() -> Rect2:
 	if not is_instance_valid(_timeline):
 		return Rect2()
-	var frame_scroll_container := _timeline.get("frame_scroll_container") as Control
-	if not is_instance_valid(frame_scroll_container):
-		return Rect2()
-	return frame_scroll_container.get_global_rect()
+	var body := _timeline.get("frame_scroll_container") as Control
+	var frame_hbox := _timeline.get("frame_hbox") as HBoxContainer
+	var body_rect := Rect2()
+	var header_rect := Rect2()
+	if is_instance_valid(body):
+		body_rect = body.get_global_rect()
+	if is_instance_valid(frame_hbox):
+		var header_margin := frame_hbox.get_parent() as Control
+		if is_instance_valid(header_margin):
+			var header_container := header_margin.get_parent() as Control
+			if is_instance_valid(header_container):
+				header_rect = header_container.get_global_rect()
+	if body_rect.size == Vector2.ZERO:
+		return header_rect
+	if header_rect.size == Vector2.ZERO:
+		return body_rect
+	return body_rect.merge(header_rect)
 
 
 func _vertical_visible_rect() -> Rect2:
