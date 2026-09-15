@@ -6,11 +6,20 @@ signal double_clicked(mouse_button: int, position: Vector2)
 signal dropped(source_index: int, new_index: int)
 
 const DEFAULT_COLOR := Color(0.0, 0.0, 0.0, 0.0)
+const DRAG_OUTLINE_INSET_PX := 4
+const DRAG_OUTLINE_DASH_PX := 3
+const DRAG_OUTLINE_GAP_PX := 2
 
 var index := -1
 var color_index := -1
 var show_left_highlight := false
 var show_right_highlight := false
+var show_dragging_outline := false:
+	set(value):
+		if show_dragging_outline == value:
+			return
+		show_dragging_outline = value
+		queue_redraw()
 var empty := true:
 	set(value):
 		empty = value
@@ -72,6 +81,10 @@ func _draw() -> void:
 		draw_rect(
 			Rect2(margin - Vector2.ONE, size - margin * 2 + Vector2(2, 2)), Color.WHITE, false, 1
 		)
+
+	if show_dragging_outline and not empty:
+		_draw_dragging_outline()
+
 	if Global.show_pixel_indices:
 		var text := str(color_index + 1)
 		var font := Themes.get_font()
@@ -90,6 +103,30 @@ func _draw() -> void:
 		draw_string(font, str_pos, text, HORIZONTAL_ALIGNMENT_RIGHT, -1, size.x / 2, text_color)
 
 
+func _draw_dragging_outline() -> void:
+	var left := float(DRAG_OUTLINE_INSET_PX)
+	var top := float(DRAG_OUTLINE_INSET_PX)
+	var right := size.x - float(DRAG_OUTLINE_INSET_PX)
+	var bottom := size.y - float(DRAG_OUTLINE_INSET_PX)
+	if right <= left or bottom <= top:
+		return
+	var step := DRAG_OUTLINE_DASH_PX + DRAG_OUTLINE_GAP_PX
+	for x in range(DRAG_OUTLINE_INSET_PX, int(right), step):
+		var end_x := minf(float(x + DRAG_OUTLINE_DASH_PX), right)
+		_draw_drag_dash(Vector2(float(x), top), Vector2(end_x, top))
+		_draw_drag_dash(Vector2(float(x), bottom), Vector2(end_x, bottom))
+	for y in range(DRAG_OUTLINE_INSET_PX, int(bottom), step):
+		var end_y := minf(float(y + DRAG_OUTLINE_DASH_PX), bottom)
+		_draw_drag_dash(Vector2(left, float(y)), Vector2(left, end_y))
+		_draw_drag_dash(Vector2(right, float(y)), Vector2(right, end_y))
+
+
+func _draw_drag_dash(from: Vector2, to: Vector2) -> void:
+	# A dark underlay plus a white 1 px dash stays legible on both light and dark swatches.
+	draw_line(from, to, Color.BLACK, 2.0)
+	draw_line(from, to, Color.WHITE, 1.0)
+
+
 ## Enables drawing of highlights which indicate selected swatches
 func show_selected_highlight(new_value: bool, mouse_button: int) -> void:
 	if not empty:
@@ -102,13 +139,17 @@ func show_selected_highlight(new_value: bool, mouse_button: int) -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
-	if DisplayServer.is_touchscreen_available() and not show_left_highlight:
+	if (
+		DisplayServer.is_touchscreen_available()
+		and not (show_left_highlight or show_right_highlight)
+	):
 		return null
 	if empty:
 		return ["Swatch", null]
 	var drag_icon: PaletteSwatch = duplicate()
 	drag_icon.show_left_highlight = false
 	drag_icon.show_right_highlight = false
+	drag_icon.show_dragging_outline = false
 	drag_icon.empty = false
 	set_drag_preview(drag_icon)
 	return ["Swatch", {source_index = index}]
@@ -136,5 +177,8 @@ func _on_gui_input(event: InputEvent) -> void:
 			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 				pressed.emit(event.button_index)
 		elif event.is_pressed():
-			if DisplayServer.is_touchscreen_available() and show_left_highlight:
+			if (
+				DisplayServer.is_touchscreen_available()
+				and (show_left_highlight or show_right_highlight)
+			):
 				accept_event()
