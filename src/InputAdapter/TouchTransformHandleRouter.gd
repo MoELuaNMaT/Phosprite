@@ -29,8 +29,7 @@ static func handle_event(canvas, screen_position: Vector2, event: InputEvent) ->
 		return false
 
 	var local_position := (
-		transformation_handles.get_global_transform_with_canvas().affine_inverse()
-		* screen_position
+		transformation_handles.get_global_transform_with_canvas().affine_inverse() * screen_position
 	)
 	if Global.mirror_view:
 		local_position.x = project.size.x - local_position.x
