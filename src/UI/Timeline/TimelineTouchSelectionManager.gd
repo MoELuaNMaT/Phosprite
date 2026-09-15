@@ -482,7 +482,9 @@ func _create_reorder_preview(source: Control) -> void:
 			texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			texture_rect.texture = source_texture.texture
 			preview.add_child(texture_rect)
-		var count := _reorder_data[1].size() if _reorder_data.size() >= 2 else 1
+		var count: int = 1
+		if _reorder_data.size() >= 2:
+			count = int(_reorder_data[1].size())
 		if count > 1:
 			preview.text = "×%d" % count
 	get_tree().root.add_child(preview)
