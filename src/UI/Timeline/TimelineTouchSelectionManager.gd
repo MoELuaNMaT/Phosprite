@@ -23,6 +23,7 @@ var _suppressed_controls: Array[Control] = []
 var _last_tap_msec := -1
 var _last_tap_position := Vector2.INF
 var _last_tap_key := ""
+var _last_tap_selection_snapshot: Dictionary = {}
 
 
 func _ready() -> void:
@@ -109,8 +110,14 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 	var kind := int(candidate.get("kind", TouchTargetKind.NONE))
 	var tap_key := _touch_target_key(kind, target)
 	if _register_tap(tap_key, event.position):
+		# The first tap of a double tap is processed immediately so single tap stays
+		# responsive. Once the second tap confirms the gesture, restore the exact
+		# pre-first-tap selection/focus state before opening the existing context menu.
+		_restore_last_tap_selection_snapshot()
 		_show_existing_context_menu(kind, target, event.position)
+		_reset_last_tap()
 	else:
+		_last_tap_selection_snapshot = _capture_selection_snapshot()
 		_apply_touch_selection(kind, target)
 	get_viewport().set_input_as_handled()
 	return true
@@ -162,6 +169,28 @@ func _find_touch_target(screen_position: Vector2) -> Dictionary:
 				):
 					return {"kind": TouchTargetKind.CEL, "control": cel_button}
 	return {}
+
+
+func _capture_selection_snapshot() -> Dictionary:
+	var project := Global.current_project
+	return {
+		"selected_cels": project.selected_cels.duplicate(true),
+		"current_frame": project.current_frame,
+		"current_layer": project.current_layer,
+	}
+
+
+func _restore_last_tap_selection_snapshot() -> void:
+	if _last_tap_selection_snapshot.is_empty():
+		return
+	var project := Global.current_project
+	var selected_cels: Array = _last_tap_selection_snapshot.get("selected_cels", [])
+	project.selected_cels.clear()
+	for frame_layer in selected_cels:
+		project.selected_cels.append(frame_layer)
+	var frame := int(_last_tap_selection_snapshot.get("current_frame", project.current_frame))
+	var layer := int(_last_tap_selection_snapshot.get("current_layer", project.current_layer))
+	project.change_cel(frame, layer)
 
 
 func _apply_touch_selection(kind: int, target: Control) -> void:
@@ -270,7 +299,6 @@ func _register_tap(tap_key: String, screen_position: Vector2) -> bool:
 		and _last_tap_position.distance_to(screen_position) <= IOS_TOUCH_TAP_SLOP_PX
 	)
 	if is_double_tap:
-		_reset_last_tap()
 		return true
 	_last_tap_msec = now
 	_last_tap_position = screen_position
@@ -322,6 +350,7 @@ func _reset_last_tap() -> void:
 	_last_tap_msec = -1
 	_last_tap_position = Vector2.INF
 	_last_tap_key = ""
+	_last_tap_selection_snapshot.clear()
 
 
 func _is_ready_for_touch() -> bool:
