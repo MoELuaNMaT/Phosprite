@@ -4,9 +4,16 @@ enum TouchTargetKind { NONE, CEL, FRAME }
 
 const IOS_TOUCH_TAP_SLOP_PX := 12.0
 const IOS_TOUCH_DOUBLE_TAP_MSEC := 350
+const IOS_TOUCH_REORDER_HOLD_MSEC := 450
 const IOS_MULTI_SELECT_WIDTH := 72.0
 const IOS_MULTI_SELECT_HEIGHT := 44.0
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
+const AUTO_SCROLL_MIN_SPEED := 90.0
+const AUTO_SCROLL_MAX_SPEED := 520.0
+const AUTO_SCROLL_RAMP_PX := 72.0
+const PREVIEW_OPACITY := 0.88
+const SOURCE_OUTLINE_INSET_PX := 4.0
+const SOURCE_OUTLINE_DASH_PX := 3.0
 const FRAME_BUTTONS_PATH := (
 	"TimelineContainer/TimelineButtons/VBoxContainer/AnimationToolsScrollContainer/"
 	+ "AnimationTools/MarginContainer/AnimationButtons/FrameButtons"
@@ -24,13 +31,25 @@ var _last_tap_msec := -1
 var _last_tap_position := Vector2.INF
 var _last_tap_key := ""
 var _last_tap_selection_snapshot: Dictionary = {}
+var _active_reorder_touch := -1
+var _reorder_kind := TouchTargetKind.NONE
+var _reorder_data: Array = []
+var _reorder_source: Control
+var _reorder_preview: Control
+var _source_outline: Control
+var _drop_target: Control
+var _drop_local_position := Vector2.ZERO
+var _managed_horizontal_scroll := 0.0
+var _managed_vertical_scroll := 0.0
 
 
 func _ready() -> void:
 	if OS.get_name() != "iOS":
 		set_process_input(false)
+		set_process(false)
 		queue_free()
 		return
+	set_process(false)
 	call_deferred("_install_ios_timeline_selection")
 
 
@@ -47,6 +66,21 @@ func _input(event: InputEvent) -> void:
 		_handle_screen_drag(event as InputEventScreenDrag)
 	elif (event is InputEventMouseMotion or event is InputEventMouseButton) and event.device != -1:
 		_restore_pointer_timeline_ui()
+
+
+func _process(delta: float) -> void:
+	if _active_reorder_touch < 0:
+		set_process(false)
+		return
+	if not _touch_candidates.has(_active_reorder_touch):
+		_finish_reorder()
+		return
+	var candidate: Dictionary = _touch_candidates[_active_reorder_touch]
+	if not bool(candidate.get("reordering", false)):
+		_finish_reorder()
+		return
+	var screen_position: Vector2 = candidate.get("position", Vector2.ZERO)
+	_update_reorder_feedback(screen_position, delta)
 
 
 func _install_ios_timeline_selection() -> void:
@@ -76,9 +110,16 @@ func _install_ios_timeline_selection() -> void:
 
 func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 	if event.canceled:
-		_touch_candidates.erase(event.index)
+		var was_reordering := false
+		if _touch_candidates.has(event.index):
+			var canceled_candidate: Dictionary = _touch_candidates[event.index]
+			was_reordering = bool(canceled_candidate.get("reordering", false))
+			_touch_candidates.erase(event.index)
+		if was_reordering or event.index == _active_reorder_touch:
+			_finish_reorder()
+			get_viewport().set_input_as_handled()
 		_reset_last_tap()
-		return false
+		return was_reordering
 
 	if event.pressed:
 		var target_data := _find_touch_target(event.position)
@@ -88,15 +129,28 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 		_suppress_synthetic_mouse(target)
 		_touch_candidates[event.index] = {
 			"origin": event.position,
+			"position": event.position,
+			"pressed_msec": Time.get_ticks_msec(),
 			"target": target,
 			"kind": int(target_data.get("kind", TouchTargetKind.NONE)),
 			"cancelled": false,
+			"reordering": false,
 		}
 		return true
 
 	if not _touch_candidates.has(event.index):
 		return false
 	var candidate: Dictionary = _touch_candidates[event.index]
+	if bool(candidate.get("reordering", false)):
+		candidate["position"] = event.position
+		_touch_candidates[event.index] = candidate
+		_update_reorder_feedback(event.position, 0.0)
+		_commit_reorder_if_valid()
+		_touch_candidates.erase(event.index)
+		_finish_reorder()
+		get_viewport().set_input_as_handled()
+		return true
+
 	_touch_candidates.erase(event.index)
 	if bool(candidate.get("cancelled", false)):
 		return false
@@ -110,9 +164,8 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 	var kind := int(candidate.get("kind", TouchTargetKind.NONE))
 	var tap_key := _touch_target_key(kind, target)
 	if _register_tap(tap_key, event.position):
-		# The first tap of a double tap is processed immediately so single tap stays
-		# responsive. Once the second tap confirms the gesture, restore the exact
-		# pre-first-tap selection/focus state before opening the existing context menu.
+		# Single taps stay immediate. A confirmed double tap restores the exact
+		# pre-first-tap selection/focus state before opening the existing menu.
 		_restore_last_tap_selection_snapshot()
 		_show_existing_context_menu(kind, target, event.position)
 		_reset_last_tap()
@@ -129,15 +182,368 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 	var candidate: Dictionary = _touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
 		return false
+	candidate["position"] = event.position
+	if bool(candidate.get("reordering", false)):
+		_touch_candidates[event.index] = candidate
+		_update_reorder_feedback(event.position, 0.0)
+		get_viewport().set_input_as_handled()
+		return true
+
+	var pressed_msec := int(candidate.get("pressed_msec", Time.get_ticks_msec()))
+	var held_msec := Time.get_ticks_msec() - pressed_msec
+	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC:
+		_touch_candidates[event.index] = candidate
+		if _begin_reorder(event.index, event.position):
+			get_viewport().set_input_as_handled()
+			return true
+
 	var origin: Vector2 = candidate.get("origin", event.position)
 	if origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX:
 		candidate["cancelled"] = true
 		_touch_candidates[event.index] = candidate
 		_reset_last_tap()
-		# E1 never acquires drag ownership. Movement remains available to the existing
-		# Timeline ScrollContainers; E2 will add long-press Frame/Cel reorder ownership.
+		# Before long-press ownership, movement belongs to the existing Timeline scroll views.
 		return false
+	_touch_candidates[event.index] = candidate
 	return true
+
+
+func _begin_reorder(touch_index: int, screen_position: Vector2) -> bool:
+	if _active_reorder_touch >= 0 or not _touch_candidates.has(touch_index):
+		return false
+	var candidate: Dictionary = _touch_candidates[touch_index]
+	var source := candidate.get("target") as Control
+	var kind := int(candidate.get("kind", TouchTargetKind.NONE))
+	if not is_instance_valid(source) or kind == TouchTargetKind.NONE:
+		return false
+	_prepare_source_selection_for_reorder(kind, source)
+	var data := _build_reorder_data(kind, source)
+	if data.size() < 2:
+		return false
+	candidate["reordering"] = true
+	candidate["position"] = screen_position
+	_touch_candidates[touch_index] = candidate
+	_active_reorder_touch = touch_index
+	_reorder_kind = kind
+	_reorder_data = data
+	_reorder_source = source
+	_reset_last_tap()
+	_capture_managed_scroll()
+	_create_reorder_preview(source)
+	_create_source_outline(source)
+	set_process(true)
+	_update_reorder_feedback(screen_position, 0.0)
+	return true
+
+
+func _prepare_source_selection_for_reorder(kind: int, source: Control) -> void:
+	var project := Global.current_project
+	Global.transform_content_confirmed.emit()
+	if kind == TouchTargetKind.CEL:
+		var frame := int(source.get("frame"))
+		var layer := int(source.get("layer"))
+		var frame_layer := [frame, layer]
+		if not project.selected_cels.has(frame_layer):
+			project.selected_cels.clear()
+			project.selected_cels.append(frame_layer)
+			project.change_cel(frame, layer)
+		return
+	if kind == TouchTargetKind.FRAME:
+		var frame := int(source.get("frame"))
+		var frame_is_selected := false
+		for frame_layer in project.selected_cels:
+			if int(frame_layer[0]) == frame:
+				frame_is_selected = true
+				break
+		if not frame_is_selected:
+			project.selected_cels.clear()
+			project.selected_cels.append([frame, project.current_layer])
+			project.change_cel(frame, project.current_layer)
+
+
+func _build_reorder_data(kind: int, source: Control) -> Array:
+	if kind == TouchTargetKind.CEL and source.has_method("_build_cel_drag_data"):
+		# The third payload field explicitly disables Ctrl/Cmd-forced Swap for Finger drag.
+		return source.call("_build_cel_drag_data", false) as Array
+	if kind == TouchTargetKind.FRAME and source.has_method("_build_frame_drag_data"):
+		return source.call("_build_frame_drag_data", false) as Array
+	return []
+
+
+func _commit_reorder_if_valid() -> void:
+	if not is_instance_valid(_drop_target) or _reorder_data.is_empty():
+		return
+	var target := _drop_target
+	var local_position := _drop_local_position
+	target.call("_drop_data", local_position, _reorder_data)
+
+
+func _update_reorder_feedback(screen_position: Vector2, delta: float) -> void:
+	_update_preview_position(screen_position)
+	_update_managed_scroll(screen_position, delta)
+	_update_drop_target(screen_position)
+	_hold_managed_scroll_inside_visible_area(screen_position)
+
+
+func _update_drop_target(screen_position: Vector2) -> void:
+	_drop_target = null
+	_drop_local_position = Vector2.ZERO
+	if not is_instance_valid(_timeline):
+		_clear_drop_highlight()
+		return
+	var horizontal_rect := _horizontal_visible_rect()
+	if not horizontal_rect.has_point(screen_position):
+		_clear_drop_highlight()
+		return
+	if _reorder_kind == TouchTargetKind.CEL:
+		var vertical_rect := _vertical_visible_rect()
+		if not vertical_rect.has_point(screen_position):
+			_clear_drop_highlight()
+			return
+	var target := _find_drop_control(_reorder_kind, screen_position)
+	if not is_instance_valid(target):
+		_clear_drop_highlight()
+		return
+	var local_position := screen_position - target.get_global_rect().position
+	if bool(target.call("_can_drop_data", local_position, _reorder_data)):
+		_drop_target = target
+		_drop_local_position = local_position
+		return
+	_clear_drop_highlight()
+
+
+func _find_drop_control(kind: int, screen_position: Vector2) -> Control:
+	if kind == TouchTargetKind.FRAME:
+		var frame_hbox := _timeline.get("frame_hbox") as HBoxContainer
+		if not is_instance_valid(frame_hbox):
+			return null
+		for child in frame_hbox.get_children():
+			var frame_button := child as Control
+			if (
+				is_instance_valid(frame_button)
+				and frame_button.is_visible_in_tree()
+				and frame_button.get_global_rect().has_point(screen_position)
+			):
+				return frame_button
+		return null
+	if kind == TouchTargetKind.CEL:
+		var cel_vbox := _timeline.get("cel_vbox") as VBoxContainer
+		if not is_instance_valid(cel_vbox):
+			return null
+		for row in cel_vbox.get_children():
+			var cel_row := row as Control
+			if not is_instance_valid(cel_row) or not cel_row.is_visible_in_tree():
+				continue
+			for child in cel_row.get_children():
+				var cel_button := child as Control
+				if (
+					is_instance_valid(cel_button)
+					and cel_button.is_visible_in_tree()
+					and cel_button.get_global_rect().has_point(screen_position)
+				):
+					return cel_button
+	return null
+
+
+func _capture_managed_scroll() -> void:
+	var frame_scroll_bar := _frame_scroll_bar()
+	if is_instance_valid(frame_scroll_bar):
+		_managed_horizontal_scroll = float(frame_scroll_bar.value)
+	var timeline_scroll := _timeline_scroll()
+	if is_instance_valid(timeline_scroll):
+		_managed_vertical_scroll = float(timeline_scroll.scroll_vertical)
+
+
+func _update_managed_scroll(screen_position: Vector2, delta: float) -> void:
+	_update_horizontal_scroll(screen_position, delta)
+	if _reorder_kind == TouchTargetKind.CEL:
+		_update_vertical_scroll(screen_position, delta)
+
+
+func _update_horizontal_scroll(screen_position: Vector2, delta: float) -> void:
+	var scroll_bar := _frame_scroll_bar()
+	var visible_rect := _horizontal_visible_rect()
+	if not is_instance_valid(scroll_bar) or visible_rect.size == Vector2.ZERO:
+		return
+	var overflow := 0.0
+	if screen_position.x < visible_rect.position.x:
+		overflow = screen_position.x - visible_rect.position.x
+	elif screen_position.x > visible_rect.end.x:
+		overflow = screen_position.x - visible_rect.end.x
+	if is_zero_approx(overflow):
+		scroll_bar.value = _managed_horizontal_scroll
+		return
+	var strength := clampf(absf(overflow) / AUTO_SCROLL_RAMP_PX, 0.0, 1.0)
+	var speed := lerpf(AUTO_SCROLL_MIN_SPEED, AUTO_SCROLL_MAX_SPEED, strength)
+	_managed_horizontal_scroll += signf(overflow) * speed * delta
+	var max_scroll := maxf(scroll_bar.min_value, scroll_bar.max_value - scroll_bar.page)
+	_managed_horizontal_scroll = clampf(
+		_managed_horizontal_scroll, scroll_bar.min_value, max_scroll
+	)
+	scroll_bar.value = _managed_horizontal_scroll
+
+
+func _update_vertical_scroll(screen_position: Vector2, delta: float) -> void:
+	var scroll := _timeline_scroll()
+	if not is_instance_valid(scroll):
+		return
+	var visible_rect := _vertical_visible_rect()
+	var overflow := 0.0
+	if screen_position.y < visible_rect.position.y:
+		overflow = screen_position.y - visible_rect.position.y
+	elif screen_position.y > visible_rect.end.y:
+		overflow = screen_position.y - visible_rect.end.y
+	if is_zero_approx(overflow):
+		scroll.scroll_vertical = int(round(_managed_vertical_scroll))
+		return
+	var strength := clampf(absf(overflow) / AUTO_SCROLL_RAMP_PX, 0.0, 1.0)
+	var speed := lerpf(AUTO_SCROLL_MIN_SPEED, AUTO_SCROLL_MAX_SPEED, strength)
+	_managed_vertical_scroll += signf(overflow) * speed * delta
+	var scroll_bar := scroll.get_v_scroll_bar()
+	var max_scroll := maxf(0.0, scroll_bar.max_value - scroll_bar.page)
+	_managed_vertical_scroll = clampf(_managed_vertical_scroll, 0.0, max_scroll)
+	scroll.scroll_vertical = int(round(_managed_vertical_scroll))
+
+
+func _hold_managed_scroll_inside_visible_area(screen_position: Vector2) -> void:
+	var horizontal_rect := _horizontal_visible_rect()
+	var frame_scroll_bar := _frame_scroll_bar()
+	if is_instance_valid(frame_scroll_bar) and horizontal_rect.has_point(screen_position):
+		# Native _can_drop_data() calls ensure_control_visible(); touch reorder owns scroll now.
+		frame_scroll_bar.value = _managed_horizontal_scroll
+	if _reorder_kind != TouchTargetKind.CEL:
+		return
+	var vertical_rect := _vertical_visible_rect()
+	var timeline_scroll := _timeline_scroll()
+	if is_instance_valid(timeline_scroll) and vertical_rect.has_point(screen_position):
+		timeline_scroll.scroll_vertical = int(round(_managed_vertical_scroll))
+
+
+func _horizontal_visible_rect() -> Rect2:
+	if not is_instance_valid(_timeline):
+		return Rect2()
+	var frame_scroll_container := _timeline.get("frame_scroll_container") as Control
+	if not is_instance_valid(frame_scroll_container):
+		return Rect2()
+	return frame_scroll_container.get_global_rect()
+
+
+func _vertical_visible_rect() -> Rect2:
+	var scroll := _timeline_scroll()
+	if not is_instance_valid(scroll):
+		return Rect2()
+	return scroll.get_global_rect()
+
+
+func _frame_scroll_bar() -> HScrollBar:
+	if not is_instance_valid(_timeline):
+		return null
+	return _timeline.get("frame_scroll_bar") as HScrollBar
+
+
+func _timeline_scroll() -> ScrollContainer:
+	if not is_instance_valid(_timeline):
+		return null
+	return _timeline.get("timeline_scroll") as ScrollContainer
+
+
+func _create_reorder_preview(source: Control) -> void:
+	_clear_reorder_preview()
+	var preview := Button.new()
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.size = source.size
+	preview.custom_minimum_size = source.size
+	preview.theme = Global.control.theme
+	preview.modulate = Color(1.0, 1.0, 1.0, PREVIEW_OPACITY)
+	preview.z_index = 4096
+	if _reorder_kind == TouchTargetKind.FRAME:
+		preview.text = str(source.get("text"))
+	elif _reorder_kind == TouchTargetKind.CEL:
+		var source_texture := source.get_node_or_null("CelTexture") as TextureRect
+		if is_instance_valid(source_texture):
+			var texture_rect := TextureRect.new()
+			texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			texture_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			texture_rect.texture = source_texture.texture
+			preview.add_child(texture_rect)
+		var count := _reorder_data[1].size() if _reorder_data.size() >= 2 else 1
+		if count > 1:
+			preview.text = "×%d" % count
+	get_tree().root.add_child(preview)
+	_reorder_preview = preview
+
+
+func _update_preview_position(screen_position: Vector2) -> void:
+	if not is_instance_valid(_reorder_preview) or not is_instance_valid(_reorder_source):
+		return
+	_reorder_preview.global_position = screen_position - _reorder_source.size * 0.5
+
+
+func _create_source_outline(source: Control) -> void:
+	_clear_source_outline()
+	var outline := Control.new()
+	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outline.z_index = 64
+	source.add_child(outline)
+	outline.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outline.draw.connect(_draw_source_outline.bind(outline))
+	outline.queue_redraw()
+	_source_outline = outline
+
+
+func _draw_source_outline(outline: Control) -> void:
+	var inset := SOURCE_OUTLINE_INSET_PX
+	var top_left := Vector2(inset, inset)
+	var top_right := Vector2(outline.size.x - inset, inset)
+	var bottom_left := Vector2(inset, outline.size.y - inset)
+	var bottom_right := Vector2(outline.size.x - inset, outline.size.y - inset)
+	var edges := [
+		[top_left, top_right],
+		[top_right, bottom_right],
+		[bottom_right, bottom_left],
+		[bottom_left, top_left],
+	]
+	for edge in edges:
+		outline.draw_dashed_line(
+			edge[0], edge[1], Color(0.0, 0.0, 0.0, 0.85), 3.0, SOURCE_OUTLINE_DASH_PX
+		)
+		outline.draw_dashed_line(
+			edge[0], edge[1], Color(1.0, 1.0, 1.0, 0.95), 1.0, SOURCE_OUTLINE_DASH_PX
+		)
+
+
+func _finish_reorder() -> void:
+	_active_reorder_touch = -1
+	_reorder_kind = TouchTargetKind.NONE
+	_reorder_data.clear()
+	_reorder_source = null
+	_drop_target = null
+	_drop_local_position = Vector2.ZERO
+	set_process(false)
+	_clear_drop_highlight()
+	_clear_reorder_preview()
+	_clear_source_outline()
+
+
+func _clear_drop_highlight() -> void:
+	if is_instance_valid(_timeline):
+		var drag_highlight := _timeline.get("drag_highlight") as Control
+		if is_instance_valid(drag_highlight):
+			drag_highlight.hide()
+
+
+func _clear_reorder_preview() -> void:
+	if is_instance_valid(_reorder_preview):
+		_reorder_preview.queue_free()
+	_reorder_preview = null
+
+
+func _clear_source_outline() -> void:
+	if is_instance_valid(_source_outline):
+		_source_outline.queue_free()
+	_source_outline = null
 
 
 func _find_touch_target(screen_position: Vector2) -> Dictionary:
@@ -317,6 +723,7 @@ func _suppress_synthetic_mouse(control: Control) -> void:
 
 
 func _restore_pointer_timeline_ui() -> void:
+	_finish_reorder()
 	_touch_candidates.clear()
 	_reset_last_tap()
 	for control in _suppressed_controls:
