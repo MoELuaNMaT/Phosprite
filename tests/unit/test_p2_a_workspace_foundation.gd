@@ -60,7 +60,9 @@ func test_manager_creates_preview_and_palette_as_independent_modules() -> void:
 	check_true(preview != null, "Preview should be creatable as a Workspace Module")
 	check_true(palette != null, "Palette should be creatable as a Workspace Module")
 	check_ne(preview, palette, "Preview and Palette should be independent module instances")
-	check_eq(preview.get_content().name, "CanvasPreviewContainer", "Preview content should instantiate")
+	check_eq(
+		preview.get_content().name, "CanvasPreviewContainer", "Preview content should instantiate"
+	)
 	check_eq(palette.get_content().name, "PalettePanel", "Palette content should instantiate")
 	check_eq(
 		preview.get_lifecycle_state(),
@@ -93,20 +95,26 @@ func test_manager_drives_mount_activate_unmount_and_destroy_lifecycle() -> void:
 		Module.LifecycleState.MOUNTED,
 		"mount should update the lifecycle state"
 	)
-	check_true(manager.activate_module(Builtins.PREVIEW_ID), "manager should activate a mounted module")
+	check_true(
+		manager.activate_module(Builtins.PREVIEW_ID), "manager should activate a mounted module"
+	)
 	check_eq(
 		preview.get_lifecycle_state(),
 		Module.LifecycleState.ACTIVE,
 		"activate should update the lifecycle state"
 	)
-	check_true(manager.unmount_module(Builtins.PREVIEW_ID), "manager should unmount an active module")
+	check_true(
+		manager.unmount_module(Builtins.PREVIEW_ID), "manager should unmount an active module"
+	)
 	check_eq(preview.get_parent(), null, "unmounted module should be detached from its host")
 	check_eq(
 		preview.get_lifecycle_state(),
 		Module.LifecycleState.INITIALIZED,
 		"unmount should return the module to initialized state"
 	)
-	check_true(manager.destroy_module(Builtins.PREVIEW_ID), "manager should destroy a managed module")
+	check_true(
+		manager.destroy_module(Builtins.PREVIEW_ID), "manager should destroy a managed module"
+	)
 	check_true(
 		not manager.has_instance(Builtins.PREVIEW_ID),
 		"destroyed module should be removed from the manager"

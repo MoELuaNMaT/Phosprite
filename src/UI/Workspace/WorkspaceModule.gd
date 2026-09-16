@@ -32,9 +32,7 @@ func configure(module_definition: WorkspaceModuleDefinition) -> bool:
 		return false
 	var validation_errors := module_definition.get_validation_errors()
 	if not validation_errors.is_empty():
-		push_error(
-			"Invalid workspace module definition: %s" % "; ".join(validation_errors)
-		)
+		push_error("Invalid workspace module definition: %s" % "; ".join(validation_errors))
 		return false
 
 	var instance := module_definition.content_scene.instantiate()

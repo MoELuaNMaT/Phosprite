@@ -53,8 +53,7 @@ func is_valid() -> bool:
 
 func get_constrained_size(requested_size: Vector2) -> Vector2:
 	var constrained := Vector2(
-		maxf(requested_size.x, minimum_size.x),
-		maxf(requested_size.y, minimum_size.y)
+		maxf(requested_size.x, minimum_size.x), maxf(requested_size.y, minimum_size.y)
 	)
 	if maximum_size.x > 0.0:
 		constrained.x = minf(constrained.x, maximum_size.x)
