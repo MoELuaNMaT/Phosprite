@@ -39,6 +39,12 @@ func _resize_tag(resize: Drag, value: int) -> void:
 		new_animation_tags.append(frame_tag.duplicate())
 
 	var tag_id := Global.current_project.animation_tags.find(tag)
+	# A touch can also produce a mouse-emulation callback on iOS. The first resize commit replaces
+	# animation_tags with duplicated resources, so a second callback from the old Tag UI can hold a
+	# stale resource reference. Array.find() then returns -1, which is a valid negative Array index
+	# and would resize the last unrelated Tag. Never allow a stale UI callback to write by index.
+	if tag_id < 0 or tag_id >= new_animation_tags.size():
+		return
 	if resize == Drag.FROM:
 		if new_animation_tags[tag_id].from == value:
 			return
@@ -47,6 +53,8 @@ func _resize_tag(resize: Drag, value: int) -> void:
 		if new_animation_tags[tag_id].to == value:
 			return
 		new_animation_tags[tag_id].to = value
+	else:
+		return
 
 	# Handle Undo/Redo
 	Global.current_project.undo_redo.create_action("Resize Frame Tag")
@@ -69,14 +77,18 @@ func _on_resize_from_gui_input(event: InputEvent) -> void:
 			dragging_tag = tag.duplicate()
 			dragged_initial = global_position.x
 		else:
+			if is_dragging != Drag.FROM or not is_instance_valid(dragging_tag):
+				return
 			_resize_tag(is_dragging, dragging_tag.from)
 			is_dragging = Drag.NONE
 			dragging_tag = null
 	elif event is InputEventMouseMotion:
 		if is_dragging == Drag.FROM:
-			var dragged_offset := snappedi(event.global_position.x, cel_size)
-			var diff := roundi(float(dragged_offset - dragged_initial) / cel_size)
-			dragging_tag.from = clampi(tag.from + diff, 1, tag.to)
+			dragging_tag.from = clampi(
+				tag.from + roundi(float(snappedi(event.global_position.x, cel_size) - dragged_initial) / cel_size),
+				1,
+				tag.to,
+			)
 			update_position_and_size(dragging_tag)
 
 
@@ -88,12 +100,16 @@ func _on_resize_to_gui_input(event: InputEvent) -> void:
 			dragging_tag = tag.duplicate()
 			dragged_initial = global_position.x + size.x
 		else:
+			if is_dragging != Drag.TO or not is_instance_valid(dragging_tag):
+				return
 			_resize_tag(is_dragging, dragging_tag.to)
 			is_dragging = Drag.NONE
 			dragging_tag = null
 	elif event is InputEventMouseMotion:
 		if is_dragging == Drag.TO:
-			var dragged_offset := snappedi(event.global_position.x, cel_size)
-			var diff := roundi(float(dragged_offset - dragged_initial) / cel_size)
-			dragging_tag.to = clampi(tag.to + diff, tag.from, Global.current_project.frames.size())
+			dragging_tag.to = clampi(
+				tag.to + roundi(float(snappedi(event.global_position.x, cel_size) - dragged_initial) / cel_size),
+				tag.from,
+				Global.current_project.frames.size(),
+			)
 			update_position_and_size(dragging_tag)
