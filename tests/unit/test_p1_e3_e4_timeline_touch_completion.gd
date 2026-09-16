@@ -134,6 +134,27 @@ func test_e4_tag_resize_uses_touch_edge_zone_and_native_resize_transaction() -> 
 	)
 
 
+func test_e4_short_tag_keeps_center_tap_for_editing() -> void:
+	var manager := MANAGER.new()
+	var rect := Rect2(100.0, 0.0, 30.0, 32.0)
+	check_eq(
+		manager.call("_tag_resize_side_for_x", rect, 100.0),
+		MANAGER.TAG_DRAG_FROM,
+		"short Tag left edge must remain resizeable",
+	)
+	check_eq(
+		manager.call("_tag_resize_side_for_x", rect, 130.0),
+		MANAGER.TAG_DRAG_TO,
+		"short Tag right edge must remain resizeable",
+	)
+	check_eq(
+		manager.call("_tag_resize_side_for_x", rect, 115.0),
+		0,
+		"short Tag center must stay available for the native edit tap",
+	)
+	manager.free()
+
+
 func test_e3_e4_adapter_is_ios_only_and_keeps_existing_touch_manager_separate() -> void:
 	var bootstrap_src := FileAccess.get_file_as_string(BOOTSTRAP_SOURCE)
 	var manager_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
