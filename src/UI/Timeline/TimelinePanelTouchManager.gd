@@ -98,7 +98,10 @@ func _on_window_size_changed() -> void:
 	# Main.set_mobile_fullscreen_safe_area() intentionally pins MenuAndUI to the current
 	# iOS safe-area rectangle. Re-run it whenever iPadOS changes the window geometry so
 	# rotation does not leave the old landscape/portrait rectangle surrounded by blank UI.
-	if is_instance_valid(Global.control) and Global.control.has_method("set_mobile_fullscreen_safe_area"):
+	if (
+		is_instance_valid(Global.control)
+		and Global.control.has_method("set_mobile_fullscreen_safe_area")
+	):
 		Global.control.call_deferred("set_mobile_fullscreen_safe_area")
 
 
@@ -444,9 +447,7 @@ func _find_tag_resize_target(screen_position: Vector2) -> Dictionary:
 			continue
 		var edge_x := rect.position.x if side == TAG_DRAG_FROM else rect.end.x
 		var distance := absf(screen_position.x - edge_x)
-		var inside_body := (
-			screen_position.x >= rect.position.x and screen_position.x <= rect.end.x
-		)
+		var inside_body := screen_position.x >= rect.position.x and screen_position.x <= rect.end.x
 		var is_better := best_target.is_empty() or distance < best_distance
 		if not is_better and is_equal_approx(distance, best_distance):
 			# Adjacent Tags can share the exact same boundary x. A touch slightly inside
