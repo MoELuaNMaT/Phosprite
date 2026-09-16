@@ -1,0 +1,325 @@
+class_name WorkspaceDockHost
+extends Control
+
+## Runtime host for the limited P2-B Top/Left/Right/Bottom dock system.
+##
+## Dragging is exposed as an explicit begin/update/commit transaction so later
+## stages can decide when layout editing is unlocked on touch devices. P2-B does
+## not make normal editor interaction draggable by default.
+
+signal module_docked(module_id: StringName, zone: int, index: int)
+signal dock_preview_changed(candidate: Dictionary)
+signal dock_drag_finished(module_id: StringName, committed: bool)
+
+const EMPTY_ZONE_EXTENT := 56.0
+const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
+
+var manager: WorkspaceModuleManager
+var layout: WorkspaceDockLayout
+
+var _zone_hosts: Dictionary = {}
+var _preview: ColorRect
+var _drag_module_id: StringName = &""
+var _drag_candidate: Dictionary = {}
+
+
+func _init() -> void:
+	_ensure_structure()
+
+
+func setup(module_manager: WorkspaceModuleManager) -> bool:
+	if module_manager == null or manager != null:
+		return false
+	manager = module_manager
+	layout = WorkspaceDockLayout.new()
+	if not layout.configure(manager):
+		layout = null
+		manager = null
+		return false
+	return true
+
+
+func dock_module(
+	module_id: StringName,
+	zone: int,
+	index: int = -1,
+	requested_size: Vector2 = Vector2.ZERO,
+	context: Dictionary = {}
+) -> bool:
+	if manager == null or layout == null or not layout.can_dock_module(module_id):
+		return false
+	if not layout.is_valid_zone(zone):
+		return false
+
+	var module := manager.create_module(module_id, context)
+	if module == null:
+		return false
+	if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.DISPOSED:
+		return false
+
+	var old_zone := layout.get_module_zone(module_id)
+	var old_index := layout.get_module_index(module_id)
+	var old_size := layout.get_module_size(module_id)
+	if not layout.place_module(module_id, zone, index):
+		return false
+
+	if requested_size != Vector2.ZERO:
+		layout.set_module_size(module_id, requested_size)
+
+	var target_host := _zone_hosts[zone] as Control
+	if module.get_parent() != target_host:
+		var was_active := module.get_lifecycle_state() == WorkspaceModule.LifecycleState.ACTIVE
+		if was_active:
+			manager.deactivate_module(module_id)
+		if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.MOUNTED:
+			manager.unmount_module(module_id)
+		if manager.mount_module(module_id, target_host, context) == null:
+			_restore_layout(module_id, old_zone, old_index, old_size)
+			return false
+		if was_active or old_zone == WorkspaceDockLayout.DockZone.NONE:
+			manager.activate_module(module_id)
+
+	_apply_module_size(module_id)
+	_sync_zone_order(zone)
+	if old_zone != WorkspaceDockLayout.DockZone.NONE and old_zone != zone:
+		_sync_zone_order(old_zone)
+	_layout_zones()
+	module_docked.emit(module_id, zone, layout.get_module_index(module_id))
+	return true
+
+
+func undock_module(module_id: StringName) -> bool:
+	if manager == null or layout == null:
+		return false
+	if layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
+		return false
+	manager.unmount_module(module_id)
+	var removed := layout.remove_module(module_id)
+	_layout_zones()
+	return removed
+
+
+func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
+	if layout == null or not layout.set_module_size(module_id, requested_size):
+		return false
+	_apply_module_size(module_id)
+	_layout_zones()
+	return true
+
+
+func begin_module_drag(module_id: StringName) -> bool:
+	if layout == null or layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
+		return false
+	_drag_module_id = module_id
+	_drag_candidate = {}
+	_preview.visible = false
+	return true
+
+
+func update_module_drag(pointer: Vector2) -> Dictionary:
+	if _drag_module_id == &"" or layout == null:
+		return _invalid_candidate()
+	_drag_candidate = WorkspaceDockDragResolver.resolve(
+		_drag_module_id, pointer, get_zone_rects(), _collect_module_rects(), layout
+	)
+	_show_candidate(_drag_candidate)
+	dock_preview_changed.emit(_drag_candidate.duplicate(true))
+	return _drag_candidate.duplicate(true)
+
+
+func commit_module_drag() -> bool:
+	if _drag_module_id == &"":
+		return false
+	var module_id := _drag_module_id
+	var candidate := _drag_candidate.duplicate(true)
+	var committed := false
+	if bool(candidate.get("valid", false)):
+		committed = dock_module(
+			module_id,
+			int(candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)),
+			int(candidate.get("index", -1)),
+			layout.get_module_size(module_id)
+		)
+	_finish_drag(committed)
+	return committed
+
+
+func cancel_module_drag() -> void:
+	if _drag_module_id == &"":
+		return
+	_finish_drag(false)
+
+
+func get_zone_host(zone: int) -> Control:
+	return _zone_hosts.get(zone) as Control
+
+
+func get_zone_rects() -> Dictionary:
+	var result: Dictionary = {}
+	for zone in WorkspaceDockLayout.VALID_ZONES:
+		var host := _zone_hosts[zone] as Control
+		result[zone] = Rect2(host.position, host.size)
+	return result
+
+
+func get_preview_rect() -> Rect2:
+	if not _preview.visible:
+		return Rect2()
+	return Rect2(_preview.position, _preview.size)
+
+
+func _ensure_structure() -> void:
+	if not _zone_hosts.is_empty():
+		return
+
+	var top := HBoxContainer.new()
+	var left := VBoxContainer.new()
+	var right := VBoxContainer.new()
+	var bottom := HBoxContainer.new()
+	top.name = "TopDock"
+	left.name = "LeftDock"
+	right.name = "RightDock"
+	bottom.name = "BottomDock"
+
+	_zone_hosts = {
+		WorkspaceDockLayout.DockZone.TOP: top,
+		WorkspaceDockLayout.DockZone.LEFT: left,
+		WorkspaceDockLayout.DockZone.RIGHT: right,
+		WorkspaceDockLayout.DockZone.BOTTOM: bottom,
+	}
+	for zone in WorkspaceDockLayout.VALID_ZONES:
+		add_child(_zone_hosts[zone])
+
+	_preview = ColorRect.new()
+	_preview.name = "DockSnapPreview"
+	_preview.color = PREVIEW_COLOR
+	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview.visible = false
+	add_child(_preview)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and not _zone_hosts.is_empty():
+		_layout_zones()
+
+
+func _layout_zones() -> void:
+	if _zone_hosts.is_empty():
+		return
+	var top_h := _zone_extent(WorkspaceDockLayout.DockZone.TOP)
+	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
+	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
+	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
+	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
+
+	_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(0.0, 0.0, size.x, top_h))
+	_set_host_rect(
+		WorkspaceDockLayout.DockZone.BOTTOM,
+		Rect2(0.0, maxf(0.0, size.y - bottom_h), size.x, bottom_h)
+	)
+	_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(0.0, top_h, left_w, middle_h))
+	_set_host_rect(
+		WorkspaceDockLayout.DockZone.RIGHT,
+		Rect2(maxf(0.0, size.x - right_w), top_h, right_w, middle_h)
+	)
+
+
+func _zone_extent(zone: int) -> float:
+	if layout == null:
+		return EMPTY_ZONE_EXTENT
+	var module_ids := layout.get_modules(zone)
+	if module_ids.is_empty():
+		return EMPTY_ZONE_EXTENT
+	var extent := 0.0
+	for module_id in module_ids:
+		var module_size := layout.get_module_size(module_id)
+		if zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM:
+			extent = maxf(extent, module_size.y)
+		else:
+			extent = maxf(extent, module_size.x)
+	return maxf(EMPTY_ZONE_EXTENT, extent)
+
+
+func _set_host_rect(zone: int, rect: Rect2) -> void:
+	var host := _zone_hosts[zone] as Control
+	host.position = rect.position
+	host.size = rect.size
+
+
+func _apply_module_size(module_id: StringName) -> void:
+	var module := manager.get_instance(module_id) if manager != null else null
+	if module == null or layout == null:
+		return
+	var target_size := layout.get_module_size(module_id)
+	module.custom_minimum_size = target_size
+	module.size = target_size
+
+
+func _sync_zone_order(zone: int) -> void:
+	if layout == null:
+		return
+	var host := _zone_hosts[zone] as Control
+	var module_ids := layout.get_modules(zone)
+	for index in range(module_ids.size()):
+		var module := manager.get_instance(module_ids[index])
+		if module != null and module.get_parent() == host:
+			host.move_child(module, index)
+
+
+func _collect_module_rects() -> Dictionary:
+	var result: Dictionary = {}
+	if layout == null:
+		return result
+	for zone in WorkspaceDockLayout.VALID_ZONES:
+		var entries: Array = []
+		var host := _zone_hosts[zone] as Control
+		for module_id in layout.get_modules(zone):
+			var module := manager.get_instance(module_id)
+			if module == null or module.get_parent() != host:
+				continue
+			entries.append(
+				{
+					"module_id": module_id,
+					"rect": Rect2(host.position + module.position, module.size),
+				}
+			)
+		result[zone] = entries
+	return result
+
+
+func _show_candidate(candidate: Dictionary) -> void:
+	if not bool(candidate.get("valid", false)):
+		_preview.visible = false
+		return
+	var rect: Rect2 = candidate.get("preview_rect", Rect2())
+	_preview.position = rect.position
+	_preview.size = rect.size
+	_preview.visible = rect.size.x > 0.0 and rect.size.y > 0.0
+	_preview.move_to_front()
+
+
+func _finish_drag(committed: bool) -> void:
+	var finished_id := _drag_module_id
+	_drag_module_id = &""
+	_drag_candidate = {}
+	_preview.visible = false
+	dock_drag_finished.emit(finished_id, committed)
+
+
+func _restore_layout(
+	module_id: StringName, old_zone: int, old_index: int, old_size: Vector2
+) -> void:
+	if old_zone == WorkspaceDockLayout.DockZone.NONE:
+		layout.remove_module(module_id)
+		return
+	layout.place_module(module_id, old_zone, old_index)
+	layout.set_module_size(module_id, old_size)
+
+
+func _invalid_candidate() -> Dictionary:
+	return {
+		"valid": false,
+		"zone": WorkspaceDockLayout.DockZone.NONE,
+		"index": -1,
+		"preview_rect": Rect2(),
+	}
