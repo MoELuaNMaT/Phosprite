@@ -203,17 +203,23 @@ func _sync_action_states() -> void:
 		return
 	var popup := _actions_menu.get_popup()
 	_set_action_disabled(
-		popup, TimelineAction.DUPLICATE_FRAME, _copy_frame.disabled or _current_frame_button() == null
+		popup,
+		TimelineAction.DUPLICATE_FRAME,
+		_copy_frame.disabled or _current_frame_button() == null
 	)
 	_set_action_disabled(
-		popup, TimelineAction.MOVE_FRAME_LEFT, _move_frame_left.disabled or _current_frame_button() == null
+		popup,
+		TimelineAction.MOVE_FRAME_LEFT,
+		_move_frame_left.disabled or _current_frame_button() == null
 	)
 	_set_action_disabled(
 		popup,
 		TimelineAction.MOVE_FRAME_RIGHT,
 		_move_frame_right.disabled or _current_frame_button() == null,
 	)
-	_set_action_disabled(popup, TimelineAction.FIRST_FRAME, Global.current_project.current_frame <= 0)
+	_set_action_disabled(
+		popup, TimelineAction.FIRST_FRAME, Global.current_project.current_frame <= 0
+	)
 	_set_action_disabled(
 		popup,
 		TimelineAction.LAST_FRAME,
