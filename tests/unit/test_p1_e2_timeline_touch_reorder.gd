@@ -29,6 +29,41 @@ func test_e2_uses_d4b_long_press_and_slop_contract() -> void:
 	)
 
 
+func test_selected_direct_touch_cannot_bypass_long_press() -> void:
+	var manager_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	check_has(
+		manager_src,
+		'const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"',
+		"Timeline touch adapter must own the direct-touch suppression marker"
+	)
+	check_has(
+		manager_src,
+		"control.set_meta(IOS_TOUCH_MOUSE_FILTER_META, control.mouse_filter)",
+		"Finger press must mark the source before synthetic/native drag can start"
+	)
+	check_has(
+		manager_src,
+		"control.remove_meta(IOS_TOUCH_MOUSE_FILTER_META)",
+		"a real pointer must be able to restore the native drag path"
+	)
+	for path in [CEL_SOURCE, FRAME_SOURCE]:
+		var src := FileAccess.get_file_as_string(path)
+		check_has(
+			src,
+			'const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"',
+			"Cel and Frame native drag must read the same direct-touch marker"
+		)
+		var drag_pos := src.find("func _get_drag_data")
+		var touch_guard_pos := src.find("if has_meta(IOS_TOUCH_MOUSE_FILTER_META):", drag_pos)
+		var selected_guard_pos := src.find(
+			"if DisplayServer.is_touchscreen_available() and not button_pressed:", touch_guard_pos
+		)
+		check_true(
+			drag_pos >= 0 and touch_guard_pos > drag_pos and selected_guard_pos > touch_guard_pos,
+			"direct touch must be rejected before selected state can permit native drag"
+		)
+
+
 func test_e2_reuses_native_cel_and_frame_drag_payloads() -> void:
 	var manager_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	var cel_src := FileAccess.get_file_as_string(CEL_SOURCE)
