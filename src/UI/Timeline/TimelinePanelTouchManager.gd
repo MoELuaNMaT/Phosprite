@@ -381,6 +381,22 @@ func _handle_tag_screen_drag(event: InputEventScreenDrag) -> bool:
 	return true
 
 
+func _tag_resize_side_for_x(rect: Rect2, screen_x: float) -> int:
+	var left_distance := absf(screen_x - rect.position.x)
+	var right_distance := absf(screen_x - rect.end.x)
+	var left_hit := left_distance <= TAG_EDGE_TOUCH_PX
+	var right_hit := right_distance <= TAG_EDGE_TOUCH_PX
+	if not left_hit and not right_hit:
+		return 0
+	if left_hit and right_hit:
+		var center_margin := rect.size.x / 3.0
+		var center_start := rect.position.x + center_margin
+		var center_end := rect.end.x - center_margin
+		if screen_x >= center_start and screen_x <= center_end:
+			return 0
+	return TAG_DRAG_FROM if left_distance <= right_distance else TAG_DRAG_TO
+
+
 func _find_tag_resize_target(screen_position: Vector2) -> Dictionary:
 	if not is_instance_valid(_timeline):
 		return {}
@@ -394,11 +410,9 @@ func _find_tag_resize_target(screen_position: Vector2) -> Dictionary:
 		var rect := tag_ui.get_global_rect()
 		if screen_position.y < rect.position.y or screen_position.y > rect.end.y:
 			continue
-		var left_distance := absf(screen_position.x - rect.position.x)
-		var right_distance := absf(screen_position.x - rect.end.x)
-		if left_distance > TAG_EDGE_TOUCH_PX and right_distance > TAG_EDGE_TOUCH_PX:
+		var side := _tag_resize_side_for_x(rect, screen_position.x)
+		if side == 0:
 			continue
-		var side := TAG_DRAG_FROM if left_distance <= right_distance else TAG_DRAG_TO
 		return {"tag_ui": tag_ui, "side": side}
 	return {}
 
