@@ -64,16 +64,45 @@ func _ready() -> void:
 		set_process_input(false)
 		queue_free()
 		return
+	var window := get_window()
+	if is_instance_valid(window) and not window.size_changed.is_connected(_on_window_size_changed):
+		window.size_changed.connect(_on_window_size_changed)
 	call_deferred("_install_ios_timeline_toolbar")
+
+
+func _exit_tree() -> void:
+	var window := get_window()
+	if is_instance_valid(window) and window.size_changed.is_connected(_on_window_size_changed):
+		window.size_changed.disconnect(_on_window_size_changed)
 
 
 func _input(event: InputEvent) -> void:
 	if not is_instance_valid(_timeline):
 		return
+	# Direct iPad touch is handled by the enlarged Tag edge zones below. iOS also emits
+	# a synthetic mouse event for the same finger. Suppress that emulated mouse only when
+	# it lands on a Tag resize edge so the native 8 px ResizeFrom/ResizeTo buttons cannot
+	# start a second resize transaction for the same physical gesture. Physical pointer
+	# devices keep their native mouse path (the project uses device != -1 for that case).
+	if event is InputEventMouse and event.device == -1:
+		if not _find_tag_resize_target(event.position).is_empty():
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventScreenTouch:
 		_handle_tag_screen_touch(event as InputEventScreenTouch)
 	elif event is InputEventScreenDrag:
 		_handle_tag_screen_drag(event as InputEventScreenDrag)
+
+
+func _on_window_size_changed() -> void:
+	# Main.set_mobile_fullscreen_safe_area() intentionally pins MenuAndUI to the current
+	# iOS safe-area rectangle. Re-run it whenever iPadOS changes the window geometry so
+	# rotation does not leave the old landscape/portrait rectangle surrounded by blank UI.
+	if (
+		is_instance_valid(Global.control)
+		and Global.control.has_method("set_mobile_fullscreen_safe_area")
+	):
+		Global.control.call_deferred("set_mobile_fullscreen_safe_area")
 
 
 func _install_ios_timeline_toolbar() -> void:
@@ -403,6 +432,9 @@ func _find_tag_resize_target(screen_position: Vector2) -> Dictionary:
 	var tag_container := _timeline.get("tag_container") as Control
 	if not is_instance_valid(tag_container):
 		return {}
+	var best_target: Dictionary = {}
+	var best_distance := INF
+	var best_inside_body := false
 	for child in tag_container.get_children():
 		var tag_ui := child as Control
 		if not is_instance_valid(tag_ui) or not tag_ui.is_visible_in_tree():
@@ -413,8 +445,20 @@ func _find_tag_resize_target(screen_position: Vector2) -> Dictionary:
 		var side := _tag_resize_side_for_x(rect, screen_position.x)
 		if side == 0:
 			continue
-		return {"tag_ui": tag_ui, "side": side}
-	return {}
+		var edge_x := rect.position.x if side == TAG_DRAG_FROM else rect.end.x
+		var distance := absf(screen_position.x - edge_x)
+		var inside_body := screen_position.x >= rect.position.x and screen_position.x <= rect.end.x
+		var is_better := best_target.is_empty() or distance < best_distance
+		if not is_better and is_equal_approx(distance, best_distance):
+			# Adjacent Tags can share the exact same boundary x. A touch slightly inside
+			# Tag A should choose A's TO edge, while a touch slightly inside Tag B should
+			# choose B's FROM edge instead of whichever child happens to be visited first.
+			is_better = inside_body and not best_inside_body
+		if is_better:
+			best_target = {"tag_ui": tag_ui, "side": side}
+			best_distance = distance
+			best_inside_body = inside_body
+	return best_target
 
 
 func _update_tag_resize_preview(screen_x: float) -> void:
