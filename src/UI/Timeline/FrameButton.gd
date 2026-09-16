@@ -2,6 +2,8 @@ extends Button
 
 enum { PROPERTIES, REMOVE, CLONE, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG, REVERSE, CENTER }
 
+const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
+
 var frame := 0
 
 @onready var popup_menu: PopupMenu = $PopupMenu
@@ -28,7 +30,7 @@ func _update_tooltip() -> void:
 	var duration_sec := frame_class.get_duration_in_seconds(Global.current_project.fps)
 	var duration_str := str(duration_sec)
 	if "." in duration_str:  # If its a decimal value
-		duration_str = "%.2f" % duration_sec  # Up to 2 decimal places
+		duration_str = "%.2f" % duration_sec  # Up to 2 decimals
 	tooltip_text = "%s: %sx (%s sec)" % [tr("Duration"), str(duration), duration_str]
 
 
@@ -110,6 +112,8 @@ func _on_PopupMenu_id_pressed(id: int) -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
+	if has_meta(IOS_TOUCH_MOUSE_FILTER_META):
+		return null
 	if DisplayServer.is_touchscreen_available() and not button_pressed:
 		return null
 	var button := Button.new()
@@ -118,11 +122,24 @@ func _get_drag_data(_position: Vector2) -> Variant:
 	button.text = text
 	set_drag_preview(button)
 
-	return ["Frame", _get_frame_indices()]
+	return _build_frame_drag_data()
+
+
+func _build_frame_drag_data(modifier_swap_override = null) -> Array:
+	var data: Array = ["Frame", _get_frame_indices()]
+	if modifier_swap_override != null:
+		data.append(bool(modifier_swap_override))
+	return data
+
+
+func _drag_uses_modifier_swap(data: Array) -> bool:
+	if data.size() >= 3:
+		return bool(data[2])
+	return Global.is_ctrl_or_cmd_pressed()
 
 
 func _can_drop_data(pos: Vector2, data) -> bool:
-	if typeof(data) != TYPE_ARRAY:
+	if typeof(data) != TYPE_ARRAY or data.size() < 2:
 		Global.animation_timeline.drag_highlight.visible = false
 		return false
 	if data[0] != "Frame":
@@ -140,7 +157,7 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 			frame_container.get_child(get_index() - 1)
 		)
 
-	var is_swapping := Global.is_ctrl_or_cmd_pressed()
+	var is_swapping := _drag_uses_modifier_swap(data)
 	var drop_frames: PackedInt32Array = data[1]
 	# Get offset
 	var offset: int = 0
@@ -159,7 +176,7 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 		var copy_drop_frames := drop_frames.duplicate()  # to prevent overriting original array.
 		Global.animation_timeline.set_frames_highlight(copy_drop_frames, offset)
 	else:  # Move frames
-		if _get_region_rect(0, 0.5).has_point(get_global_mouse_position()):
+		if pos.x < size.x / 2.0:
 			region = _get_region_rect(-0.125, 0.125)
 		else:
 			region = _get_region_rect(0.875, 1.125)
@@ -169,11 +186,11 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 	return true
 
 
-func _drop_data(_pos: Vector2, data) -> void:
+func _drop_data(pos: Vector2, data) -> void:
 	var drop_frames: PackedInt32Array = data[1]
 	var project := Global.current_project
 	project.undo_redo.create_action("Change Frame Order")
-	if Global.is_ctrl_or_cmd_pressed():  # Swap frames
+	if _drag_uses_modifier_swap(data):  # Swap frames
 		var swap_frame_positions := []
 		# Get offset
 		var offset: int = 0
@@ -190,9 +207,9 @@ func _drop_data(_pos: Vector2, data) -> void:
 		project.undo_redo.add_do_property(project, "selected_cels", swap_frame_positions)
 	else:  # Move frames
 		var to_frame: int
-		if _get_region_rect(0, 0.5).has_point(get_global_mouse_position()):  # Left
+		if pos.x < size.x / 2.0:
 			to_frame = frame
-		else:  # Right
+		else:
 			to_frame = frame + 1
 		for drop_frame in drop_frames:
 			if drop_frame < frame:
