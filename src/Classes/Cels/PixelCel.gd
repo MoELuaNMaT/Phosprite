@@ -40,9 +40,16 @@ func set_content(content, texture: ImageTexture = null) -> void:
 	else:
 		proper_content = content
 	image = proper_content
-	if is_instance_valid(texture) and is_instance_valid(texture.get_image()):
+	if is_instance_valid(texture):
+		# An explicitly supplied texture means the caller wants this cel to use that
+		# texture identity. This matters when unlinking: v1.2 passes a fresh, empty
+		# ImageTexture, which must become an independent texture instead of updating
+		# the formerly shared linked texture in place.
 		image_texture = texture
-		if image_texture.get_image().get_size() != image.get_size():
+		if is_instance_valid(image_texture.get_image()):
+			if image_texture.get_image().get_size() != image.get_size():
+				image_texture.set_image(image)
+		else:
 			image_texture.set_image(image)
 	else:
 		image_texture.update(image)
