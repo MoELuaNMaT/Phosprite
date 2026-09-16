@@ -2,6 +2,8 @@ extends Button
 
 enum MenuOptions { PROPERTIES, PLAY_AUDIO, SELECT_PIXELS, DELETE, LINK, UNLINK, CLONE_CEL }
 
+const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
+
 var frame := 0
 var layer := 0
 var cel: BaseCel
@@ -344,6 +346,8 @@ func _dim_checker() -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
+	if has_meta(IOS_TOUCH_MOUSE_FILTER_META):
+		return null
 	if DisplayServer.is_touchscreen_available() and not button_pressed:
 		return null
 	var button := Button.new()
