@@ -11,7 +11,9 @@ func test_stale_tag_reference_cannot_index_an_unrelated_tag() -> void:
 	var to_write_pos := src.find("new_animation_tags[tag_id].to = value", guard_pos)
 	check_true(lookup_pos >= 0, "resize must resolve the live Tag identity before writing")
 	check_true(guard_pos > lookup_pos, "stale/missing Tag identity must be rejected")
-	check_true(from_write_pos > guard_pos, "FROM resize must only write after the stale-target guard")
+	check_true(
+		from_write_pos > guard_pos, "FROM resize must only write after the stale-target guard"
+	)
 	check_true(to_write_pos > guard_pos, "TO resize must only write after the stale-target guard")
 
 
