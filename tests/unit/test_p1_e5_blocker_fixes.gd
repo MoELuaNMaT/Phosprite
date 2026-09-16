@@ -70,12 +70,16 @@ func test_unlink_with_fresh_texture_detaches_both_image_and_texture_identity() -
 
 	cel_b.set_content(cel_a.get_content(), cel_a.image_texture)
 	check_true(cel_b.get_content() == cel_a.get_content(), "linked cels must share image content")
-	check_true(cel_b.image_texture == cel_a.image_texture, "linked cels must share texture identity")
+	check_true(
+		cel_b.image_texture == cel_a.image_texture, "linked cels must share texture identity"
+	)
 
 	var detached_content = cel_b.copy_content()
 	cel_b.set_content(detached_content, ImageTexture.new())
 	check_true(cel_b.get_content() != cel_a.get_content(), "Unlink must deep-copy pixel content")
-	check_true(cel_b.image_texture != cel_a.image_texture, "Unlink must detach texture identity too")
+	check_true(
+		cel_b.image_texture != cel_a.image_texture, "Unlink must detach texture identity too"
+	)
 	cel_b.image.set_pixel(0, 0, Color.RED)
 	check_true(
 		cel_a.image.get_pixel(0, 0) != Color.RED,
