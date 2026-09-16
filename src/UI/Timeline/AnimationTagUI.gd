@@ -39,10 +39,10 @@ func _resize_tag(resize: Drag, value: int) -> void:
 		new_animation_tags.append(frame_tag.duplicate())
 
 	var tag_id := Global.current_project.animation_tags.find(tag)
-	# A touch can also produce a mouse-emulation callback on iOS. The first resize commit replaces
-	# animation_tags with duplicated resources, so a second callback from the old Tag UI can hold a
-	# stale resource reference. Array.find() then returns -1, which is a valid negative Array index
-	# and would resize the last unrelated Tag. Never allow a stale UI callback to write by index.
+	# On iOS, one physical touch may also produce a mouse-emulation callback. The first resize
+	# commit replaces animation_tags with duplicated resources, so a second callback from the old
+	# Tag UI can hold a stale resource reference. Array.find() then returns -1; negative Array
+	# indices are valid, so using it would resize an unrelated Tag at the end of the array.
 	if tag_id < 0 or tag_id >= new_animation_tags.size():
 		return
 	if resize == Drag.FROM:
@@ -84,11 +84,9 @@ func _on_resize_from_gui_input(event: InputEvent) -> void:
 			dragging_tag = null
 	elif event is InputEventMouseMotion:
 		if is_dragging == Drag.FROM:
-			dragging_tag.from = clampi(
-				tag.from + roundi(float(snappedi(event.global_position.x, cel_size) - dragged_initial) / cel_size),
-				1,
-				tag.to,
-			)
+			var dragged_offset := snappedi(event.global_position.x, cel_size)
+			var diff := roundi(float(dragged_offset - dragged_initial) / cel_size)
+			dragging_tag.from = clampi(tag.from + diff, 1, tag.to)
 			update_position_and_size(dragging_tag)
 
 
@@ -107,9 +105,7 @@ func _on_resize_to_gui_input(event: InputEvent) -> void:
 			dragging_tag = null
 	elif event is InputEventMouseMotion:
 		if is_dragging == Drag.TO:
-			dragging_tag.to = clampi(
-				tag.to + roundi(float(snappedi(event.global_position.x, cel_size) - dragged_initial) / cel_size),
-				tag.from,
-				Global.current_project.frames.size(),
-			)
+			var dragged_offset := snappedi(event.global_position.x, cel_size)
+			var diff := roundi(float(dragged_offset - dragged_initial) / cel_size)
+			dragging_tag.to = clampi(tag.to + diff, tag.from, Global.current_project.frames.size())
 			update_position_and_size(dragging_tag)
