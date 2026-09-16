@@ -1,9 +1,12 @@
 extends Panel
 
 const UI_TRANSPARENCY_SHADER := preload("uid://bwtsxcdoe2ps1")
+const WORKSPACE_MANAGER_SCRIPT := preload("res://src/UI/Workspace/WorkspaceModuleManager.gd")
+const WORKSPACE_BUILTINS := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
+var workspace_manager: WorkspaceModuleManager
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -13,6 +16,7 @@ var transparency_material: ShaderMaterial
 
 
 func _ready() -> void:
+	_setup_workspace_foundation()
 	Global.cel_switched.connect(_on_cel_switched)
 	Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)
 	if Global.window_transparency:
@@ -26,6 +30,14 @@ func _ready() -> void:
 		dockable_container.set_control_hidden.call_deferred(right_tool_options, true)
 	dockable_container.set_control_hidden.call_deferred(tiles, true)
 	dockable_container.set_control_hidden.call_deferred(object_tree_3d, true)
+
+
+func _setup_workspace_foundation() -> void:
+	workspace_manager = WORKSPACE_MANAGER_SCRIPT.new()
+	workspace_manager.name = "WorkspaceManager"
+	add_child(workspace_manager)
+	if not WORKSPACE_BUILTINS.register_defaults(workspace_manager):
+		push_error("Failed to register one or more built-in Workspace Modules")
 
 
 func _on_cel_switched() -> void:
