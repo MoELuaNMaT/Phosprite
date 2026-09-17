@@ -120,6 +120,11 @@ func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
 	return true
 
 
+func set_preview_color(color: Color) -> void:
+	if is_instance_valid(_preview):
+		_preview.color = color
+
+
 func begin_module_drag(module_id: StringName) -> bool:
 	if layout == null or layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
 		return false

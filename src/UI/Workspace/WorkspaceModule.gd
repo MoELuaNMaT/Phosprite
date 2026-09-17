@@ -3,9 +3,9 @@ extends MarginContainer
 
 ## Runtime wrapper for workspace content.
 ##
-## The wrapper deliberately contains no docking or visual-surface policy. It
-## owns one content scene and exposes a single lifecycle that future layout
-## systems can drive.
+## The module owns one content scene and exposes a single lifecycle for the
+## layout system. P2-E adds visual chrome without changing mount, activation,
+## identity, or placement semantics.
 
 signal lifecycle_changed(module_id: StringName, previous_state: int, new_state: int)
 
@@ -23,6 +23,8 @@ var lifecycle_state := LifecycleState.CREATED
 
 var _context: Dictionary = {}
 var _host: Control
+var _visual_theme: WorkspaceVisualTheme
+var _visual_state: StringName = &"none"
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -116,6 +118,7 @@ func dispose() -> bool:
 	_notify_content(&"workspace_module_disposed", [self])
 	_context.clear()
 	_host = null
+	_visual_theme = null
 	return true
 
 
@@ -145,6 +148,65 @@ func get_constrained_size(requested_size: Vector2) -> Vector2:
 	if definition == null:
 		return requested_size
 	return definition.get_constrained_size(requested_size)
+
+
+func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName) -> void:
+	_visual_theme = workspace_theme
+	_visual_state = state
+	if _visual_theme == null:
+		_remove_visual_margins()
+		queue_redraw()
+		return
+	var padding := int(_visual_theme.CONTENT_PADDING)
+	add_theme_constant_override(&"margin_left", padding)
+	add_theme_constant_override(
+		&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)
+	)
+	add_theme_constant_override(&"margin_right", padding)
+	add_theme_constant_override(&"margin_bottom", padding)
+	queue_redraw()
+
+
+func get_visual_state() -> StringName:
+	return _visual_state
+
+
+func _draw() -> void:
+	if _visual_theme == null:
+		return
+	var module_style := _visual_theme.get_module_style(_visual_state)
+	var header_style := _visual_theme.get_header_style(_visual_state)
+	if module_style != null:
+		draw_style_box(module_style, Rect2(Vector2.ZERO, size))
+	var header_rect := Rect2(0.0, 0.0, size.x, _visual_theme.HEADER_HEIGHT)
+	if header_style != null:
+		draw_style_box(header_style, header_rect)
+	draw_line(
+		Vector2(0.0, _visual_theme.HEADER_HEIGHT),
+		Vector2(size.x, _visual_theme.HEADER_HEIGHT),
+		_visual_theme.border_color,
+		1.0
+	)
+	var title: String
+	if definition != null:
+		title = definition.get_resolved_display_name()
+	else:
+		title = String(name)
+	var baseline := _visual_theme.HEADER_HEIGHT * 0.5 + _visual_theme.default_font_size * 0.35
+	draw_string(
+		_visual_theme.default_font,
+		Vector2(_visual_theme.CONTENT_PADDING + 1.0, baseline),
+		title,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		maxf(0.0, size.x - (_visual_theme.CONTENT_PADDING + 1.0) * 2.0),
+		_visual_theme.default_font_size,
+		_visual_theme.text_color
+	)
+
+
+func _remove_visual_margins() -> void:
+	for constant_name in [&"margin_left", &"margin_top", &"margin_right", &"margin_bottom"]:
+		remove_theme_constant_override(constant_name)
 
 
 func _notify_content(method: StringName, arguments: Array) -> void:
