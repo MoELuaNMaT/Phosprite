@@ -4,11 +4,13 @@ const UI_TRANSPARENCY_SHADER := preload("uid://bwtsxcdoe2ps1")
 const WORKSPACE_MANAGER_SCRIPT := preload("res://src/UI/Workspace/WorkspaceModuleManager.gd")
 const WORKSPACE_BUILTINS := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const WORKSPACE_DOCK_HOST_SCRIPT := preload("res://src/UI/Workspace/WorkspaceDockHost.gd")
+const WORKSPACE_SURFACE_SCRIPT := preload("res://src/UI/Workspace/WorkspaceSurface.gd")
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
 var workspace_manager: WorkspaceModuleManager
 var workspace_dock_host: WorkspaceDockHost
+var workspace_surface: WorkspaceSurface
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -49,6 +51,13 @@ func _setup_workspace_foundation() -> void:
 	workspace_dock_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if not workspace_dock_host.setup(workspace_manager):
 		push_error("Failed to initialize the P2-B Workspace Dock Host")
+		return
+
+	workspace_surface = WORKSPACE_SURFACE_SCRIPT.new()
+	workspace_surface.name = "WorkspaceSurface"
+	add_child(workspace_surface)
+	if not workspace_surface.setup(workspace_manager, workspace_dock_host):
+		push_error("Failed to initialize the P2-C Workspace Surface")
 
 
 func _on_cel_switched() -> void:
