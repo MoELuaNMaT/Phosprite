@@ -68,8 +68,7 @@ static func _filtered_entries(module_id: StringName, raw_entries: Variant) -> Ar
 
 static func _find_insertion_index(pointer: Vector2, zone: int, entries: Array) -> int:
 	var horizontal := (
-		zone == WorkspaceDockLayout.DockZone.TOP
-		or zone == WorkspaceDockLayout.DockZone.BOTTOM
+		zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM
 	)
 	var pointer_axis := pointer.x if horizontal else pointer.y
 	for index in range(entries.size()):
@@ -81,18 +80,13 @@ static func _find_insertion_index(pointer: Vector2, zone: int, entries: Array) -
 
 
 static func _make_preview_rect(
-	zone_rect: Rect2,
-	zone: int,
-	entries: Array,
-	insert_index: int,
-	module_size: Vector2
+	zone_rect: Rect2, zone: int, entries: Array, insert_index: int, module_size: Vector2
 ) -> Rect2:
 	if zone_rect.size.x <= 0.0 or zone_rect.size.y <= 0.0:
 		return Rect2()
 
 	var horizontal := (
-		zone == WorkspaceDockLayout.DockZone.TOP
-		or zone == WorkspaceDockLayout.DockZone.BOTTOM
+		zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM
 	)
 	if horizontal:
 		var width := minf(maxf(module_size.x, 1.0), zone_rect.size.x)
@@ -107,9 +101,7 @@ static func _make_preview_rect(
 			else:
 				var previous: Rect2 = entries[insert_index - 1]["rect"]
 				x = previous.end.x + PREVIEW_GAP
-		x = clampf(
-			x, zone_rect.position.x, maxf(zone_rect.position.x, zone_rect.end.x - width)
-		)
+		x = clampf(x, zone_rect.position.x, maxf(zone_rect.position.x, zone_rect.end.x - width))
 		return Rect2(Vector2(x, zone_rect.position.y), Vector2(width, zone_rect.size.y))
 
 	var height := minf(maxf(module_size.y, 1.0), zone_rect.size.y)
@@ -124,9 +116,7 @@ static func _make_preview_rect(
 		else:
 			var previous: Rect2 = entries[insert_index - 1]["rect"]
 			y = previous.end.y + PREVIEW_GAP
-	y = clampf(
-		y, zone_rect.position.y, maxf(zone_rect.position.y, zone_rect.end.y - height)
-	)
+	y = clampf(y, zone_rect.position.y, maxf(zone_rect.position.y, zone_rect.end.y - height))
 	return Rect2(Vector2(zone_rect.position.x, y), Vector2(zone_rect.size.x, height))
 
 
