@@ -4,13 +4,14 @@ extends Node
 ## P2-C placement controller layered on top of the deterministic P2-B dock host.
 ##
 ## The surface owns transient floating/collapsed state while WorkspaceDockLayout
-## remains a pure four-zone dock model. Persistence is intentionally deferred to
-## P2-D and existing editor panels remain untouched until P2-G.
+## remains a pure four-zone dock model. Persistence is layered on by P2-D and
+## existing editor panels remain untouched until P2-G.
 
 signal module_floated(module_id: StringName, rect: Rect2)
 signal module_collapsed(module_id: StringName)
 signal module_peek_changed(module_id: StringName, peeking: bool)
 signal module_restored(module_id: StringName, placement: int)
+signal module_cleared(module_id: StringName)
 signal surface_preview_changed(candidate: Dictionary)
 signal surface_drag_finished(module_id: StringName, committed: bool)
 
@@ -222,6 +223,44 @@ func set_floating_rect(module_id: StringName, requested_rect: Rect2) -> bool:
 	_apply_floating_rect(module_id, rect)
 	_floating_rects[module_id] = rect
 	module_floated.emit(module_id, rect)
+	return true
+
+
+func clear_module_placement(module_id: StringName) -> bool:
+	if not _is_ready():
+		return false
+	if _drag_module_id == module_id:
+		cancel_module_drag()
+	var placement := get_module_placement(module_id)
+	if placement == Placement.NONE:
+		_placements.erase(module_id)
+		_floating_rects.erase(module_id)
+		_collapsed_restore.erase(module_id)
+		_peeking.erase(module_id)
+		return true
+	if is_peeking(module_id) and not end_peek(module_id):
+		return false
+
+	if placement == Placement.DOCKED:
+		if dock_host.layout.get_module_zone(module_id) != WorkspaceDockLayout.DockZone.NONE:
+			if not dock_host.undock_module(module_id):
+				return false
+	elif placement == Placement.FLOATING:
+		var module := manager.get_instance(module_id)
+		if module != null and module.get_parent() != null:
+			if not manager.unmount_module(module_id):
+				return false
+	elif placement == Placement.COLLAPSED:
+		var module := manager.get_instance(module_id)
+		if module != null and module.get_parent() != null:
+			if not manager.unmount_module(module_id):
+				return false
+
+	_placements.erase(module_id)
+	_floating_rects.erase(module_id)
+	_collapsed_restore.erase(module_id)
+	_peeking.erase(module_id)
+	module_cleared.emit(module_id)
 	return true
 
 

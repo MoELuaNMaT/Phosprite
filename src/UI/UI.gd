@@ -5,12 +5,14 @@ const WORKSPACE_MANAGER_SCRIPT := preload("res://src/UI/Workspace/WorkspaceModul
 const WORKSPACE_BUILTINS := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const WORKSPACE_DOCK_HOST_SCRIPT := preload("res://src/UI/Workspace/WorkspaceDockHost.gd")
 const WORKSPACE_SURFACE_SCRIPT := preload("res://src/UI/Workspace/WorkspaceSurface.gd")
+const WORKSPACE_LAYOUT_STORE_SCRIPT := preload("res://src/UI/Workspace/WorkspaceLayoutStore.gd")
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
 var workspace_manager: WorkspaceModuleManager
 var workspace_dock_host: WorkspaceDockHost
 var workspace_surface: WorkspaceSurface
+var workspace_layout_store: WorkspaceLayoutStore
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -58,6 +60,18 @@ func _setup_workspace_foundation() -> void:
 	add_child(workspace_surface)
 	if not workspace_surface.setup(workspace_manager, workspace_dock_host):
 		push_error("Failed to initialize the P2-C Workspace Surface")
+		return
+
+	workspace_layout_store = WORKSPACE_LAYOUT_STORE_SCRIPT.new()
+	workspace_layout_store.name = "WorkspaceLayoutStore"
+	add_child(workspace_layout_store)
+	var workspace_preset_dir := Global.LAYOUT_DIR.path_join("workspace")
+	if not workspace_layout_store.setup(
+		workspace_surface, Global.config_cache, Global.CONFIG_PATH, workspace_preset_dir
+	):
+		push_error("Failed to initialize the P2-D Workspace Layout Store")
+		return
+	workspace_layout_store.call_deferred(&"restore_current_layout")
 
 
 func _on_cel_switched() -> void:
