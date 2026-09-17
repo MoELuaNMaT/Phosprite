@@ -107,8 +107,8 @@ func test_controller_tracks_placement_and_preserves_module_identity() -> void:
 	check_true(
 		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT), "Preview should dock"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
-	var content := preview.get_content()
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
+	var content: Control = preview.get_content()
 	check_eq(preview.get_visual_state(), &"docked", "docked module should use docked chrome")
 
 	check_true(
@@ -144,7 +144,7 @@ func test_theme_refresh_updates_both_snap_previews() -> void:
 		controller.refresh(source_theme, Color("30343c"), accent, 0.3),
 		"controller should refresh previews"
 	)
-	var expected := controller.visual_theme.preview_color
+	var expected: Color = controller.visual_theme.preview_color
 	var dock_preview := host.get_node(^"DockSnapPreview") as ColorRect
 	var surface_preview := host.get_node(^"WorkspaceSurfacePreview") as ColorRect
 	check_eq(dock_preview.color, expected, "dock snap preview should use Workspace accent")
