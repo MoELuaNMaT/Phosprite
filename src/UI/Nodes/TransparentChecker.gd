@@ -30,7 +30,8 @@ func update_rect() -> void:
 		for canvas_preview in get_tree().get_nodes_in_group("CanvasPreviews"):
 			canvas_preview.get_viewport().get_node("TransparentChecker").update_rect()
 	material.set_shader_parameter(
-		&"size", CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode else Global.checker_size
+		&"size",
+		CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode else Global.checker_size
 	)
 	material.set_shader_parameter(&"color1", Global.checker_color_1)
 	material.set_shader_parameter(&"color2", Global.checker_color_2)
