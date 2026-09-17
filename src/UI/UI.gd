@@ -12,6 +12,9 @@ const WORKSPACE_THEME_CONTROLLER_SCRIPT := preload(
 const WORKSPACE_EDITOR_MIGRATION_SCRIPT := preload(
 	"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 )
+const WORKSPACE_INTERACTION_CONTROLLER_SCRIPT := preload(
+	"res://src/UI/Workspace/WorkspaceInteractionController.gd"
+)
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
@@ -21,6 +24,7 @@ var workspace_surface: WorkspaceSurface
 var workspace_layout_store: WorkspaceLayoutStore
 var workspace_theme_controller: WorkspaceThemeController
 var workspace_migration: WorkspaceEditorMigration
+var workspace_interaction_controller: WorkspaceInteractionController
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -99,7 +103,22 @@ func _setup_workspace_foundation() -> void:
 	):
 		push_error("P2-G live Workspace migration failed; keeping the legacy editor layout")
 		return
+
+	workspace_interaction_controller = WORKSPACE_INTERACTION_CONTROLLER_SCRIPT.new()
+	workspace_interaction_controller.name = "WorkspaceInteractionController"
+	add_child(workspace_interaction_controller)
+	if not workspace_interaction_controller.setup(workspace_manager, workspace_surface):
+		push_error("Failed to initialize P2-G Workspace interactions")
+		return
 	_refresh_workspace_theme()
+	_refresh_window_menu_for_workspace.call_deferred()
+
+
+func _refresh_window_menu_for_workspace() -> void:
+	if not is_instance_valid(Global.top_menu_container):
+		return
+	if Global.top_menu_container.has_method(&"refresh_workspace_window_menu"):
+		Global.top_menu_container.call(&"refresh_workspace_window_menu")
 
 
 func _refresh_workspace_theme() -> void:
