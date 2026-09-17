@@ -4,9 +4,11 @@ extends Node
 ## Reuses the existing Window/Panels/Layouts UI while routing live P2-G state
 ## through Workspace instead of DockableContainer/DockableLayout.
 
+const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const LAYOUT_ADD_ID := 1000
 const LAYOUT_DELETE_ID := 1001
 const LAYOUT_RESET_ID := 1002
+const CURRENT_WORKSPACE := "__current_workspace__"
 
 var top_menu: Control
 var migration: WorkspaceEditorMigration
@@ -22,7 +24,7 @@ var delete_layout_confirmation: ConfirmationDialog
 var layout_name_line_edit: LineEdit
 var layout_from_option_button: OptionButton
 
-var _selected_preset := ""
+var _selected_preset := CURRENT_WORKSPACE
 var _preset_ids: Dictionary = {}
 var _setup_complete := false
 
@@ -96,7 +98,11 @@ func _disconnect_legacy_handlers() -> void:
 	)
 	for connection: Dictionary in Global.pixelorama_opened.get_connections():
 		var callable := connection.get("callable") as Callable
-		if callable.is_valid() and callable.get_object() == top_menu and callable.get_method() == &"set_layout":
+		if (
+			callable.is_valid()
+			and callable.get_object() == top_menu
+			and callable.get_method() == &"set_layout"
+		):
 			Global.pixelorama_opened.disconnect(callable)
 
 
@@ -124,8 +130,8 @@ func _on_window_menu_id_pressed(id: int) -> void:
 		Global.WindowMenu.ZEN_MODE:
 			var enabled := not migration.is_zen_mode()
 			migration.set_zen_mode(enabled)
-			top_menu.set("zen_mode", enabled)
-			var tabs := top_menu.get("main").find_child("TabsContainer") as Control
+			var main_node := top_menu.get("main") as Node
+			var tabs := main_node.find_child("TabsContainer") as Control if main_node != null else null
 			if tabs != null:
 				tabs.visible = not enabled
 			window_menu.set_item_checked(Global.WindowMenu.ZEN_MODE, enabled)
@@ -145,10 +151,7 @@ func _rebuild_panels_menu() -> void:
 	panels_submenu.clear()
 	panels_submenu.hide_on_checkable_item_selection = false
 	for module_id in migration.get_panel_ids():
-		if (
-			module_id == WorkspaceBuiltinModules.TILES_ID
-			or module_id == WorkspaceBuiltinModules.OBJECT_TREE_3D_ID
-		):
+		if module_id == Builtins.TILES_ID or module_id == Builtins.OBJECT_TREE_3D_ID:
 			continue
 		var item_id := panels_submenu.item_count
 		panels_submenu.add_check_item(migration.get_panel_name(module_id), item_id)
@@ -205,10 +208,12 @@ func _sync_layout_selection() -> void:
 		if id == LAYOUT_ADD_ID or id == LAYOUT_DELETE_ID or id == LAYOUT_RESET_ID:
 			continue
 		var name := str(layouts_submenu.get_item_metadata(index))
-		layouts_submenu.set_item_checked(index, name == _selected_preset)
+		layouts_submenu.set_item_checked(
+			index, _selected_preset != CURRENT_WORKSPACE and name == _selected_preset
+		)
 	var delete_index := layouts_submenu.get_item_index(LAYOUT_DELETE_ID)
 	if delete_index >= 0:
-		layouts_submenu.set_item_disabled(delete_index, _selected_preset.is_empty())
+		layouts_submenu.set_item_disabled(delete_index, not _has_named_preset())
 		layouts_submenu.set_item_text(delete_index, _delete_label())
 	var reset_index := layouts_submenu.get_item_index(LAYOUT_RESET_ID)
 	if reset_index >= 0:
@@ -221,7 +226,7 @@ func _on_layouts_submenu_id_pressed(id: int) -> void:
 		add_layout_confirmation.popup_centered_clamped()
 		return
 	if id == LAYOUT_DELETE_ID:
-		if not _selected_preset.is_empty():
+		if _has_named_preset():
 			delete_layout_confirmation.popup_centered_clamped()
 		return
 	if id == LAYOUT_RESET_ID:
@@ -261,17 +266,19 @@ func _on_add_layout_confirmed() -> void:
 
 
 func _on_delete_layout_confirmed() -> void:
-	if _selected_preset.is_empty():
+	if not _has_named_preset():
 		return
 	if store.delete_preset(_selected_preset):
-		_selected_preset = ""
+		_selected_preset = CURRENT_WORKSPACE
 		_rebuild_layouts_menu()
 
 
 func _reset_selected_layout() -> void:
 	var reset := false
-	if _selected_preset.is_empty():
+	if not _has_named_preset():
 		reset = migration.reset_default_layout()
+		if reset:
+			_selected_preset = ""
 	else:
 		reset = store.load_preset(_selected_preset)
 	if reset:
@@ -290,14 +297,18 @@ func _sync_content_visibility() -> void:
 		)
 
 
+func _has_named_preset() -> bool:
+	return not _selected_preset.is_empty() and _selected_preset != CURRENT_WORKSPACE
+
+
 func _delete_label() -> String:
-	if _selected_preset.is_empty():
+	if not _has_named_preset():
 		return tr("Delete Layout")
 	return tr("Delete %s") % _selected_preset
 
 
 func _reset_label() -> String:
-	var display_name := tr("Default") if _selected_preset.is_empty() else _selected_preset
+	var display_name := tr("Default") if not _has_named_preset() else _selected_preset
 	return tr("Reset %s") % display_name
 
 
