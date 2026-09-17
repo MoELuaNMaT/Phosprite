@@ -105,8 +105,7 @@ func test_controller_tracks_placement_and_preserves_module_identity() -> void:
 	)
 
 	check_true(
-		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
-		"Preview should dock"
+		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT), "Preview should dock"
 	)
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
 	var content := preview.get_content()
@@ -116,16 +115,22 @@ func test_controller_tracks_placement_and_preserves_module_identity() -> void:
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(420.0, 180.0, 340.0, 240.0)),
 		"Preview should float"
 	)
-	check_eq(manager.get_instance(Builtins.PREVIEW_ID), preview, "theme chrome must preserve identity")
+	check_eq(
+		manager.get_instance(Builtins.PREVIEW_ID), preview, "theme chrome must preserve identity"
+	)
 	check_eq(preview.get_content(), content, "theme chrome must preserve the original content root")
 	check_eq(preview.get_visual_state(), &"floating", "floating module should use floating chrome")
 
 	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "Preview should collapse")
-	check_eq(preview.get_visual_state(), &"collapsed", "collapsed module should retain collapsed state")
+	check_eq(
+		preview.get_visual_state(), &"collapsed", "collapsed module should retain collapsed state"
+	)
 	check_true(surface.peek_module(Builtins.PREVIEW_ID), "collapsed Preview should Peek")
 	check_eq(preview.get_visual_state(), &"peek", "Peek should use elevated peek chrome")
 	check_true(surface.end_peek(Builtins.PREVIEW_ID), "Peek should close")
-	check_eq(preview.get_visual_state(), &"collapsed", "ending Peek should recover collapsed chrome")
+	check_eq(
+		preview.get_visual_state(), &"collapsed", "ending Peek should recover collapsed chrome"
+	)
 	_free_workspace(workspace)
 
 
