@@ -113,18 +113,15 @@ func test_drag_resolver_returns_insert_position_and_snap_preview() -> void:
 		DockLayout.DockZone.BOTTOM: Rect2(300.0, 700.0, 700.0, 100.0),
 	}
 	var module_rects := {
-		DockLayout.DockZone.LEFT: [
+		DockLayout.DockZone.LEFT:
+		[
 			{"module_id": Builtins.PREVIEW_ID, "rect": Rect2(0.0, 0.0, 300.0, 220.0)},
 			{"module_id": Builtins.PALETTE_ID, "rect": Rect2(0.0, 220.0, 300.0, 300.0)},
 		]
 	}
 
 	var candidate := DockResolver.resolve(
-		Builtins.PREVIEW_ID,
-		Vector2(120.0, 500.0),
-		zone_rects,
-		module_rects,
-		layout
+		Builtins.PREVIEW_ID, Vector2(120.0, 500.0), zone_rects, module_rects, layout
 	)
 	check_true(bool(candidate.get("valid", false)), "pointer inside a dock should resolve")
 	check_eq(
@@ -141,11 +138,7 @@ func test_drag_resolver_returns_insert_position_and_snap_preview() -> void:
 	check_true(preview_rect.has_area(), "valid drag candidate should expose a snap preview rect")
 
 	var outside := DockResolver.resolve(
-		Builtins.PREVIEW_ID,
-		Vector2(5000.0, 5000.0),
-		zone_rects,
-		module_rects,
-		layout
+		Builtins.PREVIEW_ID, Vector2(5000.0, 5000.0), zone_rects, module_rects, layout
 	)
 	check_true(
 		not bool(outside.get("valid", true)),
