@@ -6,7 +6,9 @@ const WORKSPACE_BUILTINS := preload("res://src/UI/Workspace/WorkspaceBuiltinModu
 const WORKSPACE_DOCK_HOST_SCRIPT := preload("res://src/UI/Workspace/WorkspaceDockHost.gd")
 const WORKSPACE_SURFACE_SCRIPT := preload("res://src/UI/Workspace/WorkspaceSurface.gd")
 const WORKSPACE_LAYOUT_STORE_SCRIPT := preload("res://src/UI/Workspace/WorkspaceLayoutStore.gd")
-const WORKSPACE_THEME_CONTROLLER_SCRIPT := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
+const WORKSPACE_THEME_CONTROLLER_SCRIPT := preload(
+	"res://src/UI/Workspace/WorkspaceThemeController.gd"
+)
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
