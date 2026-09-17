@@ -32,12 +32,7 @@ var _module_styles: Dictionary = {}
 var _header_styles: Dictionary = {}
 
 
-func refresh(
-	source_theme: Theme,
-	base: Color,
-	accent: Color,
-	contrast := 0.3
-) -> bool:
+func refresh(source_theme: Theme, base: Color, accent: Color, contrast := 0.3) -> bool:
 	if source_theme == null:
 		return false
 
@@ -56,7 +51,9 @@ func refresh(
 	muted_text_color = resolved_text.lerp(resolved_surface, 0.38)
 	preview_color = Color(resolved_accent, 0.22)
 	shadow_color = Color(0.0, 0.0, 0.0, 0.32 if resolved_surface.get_luminance() < 0.5 else 0.18)
-	default_font = source_theme.default_font if source_theme.default_font != null else ThemeDB.fallback_font
+	default_font = (
+		source_theme.default_font if source_theme.default_font != null else ThemeDB.fallback_font
+	)
 	default_font_size = (
 		source_theme.default_font_size
 		if source_theme.default_font_size > 0
