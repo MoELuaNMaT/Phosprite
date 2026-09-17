@@ -1,6 +1,6 @@
 extends Node2D
 
-const PIXEL_GRID_ALPHA_FACTOR := 0.55
+const CanvasVisualPolicy := preload("res://src/UI/Canvas/CanvasVisualPolicy.gd")
 
 
 func _ready() -> void:
@@ -40,7 +40,7 @@ func _draw() -> void:
 
 	if not grid_multiline_points.is_empty():
 		var line_color := Global.pixel_grid_color
-		line_color.a *= PIXEL_GRID_ALPHA_FACTOR
+		line_color.a *= CanvasVisualPolicy.PIXEL_GRID_ALPHA_FACTOR
 		draw_multiline(grid_multiline_points, line_color)
 
 
