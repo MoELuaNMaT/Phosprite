@@ -31,6 +31,7 @@ var _content_is_external := false
 var _content_collapsed := false
 var _content_visible_before_collapse := true
 var _minimum_size_before_collapse := Vector2.ZERO
+var _collapsed_content_parking: Node
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -127,6 +128,8 @@ func dispose() -> bool:
 func release_external_content() -> Control:
 	if not _content_is_external or not is_instance_valid(content):
 		return null
+	if _content_collapsed:
+		set_content_collapsed(false)
 	if lifecycle_state == LifecycleState.ACTIVE:
 		deactivate()
 	if lifecycle_state == LifecycleState.MOUNTED:
@@ -156,17 +159,17 @@ func set_content_collapsed(collapsed: bool) -> void:
 		return
 	if collapsed:
 		_minimum_size_before_collapse = custom_minimum_size
-	if is_instance_valid(content):
-		if collapsed:
+		if is_instance_valid(content):
 			_content_visible_before_collapse = content.visible
 			content.visible = false
-		else:
-			content.visible = _content_visible_before_collapse
-	if collapsed:
+			_park_content()
 		custom_minimum_size = Vector2(_minimum_size_before_collapse.x, get_header_height())
 	else:
+		_restore_parked_content()
 		custom_minimum_size = _minimum_size_before_collapse
 		_minimum_size_before_collapse = Vector2.ZERO
+		if is_instance_valid(content):
+			content.visible = _content_visible_before_collapse
 	_content_collapsed = collapsed
 	if _visual_theme != null:
 		apply_visual_theme(_visual_theme, _visual_state)
@@ -363,6 +366,23 @@ func _configure_content(
 	size = module_definition.get_constrained_preferred_size()
 	add_child(content)
 	return true
+
+
+func _park_content() -> void:
+	if not is_instance_valid(content) or content.get_parent() != self:
+		return
+	if not is_instance_valid(_collapsed_content_parking):
+		_collapsed_content_parking = Node.new()
+		_collapsed_content_parking.name = &"CollapsedContentParking"
+		add_child(_collapsed_content_parking)
+	content.reparent(_collapsed_content_parking, false)
+
+
+func _restore_parked_content() -> void:
+	if not is_instance_valid(content):
+		return
+	if is_instance_valid(_collapsed_content_parking) and content.get_parent() == _collapsed_content_parking:
+		content.reparent(self, false)
 
 
 func _remove_visual_margins() -> void:
