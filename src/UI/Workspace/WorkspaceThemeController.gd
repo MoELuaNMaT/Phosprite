@@ -40,7 +40,9 @@ func _sync_preview_colors() -> void:
 	if surface == null or surface.dock_host == null:
 		return
 	surface.dock_host.set_preview_color(visual_theme.preview_color)
-	var surface_preview := surface.dock_host.get_node_or_null(^"WorkspaceSurfacePreview") as ColorRect
+	var surface_preview := (
+		surface.dock_host.get_node_or_null(^"WorkspaceSurfacePreview") as ColorRect
+	)
 	if surface_preview != null:
 		surface_preview.color = visual_theme.preview_color
 
