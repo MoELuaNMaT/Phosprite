@@ -34,5 +34,7 @@ func test_editor_bootstraps_live_workspace_after_p2_g_migration() -> void:
 		Control.MOUSE_FILTER_IGNORE,
 		"Workspace shell must stay input-through so the central Canvas keeps input ownership"
 	)
-	check_true(migration.live, "P2-G startup migration should complete before the editor becomes live")
+	check_true(
+		migration.live, "P2-G startup migration should complete before the editor becomes live"
+	)
 	check_true(not legacy.visible, "legacy DockableContainer should be hidden after live migration")
