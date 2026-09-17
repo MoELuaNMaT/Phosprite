@@ -5,7 +5,8 @@ extends Node
 ##
 ## The current layout is stored in the application's existing ConfigFile while
 ## named Workspace presets live below the existing layouts directory in their
-## own subdirectory. The legacy DockableLayout files remain untouched until P2-G.
+## own subdirectory. P2-G also uses transient updates for context-driven panel
+## visibility changes that must not overwrite the user's chosen layout.
 
 signal current_layout_saved(snapshot: Dictionary)
 signal preset_saved(preset_name: String)
@@ -30,6 +31,7 @@ var autosave_enabled := true
 
 var _applying_snapshot := false
 var _autosave_queued := false
+var _transient_update_depth := 0
 
 
 func setup(
@@ -101,6 +103,19 @@ func restore_current_layout() -> bool:
 	if not value is Dictionary:
 		return false
 	return apply_snapshot(value as Dictionary)
+
+
+func begin_transient_update() -> void:
+	if _transient_update_depth == 0 and _autosave_queued:
+		_autosave_queued = false
+		save_current_layout()
+	_transient_update_depth += 1
+
+
+func end_transient_update() -> void:
+	if _transient_update_depth <= 0:
+		return
+	_transient_update_depth -= 1
 
 
 func save_preset(preset_name: String) -> bool:
@@ -382,7 +397,12 @@ func _on_module_size_changed(_module_id: StringName, _size: Vector2) -> void:
 
 
 func _queue_autosave() -> void:
-	if not autosave_enabled or _applying_snapshot or _autosave_queued:
+	if (
+		not autosave_enabled
+		or _applying_snapshot
+		or _transient_update_depth > 0
+		or _autosave_queued
+	):
 		return
 	_autosave_queued = true
 	call_deferred(&"_flush_queued_autosave")
@@ -390,7 +410,7 @@ func _queue_autosave() -> void:
 
 func _flush_queued_autosave() -> void:
 	_autosave_queued = false
-	if autosave_enabled and not _applying_snapshot:
+	if autosave_enabled and not _applying_snapshot and _transient_update_depth == 0:
 		save_current_layout()
 
 
