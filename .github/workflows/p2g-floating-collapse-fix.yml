@@ -1,0 +1,148 @@
+name: P2-G Floating Collapse Fix Helper
+
+on:
+  push:
+    branches:
+      - codex/implement-p2-g-live-workspace-migration
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: codex/implement-p2-g-live-workspace-migration
+          fetch-depth: 0
+      - name: Apply floating-collapse semantics
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one match, got {text.count(old)}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # WorkspaceModule: preserve content visibility while exposing a header-only collapsed chrome.
+          replace_once(
+              'src/UI/Workspace/WorkspaceModule.gd',
+              'var _content_is_external := false\n',
+              'var _content_is_external := false\nvar _content_collapsed := false\nvar _content_visible_before_collapse := true\n',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceModule.gd',
+              '''func get_content() -> Control:\n\treturn content\n\n\nfunc is_external_content() -> bool:\n''',
+              '''func get_content() -> Control:\n\treturn content\n\n\nfunc set_content_collapsed(collapsed: bool) -> void:\n\tif _content_collapsed == collapsed:\n\t\treturn\n\tif is_instance_valid(content):\n\t\tif collapsed:\n\t\t\t_content_visible_before_collapse = content.visible\n\t\t\tcontent.visible = false\n\t\telse:\n\t\t\tcontent.visible = _content_visible_before_collapse\n\t_content_collapsed = collapsed\n\tif _visual_theme != null:\n\t\tapply_visual_theme(_visual_theme, _visual_state)\n\tqueue_redraw()\n\n\nfunc is_content_collapsed() -> bool:\n\treturn _content_collapsed\n\n\nfunc is_external_content() -> bool:\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceModule.gd',
+              '''\tvar padding := int(_visual_theme.CONTENT_PADDING)\n\tvar bottom_margin := padding\n\tif state == &"floating":\n\t\tbottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))\n\tadd_theme_constant_override(&"margin_left", padding)\n\tadd_theme_constant_override(\n\t\t&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)\n\t)\n\tadd_theme_constant_override(&"margin_right", padding)\n\tadd_theme_constant_override(&"margin_bottom", bottom_margin)\n''',
+              '''\tvar padding := int(_visual_theme.CONTENT_PADDING)\n\tif state == &"collapsed" and _content_collapsed:\n\t\tadd_theme_constant_override(&"margin_left", 0)\n\t\tadd_theme_constant_override(&"margin_top", int(_visual_theme.HEADER_HEIGHT))\n\t\tadd_theme_constant_override(&"margin_right", 0)\n\t\tadd_theme_constant_override(&"margin_bottom", 0)\n\telse:\n\t\tvar bottom_margin := padding\n\t\tif state == &"floating":\n\t\t\tbottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))\n\t\tadd_theme_constant_override(&"margin_left", padding)\n\t\tadd_theme_constant_override(\n\t\t\t&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)\n\t\t)\n\t\tadd_theme_constant_override(&"margin_right", padding)\n\t\tadd_theme_constant_override(&"margin_bottom", bottom_margin)\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceModule.gd',
+              '''\tvar center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5)\n\tvar half := 4.0\n\tdraw_line(\n\t\tcenter + Vector2(-half, 0.0),\n\t\tcenter + Vector2(0.0, half),\n\t\t_visual_theme.muted_text_color,\n\t\t1.5\n\t)\n\tdraw_line(\n\t\tcenter + Vector2(0.0, half),\n\t\tcenter + Vector2(half, 0.0),\n\t\t_visual_theme.muted_text_color,\n\t\t1.5\n\t)\n''',
+              '''\tvar center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5)\n\tvar half := 4.0\n\tvar direction := -1.0 if _content_collapsed else 1.0\n\tdraw_line(\n\t\tcenter + Vector2(-half, 0.0),\n\t\tcenter + Vector2(0.0, half * direction),\n\t\t_visual_theme.muted_text_color,\n\t\t1.5\n\t)\n\tdraw_line(\n\t\tcenter + Vector2(0.0, half * direction),\n\t\tcenter + Vector2(half, 0.0),\n\t\t_visual_theme.muted_text_color,\n\t\t1.5\n\t)\n''',
+          )
+
+          # WorkspaceSurface: floating collapse stays mounted as a header-only bar.
+          replace_once(
+              'src/UI/Workspace/WorkspaceSurface.gd',
+              '''\tvar restore := _capture_restore_state(module_id, placement)\n\tif placement == Placement.DOCKED:\n\t\tif not dock_host.undock_module(module_id):\n\t\t\treturn false\n\telif not manager.unmount_module(module_id):\n\t\treturn false\n\n\t_placements[module_id] = Placement.COLLAPSED\n\t_floating_rects.erase(module_id)\n\t_collapsed_restore[module_id] = restore\n\t_peeking.erase(module_id)\n\tmodule_collapsed.emit(module_id)\n\treturn true\n''',
+              '''\tvar restore := _capture_restore_state(module_id, placement)\n\tif placement == Placement.DOCKED:\n\t\tif not dock_host.undock_module(module_id):\n\t\t\treturn false\n\telse:\n\t\tvar module := manager.get_instance(module_id)\n\t\tif module == null or module.get_parent() != _floating_layer:\n\t\t\treturn false\n\t\tmodule.set_content_collapsed(true)\n\n\t_placements[module_id] = Placement.COLLAPSED\n\t_floating_rects.erase(module_id)\n\t_collapsed_restore[module_id] = restore\n\t_peeking.erase(module_id)\n\tmodule_collapsed.emit(module_id)\n\tif placement == Placement.FLOATING:\n\t\t_apply_floating_collapsed_rect(module_id, restore.get("rect", Rect2()) as Rect2)\n\treturn true\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceSurface.gd',
+              '''func peek_module(module_id: StringName) -> bool:\n\tif not _is_ready() or get_module_placement(module_id) != Placement.COLLAPSED:\n\t\treturn false\n''',
+              '''func peek_module(module_id: StringName) -> bool:\n\tif (\n\t\tnot _is_ready()\n\t\tor get_module_placement(module_id) != Placement.COLLAPSED\n\t\tor is_floating_collapsed(module_id)\n\t):\n\t\treturn false\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceSurface.gd',
+              '''\telif restore_placement == Placement.FLOATING:\n\t\trestored = float_module(module_id, restore.get("rect", Rect2()) as Rect2)\n\tif not restored:\n\t\treturn false\n''',
+              '''\telif restore_placement == Placement.FLOATING:\n\t\tvar module := manager.get_instance(module_id)\n\t\tvar was_floating_collapsed := is_floating_collapsed(module_id)\n\t\tif was_floating_collapsed and module != null:\n\t\t\tmodule.set_content_collapsed(false)\n\t\trestored = float_module(module_id, restore.get("rect", Rect2()) as Rect2)\n\t\tif not restored and was_floating_collapsed and module != null:\n\t\t\tmodule.set_content_collapsed(true)\n\t\t\t_apply_floating_collapsed_rect(\n\t\t\t\tmodule_id, restore.get("rect", Rect2()) as Rect2\n\t\t\t)\n\tif not restored:\n\t\treturn false\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceSurface.gd',
+              '''\telif placement == Placement.COLLAPSED:\n\t\tvar module := manager.get_instance(module_id)\n\t\tif module != null and module.get_parent() != null:\n\t\t\tif not manager.unmount_module(module_id):\n\t\t\t\treturn false\n''',
+              '''\telif placement == Placement.COLLAPSED:\n\t\tvar module := manager.get_instance(module_id)\n\t\tif module != null and is_floating_collapsed(module_id):\n\t\t\tmodule.set_content_collapsed(false)\n\t\tif module != null and module.get_parent() != null:\n\t\t\tif not manager.unmount_module(module_id):\n\t\t\t\treturn false\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceSurface.gd',
+              '''func is_peeking(module_id: StringName) -> bool:\n\treturn bool(_peeking.get(module_id, false))\n\n\nfunc get_floating_layer() -> Control:\n''',
+              '''func is_peeking(module_id: StringName) -> bool:\n\treturn bool(_peeking.get(module_id, false))\n\n\nfunc is_floating_collapsed(module_id: StringName) -> bool:\n\tif get_module_placement(module_id) != Placement.COLLAPSED:\n\t\treturn false\n\tvar restore: Dictionary = _collapsed_restore.get(module_id, {})\n\tif int(restore.get("placement", Placement.NONE)) != Placement.FLOATING:\n\t\treturn false\n\tvar module := manager.get_instance(module_id) if manager != null else null\n\treturn module != null and module.get_parent() == _floating_layer\n\n\nfunc get_floating_layer() -> Control:\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceSurface.gd',
+              '''func _apply_floating_rect(module_id: StringName, rect: Rect2) -> void:\n\tvar module := manager.get_instance(module_id)\n\tvar definition := manager.get_definition(module_id)\n\tif module == null or definition == null:\n\t\treturn\n\tmodule.custom_minimum_size = definition.minimum_size\n\tmodule.position = rect.position\n\tmodule.size = rect.size\n\tmodule.move_to_front()\n\t_floating_layer.move_to_front()\n\t_peek_layer.move_to_front()\n\t_preview.move_to_front()\n\n\nfunc _peek_rect_for_restore''',
+              '''func _apply_floating_rect(module_id: StringName, rect: Rect2) -> void:\n\tvar module := manager.get_instance(module_id)\n\tvar definition := manager.get_definition(module_id)\n\tif module == null or definition == null:\n\t\treturn\n\tmodule.custom_minimum_size = definition.minimum_size\n\tmodule.position = rect.position\n\tmodule.size = rect.size\n\tmodule.move_to_front()\n\t_floating_layer.move_to_front()\n\t_peek_layer.move_to_front()\n\t_preview.move_to_front()\n\n\nfunc _apply_floating_collapsed_rect(module_id: StringName, restore_rect: Rect2) -> void:\n\tvar module := manager.get_instance(module_id)\n\tvar definition := manager.get_definition(module_id)\n\tif module == null or definition == null:\n\t\treturn\n\tvar width := definition.get_constrained_size(restore_rect.size).x\n\tvar header_height := module.get_header_height()\n\tvar bounds := dock_host.size if dock_host != null else Vector2.ZERO\n\twidth = minf(width, bounds.x) if bounds.x > 0.0 else width\n\tvar max_position := Vector2(\n\t\tmaxf(0.0, bounds.x - width), maxf(0.0, bounds.y - header_height)\n\t)\n\tvar position := Vector2(\n\t\tclampf(restore_rect.position.x, 0.0, max_position.x),\n\t\tclampf(restore_rect.position.y, 0.0, max_position.y)\n\t)\n\tmodule.custom_minimum_size = Vector2(minf(definition.minimum_size.x, width), header_height)\n\tmodule.position = position\n\tmodule.size = Vector2(width, header_height)\n\tmodule.move_to_front()\n\t_floating_layer.move_to_front()\n\t_peek_layer.move_to_front()\n\t_preview.move_to_front()\n\n\nfunc _peek_rect_for_restore''',
+          )
+
+          # Interaction: same button restores an in-place floating bar; tray excludes it.
+          for needle in [
+              '''\tif module.is_collapse_point(event.position):\n\t\tif surface.collapse_module(module_id):\n\t\t\t_refresh_tray()\n\t\tmodule.accept_event()\n\t\treturn\n''',
+          ]:
+              p = Path('src/UI/Workspace/WorkspaceInteractionController.gd')
+              text = p.read_text(encoding='utf-8')
+              count = text.count(needle)
+              if count != 2:
+                  raise SystemExit(f'Interaction collapse block expected twice, got {count}')
+              replacement = '''\tif module.is_collapse_point(event.position):\n\t\tif _toggle_module_collapse(module_id):\n\t\t\t_refresh_tray()\n\t\tmodule.accept_event()\n\t\treturn\n'''
+              p.write_text(text.replace(needle, replacement), encoding='utf-8')
+          replace_once(
+              'src/UI/Workspace/WorkspaceInteractionController.gd',
+              '''func _raise_floating_module(module_id: StringName, module: WorkspaceModule) -> void:\n\tif surface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING:\n\t\treturn\n\tif module.get_parent() == surface.get_floating_layer():\n\t\tmodule.move_to_front()\n\n\nfunc _create_tray() -> void:\n''',
+              '''func _raise_floating_module(module_id: StringName, module: WorkspaceModule) -> void:\n\tif (\n\t\tsurface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING\n\t\tand not surface.is_floating_collapsed(module_id)\n\t):\n\t\treturn\n\tif module.get_parent() == surface.get_floating_layer():\n\t\tmodule.move_to_front()\n\n\nfunc _toggle_module_collapse(module_id: StringName) -> bool:\n\tif surface.is_floating_collapsed(module_id):\n\t\treturn surface.restore_module(module_id)\n\treturn surface.collapse_module(module_id)\n\n\nfunc _create_tray() -> void:\n''',
+          )
+          replace_once(
+              'src/UI/Workspace/WorkspaceInteractionController.gd',
+              '''\tfor module_id in manager.get_registered_ids():\n\t\tif surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED:\n\t\t\tcollapsed_ids.append(module_id)\n''',
+              '''\tfor module_id in manager.get_registered_ids():\n\t\tif (\n\t\t\tsurface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED\n\t\t\tand not surface.is_floating_collapsed(module_id)\n\t\t):\n\t\t\tcollapsed_ids.append(module_id)\n''',
+          )
+
+          # P2-C regression contract for floating collapse.
+          replace_once(
+              'tests/unit/test_p2_c_workspace_surface.gd',
+              '''\tvar palette := manager.get_instance(Builtins.PALETTE_ID)\n\tcheck_true(surface.collapse_module(Builtins.PALETTE_ID), "floating Palette should collapse")\n\tcheck_true(surface.restore_module(Builtins.PALETTE_ID), "floating Palette should restore")\n''',
+              '''\tvar palette := manager.get_instance(Builtins.PALETTE_ID)\n\tvar palette_content := palette.get_content()\n\tcheck_true(surface.collapse_module(Builtins.PALETTE_ID), "floating Palette should collapse")\n\tcheck_true(\n\t\tsurface.is_floating_collapsed(Builtins.PALETTE_ID),\n\t\t"floating collapse should remain an in-place floating title bar"\n\t)\n\tcheck_eq(\n\t\tpalette.get_parent(),\n\t\tsurface.get_floating_layer(),\n\t\t"floating collapse must keep the module in the floating layer"\n\t)\n\tcheck_true(not palette_content.visible, "floating collapse should hide only panel content")\n\tcheck_eq(palette.position, floating_rect.position, "floating collapse should keep its position")\n\tcheck_eq(palette.size.x, floating_rect.size.x, "floating collapse should keep its width")\n\tcheck_eq(\n\t\tpalette.size.y, palette.get_header_height(), "floating collapse should shrink to header height"\n\t)\n\tcheck_true(surface.restore_module(Builtins.PALETTE_ID), "floating Palette should restore")\n\tcheck_true(palette_content.visible, "restoring the floating bar should reveal its content")\n''',
+          )
+
+          # P2-G interaction contract: no bottom tray button for floating-origin collapse.
+          p = Path('tests/unit/test_p2_g_live_workspace_migration.gd')
+          text = p.read_text(encoding='utf-8')
+          anchor = '''func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets() -> void:\n'''
+          if text.count(anchor) != 1:
+              raise SystemExit('P2-G test anchor mismatch')
+          test = '''func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:\n\tvar fixture := _make_live_fixture()\n\tvar root := fixture["root"] as Control\n\tvar manager := fixture["manager"] as WorkspaceModuleManager\n\tvar surface := fixture["surface"] as WorkspaceSurface\n\tvar interaction := Interaction.new()\n\troot.add_child(interaction)\n\tcheck_true(interaction.setup(manager, surface), "interaction controller should initialize")\n\tvar target_rect := Rect2(320.0, 180.0, 360.0, 240.0)\n\tcheck_true(surface.float_module(Builtins.PREVIEW_ID, target_rect), "Preview should float")\n\tvar preview := manager.get_instance(Builtins.PREVIEW_ID)\n\tcheck_true(surface.collapse_module(Builtins.PREVIEW_ID), "floating Preview should collapse")\n\tcheck_true(surface.is_floating_collapsed(Builtins.PREVIEW_ID), "collapse should remain floating")\n\tcheck_eq(preview.position, target_rect.position, "collapsed bar should stay at its origin")\n\tcheck_eq(preview.size.x, target_rect.size.x, "collapsed bar should keep its width")\n\tcheck_true(\n\t\tnot interaction.get_tray().visible,\n\t\t"floating-origin collapse must not become a bottom tray text button"\n\t)\n\tcheck_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed floating bar should restore")\n\tcheck_eq(surface.get_floating_rect(Builtins.PREVIEW_ID), target_rect, "restore should recover full rect")\n\t_free_fixture(fixture)\n\n\n'''
+          p.write_text(text.replace(anchor, test + anchor, 1), encoding='utf-8')
+          PY
+
+      - name: Format changed GDScript
+        shell: bash
+        run: |
+          python3 -m pip install --quiet 'gdtoolkit>=4,<5'
+          gdformat \
+            src/UI/Workspace/WorkspaceModule.gd \
+            src/UI/Workspace/WorkspaceSurface.gd \
+            src/UI/Workspace/WorkspaceInteractionController.gd \
+            tests/unit/test_p2_c_workspace_surface.gd \
+            tests/unit/test_p2_g_live_workspace_migration.gd
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/UI/Workspace/WorkspaceModule.gd \
+                  src/UI/Workspace/WorkspaceSurface.gd \
+                  src/UI/Workspace/WorkspaceInteractionController.gd \
+                  tests/unit/test_p2_c_workspace_surface.gd \
+                  tests/unit/test_p2_g_live_workspace_migration.gd
+          git diff --cached --quiet && exit 1
+          git commit -m 'fix: keep collapsed floating panels in place'
+          git push origin HEAD:codex/implement-p2-g-live-workspace-migration
