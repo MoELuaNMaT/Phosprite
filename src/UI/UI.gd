@@ -15,6 +15,9 @@ const WORKSPACE_EDITOR_MIGRATION_SCRIPT := preload(
 const WORKSPACE_INTERACTION_CONTROLLER_SCRIPT := preload(
 	"res://src/UI/Workspace/WorkspaceInteractionController.gd"
 )
+const WORKSPACE_WINDOW_MENU_BRIDGE_SCRIPT := preload(
+	"res://src/UI/Workspace/WorkspaceWindowMenuBridge.gd"
+)
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
@@ -25,6 +28,7 @@ var workspace_layout_store: WorkspaceLayoutStore
 var workspace_theme_controller: WorkspaceThemeController
 var workspace_migration: WorkspaceEditorMigration
 var workspace_interaction_controller: WorkspaceInteractionController
+var workspace_window_menu_bridge: WorkspaceWindowMenuBridge
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -110,15 +114,27 @@ func _setup_workspace_foundation() -> void:
 	if not workspace_interaction_controller.setup(workspace_manager, workspace_surface):
 		push_error("Failed to initialize P2-G Workspace interactions")
 		return
+
+	workspace_window_menu_bridge = WORKSPACE_WINDOW_MENU_BRIDGE_SCRIPT.new()
+	workspace_window_menu_bridge.name = "WorkspaceWindowMenuBridge"
+	add_child(workspace_window_menu_bridge)
 	_refresh_workspace_theme()
-	_refresh_window_menu_for_workspace.call_deferred()
+	_setup_workspace_window_menu.call_deferred()
 
 
-func _refresh_window_menu_for_workspace() -> void:
-	if not is_instance_valid(Global.top_menu_container):
+func _setup_workspace_window_menu() -> void:
+	if not is_workspace_live() or workspace_window_menu_bridge == null:
 		return
-	if Global.top_menu_container.has_method(&"refresh_workspace_window_menu"):
-		Global.top_menu_container.call(&"refresh_workspace_window_menu")
+	var menu_root := Global.top_menu_container as Control
+	if not is_instance_valid(menu_root):
+		menu_root = get_tree().current_scene.find_child("TopMenuContainer") as Control
+	if menu_root == null:
+		push_error("P2-G could not resolve the existing Window menu")
+		return
+	if not workspace_window_menu_bridge.setup(
+		menu_root, workspace_migration, workspace_layout_store
+	):
+		push_error("P2-G failed to bridge Window menus to Workspace")
 
 
 func _refresh_workspace_theme() -> void:
