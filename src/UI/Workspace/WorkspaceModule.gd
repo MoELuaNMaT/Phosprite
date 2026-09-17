@@ -17,6 +17,8 @@ enum LifecycleState {
 	DISPOSED,
 }
 
+const INTERACTION_TARGET_SIZE := 28.0
+
 var definition: WorkspaceModuleDefinition
 var content: Control
 var lifecycle_state := LifecycleState.CREATED
@@ -168,6 +170,37 @@ func get_constrained_size(requested_size: Vector2) -> Vector2:
 	return definition.get_constrained_size(requested_size)
 
 
+func get_header_height() -> float:
+	return _visual_theme.HEADER_HEIGHT if _visual_theme != null else INTERACTION_TARGET_SIZE
+
+
+func is_header_drag_point(local_point: Vector2) -> bool:
+	if local_point.y < 0.0 or local_point.y > get_header_height():
+		return false
+	return not is_collapse_point(local_point)
+
+
+func is_collapse_point(local_point: Vector2) -> bool:
+	if definition == null or not definition.can_collapse:
+		return false
+	return Rect2(
+		Vector2(maxf(0.0, size.x - INTERACTION_TARGET_SIZE), 0.0),
+		Vector2(INTERACTION_TARGET_SIZE, get_header_height())
+	).has_point(local_point)
+
+
+func is_resize_point(local_point: Vector2) -> bool:
+	if _visual_state != &"floating":
+		return false
+	return Rect2(
+		Vector2(
+			maxf(0.0, size.x - INTERACTION_TARGET_SIZE),
+			maxf(0.0, size.y - INTERACTION_TARGET_SIZE)
+		),
+		Vector2(INTERACTION_TARGET_SIZE, INTERACTION_TARGET_SIZE)
+	).has_point(local_point)
+
+
 func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName) -> void:
 	_visual_theme = workspace_theme
 	_visual_state = state
@@ -176,12 +209,15 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		queue_redraw()
 		return
 	var padding := int(_visual_theme.CONTENT_PADDING)
+	var bottom_margin := padding
+	if state == &"floating":
+		bottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))
 	add_theme_constant_override(&"margin_left", padding)
 	add_theme_constant_override(
 		&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)
 	)
 	add_theme_constant_override(&"margin_right", padding)
-	add_theme_constant_override(&"margin_bottom", padding)
+	add_theme_constant_override(&"margin_bottom", bottom_margin)
 	queue_redraw()
 
 
@@ -211,15 +247,48 @@ func _draw() -> void:
 	else:
 		title = String(name)
 	var baseline := _visual_theme.HEADER_HEIGHT * 0.5 + _visual_theme.default_font_size * 0.35
+	var title_width := maxf(
+		0.0, size.x - (_visual_theme.CONTENT_PADDING + 1.0) * 2.0 - INTERACTION_TARGET_SIZE
+	)
 	draw_string(
 		_visual_theme.default_font,
 		Vector2(_visual_theme.CONTENT_PADDING + 1.0, baseline),
 		title,
 		HORIZONTAL_ALIGNMENT_LEFT,
-		maxf(0.0, size.x - (_visual_theme.CONTENT_PADDING + 1.0) * 2.0),
+		title_width,
 		_visual_theme.default_font_size,
 		_visual_theme.text_color
 	)
+	_draw_collapse_affordance()
+	_draw_resize_affordance()
+
+
+func _draw_collapse_affordance() -> void:
+	if definition == null or not definition.can_collapse or _visual_theme == null:
+		return
+	var center := Vector2(
+		size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5
+	)
+	var half := 4.0
+	draw_line(
+		center + Vector2(-half, 0.0), center + Vector2(0.0, half), _visual_theme.muted_text_color, 1.5
+	)
+	draw_line(
+		center + Vector2(0.0, half), center + Vector2(half, 0.0), _visual_theme.muted_text_color, 1.5
+	)
+
+
+func _draw_resize_affordance() -> void:
+	if _visual_state != &"floating" or _visual_theme == null:
+		return
+	var corner := size - Vector2(6.0, 6.0)
+	for offset in [0.0, 5.0, 10.0]:
+		draw_line(
+			corner - Vector2(offset, 0.0),
+			corner - Vector2(0.0, offset),
+			_visual_theme.muted_text_color,
+			1.0
+		)
 
 
 func _can_configure(module_definition: WorkspaceModuleDefinition) -> bool:
