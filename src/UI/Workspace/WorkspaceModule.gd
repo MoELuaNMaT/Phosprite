@@ -3,9 +3,9 @@ extends MarginContainer
 
 ## Runtime wrapper for workspace content.
 ##
-## The module owns one content scene and exposes a single lifecycle for the
-## layout system. P2-E adds visual chrome without changing mount, activation,
-## identity, or placement semantics.
+## The module owns one content Control and exposes a single lifecycle for the
+## layout system. Scene-backed modules instantiate their content; P2-G live
+## migration can instead adopt an existing editor Control without rebuilding it.
 
 signal lifecycle_changed(module_id: StringName, previous_state: int, new_state: int)
 
@@ -25,18 +25,12 @@ var _context: Dictionary = {}
 var _host: Control
 var _visual_theme: WorkspaceVisualTheme
 var _visual_state: StringName = &"none"
+var _content_is_external := false
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
-	if definition != null or lifecycle_state != LifecycleState.CREATED:
+	if not _can_configure(module_definition) or module_definition.uses_external_content:
 		return false
-	if module_definition == null:
-		return false
-	var validation_errors := module_definition.get_validation_errors()
-	if not validation_errors.is_empty():
-		push_error("Invalid workspace module definition: %s" % "; ".join(validation_errors))
-		return false
-
 	var instance := module_definition.content_scene.instantiate()
 	if not instance is Control:
 		push_error(
@@ -44,14 +38,17 @@ func configure(module_definition: WorkspaceModuleDefinition) -> bool:
 		)
 		instance.free()
 		return false
+	return _configure_content(module_definition, instance as Control, false)
 
-	definition = module_definition
-	content = instance as Control
-	name = module_definition.get_resolved_display_name()
-	custom_minimum_size = module_definition.minimum_size
-	size = module_definition.get_constrained_preferred_size()
-	add_child(content)
-	return true
+
+func configure_existing(
+	module_definition: WorkspaceModuleDefinition, existing_content: Control
+) -> bool:
+	if not _can_configure(module_definition) or not module_definition.uses_external_content:
+		return false
+	if not is_instance_valid(existing_content):
+		return false
+	return _configure_content(module_definition, existing_content, true)
 
 
 func initialize(context: Dictionary = {}) -> bool:
@@ -122,6 +119,23 @@ func dispose() -> bool:
 	return true
 
 
+func release_external_content() -> Control:
+	if not _content_is_external or not is_instance_valid(content):
+		return null
+	if lifecycle_state == LifecycleState.ACTIVE:
+		deactivate()
+	if lifecycle_state == LifecycleState.MOUNTED:
+		unmount()
+	if lifecycle_state != LifecycleState.INITIALIZED and lifecycle_state != LifecycleState.CREATED:
+		return null
+	var released := content
+	if released.get_parent() == self:
+		remove_child(released)
+	content = null
+	_content_is_external = false
+	return released
+
+
 func get_module_id() -> StringName:
 	if definition == null:
 		return &""
@@ -130,6 +144,10 @@ func get_module_id() -> StringName:
 
 func get_content() -> Control:
 	return content
+
+
+func is_external_content() -> bool:
+	return _content_is_external
 
 
 func get_context() -> Dictionary:
@@ -202,6 +220,33 @@ func _draw() -> void:
 		_visual_theme.default_font_size,
 		_visual_theme.text_color
 	)
+
+
+func _can_configure(module_definition: WorkspaceModuleDefinition) -> bool:
+	if definition != null or lifecycle_state != LifecycleState.CREATED:
+		return false
+	if module_definition == null:
+		return false
+	var validation_errors := module_definition.get_validation_errors()
+	if not validation_errors.is_empty():
+		push_error("Invalid workspace module definition: %s" % "; ".join(validation_errors))
+		return false
+	return true
+
+
+func _configure_content(
+	module_definition: WorkspaceModuleDefinition, instance: Control, is_external: bool
+) -> bool:
+	definition = module_definition
+	content = instance
+	_content_is_external = is_external
+	if content.get_parent() != null:
+		content.get_parent().remove_child(content)
+	name = module_definition.get_resolved_display_name()
+	custom_minimum_size = module_definition.minimum_size
+	size = module_definition.get_constrained_preferred_size()
+	add_child(content)
+	return true
 
 
 func _remove_visual_margins() -> void:
