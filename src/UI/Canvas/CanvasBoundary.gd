@@ -10,8 +10,8 @@ func _ready() -> void:
 	var project := Global.current_project
 	if not project.resized.is_connected(queue_redraw):
 		project.resized.connect(queue_redraw)
-	if is_instance_valid(Global.control) and not Global.control.theme_changed.is_connected(queue_redraw):
-		Global.control.theme_changed.connect(queue_redraw)
+	if not Themes.theme_switched.is_connected(queue_redraw):
+		Themes.theme_switched.connect(queue_redraw)
 
 
 func _draw() -> void:
