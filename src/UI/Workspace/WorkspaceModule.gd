@@ -187,7 +187,11 @@ func _draw() -> void:
 		_visual_theme.border_color,
 		1.0
 	)
-	var title := definition.get_resolved_display_name() if definition != null else name
+	var title: String
+	if definition != null:
+		title = definition.get_resolved_display_name()
+	else:
+		title = String(name)
 	var baseline := _visual_theme.HEADER_HEIGHT * 0.5 + _visual_theme.default_font_size * 0.35
 	draw_string(
 		_visual_theme.default_font,
