@@ -30,7 +30,7 @@ var _visual_state: StringName = &"none"
 var _content_is_external := false
 var _content_collapsed := false
 var _content_visible_before_collapse := true
-var _maximum_size_before_collapse := Vector2(-1.0, -1.0)
+var _minimum_size_before_collapse := Vector2.ZERO
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -155,20 +155,22 @@ func set_content_collapsed(collapsed: bool) -> void:
 	if _content_collapsed == collapsed:
 		return
 	if collapsed:
-		_maximum_size_before_collapse = custom_maximum_size
-		custom_maximum_size = Vector2(maxf(size.x, INTERACTION_TARGET_SIZE), get_header_height())
+		_minimum_size_before_collapse = custom_minimum_size
 	if is_instance_valid(content):
 		if collapsed:
 			_content_visible_before_collapse = content.visible
 			content.visible = false
 		else:
 			content.visible = _content_visible_before_collapse
-	if not collapsed:
-		custom_maximum_size = _maximum_size_before_collapse
-		_maximum_size_before_collapse = Vector2(-1.0, -1.0)
+	if collapsed:
+		custom_minimum_size = Vector2(_minimum_size_before_collapse.x, get_header_height())
+	else:
+		custom_minimum_size = _minimum_size_before_collapse
+		_minimum_size_before_collapse = Vector2.ZERO
 	_content_collapsed = collapsed
 	if _visual_theme != null:
 		apply_visual_theme(_visual_theme, _visual_state)
+	update_minimum_size()
 	queue_redraw()
 
 
