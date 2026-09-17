@@ -183,22 +183,28 @@ func is_header_drag_point(local_point: Vector2) -> bool:
 func is_collapse_point(local_point: Vector2) -> bool:
 	if definition == null or not definition.can_collapse:
 		return false
-	return Rect2(
-		Vector2(maxf(0.0, size.x - INTERACTION_TARGET_SIZE), 0.0),
-		Vector2(INTERACTION_TARGET_SIZE, get_header_height())
-	).has_point(local_point)
+	return (
+		Rect2(
+			Vector2(maxf(0.0, size.x - INTERACTION_TARGET_SIZE), 0.0),
+			Vector2(INTERACTION_TARGET_SIZE, get_header_height())
+		)
+		. has_point(local_point)
+	)
 
 
 func is_resize_point(local_point: Vector2) -> bool:
 	if _visual_state != &"floating":
 		return false
-	return Rect2(
-		Vector2(
-			maxf(0.0, size.x - INTERACTION_TARGET_SIZE),
-			maxf(0.0, size.y - INTERACTION_TARGET_SIZE)
-		),
-		Vector2(INTERACTION_TARGET_SIZE, INTERACTION_TARGET_SIZE)
-	).has_point(local_point)
+	return (
+		Rect2(
+			Vector2(
+				maxf(0.0, size.x - INTERACTION_TARGET_SIZE),
+				maxf(0.0, size.y - INTERACTION_TARGET_SIZE)
+			),
+			Vector2(INTERACTION_TARGET_SIZE, INTERACTION_TARGET_SIZE)
+		)
+		. has_point(local_point)
+	)
 
 
 func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName) -> void:
@@ -266,15 +272,19 @@ func _draw() -> void:
 func _draw_collapse_affordance() -> void:
 	if definition == null or not definition.can_collapse or _visual_theme == null:
 		return
-	var center := Vector2(
-		size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5
-	)
+	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5)
 	var half := 4.0
 	draw_line(
-		center + Vector2(-half, 0.0), center + Vector2(0.0, half), _visual_theme.muted_text_color, 1.5
+		center + Vector2(-half, 0.0),
+		center + Vector2(0.0, half),
+		_visual_theme.muted_text_color,
+		1.5
 	)
 	draw_line(
-		center + Vector2(0.0, half), center + Vector2(half, 0.0), _visual_theme.muted_text_color, 1.5
+		center + Vector2(0.0, half),
+		center + Vector2(half, 0.0),
+		_visual_theme.muted_text_color,
+		1.5
 	)
 
 

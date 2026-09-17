@@ -184,8 +184,7 @@ func get_zone_rects() -> Dictionary:
 	var middle_y := top_h
 	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
 	return {
-		WorkspaceDockLayout.DockZone.TOP:
-		Rect2(0.0, 0.0, size.x, maxf(top_h, EMPTY_ZONE_EXTENT)),
+		WorkspaceDockLayout.DockZone.TOP: Rect2(0.0, 0.0, size.x, maxf(top_h, EMPTY_ZONE_EXTENT)),
 		WorkspaceDockLayout.DockZone.LEFT:
 		Rect2(0.0, middle_y, maxf(left_w, EMPTY_ZONE_EXTENT), middle_h),
 		WorkspaceDockLayout.DockZone.RIGHT:
@@ -212,9 +211,7 @@ func get_content_rect() -> Rect2:
 	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
 	return Rect2(
 		Vector2(left_w, top_h),
-		Vector2(
-			maxf(0.0, size.x - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h)
-		)
+		Vector2(maxf(0.0, size.x - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h))
 	)
 
 

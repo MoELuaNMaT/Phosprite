@@ -31,7 +31,9 @@ func _make_live_fixture() -> Dictionary:
 
 	var manager := Manager.new()
 	root.add_child(manager)
-	check_true(Builtins.register_defaults(manager), "built-in Workspace definitions should register")
+	check_true(
+		Builtins.register_defaults(manager), "built-in Workspace definitions should register"
+	)
 
 	var host := DockHost.new()
 	host.name = &"WorkspaceDockHost"
@@ -112,7 +114,9 @@ func test_dock_host_empty_space_passes_input_and_only_occupied_docks_shrink_canv
 	Builtins.register_defaults(manager)
 	host.size = Vector2(1000.0, 700.0)
 	check_true(host.setup(manager), "dock host should initialize")
-	check_eq(host.mouse_filter, Control.MOUSE_FILTER_IGNORE, "Workspace root must pass Canvas input")
+	check_eq(
+		host.mouse_filter, Control.MOUSE_FILTER_IGNORE, "Workspace root must pass Canvas input"
+	)
 	check_eq(
 		host.get_content_rect(),
 		Rect2(Vector2.ZERO, host.size),
@@ -122,14 +126,13 @@ func test_dock_host_empty_space_passes_input_and_only_occupied_docks_shrink_canv
 	check_eq(left_snap.size.x, host.EMPTY_ZONE_EXTENT, "empty left edge should retain a snap band")
 	check_true(
 		host.dock_module(
-			Builtins.PREVIEW_ID,
-			WorkspaceDockLayout.DockZone.LEFT,
-			0,
-			Vector2(240.0, 180.0)
+			Builtins.PREVIEW_ID, WorkspaceDockLayout.DockZone.LEFT, 0, Vector2(240.0, 180.0)
 		),
 		"Preview should dock for geometry validation"
 	)
-	check_eq(host.get_content_rect().position.x, 240.0, "occupied left dock should reserve its width")
+	check_eq(
+		host.get_content_rect().position.x, 240.0, "occupied left dock should reserve its width"
+	)
 	check_eq(
 		host.get_content_rect().size.x,
 		760.0,
@@ -162,8 +165,14 @@ func test_collapsed_tray_restores_same_adopted_panel_instance() -> void:
 		WorkspaceSurface.Placement.DOCKED,
 		"Tray restore should return Preview to its dock"
 	)
-	check_eq(manager.get_instance(Builtins.PREVIEW_ID), preview, "Tray restore must preserve module identity")
-	check_eq(preview.get_content(), preview_content, "Tray restore must preserve live panel identity")
+	check_eq(
+		manager.get_instance(Builtins.PREVIEW_ID),
+		preview,
+		"Tray restore must preserve module identity"
+	)
+	check_eq(
+		preview.get_content(), preview_content, "Tray restore must preserve live panel identity"
+	)
 	_free_fixture(fixture)
 
 
@@ -172,7 +181,9 @@ func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets()
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var surface := fixture["surface"] as WorkspaceSurface
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
-	check_true(preview.is_header_drag_point(Vector2(8.0, 8.0)), "header should expose a drag target")
+	check_true(
+		preview.is_header_drag_point(Vector2(8.0, 8.0)), "header should expose a drag target"
+	)
 	check_true(
 		preview.is_collapse_point(Vector2(preview.size.x - 8.0, 8.0)),
 		"header trailing edge should expose collapse"

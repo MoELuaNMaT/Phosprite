@@ -74,22 +74,13 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 
 	definitions.append(_external(TOOLS_ID, "Tools", Vector2(72.0, 180.0), Vector2(112.0, 520.0)))
 	definitions.append(
-		_external(
-			SECOND_CANVAS_ID, "Second Canvas", Vector2(260.0, 180.0), Vector2(420.0, 300.0)
-		)
+		_external(SECOND_CANVAS_ID, "Second Canvas", Vector2(260.0, 180.0), Vector2(420.0, 300.0))
 	)
 	definitions.append(
-		_external(
-			TIMELINE_ID,
-			"Animation Timeline",
-			Vector2(360.0, 160.0),
-			Vector2(760.0, 240.0)
-		)
+		_external(TIMELINE_ID, "Animation Timeline", Vector2(360.0, 160.0), Vector2(760.0, 240.0))
 	)
 	definitions.append(
-		_external(
-			COLOR_PICKER_ID, "Color Picker", Vector2(220.0, 200.0), Vector2(300.0, 320.0)
-		)
+		_external(COLOR_PICKER_ID, "Color Picker", Vector2(220.0, 200.0), Vector2(300.0, 320.0))
 	)
 	definitions.append(
 		_external(
@@ -101,10 +92,7 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	)
 	definitions.append(
 		_external(
-			LEFT_TOOL_OPTIONS_ID,
-			"Left Tool Options",
-			Vector2(160.0, 140.0),
-			Vector2(220.0, 260.0)
+			LEFT_TOOL_OPTIONS_ID, "Left Tool Options", Vector2(160.0, 140.0), Vector2(220.0, 260.0)
 		)
 	)
 	definitions.append(
@@ -117,16 +105,11 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	)
 	definitions.append(_external(TILES_ID, "Tiles", Vector2(220.0, 160.0), Vector2(280.0, 280.0)))
 	definitions.append(
-		_external(
-			OBJECT_TREE_3D_ID, "3D Object Tree", Vector2(220.0, 160.0), Vector2(280.0, 280.0)
-		)
+		_external(OBJECT_TREE_3D_ID, "3D Object Tree", Vector2(220.0, 160.0), Vector2(280.0, 280.0))
 	)
 	definitions.append(
 		_external(
-			REFERENCE_IMAGES_ID,
-			"Reference Images",
-			Vector2(220.0, 160.0),
-			Vector2(300.0, 260.0)
+			REFERENCE_IMAGES_ID, "Reference Images", Vector2(220.0, 160.0), Vector2(300.0, 260.0)
 		)
 	)
 	definitions.append(

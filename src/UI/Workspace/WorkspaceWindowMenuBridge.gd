@@ -30,7 +30,9 @@ var _setup_complete := false
 
 
 func setup(
-	menu_root: Control, editor_migration: WorkspaceEditorMigration, layout_store: WorkspaceLayoutStore
+	menu_root: Control,
+	editor_migration: WorkspaceEditorMigration,
+	layout_store: WorkspaceLayoutStore
 ) -> bool:
 	if _setup_complete or menu_root == null or editor_migration == null or layout_store == null:
 		return false
@@ -131,7 +133,9 @@ func _on_window_menu_id_pressed(id: int) -> void:
 			var enabled := not migration.is_zen_mode()
 			migration.set_zen_mode(enabled)
 			var main_node := top_menu.get("main") as Node
-			var tabs := main_node.find_child("TabsContainer") as Control if main_node != null else null
+			var tabs := (
+				main_node.find_child("TabsContainer") as Control if main_node != null else null
+			)
 			if tabs != null:
 				tabs.visible = not enabled
 			window_menu.set_item_checked(Global.WindowMenu.ZEN_MODE, enabled)

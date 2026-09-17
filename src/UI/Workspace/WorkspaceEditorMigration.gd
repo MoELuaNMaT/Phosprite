@@ -92,7 +92,13 @@ func setup(
 	workspace_surface: WorkspaceSurface,
 	store: WorkspaceLayoutStore
 ) -> bool:
-	if live or root == null or legacy == null or module_manager == null or workspace_surface == null:
+	if (
+		live
+		or root == null
+		or legacy == null
+		or module_manager == null
+		or workspace_surface == null
+	):
 		return false
 	if store == null or workspace_surface.manager != module_manager:
 		return false
@@ -140,7 +146,10 @@ func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 		else:
 			return true
 	else:
-		if placement == WorkspaceSurface.Placement.DOCKED or placement == WorkspaceSurface.Placement.FLOATING:
+		if (
+			placement == WorkspaceSurface.Placement.DOCKED
+			or placement == WorkspaceSurface.Placement.FLOATING
+		):
 			changed = surface.collapse_module(module_id)
 		elif placement == WorkspaceSurface.Placement.COLLAPSED:
 			return true

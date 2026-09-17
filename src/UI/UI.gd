@@ -166,7 +166,9 @@ func _on_cel_switched() -> void:
 	var cel := Global.current_project.get_current_cel()
 	if is_workspace_live():
 		workspace_layout_store.begin_transient_update()
-		workspace_migration.set_context_panel_visible(WORKSPACE_BUILTINS.TILES_ID, cel is CelTileMap)
+		workspace_migration.set_context_panel_visible(
+			WORKSPACE_BUILTINS.TILES_ID, cel is CelTileMap
+		)
 		workspace_migration.set_context_panel_visible(
 			WORKSPACE_BUILTINS.OBJECT_TREE_3D_ID, cel is Cel3D
 		)

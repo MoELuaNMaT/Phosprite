@@ -99,11 +99,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _has_captured_interaction() -> bool:
-	return (
-		_drag_module_id != &""
-		or _resize_module_id != &""
-		or _pending_touch_module_id != &""
-	)
+	return _drag_module_id != &"" or _resize_module_id != &"" or _pending_touch_module_id != &""
 
 
 func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
