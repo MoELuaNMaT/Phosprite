@@ -13,11 +13,8 @@ func _ready() -> void:
 	material = CanvasItemMaterial.new()
 	material.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
 	_install_canvas_backdrop()
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_THEME_CHANGED and is_instance_valid(_canvas_backdrop):
-		_refresh_canvas_backdrop()
+	if not Themes.theme_switched.is_connected(_refresh_canvas_backdrop):
+		Themes.theme_switched.connect(_refresh_canvas_backdrop)
 
 
 func _install_canvas_backdrop() -> void:
@@ -30,8 +27,8 @@ func _install_canvas_backdrop() -> void:
 	_canvas_backdrop = ColorRect.new()
 	_canvas_backdrop.name = &"CanvasBackdrop"
 	_canvas_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_canvas_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop_layer.add_child(_canvas_backdrop)
+	_canvas_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_refresh_canvas_backdrop()
 
 
