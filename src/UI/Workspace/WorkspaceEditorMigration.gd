@@ -8,6 +8,9 @@ extends Node
 ## it remains the stable editing surface and is fitted into the rectangle left by
 ## occupied Top/Left/Right/Bottom docks.
 
+signal migration_completed
+signal panel_visibility_changed(module_id: StringName, visible: bool)
+
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 const WORKSPACE_SIDE_MARGIN := 8.0
@@ -62,9 +65,6 @@ const DEFAULT_LAYOUT := [
 		"size": Vector2(760.0, 180.0),
 	},
 ]
-
-signal migration_completed
-signal panel_visibility_changed(module_id: StringName, visible: bool)
 
 var ui_root: Control
 var legacy_container: DockableContainer

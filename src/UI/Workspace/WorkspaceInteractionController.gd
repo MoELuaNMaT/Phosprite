@@ -115,15 +115,11 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 	if _pending_touch_module_id == &"" or _pending_touch_index != event.index:
 		return
 
-	_pending_touch_travel += event.relative.length()
 	var elapsed := Time.get_ticks_msec() - _pending_touch_started_ms
 	if elapsed < TOUCH_LONG_PRESS_MS:
+		_pending_touch_travel += event.relative.length()
 		if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
 			_clear_pending_touch()
-		get_viewport().set_input_as_handled()
-		return
-	if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
-		_clear_pending_touch()
 		get_viewport().set_input_as_handled()
 		return
 	var module_id := _pending_touch_module_id
