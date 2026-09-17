@@ -4,8 +4,8 @@ extends Node
 ## Registry, factory, and lifecycle owner for Workspace Modules.
 ##
 ## Scene-backed modules are created lazily. P2-G may instead adopt an existing
-## editor Control for definitions marked uses_external_content, preserving the
-## live node identity and all of its signal/state connections.
+## editor Control for any registered definition, preserving the live node
+## identity and all of its signal/state connections.
 
 signal definition_registered(module_id: StringName)
 signal module_created(module_id: StringName, module: WorkspaceModule)
@@ -87,9 +87,7 @@ func adopt_module(
 	if existing != null:
 		return existing if existing.get_content() == existing_content else null
 	var definition := get_definition(module_id)
-	if definition == null or not definition.uses_external_content:
-		return null
-	if not is_instance_valid(existing_content):
+	if definition == null or not is_instance_valid(existing_content):
 		return null
 
 	var module := WorkspaceModule.new()
@@ -97,9 +95,7 @@ func adopt_module(
 		module.free()
 		return null
 	if not module.initialize(context):
-		var released := module.release_external_content()
-		if released != null and released.get_parent() == module:
-			module.remove_child(released)
+		module.release_external_content()
 		module.free()
 		return null
 
