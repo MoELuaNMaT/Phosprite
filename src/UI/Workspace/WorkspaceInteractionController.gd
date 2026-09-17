@@ -62,6 +62,101 @@ func get_tray() -> HBoxContainer:
 	return _tray
 
 
+func _input(event: InputEvent) -> void:
+	if not _has_captured_interaction():
+		return
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		var pointer := _viewport_point_to_host(motion.position)
+		if _resize_module_id != &"" and _resize_touch_index == -1:
+			_update_resize(pointer)
+			get_viewport().set_input_as_handled()
+		elif _drag_module_id != &"" and _drag_touch_index == -1:
+			surface.update_module_drag(pointer)
+			get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
+			var pointer := _viewport_point_to_host(button.position)
+			if _resize_module_id != &"" and _resize_touch_index == -1:
+				_update_resize(pointer)
+				_finish_resize()
+				get_viewport().set_input_as_handled()
+			elif _drag_module_id != &"" and _drag_touch_index == -1:
+				surface.update_module_drag(pointer)
+				surface.commit_module_drag()
+				_clear_drag()
+				get_viewport().set_input_as_handled()
+		return
+	if event is InputEventScreenDrag:
+		_handle_captured_screen_drag(event as InputEventScreenDrag)
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if not touch.pressed:
+			_handle_captured_screen_release(touch)
+
+
+func _has_captured_interaction() -> bool:
+	return (
+		_drag_module_id != &""
+		or _resize_module_id != &""
+		or _pending_touch_module_id != &""
+	)
+
+
+func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
+	var pointer := _viewport_point_to_host(event.position)
+	if _resize_module_id != &"" and _resize_touch_index == event.index:
+		_update_resize(pointer)
+		get_viewport().set_input_as_handled()
+		return
+	if _drag_module_id != &"" and _drag_touch_index == event.index:
+		surface.update_module_drag(pointer)
+		get_viewport().set_input_as_handled()
+		return
+	if _pending_touch_module_id == &"" or _pending_touch_index != event.index:
+		return
+
+	_pending_touch_travel += event.relative.length()
+	var elapsed := Time.get_ticks_msec() - _pending_touch_started_ms
+	if elapsed < TOUCH_LONG_PRESS_MS:
+		if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
+			_clear_pending_touch()
+		get_viewport().set_input_as_handled()
+		return
+	if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
+		_clear_pending_touch()
+		get_viewport().set_input_as_handled()
+		return
+	var module_id := _pending_touch_module_id
+	var start_pointer := _pending_touch_start_pointer
+	var touch_index := _pending_touch_index
+	_clear_pending_touch()
+	if _begin_drag(module_id, start_pointer, touch_index):
+		surface.update_module_drag(pointer)
+	get_viewport().set_input_as_handled()
+
+
+func _handle_captured_screen_release(event: InputEventScreenTouch) -> void:
+	var pointer := _viewport_point_to_host(event.position)
+	if _resize_module_id != &"" and _resize_touch_index == event.index:
+		_update_resize(pointer)
+		_finish_resize()
+		get_viewport().set_input_as_handled()
+		return
+	if _drag_module_id != &"" and _drag_touch_index == event.index:
+		surface.update_module_drag(pointer)
+		surface.commit_module_drag()
+		_clear_drag()
+		get_viewport().set_input_as_handled()
+		return
+	if _pending_touch_module_id != &"" and _pending_touch_index == event.index:
+		_clear_pending_touch()
+		get_viewport().set_input_as_handled()
+
+
 func _on_module_created(module_id: StringName, module: WorkspaceModule) -> void:
 	_bind_module(module_id, module)
 
@@ -81,129 +176,54 @@ func _on_module_gui_input(
 ) -> void:
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event as InputEventMouseButton, module_id, module)
-	elif event is InputEventMouseMotion:
-		_handle_mouse_motion(event as InputEventMouseMotion, module_id, module)
 	elif event is InputEventScreenTouch:
 		_handle_screen_touch(event as InputEventScreenTouch, module_id, module)
-	elif event is InputEventScreenDrag:
-		_handle_screen_drag(event as InputEventScreenDrag, module_id, module)
 
 
 func _handle_mouse_button(
 	event: InputEventMouseButton, module_id: StringName, module: WorkspaceModule
 ) -> void:
-	if event.button_index != MOUSE_BUTTON_LEFT:
+	if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
 		return
 	var pointer := _module_point_to_host(module, event.position)
-	if event.pressed:
-		_raise_floating_module(module_id, module)
-		if module.is_collapse_point(event.position):
-			if surface.collapse_module(module_id):
-				_refresh_tray()
-			module.accept_event()
-			return
-		if module.is_resize_point(event.position):
-			if _begin_resize(module_id, pointer, -1):
-				module.accept_event()
-			return
-		if module.is_header_drag_point(event.position):
-			if _begin_drag(module_id, pointer, -1):
-				module.accept_event()
-			return
-	else:
-		if _resize_module_id == module_id and _resize_touch_index == -1:
-			_finish_resize()
-			module.accept_event()
-			return
-		if _drag_module_id == module_id and _drag_touch_index == -1:
-			surface.update_module_drag(pointer)
-			surface.commit_module_drag()
-			_clear_drag()
-			module.accept_event()
-
-
-func _handle_mouse_motion(
-	event: InputEventMouseMotion, module_id: StringName, module: WorkspaceModule
-) -> void:
-	var pointer := _module_point_to_host(module, event.position)
-	if _resize_module_id == module_id and _resize_touch_index == -1:
-		_update_resize(pointer)
+	_raise_floating_module(module_id, module)
+	if module.is_collapse_point(event.position):
+		if surface.collapse_module(module_id):
+			_refresh_tray()
 		module.accept_event()
 		return
-	if _drag_module_id == module_id and _drag_touch_index == -1:
-		surface.update_module_drag(pointer)
-		module.accept_event()
+	if module.is_resize_point(event.position):
+		if _begin_resize(module_id, pointer, -1):
+			module.accept_event()
+		return
+	if module.is_header_drag_point(event.position):
+		if _begin_drag(module_id, pointer, -1):
+			module.accept_event()
 
 
 func _handle_screen_touch(
 	event: InputEventScreenTouch, module_id: StringName, module: WorkspaceModule
 ) -> void:
+	if not event.pressed:
+		return
 	var pointer := _module_point_to_host(module, event.position)
-	if event.pressed:
-		_raise_floating_module(module_id, module)
-		if module.is_collapse_point(event.position):
-			if surface.collapse_module(module_id):
-				_refresh_tray()
-			module.accept_event()
-			return
-		if module.is_resize_point(event.position):
-			if _begin_resize(module_id, pointer, event.index):
-				module.accept_event()
-			return
-		if module.is_header_drag_point(event.position):
-			_pending_touch_module_id = module_id
-			_pending_touch_index = event.index
-			_pending_touch_started_ms = Time.get_ticks_msec()
-			_pending_touch_start_pointer = pointer
-			_pending_touch_travel = 0.0
-			module.accept_event()
-			return
-	else:
-		if _resize_module_id == module_id and _resize_touch_index == event.index:
-			_finish_resize()
-			module.accept_event()
-			return
-		if _drag_module_id == module_id and _drag_touch_index == event.index:
-			surface.update_module_drag(pointer)
-			surface.commit_module_drag()
-			_clear_drag()
-			module.accept_event()
-			return
-		if _pending_touch_module_id == module_id and _pending_touch_index == event.index:
-			_clear_pending_touch()
-			module.accept_event()
-
-
-func _handle_screen_drag(
-	event: InputEventScreenDrag, module_id: StringName, module: WorkspaceModule
-) -> void:
-	var pointer := _module_point_to_host(module, event.position)
-	if _resize_module_id == module_id and _resize_touch_index == event.index:
-		_update_resize(pointer)
+	_raise_floating_module(module_id, module)
+	if module.is_collapse_point(event.position):
+		if surface.collapse_module(module_id):
+			_refresh_tray()
 		module.accept_event()
 		return
-	if _drag_module_id == module_id and _drag_touch_index == event.index:
-		surface.update_module_drag(pointer)
+	if module.is_resize_point(event.position):
+		if _begin_resize(module_id, pointer, event.index):
+			module.accept_event()
+		return
+	if module.is_header_drag_point(event.position):
+		_pending_touch_module_id = module_id
+		_pending_touch_index = event.index
+		_pending_touch_started_ms = Time.get_ticks_msec()
+		_pending_touch_start_pointer = pointer
+		_pending_touch_travel = 0.0
 		module.accept_event()
-		return
-	if _pending_touch_module_id != module_id or _pending_touch_index != event.index:
-		return
-
-	_pending_touch_travel += event.relative.length()
-	var elapsed := Time.get_ticks_msec() - _pending_touch_started_ms
-	if elapsed < TOUCH_LONG_PRESS_MS:
-		if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
-			_clear_pending_touch()
-		module.accept_event()
-		return
-	if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
-		_clear_pending_touch()
-		module.accept_event()
-		return
-	if _begin_drag(module_id, _pending_touch_start_pointer, event.index):
-		surface.update_module_drag(pointer)
-	_clear_pending_touch(false)
-	module.accept_event()
 
 
 func _begin_drag(module_id: StringName, pointer: Vector2, touch_index: int) -> bool:
@@ -251,18 +271,20 @@ func _finish_resize() -> void:
 	_resize_start_rect = Rect2()
 
 
-func _clear_pending_touch(clear_active_drag := true) -> void:
+func _clear_pending_touch() -> void:
 	_pending_touch_module_id = &""
 	_pending_touch_index = -1
 	_pending_touch_started_ms = 0
 	_pending_touch_start_pointer = Vector2.ZERO
 	_pending_touch_travel = 0.0
-	if clear_active_drag:
-		return
 
 
 func _module_point_to_host(module: WorkspaceModule, local_point: Vector2) -> Vector2:
 	var viewport_point := module.get_global_transform_with_canvas() * local_point
+	return _viewport_point_to_host(viewport_point)
+
+
+func _viewport_point_to_host(viewport_point: Vector2) -> Vector2:
 	return dock_host.get_global_transform_with_canvas().affine_inverse() * viewport_point
 
 
