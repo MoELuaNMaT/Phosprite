@@ -18,7 +18,7 @@ var workspace_layout_store: WorkspaceLayoutStore
 @onready var main_canvas_container := find_child("Main Canvas") as Container
 @onready var right_tool_options: ScrollContainer = $"DockableContainer/Right Tool Options"
 @onready var tiles: TileSetPanel = $DockableContainer/Tiles
-@onready var object_tree_3d: PanelContainer = $DockableContainer/"3D Object Tree"
+@onready var object_tree_3d: PanelContainer = $"DockableContainer/3D Object Tree"
 
 
 func _ready() -> void:
@@ -71,7 +71,7 @@ func _setup_workspace_foundation() -> void:
 	):
 		push_error("Failed to initialize the P2-D Workspace Layout Store")
 		return
-	workspace_layout_store.restore_current_layout.call_deferred()
+	workspace_layout_store.call_deferred(&"restore_current_layout")
 
 
 func _on_cel_switched() -> void:
