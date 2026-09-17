@@ -9,6 +9,9 @@ const WORKSPACE_LAYOUT_STORE_SCRIPT := preload("res://src/UI/Workspace/Workspace
 const WORKSPACE_THEME_CONTROLLER_SCRIPT := preload(
 	"res://src/UI/Workspace/WorkspaceThemeController.gd"
 )
+const WORKSPACE_EDITOR_MIGRATION_SCRIPT := preload(
+	"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+)
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
@@ -17,6 +20,7 @@ var workspace_dock_host: WorkspaceDockHost
 var workspace_surface: WorkspaceSurface
 var workspace_layout_store: WorkspaceLayoutStore
 var workspace_theme_controller: WorkspaceThemeController
+var workspace_migration: WorkspaceEditorMigration
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -36,10 +40,11 @@ func _ready() -> void:
 		main_canvas_container.property_list_changed.connect(_re_configure_shader)
 		update_transparent_shader()
 	await Global.pixelorama_opened
-	if Global.single_tool_mode:
-		dockable_container.set_control_hidden.call_deferred(right_tool_options, true)
-	dockable_container.set_control_hidden.call_deferred(tiles, true)
-	dockable_container.set_control_hidden.call_deferred(object_tree_3d, true)
+	_apply_context_panel_visibility()
+
+
+func is_workspace_live() -> bool:
+	return workspace_migration != null and workspace_migration.live
 
 
 func _setup_workspace_foundation() -> void:
@@ -85,7 +90,16 @@ func _setup_workspace_foundation() -> void:
 	):
 		push_error("Failed to initialize the P2-D Workspace Layout Store")
 		return
-	workspace_layout_store.call_deferred(&"restore_current_layout")
+
+	workspace_migration = WORKSPACE_EDITOR_MIGRATION_SCRIPT.new()
+	workspace_migration.name = "WorkspaceEditorMigration"
+	add_child(workspace_migration)
+	if not workspace_migration.setup(
+		self, dockable_container, workspace_manager, workspace_surface, workspace_layout_store
+	):
+		push_error("P2-G live Workspace migration failed; keeping the legacy editor layout")
+		return
+	_refresh_workspace_theme()
 
 
 func _refresh_workspace_theme() -> void:
@@ -102,13 +116,39 @@ func _refresh_workspace_theme() -> void:
 	)
 
 
+func _apply_context_panel_visibility() -> void:
+	if not is_workspace_live():
+		if Global.single_tool_mode:
+			dockable_container.set_control_hidden.call_deferred(right_tool_options, true)
+		dockable_container.set_control_hidden.call_deferred(tiles, true)
+		dockable_container.set_control_hidden.call_deferred(object_tree_3d, true)
+		return
+	_on_single_tool_mode_changed(Global.single_tool_mode)
+	_on_cel_switched()
+
+
 func _on_cel_switched() -> void:
 	var cel := Global.current_project.get_current_cel()
+	if is_workspace_live():
+		workspace_layout_store.begin_transient_update()
+		workspace_migration.set_context_panel_visible(WORKSPACE_BUILTINS.TILES_ID, cel is CelTileMap)
+		workspace_migration.set_context_panel_visible(
+			WORKSPACE_BUILTINS.OBJECT_TREE_3D_ID, cel is Cel3D
+		)
+		workspace_layout_store.end_transient_update()
+		return
 	dockable_container.set_control_hidden(tiles, cel is not CelTileMap)
 	dockable_container.set_control_hidden(object_tree_3d, cel is not Cel3D)
 
 
 func _on_single_tool_mode_changed(mode: bool) -> void:
+	if is_workspace_live():
+		workspace_layout_store.begin_transient_update()
+		workspace_migration.set_context_panel_visible(
+			WORKSPACE_BUILTINS.RIGHT_TOOL_OPTIONS_ID, not mode
+		)
+		workspace_layout_store.end_transient_update()
+		return
 	dockable_container.set_control_hidden(right_tool_options, mode)
 
 
