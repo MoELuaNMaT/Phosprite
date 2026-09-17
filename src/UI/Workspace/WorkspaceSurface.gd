@@ -58,17 +58,26 @@ func dock_module(
 	requested_size: Vector2 = Vector2.ZERO,
 	context: Dictionary = {}
 ) -> bool:
-	if not _is_ready():
+	if not _is_ready() or not dock_host.layout.is_valid_zone(zone):
+		return false
+	if not dock_host.layout.can_dock_module(module_id):
 		return false
 	if get_module_placement(module_id) == Placement.COLLAPSED and is_peeking(module_id):
 		if not end_peek(module_id):
 			return false
+
+	var previous_placement := get_module_placement(module_id)
+	var previous_rect := get_floating_rect(module_id)
 	var module := manager.get_instance(module_id)
 	if module != null and module.get_parent() == _floating_layer:
 		if not manager.unmount_module(module_id):
 			return false
+
 	if not dock_host.dock_module(module_id, zone, index, requested_size, context):
+		if previous_placement == Placement.FLOATING:
+			_restore_floating_parent(module_id, previous_rect, context)
 		return false
+
 	_placements[module_id] = Placement.DOCKED
 	_floating_rects.erase(module_id)
 	_collapsed_restore.erase(module_id)
@@ -76,9 +85,7 @@ func dock_module(
 	return true
 
 
-func float_module(
-	module_id: StringName, requested_rect: Rect2, context: Dictionary = {}
-) -> bool:
+func float_module(module_id: StringName, requested_rect: Rect2, context: Dictionary = {}) -> bool:
 	if not _is_ready() or not _can_float(module_id):
 		return false
 	if get_module_placement(module_id) == Placement.COLLAPSED and is_peeking(module_id):
@@ -88,6 +95,7 @@ func float_module(
 	var module := manager.create_module(module_id, context)
 	if module == null:
 		return false
+	var old_dock := _capture_dock_state(module_id)
 	var current_zone := dock_host.layout.get_module_zone(module_id)
 	if current_zone != WorkspaceDockLayout.DockZone.NONE:
 		if not dock_host.undock_module(module_id):
@@ -98,9 +106,11 @@ func float_module(
 
 	if module.get_parent() != _floating_layer:
 		if manager.mount_module(module_id, _floating_layer, context) == null:
+			_restore_dock_after_failed_float(module_id, old_dock, context)
 			return false
 		if not manager.activate_module(module_id):
 			manager.unmount_module(module_id)
+			_restore_dock_after_failed_float(module_id, old_dock, context)
 			return false
 	elif module.get_lifecycle_state() == WorkspaceModule.LifecycleState.MOUNTED:
 		if not manager.activate_module(module_id):
@@ -127,9 +137,8 @@ func collapse_module(module_id: StringName) -> bool:
 	if placement == Placement.DOCKED:
 		if not dock_host.undock_module(module_id):
 			return false
-	else:
-		if not manager.unmount_module(module_id):
-			return false
+	elif not manager.unmount_module(module_id):
+		return false
 
 	_placements[module_id] = Placement.COLLAPSED
 	_floating_rects.erase(module_id)
@@ -153,9 +162,10 @@ func peek_module(module_id: StringName) -> bool:
 		manager.unmount_module(module_id)
 		return false
 
+	var definition := manager.get_definition(module_id)
 	var restore: Dictionary = _collapsed_restore.get(module_id, {})
 	var peek_rect := _peek_rect_for_restore(module_id, restore)
-	module.custom_minimum_size = manager.get_definition(module_id).minimum_size
+	module.custom_minimum_size = definition.minimum_size
 	module.position = peek_rect.position
 	module.size = peek_rect.size
 	module.move_to_front()
@@ -188,8 +198,6 @@ func restore_module(module_id: StringName) -> bool:
 		return false
 
 	var restore_placement := int(restore.get("placement", Placement.NONE))
-	_collapsed_restore.erase(module_id)
-	_placements.erase(module_id)
 	var restored := false
 	if restore_placement == Placement.DOCKED:
 		restored = dock_module(
@@ -200,11 +208,9 @@ func restore_module(module_id: StringName) -> bool:
 		)
 	elif restore_placement == Placement.FLOATING:
 		restored = float_module(module_id, restore.get("rect", Rect2()) as Rect2)
-
 	if not restored:
-		_placements[module_id] = Placement.COLLAPSED
-		_collapsed_restore[module_id] = restore
 		return false
+
 	module_restored.emit(module_id, restore_placement)
 	return true
 
@@ -236,8 +242,7 @@ func begin_module_drag(module_id: StringName, pointer: Vector2 = Vector2.ZERO) -
 		if not dock_host.begin_module_drag(module_id):
 			_clear_drag_state()
 			return false
-		var size := dock_host.layout.get_module_size(module_id)
-		_drag_pointer_offset = size * 0.5
+		_drag_pointer_offset = dock_host.layout.get_module_size(module_id) * 0.5
 	else:
 		var rect := get_floating_rect(module_id)
 		if rect.has_point(pointer):
@@ -251,7 +256,6 @@ func begin_module_drag(module_id: StringName, pointer: Vector2 = Vector2.ZERO) -
 func update_module_drag(pointer: Vector2) -> Dictionary:
 	if _drag_module_id == &"":
 		return _invalid_candidate()
-
 	var dock_candidate := _dock_candidate_for_pointer(pointer)
 	if bool(dock_candidate.get("valid", false)):
 		_drag_candidate = dock_candidate
@@ -367,14 +371,21 @@ func _ensure_layers() -> void:
 	_preview.move_to_front()
 
 
+func _capture_dock_state(module_id: StringName) -> Dictionary:
+	if dock_host.layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
+		return {}
+	return {
+		"zone": dock_host.layout.get_module_zone(module_id),
+		"index": dock_host.layout.get_module_index(module_id),
+		"size": dock_host.layout.get_module_size(module_id),
+	}
+
+
 func _capture_restore_state(module_id: StringName, placement: int) -> Dictionary:
 	if placement == Placement.DOCKED:
-		return {
-			"placement": Placement.DOCKED,
-			"zone": dock_host.layout.get_module_zone(module_id),
-			"index": dock_host.layout.get_module_index(module_id),
-			"size": dock_host.layout.get_module_size(module_id),
-		}
+		var dock_state := _capture_dock_state(module_id)
+		dock_state["placement"] = Placement.DOCKED
+		return dock_state
 	if placement == Placement.FLOATING:
 		return {
 			"placement": Placement.FLOATING,
@@ -384,32 +395,46 @@ func _capture_restore_state(module_id: StringName, placement: int) -> Dictionary
 
 
 func _dock_candidate_for_pointer(pointer: Vector2) -> Dictionary:
+	var raw: Dictionary
 	if _drag_started_from_dock:
-		var raw := dock_host.update_module_drag(pointer)
-		if bool(raw.get("valid", false)):
-			raw["placement"] = Placement.DOCKED
-			return raw
-		return _invalid_candidate()
-
-	for zone in WorkspaceDockLayout.VALID_ZONES:
-		var zone_rect: Rect2 = dock_host.get_zone_rects().get(zone, Rect2()) as Rect2
-		if not zone_rect.has_point(pointer):
-			continue
-		return {
-			"valid": true,
-			"placement": Placement.DOCKED,
-			"zone": zone,
-			"index": dock_host.layout.get_modules(zone).size(),
-			"preview_rect": zone_rect,
-		}
+		raw = dock_host.update_module_drag(pointer)
+	else:
+		raw = WorkspaceDockDragResolver.resolve(
+			_drag_module_id,
+			pointer,
+			dock_host.get_zone_rects(),
+			_collect_dock_module_rects(),
+			dock_host.layout
+		)
+	if bool(raw.get("valid", false)):
+		raw["placement"] = Placement.DOCKED
+		return raw
 	return _invalid_candidate()
+
+
+func _collect_dock_module_rects() -> Dictionary:
+	var result: Dictionary = {}
+	for zone in WorkspaceDockLayout.VALID_ZONES:
+		var entries: Array = []
+		var host := dock_host.get_zone_host(zone)
+		for module_id in dock_host.layout.get_modules(zone):
+			var module := manager.get_instance(module_id)
+			if module == null or module.get_parent() != host:
+				continue
+			entries.append(
+				{
+					"module_id": module_id,
+					"rect": Rect2(host.position + module.position, module.size),
+				}
+			)
+		result[zone] = entries
+	return result
 
 
 func _floating_candidate_for_pointer(pointer: Vector2) -> Dictionary:
 	if not _can_float(_drag_module_id):
 		return _invalid_candidate()
-	var size := _get_drag_size(_drag_module_id)
-	var rect := Rect2(pointer - _drag_pointer_offset, size)
+	var rect := Rect2(pointer - _drag_pointer_offset, _get_drag_size(_drag_module_id))
 	rect = _constrain_floating_rect(_drag_module_id, rect)
 	return {
 		"valid": true,
@@ -424,7 +449,9 @@ func _floating_candidate_for_pointer(pointer: Vector2) -> Dictionary:
 func _get_drag_size(module_id: StringName) -> Vector2:
 	var placement := int(_drag_origin.get("placement", get_module_placement(module_id)))
 	if placement == Placement.DOCKED:
-		return _drag_origin.get("size", dock_host.layout.get_default_module_size(module_id)) as Vector2
+		return (
+			_drag_origin.get("size", dock_host.layout.get_default_module_size(module_id)) as Vector2
+		)
 	if placement == Placement.FLOATING:
 		var rect := _drag_origin.get("rect", get_floating_rect(module_id)) as Rect2
 		return rect.size
@@ -472,11 +499,41 @@ func _peek_rect_for_restore(module_id: StringName, restore: Dictionary) -> Rect2
 	return _constrain_floating_rect(module_id, Rect2(Vector2(12.0, 12.0), size))
 
 
+func _restore_floating_parent(
+	module_id: StringName, rect: Rect2, context: Dictionary = {}
+) -> void:
+	if manager.mount_module(module_id, _floating_layer, context) == null:
+		return
+	if not manager.activate_module(module_id):
+		manager.unmount_module(module_id)
+		return
+	_apply_floating_rect(module_id, rect)
+	_placements[module_id] = Placement.FLOATING
+	_floating_rects[module_id] = rect
+
+
+func _restore_dock_after_failed_float(
+	module_id: StringName, dock_state: Dictionary, context: Dictionary
+) -> void:
+	if dock_state.is_empty():
+		return
+	dock_host.dock_module(
+		module_id,
+		int(dock_state.get("zone", WorkspaceDockLayout.DockZone.NONE)),
+		int(dock_state.get("index", -1)),
+		dock_state.get("size", Vector2.ZERO) as Vector2,
+		context
+	)
+
+
 func _show_surface_candidate(candidate: Dictionary) -> void:
 	if not bool(candidate.get("valid", false)):
 		_hide_surface_preview()
 		return
-	if _drag_started_from_dock and int(candidate.get("placement", Placement.NONE)) == Placement.DOCKED:
+	if (
+		_drag_started_from_dock
+		and int(candidate.get("placement", Placement.NONE)) == Placement.DOCKED
+	):
 		_preview.visible = false
 		return
 	var rect: Rect2 = candidate.get("preview_rect", Rect2()) as Rect2
