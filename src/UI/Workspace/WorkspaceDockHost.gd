@@ -36,6 +36,7 @@ func setup(module_manager: WorkspaceModuleManager) -> bool:
 		layout = null
 		manager = null
 		return false
+	_layout_zones()
 	return true
 
 
@@ -60,24 +61,36 @@ func dock_module(
 	var old_zone := layout.get_module_zone(module_id)
 	var old_index := layout.get_module_index(module_id)
 	var old_size := layout.get_module_size(module_id)
+	var old_host := module.get_parent() as Control
+	var was_active := module.get_lifecycle_state() == WorkspaceModule.LifecycleState.ACTIVE
+
 	if not layout.place_module(module_id, zone, index):
 		return false
-
-	if requested_size != Vector2.ZERO:
-		layout.set_module_size(module_id, requested_size)
+	if requested_size != Vector2.ZERO and not layout.set_module_size(module_id, requested_size):
+		_restore_layout(module_id, old_zone, old_index, old_size)
+		return false
 
 	var target_host := _zone_hosts[zone] as Control
 	if module.get_parent() != target_host:
-		var was_active := module.get_lifecycle_state() == WorkspaceModule.LifecycleState.ACTIVE
-		if was_active:
-			manager.deactivate_module(module_id)
-		if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.MOUNTED:
-			manager.unmount_module(module_id)
-		if manager.mount_module(module_id, target_host, context) == null:
+		if was_active and not manager.deactivate_module(module_id):
 			_restore_layout(module_id, old_zone, old_index, old_size)
 			return false
+		if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.MOUNTED:
+			if not manager.unmount_module(module_id):
+				_restore_layout(module_id, old_zone, old_index, old_size)
+				if was_active:
+					manager.activate_module(module_id)
+				return false
+		if manager.mount_module(module_id, target_host, context) == null:
+			_rollback_mount(module_id, old_zone, old_index, old_size, old_host, was_active)
+			return false
 		if was_active or old_zone == WorkspaceDockLayout.DockZone.NONE:
-			manager.activate_module(module_id)
+			if not manager.activate_module(module_id):
+				manager.unmount_module(module_id)
+				_rollback_mount(
+					module_id, old_zone, old_index, old_size, old_host, was_active
+				)
+				return false
 
 	_apply_module_size(module_id)
 	_sync_zone_order(zone)
@@ -93,10 +106,12 @@ func undock_module(module_id: StringName) -> bool:
 		return false
 	if layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
 		return false
-	manager.unmount_module(module_id)
-	var removed := layout.remove_module(module_id)
+	if not manager.unmount_module(module_id):
+		return false
+	if not layout.remove_module(module_id):
+		return false
 	_layout_zones()
-	return removed
+	return true
 
 
 func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
@@ -233,7 +248,10 @@ func _zone_extent(zone: int) -> float:
 	var extent := 0.0
 	for module_id in module_ids:
 		var module_size := layout.get_module_size(module_id)
-		if zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM:
+		if (
+			zone == WorkspaceDockLayout.DockZone.TOP
+			or zone == WorkspaceDockLayout.DockZone.BOTTOM
+		):
 			extent = maxf(extent, module_size.y)
 		else:
 			extent = maxf(extent, module_size.x)
@@ -304,6 +322,25 @@ func _finish_drag(committed: bool) -> void:
 	_drag_candidate = {}
 	_preview.visible = false
 	dock_drag_finished.emit(finished_id, committed)
+
+
+func _rollback_mount(
+	module_id: StringName,
+	old_zone: int,
+	old_index: int,
+	old_size: Vector2,
+	old_host: Control,
+	was_active: bool
+) -> void:
+	_restore_layout(module_id, old_zone, old_index, old_size)
+	if old_zone == WorkspaceDockLayout.DockZone.NONE or old_host == null:
+		return
+	if manager.mount_module(module_id, old_host) == null:
+		return
+	if was_active:
+		manager.activate_module(module_id)
+	_apply_module_size(module_id)
+	_sync_zone_order(old_zone)
 
 
 func _restore_layout(
