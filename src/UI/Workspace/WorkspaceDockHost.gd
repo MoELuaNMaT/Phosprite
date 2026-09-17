@@ -87,9 +87,7 @@ func dock_module(
 		if was_active or old_zone == WorkspaceDockLayout.DockZone.NONE:
 			if not manager.activate_module(module_id):
 				manager.unmount_module(module_id)
-				_rollback_mount(
-					module_id, old_zone, old_index, old_size, old_host, was_active
-				)
+				_rollback_mount(module_id, old_zone, old_index, old_size, old_host, was_active)
 				return false
 
 	_apply_module_size(module_id)
@@ -248,10 +246,7 @@ func _zone_extent(zone: int) -> float:
 	var extent := 0.0
 	for module_id in module_ids:
 		var module_size := layout.get_module_size(module_id)
-		if (
-			zone == WorkspaceDockLayout.DockZone.TOP
-			or zone == WorkspaceDockLayout.DockZone.BOTTOM
-		):
+		if zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM:
 			extent = maxf(extent, module_size.y)
 		else:
 			extent = maxf(extent, module_size.x)
@@ -295,12 +290,11 @@ func _collect_module_rects() -> Dictionary:
 			var module := manager.get_instance(module_id)
 			if module == null or module.get_parent() != host:
 				continue
-			entries.append(
-				{
-					"module_id": module_id,
-					"rect": Rect2(host.position + module.position, module.size),
-				}
-			)
+			var entry := {
+				"module_id": module_id,
+				"rect": Rect2(host.position + module.position, module.size),
+			}
+			entries.append(entry)
 		result[zone] = entries
 	return result
 
