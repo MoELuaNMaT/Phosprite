@@ -19,7 +19,12 @@ enum DockZone {
 	BOTTOM = 3,
 }
 
-const VALID_ZONES: Array[int] = [DockZone.TOP, DockZone.LEFT, DockZone.RIGHT, DockZone.BOTTOM]
+const VALID_ZONES: Array[int] = [
+	DockZone.TOP,
+	DockZone.LEFT,
+	DockZone.RIGHT,
+	DockZone.BOTTOM,
+]
 
 var _manager: WorkspaceModuleManager
 var _zone_modules: Dictionary = {
@@ -64,13 +69,14 @@ func place_module(module_id: StringName, zone: int, index: int = -1) -> bool:
 		previous_modules.erase(module_id)
 
 	var target_modules: Array = _zone_modules[zone]
-	var resolved_index := target_modules.size() if index < 0 else clampi(index, 0, target_modules.size())
+	var resolved_index := target_modules.size()
+	if index >= 0:
+		resolved_index = clampi(index, 0, target_modules.size())
 	target_modules.insert(resolved_index, module_id)
 	_module_zones[module_id] = zone
 
 	if not _module_sizes.has(module_id):
-		var definition := _manager.get_definition(module_id)
-		_module_sizes[module_id] = definition.get_constrained_preferred_size()
+		_module_sizes[module_id] = get_default_module_size(module_id)
 
 	module_placed.emit(module_id, zone, resolved_index)
 	return true
@@ -130,6 +136,10 @@ func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
 func get_module_size(module_id: StringName) -> Vector2:
 	if _module_sizes.has(module_id):
 		return _module_sizes[module_id] as Vector2
+	return get_default_module_size(module_id)
+
+
+func get_default_module_size(module_id: StringName) -> Vector2:
 	if _manager == null:
 		return Vector2.ZERO
 	var definition := _manager.get_definition(module_id)
