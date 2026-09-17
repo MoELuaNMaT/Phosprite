@@ -3,10 +3,12 @@ extends Panel
 const UI_TRANSPARENCY_SHADER := preload("uid://bwtsxcdoe2ps1")
 const WORKSPACE_MANAGER_SCRIPT := preload("res://src/UI/Workspace/WorkspaceModuleManager.gd")
 const WORKSPACE_BUILTINS := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const WORKSPACE_DOCK_HOST_SCRIPT := preload("res://src/UI/Workspace/WorkspaceDockHost.gd")
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
 var workspace_manager: WorkspaceModuleManager
+var workspace_dock_host: WorkspaceDockHost
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -38,6 +40,15 @@ func _setup_workspace_foundation() -> void:
 	add_child(workspace_manager)
 	if not WORKSPACE_BUILTINS.register_defaults(workspace_manager):
 		push_error("Failed to register one or more built-in Workspace Modules")
+
+	workspace_dock_host = WORKSPACE_DOCK_HOST_SCRIPT.new()
+	workspace_dock_host.name = "WorkspaceDockHost"
+	workspace_dock_host.visible = false
+	workspace_dock_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(workspace_dock_host)
+	workspace_dock_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if not workspace_dock_host.setup(workspace_manager):
+		push_error("Failed to initialize the P2-B Workspace Dock Host")
 
 
 func _on_cel_switched() -> void:
