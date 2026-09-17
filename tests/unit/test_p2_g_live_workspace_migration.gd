@@ -176,6 +176,36 @@ func test_collapsed_tray_restores_same_adopted_panel_instance() -> void:
 	_free_fixture(fixture)
 
 
+func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var interaction := Interaction.new()
+	root.add_child(interaction)
+	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
+	var target_rect := Rect2(320.0, 180.0, 360.0, 240.0)
+	check_true(surface.float_module(Builtins.PREVIEW_ID, target_rect), "Preview should float")
+	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "floating Preview should collapse")
+	check_true(
+		surface.is_floating_collapsed(Builtins.PREVIEW_ID), "collapse should remain floating"
+	)
+	check_eq(preview.position, target_rect.position, "collapsed bar should stay at its origin")
+	check_eq(preview.size.x, target_rect.size.x, "collapsed bar should keep its width")
+	check_true(
+		not interaction.get_tray().visible,
+		"floating-origin collapse must not become a bottom tray text button"
+	)
+	check_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed floating bar should restore")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		target_rect,
+		"restore should recover full rect"
+	)
+	_free_fixture(fixture)
+
+
 func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets() -> void:
 	var fixture := _make_live_fixture()
 	var manager := fixture["manager"] as WorkspaceModuleManager

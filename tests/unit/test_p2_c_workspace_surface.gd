@@ -193,8 +193,27 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 		surface.float_module(Builtins.PALETTE_ID, floating_rect), "Palette should become floating"
 	)
 	var palette := manager.get_instance(Builtins.PALETTE_ID)
+	var palette_content := palette.get_content()
 	check_true(surface.collapse_module(Builtins.PALETTE_ID), "floating Palette should collapse")
+	check_true(
+		surface.is_floating_collapsed(Builtins.PALETTE_ID),
+		"floating collapse should remain an in-place floating title bar"
+	)
+	check_eq(
+		palette.get_parent(),
+		surface.get_floating_layer(),
+		"floating collapse must keep the module in the floating layer"
+	)
+	check_true(not palette_content.visible, "floating collapse should hide only panel content")
+	check_eq(palette.position, floating_rect.position, "floating collapse should keep its position")
+	check_eq(palette.size.x, floating_rect.size.x, "floating collapse should keep its width")
+	check_eq(
+		palette.size.y,
+		palette.get_header_height(),
+		"floating collapse should shrink to header height"
+	)
 	check_true(surface.restore_module(Builtins.PALETTE_ID), "floating Palette should restore")
+	check_true(palette_content.visible, "restoring the floating bar should reveal its content")
 	check_eq(
 		surface.get_module_placement(Builtins.PALETTE_ID),
 		Surface.Placement.FLOATING,

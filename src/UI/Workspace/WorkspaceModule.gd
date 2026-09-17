@@ -28,6 +28,8 @@ var _host: Control
 var _visual_theme: WorkspaceVisualTheme
 var _visual_state: StringName = &"none"
 var _content_is_external := false
+var _content_collapsed := false
+var _content_visible_before_collapse := true
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -148,6 +150,25 @@ func get_content() -> Control:
 	return content
 
 
+func set_content_collapsed(collapsed: bool) -> void:
+	if _content_collapsed == collapsed:
+		return
+	if is_instance_valid(content):
+		if collapsed:
+			_content_visible_before_collapse = content.visible
+			content.visible = false
+		else:
+			content.visible = _content_visible_before_collapse
+	_content_collapsed = collapsed
+	if _visual_theme != null:
+		apply_visual_theme(_visual_theme, _visual_state)
+	queue_redraw()
+
+
+func is_content_collapsed() -> bool:
+	return _content_collapsed
+
+
 func is_external_content() -> bool:
 	return _content_is_external
 
@@ -215,15 +236,21 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		queue_redraw()
 		return
 	var padding := int(_visual_theme.CONTENT_PADDING)
-	var bottom_margin := padding
-	if state == &"floating":
-		bottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))
-	add_theme_constant_override(&"margin_left", padding)
-	add_theme_constant_override(
-		&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)
-	)
-	add_theme_constant_override(&"margin_right", padding)
-	add_theme_constant_override(&"margin_bottom", bottom_margin)
+	if state == &"collapsed" and _content_collapsed:
+		add_theme_constant_override(&"margin_left", 0)
+		add_theme_constant_override(&"margin_top", int(_visual_theme.HEADER_HEIGHT))
+		add_theme_constant_override(&"margin_right", 0)
+		add_theme_constant_override(&"margin_bottom", 0)
+	else:
+		var bottom_margin := padding
+		if state == &"floating":
+			bottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))
+		add_theme_constant_override(&"margin_left", padding)
+		add_theme_constant_override(
+			&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)
+		)
+		add_theme_constant_override(&"margin_right", padding)
+		add_theme_constant_override(&"margin_bottom", bottom_margin)
 	queue_redraw()
 
 
@@ -274,14 +301,15 @@ func _draw_collapse_affordance() -> void:
 		return
 	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5)
 	var half := 4.0
+	var direction := -1.0 if _content_collapsed else 1.0
 	draw_line(
 		center + Vector2(-half, 0.0),
-		center + Vector2(0.0, half),
+		center + Vector2(0.0, half * direction),
 		_visual_theme.muted_text_color,
 		1.5
 	)
 	draw_line(
-		center + Vector2(0.0, half),
+		center + Vector2(0.0, half * direction),
 		center + Vector2(half, 0.0),
 		_visual_theme.muted_text_color,
 		1.5

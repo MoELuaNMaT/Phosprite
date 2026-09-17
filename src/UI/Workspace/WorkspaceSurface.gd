@@ -138,19 +138,28 @@ func collapse_module(module_id: StringName) -> bool:
 	if placement == Placement.DOCKED:
 		if not dock_host.undock_module(module_id):
 			return false
-	elif not manager.unmount_module(module_id):
-		return false
+	else:
+		var module := manager.get_instance(module_id)
+		if module == null or module.get_parent() != _floating_layer:
+			return false
+		module.set_content_collapsed(true)
 
 	_placements[module_id] = Placement.COLLAPSED
 	_floating_rects.erase(module_id)
 	_collapsed_restore[module_id] = restore
 	_peeking.erase(module_id)
 	module_collapsed.emit(module_id)
+	if placement == Placement.FLOATING:
+		_apply_floating_collapsed_rect(module_id, restore.get("rect", Rect2()) as Rect2)
 	return true
 
 
 func peek_module(module_id: StringName) -> bool:
-	if not _is_ready() or get_module_placement(module_id) != Placement.COLLAPSED:
+	if (
+		not _is_ready()
+		or get_module_placement(module_id) != Placement.COLLAPSED
+		or is_floating_collapsed(module_id)
+	):
 		return false
 	if is_peeking(module_id):
 		return true
@@ -208,7 +217,14 @@ func restore_module(module_id: StringName) -> bool:
 			restore.get("size", Vector2.ZERO) as Vector2
 		)
 	elif restore_placement == Placement.FLOATING:
+		var module := manager.get_instance(module_id)
+		var was_floating_collapsed := is_floating_collapsed(module_id)
+		if was_floating_collapsed and module != null:
+			module.set_content_collapsed(false)
 		restored = float_module(module_id, restore.get("rect", Rect2()) as Rect2)
+		if not restored and was_floating_collapsed and module != null:
+			module.set_content_collapsed(true)
+			_apply_floating_collapsed_rect(module_id, restore.get("rect", Rect2()) as Rect2)
 	if not restored:
 		return false
 
@@ -252,6 +268,8 @@ func clear_module_placement(module_id: StringName) -> bool:
 				return false
 	elif placement == Placement.COLLAPSED:
 		var module := manager.get_instance(module_id)
+		if module != null and is_floating_collapsed(module_id):
+			module.set_content_collapsed(false)
 		if module != null and module.get_parent() != null:
 			if not manager.unmount_module(module_id):
 				return false
@@ -356,6 +374,16 @@ func get_restore_state(module_id: StringName) -> Dictionary:
 
 func is_peeking(module_id: StringName) -> bool:
 	return bool(_peeking.get(module_id, false))
+
+
+func is_floating_collapsed(module_id: StringName) -> bool:
+	if get_module_placement(module_id) != Placement.COLLAPSED:
+		return false
+	var restore: Dictionary = _collapsed_restore.get(module_id, {})
+	if int(restore.get("placement", Placement.NONE)) != Placement.FLOATING:
+		return false
+	var module := manager.get_instance(module_id) if manager != null else null
+	return module != null and module.get_parent() == _floating_layer
 
 
 func get_floating_layer() -> Control:
@@ -523,6 +551,29 @@ func _apply_floating_rect(module_id: StringName, rect: Rect2) -> void:
 	module.custom_minimum_size = definition.minimum_size
 	module.position = rect.position
 	module.size = rect.size
+	module.move_to_front()
+	_floating_layer.move_to_front()
+	_peek_layer.move_to_front()
+	_preview.move_to_front()
+
+
+func _apply_floating_collapsed_rect(module_id: StringName, restore_rect: Rect2) -> void:
+	var module := manager.get_instance(module_id)
+	var definition := manager.get_definition(module_id)
+	if module == null or definition == null:
+		return
+	var width := definition.get_constrained_size(restore_rect.size).x
+	var header_height := module.get_header_height()
+	var bounds := dock_host.size if dock_host != null else Vector2.ZERO
+	width = minf(width, bounds.x) if bounds.x > 0.0 else width
+	var max_position := Vector2(maxf(0.0, bounds.x - width), maxf(0.0, bounds.y - header_height))
+	var position := Vector2(
+		clampf(restore_rect.position.x, 0.0, max_position.x),
+		clampf(restore_rect.position.y, 0.0, max_position.y)
+	)
+	module.custom_minimum_size = Vector2(minf(definition.minimum_size.x, width), header_height)
+	module.position = position
+	module.size = Vector2(width, header_height)
 	module.move_to_front()
 	_floating_layer.move_to_front()
 	_peek_layer.move_to_front()

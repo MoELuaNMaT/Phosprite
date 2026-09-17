@@ -180,7 +180,7 @@ func _handle_mouse_button(
 	var pointer := _module_point_to_host(module, event.position)
 	_raise_floating_module(module_id, module)
 	if module.is_collapse_point(event.position):
-		if surface.collapse_module(module_id):
+		if _toggle_module_collapse(module_id):
 			_refresh_tray()
 		module.accept_event()
 		return
@@ -201,7 +201,7 @@ func _handle_screen_touch(
 	var pointer := _module_point_to_host(module, event.position)
 	_raise_floating_module(module_id, module)
 	if module.is_collapse_point(event.position):
-		if surface.collapse_module(module_id):
+		if _toggle_module_collapse(module_id):
 			_refresh_tray()
 		module.accept_event()
 		return
@@ -281,10 +281,19 @@ func _viewport_point_to_host(viewport_point: Vector2) -> Vector2:
 
 
 func _raise_floating_module(module_id: StringName, module: WorkspaceModule) -> void:
-	if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING:
+	if (
+		surface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING
+		and not surface.is_floating_collapsed(module_id)
+	):
 		return
 	if module.get_parent() == surface.get_floating_layer():
 		module.move_to_front()
+
+
+func _toggle_module_collapse(module_id: StringName) -> bool:
+	if surface.is_floating_collapsed(module_id):
+		return surface.restore_module(module_id)
+	return surface.collapse_module(module_id)
 
 
 func _create_tray() -> void:
@@ -303,7 +312,10 @@ func _refresh_tray() -> void:
 		child.queue_free()
 	var collapsed_ids: Array[StringName] = []
 	for module_id in manager.get_registered_ids():
-		if surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED:
+		if (
+			surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED
+			and not surface.is_floating_collapsed(module_id)
+		):
 			collapsed_ids.append(module_id)
 	for module_id in collapsed_ids:
 		var button := Button.new()
