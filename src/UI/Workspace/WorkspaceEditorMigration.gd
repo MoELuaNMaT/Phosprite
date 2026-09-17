@@ -77,6 +77,11 @@ var live := false
 
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
+var _main_canvas_state: Dictionary = {}
+var _legacy_mouse_filter := Control.MOUSE_FILTER_STOP
+var _legacy_visible := true
+var _legacy_processing := true
+var _previous_autosave_enabled := true
 var _zen_mode := false
 
 
@@ -183,6 +188,7 @@ func reset_default_layout() -> bool:
 			return false
 	if not _apply_default_entries(_default_ids()):
 		return false
+	_sync_content_visibility_from_placements()
 	_update_main_canvas_rect()
 	return layout_store.save_current_layout()
 
@@ -214,20 +220,18 @@ func _migrate_live_editor() -> bool:
 			return false
 		resolved[module_id] = panel
 
-	for module_id: StringName in resolved:
-		var panel := resolved[module_id] as Control
-		_original_panel_state[module_id] = {
-			"parent": panel.get_parent(),
-			"index": panel.get_index(),
-			"visible": panel.visible,
-		}
-
+	_capture_original_state(resolved)
+	_previous_autosave_enabled = layout_store.autosave_enabled
+	layout_store.autosave_enabled = false
 	legacy_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	var adopted: Array[StringName] = []
 	for module_id: StringName in resolved:
 		var panel := resolved[module_id] as Control
 		if manager.adopt_module(module_id, panel, {"live_editor": true}) == null:
 			_rollback_adoption(adopted)
+			layout_store.autosave_enabled = _previous_autosave_enabled
+			_restore_legacy_shell()
 			_clear_setup()
 			return false
 		adopted.append(module_id)
@@ -252,25 +256,76 @@ func _migrate_live_editor() -> bool:
 
 	var saved_ids := _saved_layout_ids()
 	var restored := layout_store.restore_current_layout()
+	var layout_ready := false
 	if restored:
 		var missing_defaults: Array[StringName] = []
 		for module_id in _default_ids():
 			if not saved_ids.has(module_id):
 				missing_defaults.append(module_id)
-		if not _apply_default_entries(missing_defaults):
-			return false
+		layout_ready = _apply_default_entries(missing_defaults)
 	else:
-		if not _apply_default_entries(_default_ids()):
-			return false
+		layout_ready = _apply_default_entries(_default_ids())
 
+	if not layout_ready:
+		_rollback_live_migration()
+		return false
+
+	_sync_content_visibility_from_placements()
 	_update_main_canvas_rect()
+	layout_store.autosave_enabled = _previous_autosave_enabled
+	if not layout_store.save_current_layout():
+		_rollback_live_migration()
+		return false
 	migration_completed.emit()
 	return true
 
 
+func _capture_original_state(resolved: Dictionary) -> void:
+	for module_id: StringName in resolved:
+		var panel := resolved[module_id] as Control
+		_original_panel_state[module_id] = {
+			"parent": panel.get_parent(),
+			"index": panel.get_index(),
+			"visible": panel.visible,
+		}
+	_main_canvas_state = {
+		"parent": main_canvas.get_parent(),
+		"index": main_canvas.get_index(),
+		"visible": main_canvas.visible,
+		"anchor_left": main_canvas.anchor_left,
+		"anchor_top": main_canvas.anchor_top,
+		"anchor_right": main_canvas.anchor_right,
+		"anchor_bottom": main_canvas.anchor_bottom,
+		"offset_left": main_canvas.offset_left,
+		"offset_top": main_canvas.offset_top,
+		"offset_right": main_canvas.offset_right,
+		"offset_bottom": main_canvas.offset_bottom,
+	}
+	_legacy_mouse_filter = legacy_container.mouse_filter
+	_legacy_visible = legacy_container.visible
+	_legacy_processing = legacy_container.is_processing()
+
+
+func _rollback_live_migration() -> void:
+	layout_store.autosave_enabled = false
+	for module_id in get_panel_ids():
+		if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.NONE:
+			surface.clear_module_placement(module_id)
+	var adopted := get_panel_ids()
+	_rollback_adoption(adopted)
+	_restore_main_canvas()
+	_restore_legacy_shell()
+	dock_host.visible = false
+	if dock_host.layout_geometry_changed.is_connected(_on_layout_geometry_changed):
+		dock_host.layout_geometry_changed.disconnect(_on_layout_geometry_changed)
+	live = false
+	layout_store.autosave_enabled = _previous_autosave_enabled
+
+
 func _rollback_adoption(adopted: Array[StringName]) -> void:
-	adopted.reverse()
-	for module_id in adopted:
+	var reverse_ids := adopted.duplicate()
+	reverse_ids.reverse()
+	for module_id in reverse_ids:
 		var panel := manager.release_adopted_module(module_id)
 		if panel == null:
 			continue
@@ -281,6 +336,47 @@ func _rollback_adoption(adopted: Array[StringName]) -> void:
 		parent.add_child(panel)
 		parent.move_child(panel, mini(int(state.get("index", 0)), parent.get_child_count() - 1))
 		panel.visible = bool(state.get("visible", true))
+
+
+func _restore_main_canvas() -> void:
+	if main_canvas == null or _main_canvas_state.is_empty():
+		return
+	if main_canvas.get_parent() != null:
+		main_canvas.get_parent().remove_child(main_canvas)
+	var parent := _main_canvas_state.get("parent") as Node
+	if parent == null:
+		return
+	parent.add_child(main_canvas)
+	parent.move_child(
+		main_canvas, mini(int(_main_canvas_state.get("index", 0)), parent.get_child_count() - 1)
+	)
+	main_canvas.anchor_left = float(_main_canvas_state.get("anchor_left", 0.0))
+	main_canvas.anchor_top = float(_main_canvas_state.get("anchor_top", 0.0))
+	main_canvas.anchor_right = float(_main_canvas_state.get("anchor_right", 0.0))
+	main_canvas.anchor_bottom = float(_main_canvas_state.get("anchor_bottom", 0.0))
+	main_canvas.offset_left = float(_main_canvas_state.get("offset_left", 0.0))
+	main_canvas.offset_top = float(_main_canvas_state.get("offset_top", 0.0))
+	main_canvas.offset_right = float(_main_canvas_state.get("offset_right", 0.0))
+	main_canvas.offset_bottom = float(_main_canvas_state.get("offset_bottom", 0.0))
+	main_canvas.visible = bool(_main_canvas_state.get("visible", true))
+
+
+func _restore_legacy_shell() -> void:
+	if legacy_container == null:
+		return
+	legacy_container.mouse_filter = _legacy_mouse_filter
+	legacy_container.visible = _legacy_visible
+	legacy_container.set_process(_legacy_processing)
+
+
+func _sync_content_visibility_from_placements() -> void:
+	for module_id in get_panel_ids():
+		var module := manager.get_instance(module_id)
+		if module == null or module.get_content() == null:
+			continue
+		module.get_content().visible = (
+			surface.get_module_placement(module_id) != WorkspaceSurface.Placement.NONE
+		)
 
 
 func _apply_default_entries(module_ids: Array[StringName]) -> bool:
@@ -420,4 +516,5 @@ func _clear_setup() -> void:
 	main_canvas = null
 	_original_panel_state.clear()
 	_context_restore.clear()
+	_main_canvas_state.clear()
 	live = false
