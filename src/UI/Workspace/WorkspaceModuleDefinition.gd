@@ -3,9 +3,9 @@ extends Resource
 
 ## Stable metadata and capability contract for a workspace module.
 ##
-## A zero maximum on either axis means that axis is unbounded. P2-A only
-## declares capabilities; later P2 stages decide where/how modules are docked,
-## floated, collapsed, resized, and persisted.
+## A zero maximum on either axis means that axis is unbounded. Most modules own
+## a PackedScene, while P2-G can mark an editor panel as externally supplied so
+## Workspace adopts the already-running Control instead of instantiating a copy.
 
 const ALLOWED_ID_CHARACTERS := "abcdefghijklmnopqrstuvwxyz0123456789._-"
 
@@ -13,6 +13,7 @@ const ALLOWED_ID_CHARACTERS := "abcdefghijklmnopqrstuvwxyz0123456789._-"
 @export var module_id: StringName = &""
 @export var display_name := ""
 @export var content_scene: PackedScene
+@export var uses_external_content := false
 
 @export_group("Size Constraints")
 @export var minimum_size := Vector2(120.0, 80.0)
@@ -32,8 +33,10 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append(
 			"module_id must be lowercase and use only a-z, 0-9, '.', '_' or '-': %s" % id_text
 		)
-	if content_scene == null:
+	if content_scene == null and not uses_external_content:
 		errors.append("content_scene is required for workspace module '%s'" % id_text)
+	if content_scene != null and uses_external_content:
+		errors.append("workspace module '%s' cannot use both scene and external content" % id_text)
 	if minimum_size.x < 0.0 or minimum_size.y < 0.0:
 		errors.append("minimum_size cannot contain negative values")
 	if preferred_size.x < 0.0 or preferred_size.y < 0.0:
