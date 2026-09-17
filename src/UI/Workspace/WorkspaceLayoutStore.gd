@@ -19,7 +19,7 @@ const PRESET_SECTION := "workspace_layout"
 const PRESET_STATE_KEY := "state"
 const PRESET_NAME_KEY := "display_name"
 const PRESET_EXTENSION := ".workspace.cfg"
-const INVALID_PRESET_NAME_CHARACTERS := "/\\:*?\"<>|"
+const INVALID_PRESET_NAME_CHARACTERS := '/\\:*?"<>|'
 
 var surface: WorkspaceSurface
 var manager: WorkspaceModuleManager
@@ -282,13 +282,18 @@ func _validate_known_entry(module_id: StringName, entry: Dictionary) -> bool:
 		"docked":
 			return (
 				definition.can_dock
-				and surface.dock_host.layout.is_valid_zone(_zone_from_name(str(entry.get("zone", ""))))
+				and surface.dock_host.layout.is_valid_zone(
+					_zone_from_name(str(entry.get("zone", "")))
+				)
 				and _is_vector_array(entry.get("size", null))
 			)
 		"floating":
 			return definition.can_float and _is_rect_array(entry.get("rect", null))
 		"collapsed":
-			return definition.can_collapse and _validate_restore_state(definition, entry.get("restore", {}))
+			return (
+				definition.can_collapse
+				and _validate_restore_state(definition, entry.get("restore", {}))
+			)
 	return false
 
 
@@ -300,7 +305,9 @@ func _validate_restore_state(definition: WorkspaceModuleDefinition, raw_restore:
 	if placement == "docked":
 		return (
 			definition.can_dock
-			and surface.dock_host.layout.is_valid_zone(_zone_from_name(str(restore.get("zone", ""))))
+			and surface.dock_host.layout.is_valid_zone(
+				_zone_from_name(str(restore.get("zone", "")))
+			)
 			and _is_vector_array(restore.get("size", null))
 		)
 	if placement == "floating":
