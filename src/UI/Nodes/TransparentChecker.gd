@@ -3,6 +3,7 @@ class_name TransparentChecker
 extends ColorRect
 
 const TRANSPARENT_CHECKER := preload("uid://c50kmfvf635kb")
+const DOCUMENT_PIXEL_CHECKER_SIZE := 1.0
 
 
 func _init() -> void:
@@ -23,15 +24,22 @@ func update_rect() -> void:
 	if not get_parent() is Control:
 		# Set the size to be the same as the project size if the parent is a SubViewport
 		set_bounds(Global.current_project.size)
-	if self == Global.transparent_checker:
+	var document_pixel_mode := self == Global.transparent_checker
+	if document_pixel_mode:
 		fit_rect(Global.current_project.tiles.get_bounding_rect())
 		for canvas_preview in get_tree().get_nodes_in_group("CanvasPreviews"):
 			canvas_preview.get_viewport().get_node("TransparentChecker").update_rect()
-	material.set_shader_parameter(&"size", Global.checker_size)
+	material.set_shader_parameter(
+		&"size", DOCUMENT_PIXEL_CHECKER_SIZE if document_pixel_mode else Global.checker_size
+	)
 	material.set_shader_parameter(&"color1", Global.checker_color_1)
 	material.set_shader_parameter(&"color2", Global.checker_color_2)
-	material.set_shader_parameter(&"follow_movement", Global.checker_follow_movement)
-	material.set_shader_parameter(&"follow_scale", Global.checker_follow_scale)
+	material.set_shader_parameter(
+		&"follow_movement", true if document_pixel_mode else Global.checker_follow_movement
+	)
+	material.set_shader_parameter(
+		&"follow_scale", true if document_pixel_mode else Global.checker_follow_scale
+	)
 
 
 func update_offset(offset: Vector2, canvas_scale: Vector2) -> void:
