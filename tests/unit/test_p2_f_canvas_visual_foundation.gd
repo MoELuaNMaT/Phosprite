@@ -48,8 +48,10 @@ func test_pixel_grid_keeps_outer_boundary_single_owned() -> void:
 		"pixel grid should use the shared subordinate visual weight"
 	)
 	check_true(
-		CanvasVisualPolicy.PIXEL_GRID_ALPHA_FACTOR > 0.0
-		and CanvasVisualPolicy.PIXEL_GRID_ALPHA_FACTOR < 1.0,
+		(
+			CanvasVisualPolicy.PIXEL_GRID_ALPHA_FACTOR > 0.0
+			and CanvasVisualPolicy.PIXEL_GRID_ALPHA_FACTOR < 1.0
+		),
 		"pixel grid must stay visible while remaining subordinate to the boundary"
 	)
 
@@ -80,7 +82,7 @@ func test_canvas_scene_mounts_backdrop_and_boundary_without_input_capture() -> v
 	var scene_source := FileAccess.get_file_as_string("res://src/UI/Canvas/Canvas.tscn")
 	var viewport_source := FileAccess.get_file_as_string("res://src/UI/ViewportContainer.gd")
 	check_true(
-		scene_source.contains("[node name=\"CanvasBoundary\" type=\"Node2D\" parent=\".\"]"),
+		scene_source.contains('[node name="CanvasBoundary" type="Node2D" parent="."]'),
 		"Canvas scene should own an explicit document boundary"
 	)
 	check_true(
