@@ -21,9 +21,9 @@ func _make_workspace() -> Dictionary:
 
 
 func _free_workspace(workspace: Dictionary) -> void:
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 	manager.destroy_all_modules()
 	surface.free()
 	host.free()
@@ -32,15 +32,15 @@ func _free_workspace(workspace: Dictionary) -> void:
 
 func test_float_preserves_instance_and_detaches_from_dock_model() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 
 	check_true(
 		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
 		"Preview should start docked"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(420.0, 180.0, 360.0, 260.0)),
 		"docked Preview should become floating"
@@ -75,21 +75,21 @@ func test_float_preserves_instance_and_detaches_from_dock_model() -> void:
 
 func test_floating_drag_snaps_back_to_dock_edge() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 
 	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(420.0, 180.0, 320.0, 220.0)),
 		"Preview should start floating"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	check_true(
 		surface.begin_module_drag(Builtins.PREVIEW_ID, Vector2(500.0, 220.0)),
 		"floating module drag should begin"
 	)
 	var left_rect: Rect2 = host.get_zone_rects()[DockLayout.DockZone.LEFT]
-	var candidate := surface.update_module_drag(left_rect.get_center())
+	var candidate: Dictionary = surface.update_module_drag(left_rect.get_center())
 	check_true(bool(candidate.get("valid", false)), "left edge should resolve a valid target")
 	check_eq(
 		int(candidate.get("placement", Surface.Placement.NONE)),
@@ -118,9 +118,9 @@ func test_floating_drag_snaps_back_to_dock_edge() -> void:
 
 func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 
 	check_true(
 		surface.dock_module(
@@ -128,7 +128,7 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 		),
 		"Preview should dock before collapse"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse")
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
@@ -142,7 +142,7 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 		"collapsed module should not occupy a dock slot"
 	)
 
-	var restore := surface.get_restore_state(Builtins.PREVIEW_ID)
+	var restore: Dictionary = surface.get_restore_state(Builtins.PREVIEW_ID)
 	check_eq(
 		int(restore.get("zone", DockLayout.DockZone.NONE)),
 		DockLayout.DockZone.RIGHT,
@@ -185,15 +185,15 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 
 func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var surface: WorkspaceSurface = workspace["surface"]
 	var floating_rect := Rect2(500.0, 240.0, 340.0, 240.0)
 
 	check_true(
 		surface.float_module(Builtins.PALETTE_ID, floating_rect), "Palette should become floating"
 	)
-	var palette := manager.get_instance(Builtins.PALETTE_ID)
-	var palette_content := palette.get_content()
+	var palette: WorkspaceModule = manager.get_instance(Builtins.PALETTE_ID)
+	var palette_content: Control = palette.get_content()
 	check_true(surface.collapse_module(Builtins.PALETTE_ID), "floating Palette should collapse")
 	check_true(
 		surface.is_floating_collapsed(Builtins.PALETTE_ID),

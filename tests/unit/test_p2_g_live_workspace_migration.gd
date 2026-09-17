@@ -186,13 +186,23 @@ func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
 	var target_rect := Rect2(320.0, 180.0, 360.0, 240.0)
 	check_true(surface.float_module(Builtins.PREVIEW_ID, target_rect), "Preview should float")
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
+	var actual_float_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	var before_position := preview.position
+	var before_width := preview.size.x
 	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "floating Preview should collapse")
 	check_true(
 		surface.is_floating_collapsed(Builtins.PREVIEW_ID), "collapse should remain floating"
 	)
-	check_eq(preview.position, target_rect.position, "collapsed bar should stay at its origin")
-	check_eq(preview.size.x, target_rect.size.x, "collapsed bar should keep its width")
+	check_eq(
+		preview.position, before_position, "collapsed bar should stay at its floating position"
+	)
+	check_eq(preview.size.x, before_width, "collapsed bar should keep its floating width")
+	check_eq(
+		surface.get_restore_state(Builtins.PREVIEW_ID).get("rect", Rect2()) as Rect2,
+		actual_float_rect,
+		"floating collapse should preserve the complete pre-collapse rectangle"
+	)
 	check_true(
 		not interaction.get_tray().visible,
 		"floating-origin collapse must not become a bottom tray text button"
@@ -200,8 +210,8 @@ func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	check_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed floating bar should restore")
 	check_eq(
 		surface.get_floating_rect(Builtins.PREVIEW_ID),
-		target_rect,
-		"restore should recover full rect"
+		actual_float_rect,
+		"restore should recover the complete pre-collapse rectangle"
 	)
 	_free_fixture(fixture)
 

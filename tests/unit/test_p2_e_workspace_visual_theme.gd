@@ -121,11 +121,15 @@ func test_controller_tracks_placement_and_preserves_module_identity() -> void:
 	check_eq(preview.get_content(), content, "theme chrome must preserve the original content root")
 	check_eq(preview.get_visual_state(), &"floating", "floating module should use floating chrome")
 
-	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "Preview should collapse")
+	check_true(
+		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
+		"Preview should dock again before tray collapse"
+	)
+	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse")
 	check_eq(
 		preview.get_visual_state(), &"collapsed", "collapsed module should retain collapsed state"
 	)
-	check_true(surface.peek_module(Builtins.PREVIEW_ID), "collapsed Preview should Peek")
+	check_true(surface.peek_module(Builtins.PREVIEW_ID), "docked collapsed Preview should Peek")
 	check_eq(preview.get_visual_state(), &"peek", "Peek should use elevated peek chrome")
 	check_true(surface.end_peek(Builtins.PREVIEW_ID), "Peek should close")
 	check_eq(
