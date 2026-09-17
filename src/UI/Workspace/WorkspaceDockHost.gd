@@ -1,15 +1,16 @@
 class_name WorkspaceDockHost
 extends Control
 
-## Runtime host for the limited P2-B Top/Left/Right/Bottom dock system.
+## Runtime host for the limited Top/Left/Right/Bottom dock system.
 ##
-## Dragging is exposed as an explicit begin/update/commit transaction so later
-## stages can decide when layout editing is unlocked on touch devices. P2-B does
-## not make normal editor interaction draggable by default.
+## In P2-G the host becomes live above the central Canvas. Empty host space is
+## mouse-transparent; occupied docks reserve geometry around the Canvas while a
+## separate edge snap band keeps empty zones discoverable during drag.
 
 signal module_docked(module_id: StringName, zone: int, index: int)
 signal dock_preview_changed(candidate: Dictionary)
 signal dock_drag_finished(module_id: StringName, committed: bool)
+signal layout_geometry_changed(content_rect: Rect2)
 
 const EMPTY_ZONE_EXTENT := 56.0
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
@@ -24,6 +25,7 @@ var _drag_candidate: Dictionary = {}
 
 
 func _init() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ensure_structure()
 
 
@@ -52,7 +54,9 @@ func dock_module(
 	if not layout.is_valid_zone(zone):
 		return false
 
-	var module := manager.create_module(module_id, context)
+	var module := manager.get_instance(module_id)
+	if module == null:
+		module = manager.create_module(module_id, context)
 	if module == null:
 		return false
 	if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.DISPOSED:
@@ -173,11 +177,45 @@ func get_zone_host(zone: int) -> Control:
 
 
 func get_zone_rects() -> Dictionary:
-	var result: Dictionary = {}
-	for zone in WorkspaceDockLayout.VALID_ZONES:
-		var host := _zone_hosts[zone] as Control
-		result[zone] = Rect2(host.position, host.size)
-	return result
+	var top_h := _zone_extent(WorkspaceDockLayout.DockZone.TOP)
+	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
+	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
+	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
+	var middle_y := top_h
+	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
+	return {
+		WorkspaceDockLayout.DockZone.TOP:
+		Rect2(0.0, 0.0, size.x, maxf(top_h, EMPTY_ZONE_EXTENT)),
+		WorkspaceDockLayout.DockZone.LEFT:
+		Rect2(0.0, middle_y, maxf(left_w, EMPTY_ZONE_EXTENT), middle_h),
+		WorkspaceDockLayout.DockZone.RIGHT:
+		Rect2(
+			maxf(0.0, size.x - maxf(right_w, EMPTY_ZONE_EXTENT)),
+			middle_y,
+			maxf(right_w, EMPTY_ZONE_EXTENT),
+			middle_h
+		),
+		WorkspaceDockLayout.DockZone.BOTTOM:
+		Rect2(
+			0.0,
+			maxf(0.0, size.y - maxf(bottom_h, EMPTY_ZONE_EXTENT)),
+			size.x,
+			maxf(bottom_h, EMPTY_ZONE_EXTENT)
+		),
+	}
+
+
+func get_content_rect() -> Rect2:
+	var top_h := _zone_extent(WorkspaceDockLayout.DockZone.TOP)
+	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
+	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
+	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
+	return Rect2(
+		Vector2(left_w, top_h),
+		Vector2(
+			maxf(0.0, size.x - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h)
+		)
+	)
 
 
 func get_preview_rect() -> Rect2:
@@ -206,7 +244,9 @@ func _ensure_structure() -> void:
 		WorkspaceDockLayout.DockZone.BOTTOM: bottom,
 	}
 	for zone in WorkspaceDockLayout.VALID_ZONES:
-		add_child(_zone_hosts[zone])
+		var host := _zone_hosts[zone] as Control
+		host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(host)
 
 	_preview = ColorRect.new()
 	_preview.name = "DockSnapPreview"
@@ -240,14 +280,15 @@ func _layout_zones() -> void:
 		WorkspaceDockLayout.DockZone.RIGHT,
 		Rect2(maxf(0.0, size.x - right_w), top_h, right_w, middle_h)
 	)
+	layout_geometry_changed.emit(get_content_rect())
 
 
 func _zone_extent(zone: int) -> float:
 	if layout == null:
-		return EMPTY_ZONE_EXTENT
+		return 0.0
 	var module_ids := layout.get_modules(zone)
 	if module_ids.is_empty():
-		return EMPTY_ZONE_EXTENT
+		return 0.0
 	var extent := 0.0
 	for module_id in module_ids:
 		var module_size := layout.get_module_size(module_id)
@@ -255,7 +296,7 @@ func _zone_extent(zone: int) -> float:
 			extent = maxf(extent, module_size.y)
 		else:
 			extent = maxf(extent, module_size.x)
-	return maxf(EMPTY_ZONE_EXTENT, extent)
+	return extent
 
 
 func _set_host_rect(zone: int, rect: Rect2) -> void:
