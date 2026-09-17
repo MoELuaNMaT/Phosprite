@@ -190,8 +190,7 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	var floating_rect := Rect2(500.0, 240.0, 340.0, 240.0)
 
 	check_true(
-		surface.float_module(Builtins.PALETTE_ID, floating_rect),
-		"Palette should become floating"
+		surface.float_module(Builtins.PALETTE_ID, floating_rect), "Palette should become floating"
 	)
 	var palette := manager.get_instance(Builtins.PALETTE_ID)
 	check_true(surface.collapse_module(Builtins.PALETTE_ID), "floating Palette should collapse")
@@ -228,7 +227,6 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 		"can_float=false must reject floating"
 	)
 	check_true(
-		not surface.collapse_module(restricted.module_id),
-		"can_collapse=false must reject collapse"
+		not surface.collapse_module(restricted.module_id), "can_collapse=false must reject collapse"
 	)
 	_free_workspace(workspace)
