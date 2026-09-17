@@ -44,7 +44,7 @@ func configure(module_definition: WorkspaceModuleDefinition) -> bool:
 func configure_existing(
 	module_definition: WorkspaceModuleDefinition, existing_content: Control
 ) -> bool:
-	if not _can_configure(module_definition) or not module_definition.uses_external_content:
+	if not _can_configure(module_definition):
 		return false
 	if not is_instance_valid(existing_content):
 		return false
