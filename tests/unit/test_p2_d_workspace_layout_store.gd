@@ -151,12 +151,15 @@ func test_none_state_clears_existing_placement_and_unknown_modules_are_ignored()
 	var store = workspace["store"]
 	var snapshot := store.capture_snapshot()
 	var modules: Array = snapshot["modules"]
-	modules.append(
-		{
-			"id": "extension.missing",
-			"placement": "floating",
-			"rect": [10.0, 10.0, 200.0, 160.0],
-		}
+	(
+		modules
+		. append(
+			{
+				"id": "extension.missing",
+				"placement": "floating",
+				"rect": [10.0, 10.0, 200.0, 160.0],
+			}
+		)
 	)
 
 	check_true(
