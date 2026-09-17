@@ -421,12 +421,11 @@ func _collect_dock_module_rects() -> Dictionary:
 			var module := manager.get_instance(module_id)
 			if module == null or module.get_parent() != host:
 				continue
-			entries.append(
-				{
-					"module_id": module_id,
-					"rect": Rect2(host.position + module.position, module.size),
-				}
-			)
+			var entry := {
+				"module_id": module_id,
+				"rect": Rect2(host.position + module.position, module.size),
+			}
+			entries.append(entry)
 		result[zone] = entries
 	return result
 
@@ -499,9 +498,7 @@ func _peek_rect_for_restore(module_id: StringName, restore: Dictionary) -> Rect2
 	return _constrain_floating_rect(module_id, Rect2(Vector2(12.0, 12.0), size))
 
 
-func _restore_floating_parent(
-	module_id: StringName, rect: Rect2, context: Dictionary = {}
-) -> void:
+func _restore_floating_parent(module_id: StringName, rect: Rect2, context: Dictionary = {}) -> void:
 	if manager.mount_module(module_id, _floating_layer, context) == null:
 		return
 	if not manager.activate_module(module_id):
