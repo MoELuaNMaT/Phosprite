@@ -7,6 +7,7 @@ extends Node
 ## remains a pure four-zone dock model. Persistence is layered on by P2-D and
 ## existing editor panels remain untouched until P2-G.
 
+signal module_docked(module_id: StringName, zone: int, index: int)
 signal module_floated(module_id: StringName, rect: Rect2)
 signal module_collapsed(module_id: StringName)
 signal module_peek_changed(module_id: StringName, peeking: bool)
@@ -107,7 +108,8 @@ func dock_module(
 	zone: int,
 	index: int = -1,
 	requested_size: Vector2 = Vector2.ZERO,
-	context: Dictionary = {}
+	context: Dictionary = {},
+	region_fill: bool = false
 ) -> bool:
 	if not _is_ready() or not dock_host.layout.is_valid_zone(zone):
 		return false
@@ -126,7 +128,7 @@ func dock_module(
 		if not manager.unmount_module(module_id):
 			return false
 
-	if not dock_host.dock_module(module_id, zone, index, requested_size, context):
+	if not dock_host.dock_module(module_id, zone, index, requested_size, context, region_fill):
 		if previous_placement == Placement.FLOATING:
 			_restore_floating_parent(module_id, previous_rect, context)
 		return false
@@ -135,6 +137,7 @@ func dock_module(
 	_floating_rects.erase(module_id)
 	_collapsed_restore.erase(module_id)
 	_peeking.erase(module_id)
+	module_docked.emit(module_id, zone, dock_host.layout.get_module_index(module_id))
 	return true
 
 
@@ -173,7 +176,6 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 	_apply_floating_rect(module_id, rect)
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
-	_last_floating_rects[module_id] = rect
 	_last_floating_rects[module_id] = rect
 	_collapsed_restore.erase(module_id)
 	_peeking.erase(module_id)
@@ -469,7 +471,9 @@ func commit_module_drag() -> bool:
 				module_id,
 				int(candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)),
 				int(candidate.get("index", -1)),
-				_get_drag_size(module_id)
+				_get_drag_size(module_id),
+				{},
+				StringName(candidate.get("target_kind", &"none")) == &"region"
 			)
 		elif placement == Placement.FLOATING:
 			committed = float_module(module_id, candidate.get("rect", Rect2()) as Rect2)
@@ -589,6 +593,7 @@ func _capture_dock_state(module_id: StringName) -> Dictionary:
 		"zone": dock_host.layout.get_module_zone(module_id),
 		"index": dock_host.layout.get_module_index(module_id),
 		"size": dock_host.layout.get_module_size(module_id),
+		"region_fill": dock_host.layout.is_module_region_fill(module_id),
 	}
 
 
@@ -755,7 +760,8 @@ func _restore_dock_after_failed_float(
 		int(dock_state.get("zone", WorkspaceDockLayout.DockZone.NONE)),
 		int(dock_state.get("index", -1)),
 		dock_state.get("size", Vector2.ZERO) as Vector2,
-		context
+		context,
+		bool(dock_state.get("region_fill", false))
 	)
 
 
