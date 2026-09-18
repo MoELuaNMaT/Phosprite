@@ -257,6 +257,18 @@ static func navigation_target_angle(
 	return wrapf(baseline_camera_angle + pair_delta, -PI, PI)
 
 
+static func screen_position_inside_rect(screen_position: Vector2, rect: Rect2) -> bool:
+	return rect.has_point(screen_position)
+
+
+func _screen_position_inside_main_viewport(screen_position: Vector2) -> bool:
+	if not is_instance_valid(Global.main_viewport):
+		return false
+	if not Global.main_viewport.is_visible_in_tree():
+		return false
+	return screen_position_inside_rect(screen_position, Global.main_viewport.get_global_rect())
+
+
 func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	if event.pressed:
 		_begin_touch(canvas, event)
@@ -265,7 +277,13 @@ func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 
 
 func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
+	# Canvas._input() receives raw iOS touches globally, including touches that start
+	# over Workspace panels. Consume the native pointer identity first so its queue
+	# stays aligned, but only acquire canvas ownership when the contact actually
+	# begins inside the visible Main Canvas viewport.
 	var info := _consume_pointer_info(event.index)
+	if not _screen_position_inside_main_viewport(event.position):
+		return
 	var kind := int(info.get("kind", PointerKind.UNKNOWN))
 	if kind == PointerKind.UNKNOWN:
 		# The production iOS build supplies formal UITouch.type identity. Keeping
