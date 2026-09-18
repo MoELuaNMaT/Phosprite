@@ -383,8 +383,10 @@ func _sync_content_visibility_from_placements() -> void:
 		var module := manager.get_instance(module_id)
 		if module == null or module.get_content() == null:
 			continue
+		var placement := surface.get_module_placement(module_id)
 		module.get_content().visible = (
-			surface.get_module_placement(module_id) != WorkspaceSurface.Placement.NONE
+			placement == WorkspaceSurface.Placement.DOCKED
+			or placement == WorkspaceSurface.Placement.FLOATING
 		)
 
 
