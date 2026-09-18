@@ -291,7 +291,7 @@ func _raise_floating_module(module_id: StringName, module: WorkspaceModule) -> v
 
 
 func _toggle_module_collapse(module_id: StringName) -> bool:
-	if surface.is_floating_collapsed(module_id):
+	if surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED:
 		return surface.restore_module(module_id)
 	return surface.collapse_module(module_id)
 
@@ -310,25 +310,8 @@ func _refresh_tray() -> void:
 		return
 	for child in _tray.get_children():
 		child.queue_free()
-	var collapsed_ids: Array[StringName] = []
-	for module_id in manager.get_registered_ids():
-		if (
-			surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED
-			and not surface.is_floating_collapsed(module_id)
-		):
-			collapsed_ids.append(module_id)
-	for module_id in collapsed_ids:
-		var button := Button.new()
-		button.text = manager.get_definition(module_id).get_resolved_display_name()
-		button.tooltip_text = tr("Restore %s") % button.text
-		button.custom_minimum_size.y = TRAY_BUTTON_MIN_HEIGHT
-		button.focus_mode = Control.FOCUS_NONE
-		button.mouse_entered.connect(_on_tray_mouse_entered.bind(module_id))
-		button.mouse_exited.connect(_on_tray_mouse_exited.bind(module_id))
-		button.pressed.connect(_on_tray_pressed.bind(module_id))
-		_tray.add_child(button)
-	_tray.visible = not collapsed_ids.is_empty()
-	_layout_tray.call_deferred()
+	# P2-G collapse is always in-place. The legacy bottom restore tray must stay hidden.
+	_tray.visible = false
 
 
 func _layout_tray() -> void:
