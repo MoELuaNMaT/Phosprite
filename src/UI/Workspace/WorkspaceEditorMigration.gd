@@ -5,8 +5,8 @@ extends Node
 ##
 ## Migration is transactional at startup: every expected live panel is resolved
 ## before any node is adopted. The central Main Canvas is not a Workspace Module;
-## it remains the stable editing surface and is fitted into the rectangle left by
-## occupied Top/Left/Right/Bottom docks.
+## it remains the stable editing surface beneath Workspace chrome. Docked and
+## floating modules overlay the Canvas instead of carving space out of it.
 
 signal migration_completed
 signal panel_visibility_changed(module_id: StringName, visible: bool)
@@ -74,11 +74,19 @@ var surface: WorkspaceSurface
 var dock_host: WorkspaceDockHost
 var layout_store: WorkspaceLayoutStore
 var main_canvas: Control
+var project_tabs: Control
+var viewport_container: Control
+var horizontal_ruler: Control
+var vertical_ruler: Control
+var canvas_camera: CanvasCamera
+var _ruler_overlay: Control
 var live := false
 
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
+var _chrome_states: Dictionary = {}
+var _project_tabs_height := 0.0
 var _legacy_mouse_filter := Control.MOUSE_FILTER_STOP
 var _legacy_visible := true
 var _legacy_processing := true
@@ -251,14 +259,18 @@ func _migrate_live_editor() -> bool:
 	main_canvas.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	var dock_index := dock_host.get_index()
 	ui_root.move_child(main_canvas, maxi(0, dock_index))
+	_prepare_canvas_chrome()
 
 	dock_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dock_host.offset_left = WORKSPACE_SIDE_MARGIN
+	dock_host.offset_top = _project_tabs_height
 	dock_host.offset_right = -WORKSPACE_SIDE_MARGIN
 	dock_host.visible = true
 	dock_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not dock_host.layout_geometry_changed.is_connected(_on_layout_geometry_changed):
 		dock_host.layout_geometry_changed.connect(_on_layout_geometry_changed)
+	if not ui_root.resized.is_connected(_on_workspace_resized):
+		ui_root.resized.connect(_on_workspace_resized)
 
 	legacy_container.visible = false
 	legacy_container.set_process(false)
@@ -323,11 +335,14 @@ func _rollback_live_migration() -> void:
 			surface.clear_module_placement(module_id)
 	var adopted := get_panel_ids()
 	_rollback_adoption(adopted)
+	_restore_canvas_chrome()
 	_restore_main_canvas()
 	_restore_legacy_shell()
 	dock_host.visible = false
 	if dock_host.layout_geometry_changed.is_connected(_on_layout_geometry_changed):
 		dock_host.layout_geometry_changed.disconnect(_on_layout_geometry_changed)
+	if ui_root != null and ui_root.resized.is_connected(_on_workspace_resized):
+		ui_root.resized.disconnect(_on_workspace_resized)
 	live = false
 	layout_store.autosave_enabled = _previous_autosave_enabled
 
@@ -512,17 +527,179 @@ func _default_ids() -> Array[StringName]:
 
 
 func _on_layout_geometry_changed(_content_rect: Rect2) -> void:
+	# Dock geometry only positions overlay panels. The Canvas always stays full-background.
+	_update_canvas_chrome_geometry.call_deferred()
+
+
+func _on_workspace_resized() -> void:
 	_update_main_canvas_rect()
+	_update_canvas_chrome_geometry.call_deferred()
 
 
 func _update_main_canvas_rect() -> void:
-	if not live or main_canvas == null or dock_host == null:
+	if not live or main_canvas == null or ui_root == null:
 		return
-	var content_rect := Rect2(Vector2.ZERO, dock_host.size)
-	if not _zen_mode:
-		content_rect = dock_host.get_content_rect()
-	main_canvas.position = dock_host.position + content_rect.position
-	main_canvas.size = content_rect.size
+	main_canvas.position = Vector2(0.0, _project_tabs_height)
+	main_canvas.size = Vector2(ui_root.size.x, maxf(0.0, ui_root.size.y - _project_tabs_height))
+	if project_tabs != null:
+		project_tabs.position = Vector2.ZERO
+		project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
+	if dock_host != null:
+		dock_host.offset_top = _project_tabs_height
+	_update_canvas_chrome_geometry.call_deferred()
+
+
+func _prepare_canvas_chrome() -> void:
+	project_tabs = main_canvas.get_node_or_null(^"TabsContainer") as Control
+	horizontal_ruler = main_canvas.get_node_or_null(^"HorizontalRuler") as Control
+	var viewport_row := main_canvas.get_node_or_null(^"ViewportandVerticalRuler") as Control
+	if viewport_row != null:
+		viewport_container = viewport_row.get_node_or_null(^"SubViewportContainer") as Control
+		vertical_ruler = viewport_row.get_node_or_null(^"VerticalRuler") as Control
+	if viewport_container != null:
+		canvas_camera = viewport_container.get_node_or_null(^"SubViewport/Camera2D") as CanvasCamera
+
+	for control in [project_tabs, horizontal_ruler, vertical_ruler]:
+		if control != null:
+			_capture_chrome_state(control)
+
+	if project_tabs != null:
+		_project_tabs_height = maxf(
+			32.0, maxf(project_tabs.size.y, project_tabs.get_combined_minimum_size().y)
+		)
+		_reparent_control(project_tabs, ui_root)
+		project_tabs.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		project_tabs.position = Vector2.ZERO
+		project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
+		project_tabs.z_index = 20
+
+	if horizontal_ruler == null or vertical_ruler == null or viewport_container == null:
+		return
+	_ruler_overlay = Control.new()
+	_ruler_overlay.name = &"CanvasRulerOverlay"
+	_ruler_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ruler_overlay.clip_contents = true
+	ui_root.add_child(_ruler_overlay)
+	_ruler_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ui_root.move_child(_ruler_overlay, mini(main_canvas.get_index() + 1, ui_root.get_child_count() - 1))
+	_reparent_control(horizontal_ruler, _ruler_overlay)
+	_reparent_control(vertical_ruler, _ruler_overlay)
+	if horizontal_ruler.has_method(&"set_canvas_edge_overlay_mode"):
+		horizontal_ruler.call(&"set_canvas_edge_overlay_mode", true)
+
+	if not viewport_container.resized.is_connected(_update_canvas_chrome_geometry):
+		viewport_container.resized.connect(_update_canvas_chrome_geometry)
+	if canvas_camera != null:
+		for signal_name in [&"zoom_changed", &"rotation_changed", &"offset_changed"]:
+			if not canvas_camera.is_connected(signal_name, _update_canvas_chrome_geometry):
+				canvas_camera.connect(signal_name, _update_canvas_chrome_geometry)
+	if not Global.project_switched.is_connected(_update_canvas_chrome_geometry):
+		Global.project_switched.connect(_update_canvas_chrome_geometry)
+
+
+func _update_canvas_chrome_geometry() -> void:
+	if (
+		not live
+		or _ruler_overlay == null
+		or viewport_container == null
+		or canvas_camera == null
+		or horizontal_ruler == null
+		or vertical_ruler == null
+	):
+		return
+	var viewport_origin := (
+		_ruler_overlay.get_global_transform_with_canvas().affine_inverse()
+		* viewport_container.get_global_transform_with_canvas().origin
+	)
+	var canvas_rect := _canvas_screen_rect()
+	horizontal_ruler.position = viewport_origin + Vector2(
+		0.0, canvas_rect.position.y - horizontal_ruler.get_combined_minimum_size().y
+	)
+	horizontal_ruler.size = Vector2(
+		viewport_container.size.x, maxf(16.0, horizontal_ruler.get_combined_minimum_size().y)
+	)
+	vertical_ruler.position = viewport_origin + Vector2(
+		canvas_rect.position.x - vertical_ruler.get_combined_minimum_size().x, 0.0
+	)
+	vertical_ruler.size = Vector2(
+		maxf(16.0, vertical_ruler.get_combined_minimum_size().x), viewport_container.size.y
+	)
+	horizontal_ruler.queue_redraw()
+	vertical_ruler.queue_redraw()
+
+
+func _canvas_screen_rect() -> Rect2:
+	if viewport_container == null or canvas_camera == null:
+		return Rect2()
+	var zoom := canvas_camera.zoom.x
+	var origin := (
+		viewport_container.size / 2.0
+		+ canvas_camera.offset.rotated(-canvas_camera.camera_angle) * -zoom
+	)
+	var project_size := Vector2(Global.current_project.size)
+	var corners := [
+		Vector2.ZERO,
+		Vector2(project_size.x, 0.0),
+		Vector2(0.0, project_size.y),
+		project_size,
+	]
+	var min_point := Vector2(INF, INF)
+	var max_point := Vector2(-INF, -INF)
+	for corner in corners:
+		var point := origin + corner.rotated(-canvas_camera.camera_angle) * zoom
+		min_point.x = minf(min_point.x, point.x)
+		min_point.y = minf(min_point.y, point.y)
+		max_point.x = maxf(max_point.x, point.x)
+		max_point.y = maxf(max_point.y, point.y)
+	return Rect2(min_point, max_point - min_point)
+
+
+func _capture_chrome_state(control: Control) -> void:
+	_chrome_states[control] = {
+		"parent": control.get_parent(),
+		"index": control.get_index(),
+		"anchors": Vector4(
+			control.anchor_left, control.anchor_top, control.anchor_right, control.anchor_bottom
+		),
+		"offsets": Vector4(
+			control.offset_left, control.offset_top, control.offset_right, control.offset_bottom
+		),
+		"z_index": control.z_index,
+	}
+
+
+func _reparent_control(control: Control, parent: Node) -> void:
+	if control.get_parent() != null:
+		control.get_parent().remove_child(control)
+	parent.add_child(control)
+
+
+func _restore_canvas_chrome() -> void:
+	for control_variant in _chrome_states.keys():
+		var control := control_variant as Control
+		if control == null:
+			continue
+		var state := _chrome_states[control] as Dictionary
+		var parent := state.get("parent") as Node
+		if parent == null:
+			continue
+		_reparent_control(control, parent)
+		parent.move_child(control, mini(int(state.get("index", 0)), parent.get_child_count() - 1))
+		var anchors := state.get("anchors", Vector4.ZERO) as Vector4
+		var offsets := state.get("offsets", Vector4.ZERO) as Vector4
+		control.anchor_left = anchors.x
+		control.anchor_top = anchors.y
+		control.anchor_right = anchors.z
+		control.anchor_bottom = anchors.w
+		control.offset_left = offsets.x
+		control.offset_top = offsets.y
+		control.offset_right = offsets.z
+		control.offset_bottom = offsets.w
+		control.z_index = int(state.get("z_index", 0))
+	if is_instance_valid(_ruler_overlay):
+		_ruler_overlay.queue_free()
+	_ruler_overlay = null
+	_chrome_states.clear()
 
 
 func _clear_setup() -> void:
@@ -536,4 +713,12 @@ func _clear_setup() -> void:
 	_original_panel_state.clear()
 	_context_restore.clear()
 	_main_canvas_state.clear()
+	_chrome_states.clear()
+	project_tabs = null
+	viewport_container = null
+	horizontal_ruler = null
+	vertical_ruler = null
+	canvas_camera = null
+	_ruler_overlay = null
+	_project_tabs_height = 0.0
 	live = false
