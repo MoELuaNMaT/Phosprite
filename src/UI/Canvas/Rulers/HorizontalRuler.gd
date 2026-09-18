@@ -11,6 +11,7 @@ var minor_subdivision := 4
 var first: Vector2
 var last: Vector2
 var text_server := TextServerManager.get_primary_interface()
+var canvas_edge_overlay_mode := false
 
 @onready var vertical_ruler := $"../ViewportandVerticalRuler/VerticalRuler" as Button
 
@@ -21,6 +22,11 @@ func _ready() -> void:
 	camera.zoom_changed.connect(queue_redraw)
 	camera.rotation_changed.connect(queue_redraw)
 	camera.offset_changed.connect(queue_redraw)
+
+
+func set_canvas_edge_overlay_mode(enabled: bool) -> void:
+	canvas_edge_overlay_mode = enabled
+	queue_redraw()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -75,18 +81,19 @@ func _draw() -> void:
 	first = final_transform.affine_inverse() * Vector2.ZERO
 	last = final_transform.affine_inverse() * viewport_container.size
 
+	var origin_offset := 0.0 if canvas_edge_overlay_mode else float(RULER_WIDTH)
 	for j in range(ceili(first.x), ceili(last.x)):
 		var pos: Vector2 = final_transform * Vector2(j, 0)
 		if j % (major_subdivision * minor_subdivision) == 0:
 			draw_line(
-				Vector2(pos.x + RULER_WIDTH, 0),
-				Vector2(pos.x + RULER_WIDTH, RULER_WIDTH),
+				Vector2(pos.x + origin_offset, 0),
+				Vector2(pos.x + origin_offset, RULER_WIDTH),
 				Color.WHITE
 			)
 			var val := ((ruler_transform * major_subdivide * minor_subdivide) * Vector2(j, 0)).x
 			var str_to_draw := "%*.*f" % [0, step_decimals(val), snappedf(val, 0.1)]
 			str_to_draw = text_server.format_number(str_to_draw)
-			var draw_pos := Vector2(pos.x + RULER_WIDTH + 2, font.get_height() - 4)
+			var draw_pos := Vector2(pos.x + origin_offset + 2, font.get_height() - 4)
 			draw_string(
 				font, draw_pos, str_to_draw, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size()
 			)
@@ -113,7 +120,10 @@ func create_guide() -> void:
 	if !Global.show_guides:
 		return
 	var mouse_pos := get_local_mouse_position()
-	if mouse_pos.x < RULER_WIDTH:  # For double guides
+	var double_guide := mouse_pos.x < RULER_WIDTH
+	if canvas_edge_overlay_mode and is_instance_valid(vertical_ruler):
+		double_guide = vertical_ruler.get_global_rect().has_point(get_global_mouse_position())
+	if double_guide:
 		vertical_ruler.create_guide()
 	var guide := Guide.new()
 	if absf(camera.camera_angle_degrees) < 45 or absf(camera.camera_angle_degrees) > 135:
@@ -130,7 +140,10 @@ func create_guide() -> void:
 
 func _on_HorizontalRuler_mouse_entered() -> void:
 	var mouse_pos := get_local_mouse_position()
-	if mouse_pos.x < RULER_WIDTH:  # For double guides
+	var double_guide := mouse_pos.x < RULER_WIDTH
+	if canvas_edge_overlay_mode and is_instance_valid(vertical_ruler):
+		double_guide = vertical_ruler.get_global_rect().has_point(get_global_mouse_position())
+	if double_guide:
 		mouse_default_cursor_shape = Control.CURSOR_FDIAGSIZE
 	else:
 		mouse_default_cursor_shape = Control.CURSOR_VSPLIT
