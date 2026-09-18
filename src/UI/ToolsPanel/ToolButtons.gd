@@ -213,12 +213,19 @@ func _tool_button_at(screen_position: Vector2) -> BaseButton:
 			or not Tools.tools.has(String(button.name))
 		):
 			continue
-		var visible_rect := button.get_global_rect()
+		var viewport_rect := button.get_global_rect()
 		if is_instance_valid(scroll_container):
-			visible_rect = visible_rect.intersection(scroll_container.get_global_rect())
-		if visible_rect.has_area() and visible_rect.has_point(screen_position):
+			viewport_rect = scroll_container.get_global_rect()
+		if is_visible_tool_touch(button.get_global_rect(), viewport_rect, screen_position):
 			return button
 	return null
+
+
+static func is_visible_tool_touch(
+	button_rect: Rect2, viewport_rect: Rect2, screen_position: Vector2
+) -> bool:
+	var visible_rect := button_rect.intersection(viewport_rect)
+	return visible_rect.has_area() and visible_rect.has_point(screen_position)
 
 
 func _get_tools_scroll_container() -> ScrollContainer:
