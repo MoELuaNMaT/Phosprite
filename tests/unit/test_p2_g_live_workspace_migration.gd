@@ -416,6 +416,11 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 		Control.SIZE_EXPAND_FILL,
 		"Tools root should expand to the Workspace module height"
 	)
+	check_eq(
+		tools.horizontal_scroll_mode,
+		ScrollContainer.SCROLL_MODE_DISABLED,
+		"Tools should wrap to the Workspace width instead of hiding buttons horizontally"
+	)
 	var panel := tools.get_node("PanelContainer") as PanelContainer
 	check_eq(
 		panel.size_flags_horizontal,
