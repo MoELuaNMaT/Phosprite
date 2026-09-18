@@ -35,6 +35,7 @@ var _zone_modules: Dictionary = {
 }
 var _module_zones: Dictionary = {}
 var _module_sizes: Dictionary = {}
+var _module_region_fill: Dictionary = {}
 
 
 func configure(manager: WorkspaceModuleManager) -> bool:
@@ -90,6 +91,7 @@ func remove_module(module_id: StringName) -> bool:
 	modules.erase(module_id)
 	_module_zones.erase(module_id)
 	_module_sizes.erase(module_id)
+	_module_region_fill.erase(module_id)
 	module_removed.emit(module_id, previous_zone)
 	return true
 
@@ -139,6 +141,17 @@ func get_module_size(module_id: StringName) -> Vector2:
 	return get_default_module_size(module_id)
 
 
+func set_module_region_fill(module_id: StringName, enabled: bool) -> bool:
+	if get_module_zone(module_id) == DockZone.NONE:
+		return false
+	_module_region_fill[module_id] = enabled
+	return true
+
+
+func is_module_region_fill(module_id: StringName) -> bool:
+	return bool(_module_region_fill.get(module_id, false))
+
+
 func get_default_module_size(module_id: StringName) -> Vector2:
 	if _manager == null:
 		return Vector2.ZERO
@@ -153,6 +166,7 @@ func clear() -> void:
 		(_zone_modules[zone] as Array).clear()
 	_module_zones.clear()
 	_module_sizes.clear()
+	_module_region_fill.clear()
 
 
 static func zone_name(zone: int) -> StringName:
