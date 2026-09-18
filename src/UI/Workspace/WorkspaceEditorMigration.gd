@@ -79,9 +79,9 @@ var viewport_container: Control
 var horizontal_ruler: Control
 var vertical_ruler: Control
 var canvas_camera: CanvasCamera
-var _ruler_overlay: Control
 var live := false
 
+var _ruler_overlay: Control
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
