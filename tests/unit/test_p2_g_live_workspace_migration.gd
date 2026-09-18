@@ -24,6 +24,10 @@ func _make_live_fixture(
 	var main_canvas := Control.new()
 	main_canvas.name = &"Main Canvas"
 	legacy.add_child(main_canvas)
+	var tabs := PanelContainer.new()
+	tabs.name = &"TabsContainer"
+	tabs.custom_minimum_size = Vector2(0.0, 32.0)
+	main_canvas.add_child(tabs)
 
 	var live_controls: Dictionary = {}
 	for module_id in Builtins.get_live_panel_ids():
@@ -112,6 +116,47 @@ func test_live_migration_adopts_existing_controls_and_promotes_main_canvas() -> 
 		surface.get_module_placement(Builtins.TILES_ID),
 		WorkspaceSurface.Placement.NONE,
 		"context-only Tiles should not consume default Workspace geometry"
+	)
+	_free_fixture(fixture)
+
+
+func test_project_tabs_are_promoted_to_full_width_second_row_and_canvas_ignores_dock_extents() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var main_canvas := fixture["main_canvas"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	var surface := fixture["surface"] as WorkspaceSurface
+	var tabs := root.get_node_or_null(^"TabsContainer") as Control
+	check_true(tabs != null, "project tabs should be promoted out of Main Canvas")
+	check_eq(tabs.get_parent(), root, "project tabs should live directly in the UI root")
+	check_almost_eq(tabs.position.y, 0.0, 0.01, "project tabs should occupy the UI second row")
+	check_almost_eq(tabs.size.x, root.size.x, 0.01, "project tabs should span the full UI width")
+	check_almost_eq(
+		main_canvas.position.y, tabs.size.y, 0.01, "Canvas should begin directly below project tabs"
+	)
+	var canvas_rect := Rect2(main_canvas.position, main_canvas.size)
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			WorkspaceDockLayout.DockZone.RIGHT,
+			0,
+			Vector2(420.0, 240.0),
+			{},
+			true,
+		),
+		"Preview should enlarge the Right Dock overlay",
+	)
+	await tree.process_frame
+	check_eq(
+		Rect2(main_canvas.position, main_canvas.size),
+		canvas_rect,
+		"changing Dock extents must not resize or shift the background Canvas",
+	)
+	check_almost_eq(
+		host.offset_top,
+		tabs.size.y,
+		0.01,
+		"Workspace panels should start below the project-tabs row",
 	)
 	_free_fixture(fixture)
 
@@ -577,7 +622,7 @@ func test_workspace_chrome_exposes_pop_out_and_multi_edge_resize_targets() -> vo
 	_free_fixture(fixture)
 
 
-func test_timeline_float_drag_merges_into_bottom_dock_region_and_resizes_canvas() -> void:
+func test_timeline_region_dock_overlays_full_background_canvas() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var main_canvas := fixture["main_canvas"] as Control
@@ -665,9 +710,11 @@ func test_timeline_float_drag_merges_into_bottom_dock_region_and_resizes_canvas(
 		0.01,
 		"Bottom Region Timeline must adapt to the full Bottom Dock width",
 	)
-	check_true(
-		main_canvas.size.y < canvas_height_while_floating,
-		"integrating Timeline into Bottom Dock must reserve bottom UI space from Canvas",
+	check_almost_eq(
+		main_canvas.size.y,
+		canvas_height_while_floating,
+		0.01,
+		"Bottom Dock must overlay the Canvas instead of carving height out of it",
 	)
 
 	tree.root.remove_child(root)
