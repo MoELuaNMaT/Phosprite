@@ -286,8 +286,10 @@ func test_single_tool_mode_serializes_secondary_tool_scene_entry() -> void:
 	var assign_body := src.substr(assign_pos, helper_pos - assign_pos)
 	check_true(
 		not assign_body.contains(
-			"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:\n"
-			+ "\t\tassign_tool(tool_name, MOUSE_BUTTON_RIGHT"
+			(
+				"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:\n"
+				+ "\t\tassign_tool(tool_name, MOUSE_BUTTON_RIGHT"
+			)
 		),
 		"single-tool mode must not recursively instantiate the secondary Tool Options in the same frame",
 	)
