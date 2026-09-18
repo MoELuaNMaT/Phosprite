@@ -263,6 +263,12 @@ func _apply_collapsed_entry(module_id: StringName, restore: Dictionary) -> bool:
 		placed = surface.float_module(module_id, _array_to_rect(restore.get("rect", [])))
 	if not placed:
 		return false
+	var module := manager.get_instance(module_id)
+	if module != null and module.get_content() != null:
+		# A persisted collapsed entry represents a visible panel whose body is folded.
+		# Some legacy panels (notably Canvas Preview) start hidden in UI.tscn, so seed
+		# the expanded visibility before collapse records its restore state.
+		module.get_content().visible = true
 	return surface.collapse_module(module_id)
 
 
