@@ -676,6 +676,12 @@ func test_timeline_region_dock_overlays_full_background_canvas() -> void:
 		&"region",
 		"outer edge should use the whole Bottom Dock Region target",
 	)
+	candidate = surface.update_module_drag(Vector2(host.size.x * 0.5, host.size.y - 145.0))
+	check_eq(
+		StringName(candidate.get("target_kind", &"none")),
+		&"region",
+		"Bottom Region target should remain sticky through normal touch-drag jitter",
+	)
 	var preview_rect := surface.get_preview_rect()
 	check_almost_eq(preview_rect.position.x, 0.0, 0.01, "bottom region preview starts at left")
 	check_almost_eq(
