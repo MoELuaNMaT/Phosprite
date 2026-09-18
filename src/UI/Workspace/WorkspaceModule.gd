@@ -31,6 +31,7 @@ var _content_is_external := false
 var _content_collapsed := false
 var _content_visible_before_collapse := true
 var _minimum_size_before_collapse := Vector2.ZERO
+var _vertical_size_flags_before_collapse := Control.SIZE_FILL
 var _collapsed_content_parking: Node
 
 
@@ -159,6 +160,8 @@ func set_content_collapsed(collapsed: bool) -> void:
 		return
 	if collapsed:
 		_minimum_size_before_collapse = custom_minimum_size
+		_vertical_size_flags_before_collapse = size_flags_vertical
+		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		if is_instance_valid(content):
 			_content_visible_before_collapse = content.visible
 			content.visible = false
@@ -168,6 +171,7 @@ func set_content_collapsed(collapsed: bool) -> void:
 		_restore_parked_content()
 		custom_minimum_size = _minimum_size_before_collapse
 		_minimum_size_before_collapse = Vector2.ZERO
+		size_flags_vertical = _vertical_size_flags_before_collapse
 		if is_instance_valid(content):
 			content.visible = _content_visible_before_collapse
 	_content_collapsed = collapsed
