@@ -276,6 +276,81 @@ func test_adaptive_tool_grid_hit_math_rejects_clipped_and_blank_regions() -> voi
 	)
 
 
+func test_single_tool_mode_serializes_secondary_tool_scene_entry() -> void:
+	var src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	var assign_pos := src.find("func assign_tool(")
+	var helper_pos := src.find("func _assign_single_tool_secondary_after_primary(")
+	check_true(assign_pos >= 0 and helper_pos > assign_pos, "single-tool mirror helper must exist")
+	if assign_pos < 0 or helper_pos < 0:
+		return
+	var assign_body := src.substr(assign_pos, helper_pos - assign_pos)
+	check_true(
+		not assign_body.contains(
+			"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:\n"
+			+ "\t\tassign_tool(tool_name, MOUSE_BUTTON_RIGHT"
+		),
+		"single-tool mode must not recursively instantiate the secondary Tool Options in the same frame"
+	)
+	check_has(
+		assign_body,
+		"_assign_single_tool_secondary_after_primary.call_deferred(",
+		"primary activation must schedule the secondary mirror after the current dispatch"
+	)
+	var next_func := src.find("\n\nfunc ", helper_pos + 5)
+	var helper_body := src.substr(
+		helper_pos, next_func - helper_pos if next_func > helper_pos else 2200
+	)
+	check_has(
+		helper_body,
+		"await get_tree().process_frame",
+		"secondary Tool Options must enter the SceneTree on a later frame"
+	)
+	check_has(
+		helper_body,
+		"assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)",
+		"the secondary slot must still mirror the selected tool"
+	)
+
+
+func test_curve_activation_has_persistent_phase_markers_and_validated_mode() -> void:
+	var tools_src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	var curve_src := FileAccess.get_file_as_string(CURVE_TOOL_SOURCE)
+	for phase in [
+		"instantiate_begin",
+		"instantiate_done",
+		"add_child_begin",
+		"add_child_done",
+		"ready_frame_survived",
+		"config_share_begin",
+		"config_share_done",
+	]:
+		check_has(
+			tools_src,
+			phase,
+			"Curve activation diagnostic must retain the %s checkpoint" % phase
+		)
+	check_has(
+		tools_src,
+		'CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"',
+		"Curve activation phase must survive a native process crash"
+	)
+	check_has(
+		tools_src,
+		'write_curve_activation_phase("complete")',
+		"a fully mirrored Curve activation must mark the diagnostic complete"
+	)
+	check_has(
+		curve_src,
+		"clampi(",
+		"persisted Curve mode must be range-validated before OptionButton.select"
+	)
+	check_has(
+		curve_src,
+		"Bezier.CHAINED, Bezier.SINGLE",
+		"Curve mode validation must use the exact supported enum range"
+	)
+
+
 func test_tool_replacement_cancels_any_active_stroke_before_freeing_nodes() -> void:
 	var src := FileAccess.get_file_as_string(TOOLS_SOURCE)
 	var assign_pos := src.find("func assign_tool(")
