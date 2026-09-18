@@ -3,6 +3,7 @@ extends "res://tests/test_base.gd"
 const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
+const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
 const COLOR_SAMPLING_SOURCE := "res://src/Tools/UtilityTools/ColorSampling.gd"
 const UI_COLOR_PICKER_SOURCE := "res://src/UI/ColorPickers/ColorPicker.gd"
@@ -211,6 +212,32 @@ func test_curve_tool_clears_multistep_state_before_generic_exit_cleanup() -> voi
 	check_true(
 		super_pos > cancel_pos,
 		"generic BaseDrawTool exit cleanup must run only after Curve state is cleared"
+	)
+
+
+func test_tool_replacement_cancels_any_active_stroke_before_freeing_nodes() -> void:
+	var src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	var assign_pos := src.find("func assign_tool(")
+	var set_tool_pos := src.find("func set_tool(", assign_pos + 1)
+	check_true(assign_pos >= 0, "Tools must expose assign_tool")
+	if assign_pos < 0:
+		return
+	var body := src.substr(assign_pos, set_tool_pos - assign_pos if set_tool_pos > assign_pos else 2400)
+	check_has(
+		body,
+		"if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):",
+		"stale or invalid palette targets must be rejected before replacing a tool"
+	)
+	check_has(
+		body,
+		"active_slot.tool_node.cancel_tool()",
+		"switching tools must explicitly cancel an active canvas interaction"
+	)
+	var cancel_pos := body.find("active_slot.tool_node.cancel_tool()")
+	var remove_pos := body.find("panel.remove_child(slot.tool_node)")
+	check_true(
+		cancel_pos >= 0 and remove_pos > cancel_pos,
+		"active interaction cancellation must happen before the old Tool Options node is detached"
 	)
 
 
