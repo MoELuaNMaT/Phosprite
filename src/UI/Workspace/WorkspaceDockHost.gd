@@ -13,6 +13,7 @@ signal dock_drag_finished(module_id: StringName, committed: bool)
 signal layout_geometry_changed(content_rect: Rect2)
 
 const EMPTY_ZONE_EXTENT := 56.0
+const EDGE_DOCK_TARGET_EXTENT := 72.0
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
 
 var manager: WorkspaceModuleManager
@@ -142,7 +143,13 @@ func update_module_drag(pointer: Vector2) -> Dictionary:
 	if _drag_module_id == &"" or layout == null:
 		return _invalid_candidate()
 	_drag_candidate = WorkspaceDockDragResolver.resolve(
-		_drag_module_id, pointer, get_zone_rects(), _collect_module_rects(), layout
+		_drag_module_id,
+		pointer,
+		get_zone_rects(),
+		_collect_module_rects(),
+		layout,
+		get_edge_snap_rects(),
+		Rect2(Vector2.ZERO, size)
 	)
 	_show_candidate(_drag_candidate)
 	dock_preview_changed.emit(_drag_candidate.duplicate(true))
@@ -201,6 +208,19 @@ func get_zone_rects() -> Dictionary:
 			size.x,
 			maxf(bottom_h, EMPTY_ZONE_EXTENT)
 		),
+	}
+
+
+func get_edge_snap_rects() -> Dictionary:
+	var extent_x := minf(EDGE_DOCK_TARGET_EXTENT, size.x)
+	var extent_y := minf(EDGE_DOCK_TARGET_EXTENT, size.y)
+	return {
+		WorkspaceDockLayout.DockZone.TOP: Rect2(0.0, 0.0, size.x, extent_y),
+		WorkspaceDockLayout.DockZone.LEFT: Rect2(0.0, 0.0, extent_x, size.y),
+		WorkspaceDockLayout.DockZone.RIGHT:
+		Rect2(maxf(0.0, size.x - extent_x), 0.0, extent_x, size.y),
+		WorkspaceDockLayout.DockZone.BOTTOM:
+		Rect2(0.0, maxf(0.0, size.y - extent_y), size.x, extent_y),
 	}
 
 
