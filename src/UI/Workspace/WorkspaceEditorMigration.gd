@@ -63,6 +63,7 @@ const DEFAULT_LAYOUT := [
 		"zone": WorkspaceDockLayout.DockZone.BOTTOM,
 		"index": 0,
 		"size": Vector2(760.0, 180.0),
+		"region_fill": true,
 	},
 ]
 
@@ -402,7 +403,9 @@ func _apply_default_entries(module_ids: Array[StringName]) -> bool:
 			module_id,
 			int(entry.get("zone", WorkspaceDockLayout.DockZone.NONE)),
 			int(entry.get("index", -1)),
-			entry.get("size", Vector2.ZERO) as Vector2
+			entry.get("size", Vector2.ZERO) as Vector2,
+			{},
+			bool(entry.get("region_fill", false))
 		):
 			return false
 	return true
@@ -419,7 +422,9 @@ func _dock_default(module_id: StringName) -> bool:
 			module_id,
 			int(entry.get("zone", WorkspaceDockLayout.DockZone.NONE)),
 			int(entry.get("index", -1)),
-			entry.get("size", Vector2.ZERO) as Vector2
+			entry.get("size", Vector2.ZERO) as Vector2,
+			{},
+			bool(entry.get("region_fill", false))
 		)
 
 	var definition := manager.get_definition(module_id)
@@ -444,6 +449,7 @@ func _capture_state(module_id: StringName) -> Dictionary:
 			"zone": dock_host.layout.get_module_zone(module_id),
 			"index": dock_host.layout.get_module_index(module_id),
 			"size": dock_host.layout.get_module_size(module_id),
+			"region_fill": dock_host.layout.is_module_region_fill(module_id),
 		}
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		return {
@@ -465,7 +471,9 @@ func _restore_state(module_id: StringName, state: Dictionary) -> bool:
 			module_id,
 			int(state.get("zone", WorkspaceDockLayout.DockZone.RIGHT)),
 			int(state.get("index", -1)),
-			state.get("size", Vector2.ZERO) as Vector2
+			state.get("size", Vector2.ZERO) as Vector2,
+			{},
+			bool(state.get("region_fill", false))
 		)
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		return surface.float_module(module_id, state.get("rect", Rect2()) as Rect2)
