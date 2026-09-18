@@ -181,7 +181,7 @@ func set_context_panel_visible(module_id: StringName, visible: bool) -> bool:
 	if placement == WorkspaceSurface.Placement.NONE:
 		return true
 	_context_restore[module_id] = _capture_state(module_id)
-	if not surface.clear_module_placement(module_id):
+	if not surface.park_module(module_id):
 		_context_restore.erase(module_id)
 		return false
 	panel_visibility_changed.emit(module_id, false)
