@@ -156,7 +156,9 @@ func test_docked_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	var interaction := Interaction.new()
 	root.add_child(interaction)
 	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
-	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse in place")
+	check_true(
+		surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse in place"
+	)
 	check_eq(
 		preview.get_parent(),
 		before_parent,
@@ -173,30 +175,22 @@ func test_docked_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 		"docked collapse must not create the legacy bottom text-button tray"
 	)
 
-	check_true(surface.restore_module(Builtins.PREVIEW_ID), "docked Preview should restore in place")
+	check_true(
+		surface.restore_module(Builtins.PREVIEW_ID), "docked Preview should restore in place"
+	)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		WorkspaceSurface.Placement.DOCKED,
 		"restore should return Preview to DOCKED placement"
 	)
 	check_eq(
-		manager.get_instance(Builtins.PREVIEW_ID),
-		preview,
-		"restore must preserve module identity"
+		manager.get_instance(Builtins.PREVIEW_ID), preview, "restore must preserve module identity"
 	)
+	check_eq(preview.get_parent(), before_parent, "restore must not remount through another parent")
 	check_eq(
-		preview.get_parent(),
-		before_parent,
-		"restore must not remount through another parent"
+		preview.position, before_position, "restore must not jump to the top-left before returning"
 	)
-	check_eq(
-		preview.position,
-		before_position,
-		"restore must not jump to the top-left before returning"
-	)
-	check_eq(
-		preview.get_content(), preview_content, "restore must preserve live panel identity"
-	)
+	check_eq(preview.get_content(), preview_content, "restore must preserve live panel identity")
 	check_true(preview_content.visible, "restore should reveal the original panel content")
 	_free_fixture(fixture)
 

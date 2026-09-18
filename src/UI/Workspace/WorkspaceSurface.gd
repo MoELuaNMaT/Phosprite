@@ -139,7 +139,10 @@ func collapse_module(module_id: StringName) -> bool:
 		return false
 	if placement == Placement.DOCKED:
 		var zone := dock_host.layout.get_module_zone(module_id)
-		if zone == WorkspaceDockLayout.DockZone.NONE or module.get_parent() != dock_host.get_zone_host(zone):
+		if (
+			zone == WorkspaceDockLayout.DockZone.NONE
+			or module.get_parent() != dock_host.get_zone_host(zone)
+		):
 			return false
 	elif module.get_parent() != _floating_layer:
 		return false
@@ -235,9 +238,7 @@ func restore_module(module_id: StringName) -> bool:
 	elif restore_placement == Placement.FLOATING:
 		if module.get_parent() != _floating_layer:
 			return false
-		var rect := _constrain_floating_rect(
-			module_id, restore.get("rect", Rect2()) as Rect2
-		)
+		var rect := _constrain_floating_rect(module_id, restore.get("rect", Rect2()) as Rect2)
 		module.set_content_collapsed(false)
 		_apply_floating_rect(module_id, rect)
 		_placements[module_id] = Placement.FLOATING
@@ -415,11 +416,7 @@ func is_in_place_collapsed(module_id: StringName) -> bool:
 	if get_module_placement(module_id) != Placement.COLLAPSED:
 		return false
 	var module := manager.get_instance(module_id) if manager != null else null
-	return (
-		module != null
-		and module.is_content_collapsed()
-		and module.get_parent() != null
-	)
+	return module != null and module.is_content_collapsed() and module.get_parent() != null
 
 
 func get_floating_layer() -> Control:

@@ -149,9 +149,7 @@ func test_collapse_and_restore_keep_docked_panel_in_place() -> void:
 		DockLayout.DockZone.RIGHT,
 		"docked collapse must retain the original dock slot"
 	)
-	check_eq(
-		preview.position, original_position, "collapsed docked header should stay in place"
-	)
+	check_eq(preview.position, original_position, "collapsed docked header should stay in place")
 	check_true(not preview_content.visible, "docked collapse should hide only panel content")
 	check_eq(
 		preview.get_visual_rect().size.y,

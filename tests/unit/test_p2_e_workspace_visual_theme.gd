@@ -130,11 +130,7 @@ func test_controller_tracks_placement_and_preserves_module_identity() -> void:
 	check_eq(
 		preview.get_visual_state(), &"collapsed", "collapsed module should retain collapsed state"
 	)
-	check_eq(
-		preview.get_parent(),
-		dock_parent,
-		"in-place collapse should preserve the dock parent"
-	)
+	check_eq(preview.get_parent(), dock_parent, "in-place collapse should preserve the dock parent")
 	check_true(
 		not surface.peek_module(Builtins.PREVIEW_ID),
 		"in-place collapse should not enter the legacy Peek path"
