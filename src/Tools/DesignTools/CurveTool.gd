@@ -312,3 +312,11 @@ func draw_empty_circle(
 
 	line_end = circle_radius.rotated(TAU) + circle_center
 	canvas.draw_line(line_origin, line_end, color)
+
+
+func _exit_tree() -> void:
+	# Curve is a multi-step tool: a partially constructed curve can stay active after
+	# the pointer is released. Always clear that state before BaseDrawTool performs its
+	# generic exit cleanup so switching tools cannot finalize a stale curve implicitly.
+	cancel_tool()
+	super()
