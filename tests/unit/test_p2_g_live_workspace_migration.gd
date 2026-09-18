@@ -143,36 +143,61 @@ func test_dock_host_empty_space_passes_input_and_only_occupied_docks_shrink_canv
 	manager.free()
 
 
-func test_collapsed_tray_restores_same_adopted_panel_instance() -> void:
+func test_docked_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var surface := fixture["surface"] as WorkspaceSurface
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
 	var preview_content := preview.get_content()
+	var before_parent := preview.get_parent()
+	var before_position := preview.position
 
 	var interaction := Interaction.new()
 	root.add_child(interaction)
 	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
-	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "Preview should collapse into Tray")
-	var tray := interaction.get_tray()
-	check_true(tray.visible, "collapsed Tray should become visible")
-	check_true(tray.get_child_count() > 0, "collapsed Tray should contain a restore button")
-	var restore_button := tray.get_child(0) as Button
-	restore_button.pressed.emit()
+	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse in place")
+	check_eq(
+		preview.get_parent(),
+		before_parent,
+		"docked collapse must keep the adopted module in its original dock host"
+	)
+	check_eq(
+		preview.position,
+		before_position,
+		"docked collapse must leave the title bar at the original position"
+	)
+	check_true(not preview_content.visible, "docked collapse should hide panel content")
+	check_true(
+		not interaction.get_tray().visible,
+		"docked collapse must not create the legacy bottom text-button tray"
+	)
+
+	check_true(surface.restore_module(Builtins.PREVIEW_ID), "docked Preview should restore in place")
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		WorkspaceSurface.Placement.DOCKED,
-		"Tray restore should return Preview to its dock"
+		"restore should return Preview to DOCKED placement"
 	)
 	check_eq(
 		manager.get_instance(Builtins.PREVIEW_ID),
 		preview,
-		"Tray restore must preserve module identity"
+		"restore must preserve module identity"
 	)
 	check_eq(
-		preview.get_content(), preview_content, "Tray restore must preserve live panel identity"
+		preview.get_parent(),
+		before_parent,
+		"restore must not remount through another parent"
 	)
+	check_eq(
+		preview.position,
+		before_position,
+		"restore must not jump to the top-left before returning"
+	)
+	check_eq(
+		preview.get_content(), preview_content, "restore must preserve live panel identity"
+	)
+	check_true(preview_content.visible, "restore should reveal the original panel content")
 	_free_fixture(fixture)
 
 
