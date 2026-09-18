@@ -10,7 +10,7 @@ const Interaction := preload("res://src/UI/Workspace/WorkspaceInteractionControl
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 
 
-func _make_live_fixture() -> Dictionary:
+func _make_live_fixture(config_cache: ConfigFile = null) -> Dictionary:
 	var root := Control.new()
 	root.size = Vector2(1200.0, 800.0)
 	var legacy := DockableContainer.new()
@@ -47,7 +47,10 @@ func _make_live_fixture() -> Dictionary:
 
 	var store := Store.new()
 	root.add_child(store)
-	check_true(store.setup(surface, ConfigFile.new()), "layout store should initialize")
+	var config := config_cache
+	if config == null:
+		config = ConfigFile.new()
+	check_true(store.setup(surface, config), "layout store should initialize")
 
 	var migration := Migration.new()
 	root.add_child(migration)
@@ -336,6 +339,93 @@ func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
 
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
+
+
+func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparenting() -> void:
+	var config := ConfigFile.new()
+	var first := _make_live_fixture(config)
+	var first_manager := first["manager"] as WorkspaceModuleManager
+	var first_surface := first["surface"] as WorkspaceSurface
+	var first_store := first["store"] as WorkspaceLayoutStore
+
+	for module_id in [Builtins.PREVIEW_ID, Builtins.TOOLS_ID]:
+		var module := first_manager.get_instance(module_id)
+		var content := module.get_content()
+		check_true(first_surface.collapse_module(module_id), "module should collapse before save")
+		check_eq(
+			content.get_parent(),
+			module,
+			"collapsed content must stay parented to its WorkspaceModule before save"
+		)
+		check_true(not content.visible, "collapsed content must be hidden before save")
+	check_true(first_store.save_current_layout(false), "collapsed layout should persist to ConfigFile")
+	_free_fixture(first)
+
+	var second := _make_live_fixture(config)
+	var second_manager := second["manager"] as WorkspaceModuleManager
+	var second_surface := second["surface"] as WorkspaceSurface
+
+	for module_id in [Builtins.PREVIEW_ID, Builtins.TOOLS_ID]:
+		var module := second_manager.get_instance(module_id)
+		var content := module.get_content()
+		check_eq(
+			second_surface.get_module_placement(module_id),
+			WorkspaceSurface.Placement.COLLAPSED,
+			"restart should restore the saved collapsed placement"
+		)
+		check_eq(
+			content.get_parent(),
+			module,
+			"restored collapsed content must remain inside its WorkspaceModule"
+		)
+		check_true(
+			not content.visible,
+			"restored collapsed content must stay hidden instead of drawing at screen origin"
+		)
+		check_true(second_surface.restore_module(module_id), "saved collapsed module should expand")
+		check_eq(
+			content.get_parent(),
+			module,
+			"expanding after restart must not reparent the live panel content"
+		)
+		check_true(content.visible, "expanding after restart should reveal the original content")
+	_free_fixture(second)
+
+
+func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
+	var packed := load("res://src/UI/ToolsPanel/Tools.tscn") as PackedScene
+	check_true(packed != null, "Tools scene should load")
+	var tools := packed.instantiate() as ScrollContainer
+	check_true(tools != null, "Tools scene root should remain a ScrollContainer")
+	check_eq(
+		tools.size_flags_horizontal,
+		Control.SIZE_EXPAND_FILL,
+		"Tools root should expand to the Workspace module width"
+	)
+	check_eq(
+		tools.size_flags_vertical,
+		Control.SIZE_EXPAND_FILL,
+		"Tools root should expand to the Workspace module height"
+	)
+	var panel := tools.get_node("PanelContainer") as PanelContainer
+	check_eq(
+		panel.size_flags_horizontal,
+		Control.SIZE_EXPAND_FILL,
+		"Tools panel should use all horizontal space offered by the window"
+	)
+	check_eq(
+		panel.size_flags_vertical,
+		Control.SIZE_EXPAND_FILL,
+		"Tools panel should use all vertical space offered by the window"
+	)
+	var flow := tools.get_node("PanelContainer/ToolButtons") as HFlowContainer
+	check_true(flow != null, "Tools should keep HFlowContainer adaptive wrapping")
+	check_eq(
+		flow.size_flags_horizontal,
+		Control.SIZE_EXPAND_FILL,
+		"Tool button flow should expand to the available window width before wrapping"
+	)
+	tools.free()
 
 
 func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets() -> void:
