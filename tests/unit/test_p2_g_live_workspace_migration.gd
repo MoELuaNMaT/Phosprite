@@ -289,10 +289,7 @@ func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
 
 	check_true(
 		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			WorkspaceDockLayout.DockZone.BOTTOM,
-			1,
-			Vector2(220.0, 140.0)
+			Builtins.PREVIEW_ID, WorkspaceDockLayout.DockZone.BOTTOM, 1, Vector2(220.0, 140.0)
 		),
 		"Preview should move beside the expanded Timeline"
 	)
