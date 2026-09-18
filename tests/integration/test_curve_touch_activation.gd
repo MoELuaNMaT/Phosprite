@@ -13,8 +13,8 @@ func test_curve_touch_activation_survives_real_single_tool_mode() -> void:
 		Global.single_tool_mode = previous_single_tool_mode
 		return
 
-	var curve: Tools.Tool = Tools.tools.get("Curve")
-	check_true(curve != null, "Curve must exist in the live tool registry")
+	var curve: Tools.Tool = Tools.tools.get("CurveTool")
+	check_true(curve != null, "CurveTool must exist in the live tool registry")
 	if curve == null or not is_instance_valid(curve.button_node):
 		Global.single_tool_mode = previous_single_tool_mode
 		return
@@ -57,7 +57,7 @@ func test_curve_touch_activation_survives_real_single_tool_mode() -> void:
 		)
 		if not is_instance_valid(slot.tool_node):
 			continue
-		check_eq(String(slot.tool_node.name), "Curve", "both slots must resolve to Curve")
+		check_eq(String(slot.tool_node.name), "CurveTool", "both slots must resolve to Curve")
 		check_true(
 			slot.tool_node.get_node_or_null("BezierOptions/BezierMode") is OptionButton,
 			"Curve Bezier mode control must survive _ready/load_config/update_config"
