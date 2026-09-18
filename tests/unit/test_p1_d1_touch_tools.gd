@@ -6,6 +6,7 @@ const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
 const COLOR_SAMPLING_SOURCE := "res://src/Tools/UtilityTools/ColorSampling.gd"
 const UI_COLOR_PICKER_SOURCE := "res://src/UI/ColorPickers/ColorPicker.gd"
+const CURVE_TOOL_SOURCE := "res://src/Tools/DesignTools/CurveTool.gd"
 
 
 func test_color_picker_bypasses_long_press_arbitration() -> void:
@@ -165,6 +166,51 @@ func test_tool_buttons_keep_touch_ownership_and_suppress_pointer_drag_preview() 
 		src,
 		"MOUSE_BUTTON_LEFT",
 		"direct touch must operate the current Primary slot without deleting Secondary state"
+	)
+
+
+func test_adaptive_tool_grid_rejects_clipped_hits_and_defers_activation() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		"_get_tools_scroll_container()",
+		"adaptive Tools hit testing must know the visible ScrollContainer viewport"
+	)
+	check_has(
+		src,
+		"scroll_container.get_global_rect().has_point(screen_position)",
+		"touches outside the visible Tools viewport must be rejected"
+	)
+	check_has(
+		src,
+		"visible_rect = visible_rect.intersection(scroll_container.get_global_rect())",
+		"clipped/offscreen tool buttons must not remain touch targets"
+	)
+	check_has(
+		src,
+		'call_deferred(\n\t\t"_commit_touch_tool_activation"',
+		"tool replacement must wait until the current ScreenTouch dispatch finishes"
+	)
+	check_has(
+		src,
+		"generation != _ios_selection_touch_generation",
+		"stale deferred tool activations must not survive a newer touch"
+	)
+
+
+func test_curve_tool_clears_multistep_state_before_generic_exit_cleanup() -> void:
+	var src := FileAccess.get_file_as_string(CURVE_TOOL_SOURCE)
+	var exit_pos := src.find("func _exit_tree() -> void:")
+	var cancel_pos := src.find("cancel_tool()", exit_pos)
+	var super_pos := src.find("super()", cancel_pos)
+	check_true(exit_pos >= 0, "Curve Tool needs explicit exit cleanup")
+	check_true(
+		cancel_pos > exit_pos,
+		"Curve Tool must cancel its partially constructed curve before leaving the tree"
+	)
+	check_true(
+		super_pos > cancel_pos,
+		"generic BaseDrawTool exit cleanup must run only after Curve state is cleared"
 	)
 
 
