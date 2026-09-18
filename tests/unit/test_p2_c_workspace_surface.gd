@@ -213,7 +213,9 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 		"floating collapse should expose only the header as its visual frame"
 	)
 	check_true(
-		not palette.is_resize_point(Vector2(palette.size.x - 2.0, palette.get_header_height() - 2.0)),
+		not palette.is_resize_point(
+			Vector2(palette.size.x - 2.0, palette.get_header_height() - 2.0)
+		),
 		"floating collapse should disable its resize affordance"
 	)
 	check_true(surface.restore_module(Builtins.PALETTE_ID), "floating Palette should restore")
