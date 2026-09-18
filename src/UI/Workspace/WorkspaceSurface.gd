@@ -615,7 +615,9 @@ func _dock_candidate_for_pointer(pointer: Vector2) -> Dictionary:
 			pointer,
 			dock_host.get_zone_rects(),
 			_collect_dock_module_rects(),
-			dock_host.layout
+			dock_host.layout,
+			dock_host.get_edge_snap_rects(),
+			Rect2(Vector2.ZERO, dock_host.size)
 		)
 	if bool(raw.get("valid", false)):
 		raw["placement"] = Placement.DOCKED
