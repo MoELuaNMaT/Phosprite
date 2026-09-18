@@ -545,6 +545,8 @@ func get_tool(button: int) -> Slot:
 
 
 func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void:
+	if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):
+		return
 	if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:
 		assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)
 	var slot := _slots[button]
@@ -553,6 +555,14 @@ func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void
 	if slot.tool_node != null:
 		if slot.tool_node.name == tool_name and not allow_refresh:
 			return
+		# A touch can reach the palette before a previous canvas stroke has fully
+		# released. Never destroy an active tool node and let _exit_tree() guess how
+		# to finish it; cancel the active interaction explicitly first.
+		if active_button != -1 and _slots.has(active_button):
+			var active_slot: Slot = _slots[active_button]
+			if is_instance_valid(active_slot.tool_node):
+				active_slot.tool_node.cancel_tool()
+			active_button = -1
 		panel.remove_child(slot.tool_node)
 		slot.tool_node.queue_free()
 
