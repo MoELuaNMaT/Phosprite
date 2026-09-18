@@ -29,6 +29,7 @@ var dock_host: WorkspaceDockHost
 
 var _floating_layer: Control
 var _peek_layer: Control
+var _context_hidden_layer: Control
 var _preview: ColorRect
 var _placements: Dictionary = {}
 var _floating_rects: Dictionary = {}
@@ -50,6 +51,51 @@ func setup(module_manager: WorkspaceModuleManager, existing_dock_host: Workspace
 	dock_host = existing_dock_host
 	_ensure_layers()
 	return true
+
+
+func park_module(module_id: StringName) -> bool:
+	if not _is_ready() or not is_instance_valid(_context_hidden_layer):
+		return false
+	var module := manager.get_instance(module_id)
+	if module == null:
+		return false
+	var placement := get_module_placement(module_id)
+	if placement == Placement.COLLAPSED:
+		if is_peeking(module_id) and not end_peek(module_id):
+			return false
+		if module.is_content_collapsed():
+			module.set_content_collapsed(false)
+		var restore: Dictionary = _collapsed_restore.get(module_id, {})
+		placement = int(restore.get("placement", Placement.NONE))
+	if placement == Placement.DOCKED:
+		if dock_host.layout.get_module_zone(module_id) != WorkspaceDockLayout.DockZone.NONE:
+			if not dock_host.undock_module(module_id):
+				return false
+	elif placement == Placement.FLOATING:
+		if module.get_parent() != null and not manager.unmount_module(module_id):
+			return false
+	elif module.get_parent() != null and module.get_parent() != _context_hidden_layer:
+		if not manager.unmount_module(module_id):
+			return false
+
+	if module.get_parent() != _context_hidden_layer:
+		if manager.mount_module(module_id, _context_hidden_layer) == null:
+			return false
+	if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.MOUNTED:
+		if not manager.activate_module(module_id):
+			return false
+
+	_placements.erase(module_id)
+	_floating_rects.erase(module_id)
+	_collapsed_restore.erase(module_id)
+	_peeking.erase(module_id)
+	module_cleared.emit(module_id)
+	return true
+
+
+func is_module_parked(module_id: StringName) -> bool:
+	var module := manager.get_instance(module_id) if manager != null else null
+	return module != null and module.get_parent() == _context_hidden_layer
 
 
 func dock_module(
@@ -461,6 +507,13 @@ func _ensure_layers() -> void:
 	_peek_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dock_host.add_child(_peek_layer)
 	_peek_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	_context_hidden_layer = Control.new()
+	_context_hidden_layer.name = "WorkspaceContextHiddenLayer"
+	_context_hidden_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_context_hidden_layer.visible = false
+	dock_host.add_child(_context_hidden_layer)
+	_context_hidden_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_preview = ColorRect.new()
 	_preview.name = "WorkspaceSurfacePreview"
