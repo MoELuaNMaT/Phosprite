@@ -1,4 +1,5 @@
 name: P2-G Dock Workspace Format Helper
+# trigger formatter after workflow registration
 
 on:
   push:
