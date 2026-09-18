@@ -35,7 +35,7 @@ var _zone_modules: Dictionary = {
 }
 var _module_zones: Dictionary = {}
 var _module_sizes: Dictionary = {}
-var _module_region_fill: Dictionary = {}
+var _module_region_fill: Dictionary = {}  # Full-edge drops expand along the dock's primary axis.
 
 
 func configure(manager: WorkspaceModuleManager) -> bool:
