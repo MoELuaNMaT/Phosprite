@@ -24,6 +24,7 @@ enum Placement {
 }
 
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.14)
+const REGION_TARGET_HYSTERESIS := 48.0
 
 var manager: WorkspaceModuleManager
 var dock_host: WorkspaceDockHost
@@ -664,10 +665,31 @@ func _dock_candidate_for_pointer(pointer: Vector2) -> Dictionary:
 			dock_host.get_edge_snap_rects(),
 			Rect2(Vector2.ZERO, dock_host.size)
 		)
+	raw = _stabilize_region_candidate(pointer, raw)
 	if bool(raw.get("valid", false)):
 		raw["placement"] = Placement.DOCKED
 		return raw
 	return _invalid_candidate()
+
+
+func _stabilize_region_candidate(pointer: Vector2, candidate: Dictionary) -> Dictionary:
+	if StringName(candidate.get("target_kind", &"none")) == &"region":
+		return candidate
+	if StringName(_drag_candidate.get("target_kind", &"none")) != &"region":
+		return candidate
+	var previous_zone := int(
+		_drag_candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)
+	)
+	if not dock_host.layout.is_valid_zone(previous_zone):
+		return candidate
+	var sticky_rect: Rect2 = dock_host.get_edge_snap_rects().get(previous_zone, Rect2())
+	sticky_rect = sticky_rect.grow(REGION_TARGET_HYSTERESIS)
+	if not sticky_rect.has_point(pointer):
+		return candidate
+	var retained := _drag_candidate.duplicate(true)
+	retained["valid"] = true
+	retained["placement"] = Placement.DOCKED
+	return retained
 
 
 func _collect_dock_module_rects() -> Dictionary:
