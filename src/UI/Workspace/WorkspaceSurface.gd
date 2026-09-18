@@ -33,6 +33,7 @@ var _context_hidden_layer: Control
 var _preview: ColorRect
 var _placements: Dictionary = {}
 var _floating_rects: Dictionary = {}
+var _last_floating_rects: Dictionary = {}
 var _collapsed_restore: Dictionary = {}
 var _peeking: Dictionary = {}
 var _drag_module_id: StringName = &""
@@ -72,6 +73,9 @@ func park_module(module_id: StringName) -> bool:
 			if not dock_host.undock_module(module_id):
 				return false
 	elif placement == Placement.FLOATING:
+		var floating_rect := get_floating_rect(module_id)
+		if floating_rect.has_area():
+			_last_floating_rects[module_id] = floating_rect
 		if module.get_parent() != null and not manager.unmount_module(module_id):
 			return false
 	elif module.get_parent() != null and module.get_parent() != _context_hidden_layer:
@@ -115,6 +119,8 @@ func dock_module(
 
 	var previous_placement := get_module_placement(module_id)
 	var previous_rect := get_floating_rect(module_id)
+	if previous_placement == Placement.FLOATING and previous_rect.has_area():
+		_last_floating_rects[module_id] = previous_rect
 	var module := manager.get_instance(module_id)
 	if module != null and module.get_parent() == _floating_layer:
 		if not manager.unmount_module(module_id):
@@ -167,6 +173,8 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 	_apply_floating_rect(module_id, rect)
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
+	_last_floating_rects[module_id] = rect
+	_last_floating_rects[module_id] = rect
 	_collapsed_restore.erase(module_id)
 	_peeking.erase(module_id)
 	module_floated.emit(module_id, rect)
@@ -304,8 +312,58 @@ func set_floating_rect(module_id: StringName, requested_rect: Rect2) -> bool:
 	var rect := _constrain_floating_rect(module_id, requested_rect)
 	_apply_floating_rect(module_id, rect)
 	_floating_rects[module_id] = rect
+	_last_floating_rects[module_id] = rect
 	module_floated.emit(module_id, rect)
 	return true
+
+
+func resize_floating_rect(
+	module_id: StringName, start_rect: Rect2, delta: Vector2, resize_edges: int
+) -> bool:
+	if get_module_placement(module_id) != Placement.FLOATING:
+		return false
+	var definition := manager.get_definition(module_id) if manager != null else null
+	if definition == null or not start_rect.has_area():
+		return false
+
+	var requested_size := start_rect.size
+	if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
+		requested_size.x = start_rect.size.x - delta.x
+	elif resize_edges & WorkspaceModule.ResizeEdge.RIGHT:
+		requested_size.x = start_rect.size.x + delta.x
+	if resize_edges & WorkspaceModule.ResizeEdge.BOTTOM:
+		requested_size.y = start_rect.size.y + delta.y
+
+	var target_size := definition.get_constrained_size(requested_size)
+	var bounds := dock_host.size if dock_host != null else Vector2.ZERO
+	if bounds.x > 0.0:
+		target_size.x = minf(target_size.x, bounds.x)
+	if bounds.y > 0.0:
+		target_size.y = minf(target_size.y, bounds.y)
+
+	var target_position := start_rect.position
+	if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
+		target_position.x = start_rect.end.x - target_size.x
+	var rect := Rect2(target_position, target_size)
+	return set_floating_rect(module_id, rect)
+
+
+func float_from_dock(module_id: StringName) -> bool:
+	if get_module_placement(module_id) != Placement.DOCKED or not _can_float(module_id):
+		return false
+	var module := manager.get_instance(module_id)
+	var definition := manager.get_definition(module_id)
+	if module == null or definition == null or module.is_content_collapsed():
+		return false
+
+	var rect := _last_floating_rects.get(module_id, Rect2()) as Rect2
+	if not rect.has_area():
+		var position := module.position
+		var parent := module.get_parent() as Control
+		if parent != null:
+			position += parent.position
+		rect = Rect2(position, definition.get_constrained_preferred_size())
+	return float_module(module_id, rect)
 
 
 func clear_module_placement(module_id: StringName) -> bool:
