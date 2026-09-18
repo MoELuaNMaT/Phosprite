@@ -269,8 +269,6 @@ Press %s to edit the last added basis""",
 	)
 }
 
-const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
-
 var _tool_button_scene := preload("res://src/UI/ToolsPanel/ToolButton.tscn")
 var _slots: Dictionary[MouseButton, Slot] = {}
 var _panels: Dictionary[MouseButton, Control] = {}
