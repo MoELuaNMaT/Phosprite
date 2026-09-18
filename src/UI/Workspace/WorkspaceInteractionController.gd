@@ -273,7 +273,10 @@ func _begin_resize(
 	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
 		return false
 	var placement := surface.get_module_placement(module_id)
-	if placement != WorkspaceSurface.Placement.FLOATING and placement != WorkspaceSurface.Placement.DOCKED:
+	if (
+		placement != WorkspaceSurface.Placement.FLOATING
+		and placement != WorkspaceSurface.Placement.DOCKED
+	):
 		return false
 	_resize_module_id = module_id
 	_resize_touch_index = touch_index

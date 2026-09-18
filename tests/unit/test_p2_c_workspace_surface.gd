@@ -121,13 +121,16 @@ func test_bottom_region_fill_resizes_height_from_top_edge() -> void:
 	var host: WorkspaceDockHost = workspace["host"]
 	var surface: WorkspaceSurface = workspace["surface"]
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(360.0, 180.0),
-			{},
-			true,
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(360.0, 180.0),
+				{},
+				true,
+			)
 		),
 		"Preview should enter Bottom Dock as Region Fill",
 	)
@@ -139,11 +142,14 @@ func test_bottom_region_fill_resizes_height_from_top_edge() -> void:
 	)
 	var start_size := host.layout.get_module_size(Builtins.PREVIEW_ID)
 	check_true(
-		surface.resize_docked_module(
-			Builtins.PREVIEW_ID,
-			start_size,
-			Vector2(0.0, -64.0),
-			WorkspaceModule.ResizeEdge.TOP,
+		(
+			surface
+			. resize_docked_module(
+				Builtins.PREVIEW_ID,
+				start_size,
+				Vector2(0.0, -64.0),
+				WorkspaceModule.ResizeEdge.TOP,
+			)
 		),
 		"dragging the Bottom Dock top edge upward should resize its height",
 	)

@@ -120,7 +120,8 @@ func test_live_migration_adopts_existing_controls_and_promotes_main_canvas() -> 
 	_free_fixture(fixture)
 
 
-func test_project_tabs_are_promoted_to_full_width_second_row_and_canvas_ignores_dock_extents() -> void:
+func test_project_tabs_are_promoted_to_full_width_second_row_and_canvas_ignores_dock_extents(
+) -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var main_canvas := fixture["main_canvas"] as Control
@@ -136,13 +137,16 @@ func test_project_tabs_are_promoted_to_full_width_second_row_and_canvas_ignores_
 	)
 	var canvas_rect := Rect2(main_canvas.position, main_canvas.size)
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			WorkspaceDockLayout.DockZone.RIGHT,
-			0,
-			Vector2(420.0, 240.0),
-			{},
-			true,
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				WorkspaceDockLayout.DockZone.RIGHT,
+				0,
+				Vector2(420.0, 240.0),
+				{},
+				true,
+			)
 		),
 		"Preview should enlarge the Right Dock overlay",
 	)

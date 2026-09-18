@@ -362,13 +362,29 @@ func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int
 	var hit := WorkspaceModule.RESIZE_EDGE_HIT_SIZE
 	match dock_host.layout.get_module_zone(module_id):
 		WorkspaceDockLayout.DockZone.BOTTOM:
-			return WorkspaceModule.ResizeEdge.TOP if local_point.y <= hit else WorkspaceModule.ResizeEdge.NONE
+			return (
+				WorkspaceModule.ResizeEdge.TOP
+				if local_point.y <= hit
+				else WorkspaceModule.ResizeEdge.NONE
+			)
 		WorkspaceDockLayout.DockZone.TOP:
-			return WorkspaceModule.ResizeEdge.BOTTOM if local_point.y >= module.size.y - hit else WorkspaceModule.ResizeEdge.NONE
+			return (
+				WorkspaceModule.ResizeEdge.BOTTOM
+				if local_point.y >= module.size.y - hit
+				else WorkspaceModule.ResizeEdge.NONE
+			)
 		WorkspaceDockLayout.DockZone.LEFT:
-			return WorkspaceModule.ResizeEdge.RIGHT if local_point.x >= module.size.x - hit else WorkspaceModule.ResizeEdge.NONE
+			return (
+				WorkspaceModule.ResizeEdge.RIGHT
+				if local_point.x >= module.size.x - hit
+				else WorkspaceModule.ResizeEdge.NONE
+			)
 		WorkspaceDockLayout.DockZone.RIGHT:
-			return WorkspaceModule.ResizeEdge.LEFT if local_point.x <= hit else WorkspaceModule.ResizeEdge.NONE
+			return (
+				WorkspaceModule.ResizeEdge.LEFT
+				if local_point.x <= hit
+				else WorkspaceModule.ResizeEdge.NONE
+			)
 	return WorkspaceModule.ResizeEdge.NONE
 
 
@@ -677,9 +693,7 @@ func _stabilize_region_candidate(pointer: Vector2, candidate: Dictionary) -> Dic
 		return candidate
 	if StringName(_drag_candidate.get("target_kind", &"none")) != &"region":
 		return candidate
-	var previous_zone := int(
-		_drag_candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)
-	)
+	var previous_zone := int(_drag_candidate.get("zone", WorkspaceDockLayout.DockZone.NONE))
 	if not dock_host.layout.is_valid_zone(previous_zone):
 		return candidate
 	var sticky_rect: Rect2 = dock_host.get_edge_snap_rects().get(previous_zone, Rect2())

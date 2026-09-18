@@ -581,7 +581,9 @@ func _prepare_canvas_chrome() -> void:
 	_ruler_overlay.clip_contents = true
 	ui_root.add_child(_ruler_overlay)
 	_ruler_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ui_root.move_child(_ruler_overlay, mini(main_canvas.get_index() + 1, ui_root.get_child_count() - 1))
+	ui_root.move_child(
+		_ruler_overlay, mini(main_canvas.get_index() + 1, ui_root.get_child_count() - 1)
+	)
 	_reparent_control(horizontal_ruler, _ruler_overlay)
 	_reparent_control(vertical_ruler, _ruler_overlay)
 	if horizontal_ruler.has_method(&"set_canvas_edge_overlay_mode"):
@@ -612,14 +614,16 @@ func _update_canvas_chrome_geometry() -> void:
 		* viewport_container.get_global_transform_with_canvas().origin
 	)
 	var canvas_rect := _canvas_screen_rect()
-	horizontal_ruler.position = viewport_origin + Vector2(
-		0.0, canvas_rect.position.y - horizontal_ruler.get_combined_minimum_size().y
+	horizontal_ruler.position = (
+		viewport_origin
+		+ Vector2(0.0, canvas_rect.position.y - horizontal_ruler.get_combined_minimum_size().y)
 	)
 	horizontal_ruler.size = Vector2(
 		viewport_container.size.x, maxf(16.0, horizontal_ruler.get_combined_minimum_size().y)
 	)
-	vertical_ruler.position = viewport_origin + Vector2(
-		canvas_rect.position.x - vertical_ruler.get_combined_minimum_size().x, 0.0
+	vertical_ruler.position = (
+		viewport_origin
+		+ Vector2(canvas_rect.position.x - vertical_ruler.get_combined_minimum_size().x, 0.0)
 	)
 	vertical_ruler.size = Vector2(
 		maxf(16.0, vertical_ruler.get_combined_minimum_size().x), viewport_container.size.y
@@ -658,10 +662,12 @@ func _capture_chrome_state(control: Control) -> void:
 	_chrome_states[control] = {
 		"parent": control.get_parent(),
 		"index": control.get_index(),
-		"anchors": Vector4(
+		"anchors":
+		Vector4(
 			control.anchor_left, control.anchor_top, control.anchor_right, control.anchor_bottom
 		),
-		"offsets": Vector4(
+		"offsets":
+		Vector4(
 			control.offset_left, control.offset_top, control.offset_right, control.offset_bottom
 		),
 		"z_index": control.z_index,
