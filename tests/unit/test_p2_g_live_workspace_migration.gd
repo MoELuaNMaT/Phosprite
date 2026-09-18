@@ -362,7 +362,9 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 			"collapsed content must stay parented to its WorkspaceModule before save"
 		)
 		check_true(not content.visible, "collapsed content must be hidden before save")
-	check_true(first_store.save_current_layout(false), "collapsed layout should persist to ConfigFile")
+	check_true(
+		first_store.save_current_layout(false), "collapsed layout should persist to ConfigFile"
+	)
 	_free_fixture(first)
 
 	var second := _make_live_fixture(config, false)
