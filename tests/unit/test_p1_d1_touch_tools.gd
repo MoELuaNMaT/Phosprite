@@ -2,6 +2,7 @@ extends "res://tests/test_base.gd"
 
 const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"
+const TOOL_BUTTONS := preload("res://src/UI/ToolsPanel/ToolButtons.gd")
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
@@ -212,6 +213,34 @@ func test_curve_tool_clears_multistep_state_before_generic_exit_cleanup() -> voi
 	check_true(
 		super_pos > cancel_pos,
 		"generic BaseDrawTool exit cleanup must run only after Curve state is cleared"
+	)
+
+
+func test_adaptive_tool_grid_hit_math_rejects_clipped_and_blank_regions() -> void:
+	var viewport := Rect2(100.0, 100.0, 120.0, 120.0)
+	check_true(
+		TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(110.0, 110.0, 24.0, 24.0), viewport, Vector2(120.0, 120.0)
+		),
+		"fully visible tool buttons must remain tappable"
+	)
+	check_true(
+		not TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(110.0, 230.0, 24.0, 24.0), viewport, Vector2(120.0, 235.0)
+		),
+		"a button below the ScrollContainer viewport must not be tappable through clipping"
+	)
+	check_true(
+		not TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(205.0, 205.0, 24.0, 24.0), viewport, Vector2(224.0, 224.0)
+		),
+		"the clipped portion of a partially visible button must not remain a touch target"
+	)
+	check_true(
+		not TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(110.0, 110.0, 24.0, 24.0), viewport, Vector2(160.0, 160.0)
+		),
+		"blank HFlow space between visible tool buttons must not activate a tool"
 	)
 
 
