@@ -14,6 +14,7 @@ enum Dynamics { NONE, PRESSURE, VELOCITY }
 
 const XY_LINE := Vector2(-0.70710677, 0.70710677)
 const X_MINUS_Y_LINE := Vector2(0.70710677, 0.70710677)
+const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
 
 var active_button := -1
 var picking_color_for := MOUSE_BUTTON_LEFT
@@ -267,8 +268,6 @@ Press %s to edit the last added basis""",
 		[Global.LayerTypes.TILEMAP]
 	)
 }
-
-const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
 
 var _tool_button_scene := preload("res://src/UI/ToolsPanel/ToolButton.tscn")
 var _slots: Dictionary[MouseButton, Slot] = {}
