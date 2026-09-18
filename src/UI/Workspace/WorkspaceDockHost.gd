@@ -221,6 +221,10 @@ func get_preview_rect() -> Rect2:
 	return Rect2(_preview.position, _preview.size)
 
 
+func refresh_layout_geometry() -> void:
+	_layout_zones()
+
+
 func _ensure_structure() -> void:
 	if not _zone_hosts.is_empty():
 		return
@@ -289,6 +293,16 @@ func _zone_extent(zone: int) -> float:
 	var extent := 0.0
 	for module_id in module_ids:
 		var module_size := layout.get_module_size(module_id)
+		var module := manager.get_instance(module_id) if manager != null else null
+		if (
+			module != null
+			and module.is_content_collapsed()
+			and (
+				zone == WorkspaceDockLayout.DockZone.TOP
+				or zone == WorkspaceDockLayout.DockZone.BOTTOM
+			)
+		):
+			module_size.y = module.get_header_height()
 		if zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM:
 			extent = maxf(extent, module_size.y)
 		else:
