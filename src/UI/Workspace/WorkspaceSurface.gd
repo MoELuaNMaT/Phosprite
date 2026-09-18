@@ -350,6 +350,46 @@ func resize_floating_rect(
 	return set_floating_rect(module_id, rect)
 
 
+func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int:
+	if get_module_placement(module_id) != Placement.DOCKED or dock_host == null:
+		return WorkspaceModule.ResizeEdge.NONE
+	if not dock_host.layout.is_module_region_fill(module_id):
+		return WorkspaceModule.ResizeEdge.NONE
+	var module := manager.get_instance(module_id)
+	if module == null or module.is_content_collapsed():
+		return WorkspaceModule.ResizeEdge.NONE
+	var hit := WorkspaceModule.RESIZE_EDGE_HIT_SIZE
+	match dock_host.layout.get_module_zone(module_id):
+		WorkspaceDockLayout.DockZone.BOTTOM:
+			return WorkspaceModule.ResizeEdge.TOP if local_point.y <= hit else WorkspaceModule.ResizeEdge.NONE
+		WorkspaceDockLayout.DockZone.TOP:
+			return WorkspaceModule.ResizeEdge.BOTTOM if local_point.y >= module.size.y - hit else WorkspaceModule.ResizeEdge.NONE
+		WorkspaceDockLayout.DockZone.LEFT:
+			return WorkspaceModule.ResizeEdge.RIGHT if local_point.x >= module.size.x - hit else WorkspaceModule.ResizeEdge.NONE
+		WorkspaceDockLayout.DockZone.RIGHT:
+			return WorkspaceModule.ResizeEdge.LEFT if local_point.x <= hit else WorkspaceModule.ResizeEdge.NONE
+	return WorkspaceModule.ResizeEdge.NONE
+
+
+func resize_docked_module(
+	module_id: StringName, start_size: Vector2, delta: Vector2, resize_edges: int
+) -> bool:
+	if get_module_placement(module_id) != Placement.DOCKED or dock_host == null:
+		return false
+	if not dock_host.layout.is_module_region_fill(module_id):
+		return false
+	var requested := start_size
+	if resize_edges & WorkspaceModule.ResizeEdge.TOP:
+		requested.y = start_size.y - delta.y
+	elif resize_edges & WorkspaceModule.ResizeEdge.BOTTOM:
+		requested.y = start_size.y + delta.y
+	if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
+		requested.x = start_size.x - delta.x
+	elif resize_edges & WorkspaceModule.ResizeEdge.RIGHT:
+		requested.x = start_size.x + delta.x
+	return dock_host.set_module_size(module_id, requested)
+
+
 func float_from_dock(module_id: StringName) -> bool:
 	if get_module_placement(module_id) != Placement.DOCKED or not _can_float(module_id):
 		return false
