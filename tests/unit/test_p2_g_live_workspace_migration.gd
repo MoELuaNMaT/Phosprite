@@ -522,11 +522,12 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	tools.free()
 
 
-func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets() -> void:
+func test_workspace_chrome_exposes_pop_out_and_multi_edge_resize_targets() -> void:
 	var fixture := _make_live_fixture()
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var surface := fixture["surface"] as WorkspaceSurface
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	preview.apply_visual_theme(VisualTheme.new(), &"docked")
 	check_true(
 		preview.is_header_drag_point(Vector2(8.0, 8.0)), "header should expose a drag target"
 	)
@@ -535,14 +536,125 @@ func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets()
 		"header trailing edge should expose collapse"
 	)
 	check_true(
+		preview.is_float_point(Vector2(preview.size.x - 42.0, 8.0)),
+		"docked header should expose a dedicated Pop-out target",
+	)
+	check_true(
+		not preview.is_header_drag_point(Vector2(preview.size.x - 42.0, 8.0)),
+		"Pop-out target must not also start a header drag",
+	)
+	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)),
 		"Preview should float before resize validation"
 	)
 	preview.apply_visual_theme(VisualTheme.new(), &"floating")
-	check_true(
-		preview.is_resize_point(preview.size - Vector2(4.0, 4.0)),
-		"floating panel should expose a bottom-right resize target"
+	check_eq(
+		preview.get_resize_edges(Vector2(2.0, 120.0)),
+		WorkspaceModule.ResizeEdge.LEFT,
+		"floating panel should expose a left-edge resize target",
 	)
+	check_eq(
+		preview.get_resize_edges(Vector2(preview.size.x - 2.0, 120.0)),
+		WorkspaceModule.ResizeEdge.RIGHT,
+		"floating panel should expose a right-edge resize target",
+	)
+	check_eq(
+		preview.get_resize_edges(Vector2(preview.size.x * 0.5, preview.size.y - 2.0)),
+		WorkspaceModule.ResizeEdge.BOTTOM,
+		"floating panel should expose a bottom-edge resize target",
+	)
+	check_eq(
+		preview.get_resize_edges(Vector2(2.0, preview.size.y - 2.0)),
+		WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+		"lower-left corner should combine horizontal and vertical resize",
+	)
+	check_eq(
+		preview.get_resize_edges(preview.size - Vector2(2.0, 2.0)),
+		WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
+		"lower-right corner should combine horizontal and vertical resize",
+	)
+	_free_fixture(fixture)
+
+
+func test_timeline_float_drag_merges_into_bottom_dock_region_and_resizes_canvas() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var main_canvas := fixture["main_canvas"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var host := fixture["host"] as WorkspaceDockHost
+	var surface := fixture["surface"] as WorkspaceSurface
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
+	check_eq(
+		host.layout.get_module_zone(Builtins.TIMELINE_ID),
+		WorkspaceDockLayout.DockZone.BOTTOM,
+		"Timeline should start integrated into the Bottom Dock",
+	)
+	check_true(
+		surface.float_module(Builtins.TIMELINE_ID, Rect2(180.0, 420.0, 760.0, 180.0)),
+		"Timeline should detach into a floating panel",
+	)
+	await tree.process_frame
+	var canvas_height_while_floating := main_canvas.size.y
+	check_eq(
+		host.layout.get_module_zone(Builtins.TIMELINE_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"floating Timeline must release the Bottom Dock slot",
+	)
+	check_eq(
+		timeline.get_parent(),
+		surface.get_floating_layer(),
+		"floating Timeline should live in the floating layer",
+	)
+
+	check_true(
+		surface.begin_module_drag(Builtins.TIMELINE_ID, Vector2(300.0, 440.0)),
+		"floating Timeline drag should begin",
+	)
+	var candidate := surface.update_module_drag(Vector2(host.size.x * 0.5, host.size.y - 4.0))
+	check_eq(
+		int(candidate.get("placement", WorkspaceSurface.Placement.NONE)),
+		WorkspaceSurface.Placement.DOCKED,
+		"outer bottom edge should resolve to a dock placement",
+	)
+	check_eq(
+		int(candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)),
+		WorkspaceDockLayout.DockZone.BOTTOM,
+		"outer bottom edge should target Bottom Dock",
+	)
+	check_eq(
+		StringName(candidate.get("target_kind", &"none")),
+		&"region",
+		"outer edge should use the whole Bottom Dock Region target",
+	)
+	var preview_rect := surface.get_preview_rect()
+	check_almost_eq(preview_rect.position.x, 0.0, 0.01, "bottom region preview starts at left")
+	check_almost_eq(
+		preview_rect.size.x, host.size.x, 0.01, "bottom region preview spans full workspace width"
+	)
+	check_true(surface.commit_module_drag(), "Bottom Dock Region drop should commit")
+	await tree.process_frame
+	await tree.process_frame
+
+	check_eq(
+		host.layout.get_module_zone(Builtins.TIMELINE_ID),
+		WorkspaceDockLayout.DockZone.BOTTOM,
+		"Timeline must become part of the real Bottom Dock after drop",
+	)
+	check_eq(
+		timeline.get_parent(),
+		host.get_zone_host(WorkspaceDockLayout.DockZone.BOTTOM),
+		"docked Timeline must be reparented into the Bottom Dock container",
+	)
+	check_true(
+		main_canvas.size.y < canvas_height_while_floating,
+		"integrating Timeline into Bottom Dock must reserve bottom UI space from Canvas",
+	)
+
+	tree.root.remove_child(root)
 	_free_fixture(fixture)
 
 
