@@ -63,6 +63,8 @@ func get_tray() -> HBoxContainer:
 
 
 func _input(event: InputEvent) -> void:
+	if _is_emulated_pointer_event(event):
+		return
 	if not _has_captured_interaction():
 		return
 	if event is InputEventMouseMotion:
@@ -96,6 +98,17 @@ func _input(event: InputEvent) -> void:
 		var touch := event as InputEventScreenTouch
 		if not touch.pressed:
 			_handle_captured_screen_release(touch)
+
+
+func _is_emulated_pointer_event(event: InputEvent) -> bool:
+	if event.device != InputEvent.DEVICE_ID_EMULATION:
+		return false
+	return (
+		event is InputEventMouseButton
+		or event is InputEventMouseMotion
+		or event is InputEventScreenTouch
+		or event is InputEventScreenDrag
+	)
 
 
 func _has_captured_interaction() -> bool:
@@ -166,6 +179,8 @@ func _bind_module(module_id: StringName, module: WorkspaceModule) -> void:
 func _on_module_gui_input(
 	event: InputEvent, module_id: StringName, module: WorkspaceModule
 ) -> void:
+	if _is_emulated_pointer_event(event):
+		return
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event as InputEventMouseButton, module_id, module)
 	elif event is InputEventScreenTouch:
