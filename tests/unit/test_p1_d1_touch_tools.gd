@@ -276,41 +276,29 @@ func test_adaptive_tool_grid_hit_math_rejects_clipped_and_blank_regions() -> voi
 	)
 
 
-func test_single_tool_mode_serializes_secondary_tool_scene_entry() -> void:
+func test_single_tool_mode_keeps_legacy_dual_slot_assignment_contract() -> void:
 	var src := FileAccess.get_file_as_string(TOOLS_SOURCE)
 	var assign_pos := src.find("func assign_tool(")
-	var helper_pos := src.find("func _assign_single_tool_secondary_after_primary(")
-	check_true(assign_pos >= 0 and helper_pos > assign_pos, "single-tool mirror helper must exist")
-	if assign_pos < 0 or helper_pos < 0:
+	var next_func := src.find("\n\nfunc ", assign_pos + 5)
+	check_true(assign_pos >= 0, "Tools must expose assign_tool")
+	if assign_pos < 0:
 		return
-	var assign_body := src.substr(assign_pos, helper_pos - assign_pos)
-	check_true(
-		not assign_body.contains(
-			(
-				"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:\n"
-				+ "\t\tassign_tool(tool_name, MOUSE_BUTTON_RIGHT"
-			)
-		),
-		"single-tool mode must not recursively instantiate the secondary Tool Options in the same frame",
+	var assign_body := src.substr(
+		assign_pos, next_func - assign_pos if next_func > assign_pos else 2600
 	)
 	check_has(
 		assign_body,
-		"_assign_single_tool_secondary_after_primary.call_deferred(",
-		"primary activation must schedule the secondary mirror after the current dispatch",
-	)
-	var next_func := src.find("\n\nfunc ", helper_pos + 5)
-	var helper_body := src.substr(
-		helper_pos, next_func - helper_pos if next_func > helper_pos else 2200
+		"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:",
+		"single-tool mode must keep mirroring the selected tool into the right slot",
 	)
 	check_has(
-		helper_body,
-		"await get_tree().process_frame",
-		"secondary Tool Options must enter the SceneTree on a later frame",
-	)
-	check_has(
-		helper_body,
+		assign_body,
 		"assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)",
-		"the secondary slot must still mirror the selected tool",
+		"the right slot must still receive the same tool synchronously",
+	)
+	check_true(
+		not src.contains("func _assign_single_tool_secondary_after_primary("),
+		"Workspace lifecycle must make hidden Tool Options safe without deferred slot hacks",
 	)
 
 
