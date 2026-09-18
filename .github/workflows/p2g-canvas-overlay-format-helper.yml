@@ -1,0 +1,34 @@
+name: P2-G Canvas Overlay Format Helper
+
+on:
+  push:
+    branches:
+      - codex/implement-p2-g-live-workspace-migration
+    paths:
+      - ".github/workflows/p2g-canvas-overlay-format-helper.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: codex/implement-p2-g-live-workspace-migration
+      - uses: Scony/godot-gdscript-toolkit@master
+      - name: Format affected files
+        run: |
+          gdformat             src/UI/Workspace/WorkspaceSurface.gd             src/UI/Workspace/WorkspaceInteractionController.gd             src/UI/Workspace/WorkspaceEditorMigration.gd             tests/unit/test_p2_c_workspace_surface.gd             tests/unit/test_p2_g_live_workspace_migration.gd
+      - name: Commit formatting and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p2g-canvas-overlay-format-helper.yml
+          git add             src/UI/Workspace/WorkspaceSurface.gd             src/UI/Workspace/WorkspaceInteractionController.gd             src/UI/Workspace/WorkspaceEditorMigration.gd             tests/unit/test_p2_c_workspace_surface.gd             tests/unit/test_p2_g_live_workspace_migration.gd
+          git commit -m "P2-G: format Canvas overlay and dock resize"
+          git push origin HEAD:codex/implement-p2-g-live-workspace-migration
