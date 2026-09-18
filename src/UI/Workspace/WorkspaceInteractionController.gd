@@ -27,6 +27,7 @@ var _resize_module_id: StringName = &""
 var _resize_touch_index := -1
 var _resize_start_pointer := Vector2.ZERO
 var _resize_start_rect := Rect2()
+var _resize_edges := WorkspaceModule.ResizeEdge.NONE
 
 var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
@@ -199,8 +200,13 @@ func _handle_mouse_button(
 			_refresh_tray()
 		module.accept_event()
 		return
-	if module.is_resize_point(event.position):
-		if _begin_resize(module_id, pointer, -1):
+	if module.is_float_point(event.position):
+		if surface.float_from_dock(module_id):
+			module.accept_event()
+		return
+	var resize_edges := module.get_resize_edges(event.position)
+	if resize_edges != WorkspaceModule.ResizeEdge.NONE:
+		if _begin_resize(module_id, pointer, -1, resize_edges):
 			module.accept_event()
 		return
 	if module.is_header_drag_point(event.position):
@@ -220,8 +226,13 @@ func _handle_screen_touch(
 			_refresh_tray()
 		module.accept_event()
 		return
-	if module.is_resize_point(event.position):
-		if _begin_resize(module_id, pointer, event.index):
+	if module.is_float_point(event.position):
+		if surface.float_from_dock(module_id):
+			module.accept_event()
+		return
+	var resize_edges := module.get_resize_edges(event.position)
+	if resize_edges != WorkspaceModule.ResizeEdge.NONE:
+		if _begin_resize(module_id, pointer, event.index, resize_edges):
 			module.accept_event()
 		return
 	if module.is_header_drag_point(event.position):
@@ -248,8 +259,12 @@ func _clear_drag() -> void:
 	_drag_touch_index = -1
 
 
-func _begin_resize(module_id: StringName, pointer: Vector2, touch_index: int) -> bool:
+func _begin_resize(
+	module_id: StringName, pointer: Vector2, touch_index: int, resize_edges: int
+) -> bool:
 	if _resize_module_id != &"" or _drag_module_id != &"":
+		return false
+	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
 		return false
 	if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING:
 		return false
@@ -260,6 +275,7 @@ func _begin_resize(module_id: StringName, pointer: Vector2, touch_index: int) ->
 	_resize_touch_index = touch_index
 	_resize_start_pointer = pointer
 	_resize_start_rect = rect
+	_resize_edges = resize_edges
 	return true
 
 
@@ -267,8 +283,9 @@ func _update_resize(pointer: Vector2) -> void:
 	if _resize_module_id == &"":
 		return
 	var delta := pointer - _resize_start_pointer
-	var rect := Rect2(_resize_start_rect.position, _resize_start_rect.size + delta)
-	surface.set_floating_rect(_resize_module_id, rect)
+	surface.resize_floating_rect(
+		_resize_module_id, _resize_start_rect, delta, _resize_edges
+	)
 
 
 func _finish_resize() -> void:
@@ -276,6 +293,7 @@ func _finish_resize() -> void:
 	_resize_touch_index = -1
 	_resize_start_pointer = Vector2.ZERO
 	_resize_start_rect = Rect2()
+	_resize_edges = WorkspaceModule.ResizeEdge.NONE
 
 
 func _clear_pending_touch() -> void:
