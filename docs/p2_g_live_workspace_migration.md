@@ -51,7 +51,7 @@ Touch/iPad behavior:
 - floating resize is available through the resize target;
 - active move/resize gestures are captured until release, even after the pointer leaves the original header/handle.
 
-Collapsed modules appear in `WorkspaceCollapsedTray`. Mouse hover may Peek without restoring; pressing/tapping restores the same module and content instances to the recorded dock or floating state.
+Collapse is always in-place. Both docked and floating modules keep the same WorkspaceModule instance, parent, and screen location while their body content is parked/hidden and only the title bar remains visible. The legacy bottom `WorkspaceCollapsedTray` is not used by P2-G live collapse. Pressing the same title-bar collapse control restores the body directly in place; restore does not unmount/remount the panel or pass through the top-left origin.
 
 ## 5. Layout persistence and contextual panels
 
@@ -94,7 +94,9 @@ If live migration fails, none of this bridge behavior is installed and the exist
 - hidden legacy container after successful migration;
 - empty-dock input passthrough and zero reserved extent;
 - occupied-dock Canvas geometry;
-- collapsed Tray restore preserving the adopted instance;
+- docked and floating collapse preserving the adopted instance, parent, and title-bar position;
+- collapse never creating the legacy bottom text-button tray;
+- direct in-place restore without remount/top-left flash;
 - Workspace header/collapse/resize hit targets;
 - Window menu bridge source contract.
 
@@ -112,8 +114,8 @@ On physical iPad hardware, verify:
 4. Long-press a panel header, then drag it to Left, Right, Top, and Bottom edges. Snap preview and final placement must agree.
 5. Drag a panel away from every edge and release it as a floating panel. The original panel content/state must remain intact.
 6. Resize the floating panel from its lower-right handle. Minimum/maximum size constraints must hold and the Canvas must remain responsive.
-7. Collapse both a docked and a floating panel. Restore each from the collapsed Tray and confirm it returns to the recorded dock/rect.
-8. On desktop-style pointer input, hover a collapsed Tray item and confirm Peek is temporary; leaving it must return to the collapsed state.
+7. Collapse both a docked and a floating panel. Each must remain exactly where it was as a title-bar-only strip; no bottom text-button Tray may appear.
+8. Expand each collapsed title bar using the same header control. The panel must reopen directly at the same dock/rect with no one-frame jump or flash at the top-left corner.
 9. Open `Window > Panels`, hide/show several modules, and confirm the check states follow the Workspace state.
 10. Save a named layout, move several panels, reload that layout, then relaunch the app and confirm current-layout persistence.
 11. Switch between ordinary cel, tile-map cel, and 3D cel where available. Context panels must appear/disappear without losing their remembered placement.
