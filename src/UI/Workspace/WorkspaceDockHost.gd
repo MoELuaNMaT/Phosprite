@@ -13,7 +13,7 @@ signal dock_drag_finished(module_id: StringName, committed: bool)
 signal layout_geometry_changed(content_rect: Rect2)
 
 const EMPTY_ZONE_EXTENT := 56.0
-const EDGE_DOCK_TARGET_EXTENT := 72.0
+const EDGE_DOCK_TARGET_EXTENT := 120.0
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
 
 var manager: WorkspaceModuleManager
