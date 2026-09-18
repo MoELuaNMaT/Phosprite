@@ -32,7 +32,6 @@ var _content_collapsed := false
 var _content_visible_before_collapse := true
 var _minimum_size_before_collapse := Vector2.ZERO
 var _vertical_size_flags_before_collapse := Control.SIZE_FILL
-var _collapsed_content_parking: Node
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -165,10 +164,8 @@ func set_content_collapsed(collapsed: bool) -> void:
 		if is_instance_valid(content):
 			_content_visible_before_collapse = content.visible
 			content.visible = false
-			_park_content()
 		custom_minimum_size = Vector2(_minimum_size_before_collapse.x, get_header_height())
 	else:
-		_restore_parked_content()
 		custom_minimum_size = _minimum_size_before_collapse
 		_minimum_size_before_collapse = Vector2.ZERO
 		size_flags_vertical = _vertical_size_flags_before_collapse
@@ -379,26 +376,6 @@ func _configure_content(
 	size = module_definition.get_constrained_preferred_size()
 	add_child(content)
 	return true
-
-
-func _park_content() -> void:
-	if not is_instance_valid(content) or content.get_parent() != self:
-		return
-	if not is_instance_valid(_collapsed_content_parking):
-		_collapsed_content_parking = Node.new()
-		_collapsed_content_parking.name = &"CollapsedContentParking"
-		add_child(_collapsed_content_parking)
-	content.reparent(_collapsed_content_parking, false)
-
-
-func _restore_parked_content() -> void:
-	if not is_instance_valid(content):
-		return
-	if (
-		is_instance_valid(_collapsed_content_parking)
-		and content.get_parent() == _collapsed_content_parking
-	):
-		content.reparent(self, false)
 
 
 func _remove_visual_margins() -> void:
