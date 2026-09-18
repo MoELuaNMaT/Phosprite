@@ -11,6 +11,7 @@ offset_right = -1242.0
 offset_bottom = -230.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=1792604337]
 layout_mode = 2
