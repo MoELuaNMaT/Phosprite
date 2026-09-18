@@ -116,6 +116,138 @@ func test_floating_drag_snaps_back_to_dock_edge() -> void:
 	_free_workspace(workspace)
 
 
+func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void:
+	var workspace := _make_workspace()
+	var surface: WorkspaceSurface = workspace["surface"]
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)),
+		"Preview should float before resize validation",
+	)
+
+	var start := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(80.0, 0.0), WorkspaceModule.ResizeEdge.LEFT
+		),
+		"left edge resize should commit",
+	)
+	var left_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		left_rect.end.x, start.end.x, 0.01, "left resize must preserve the right edge"
+	)
+	check_almost_eq(
+		left_rect.size.x, start.size.x - 80.0, 0.01, "left resize should change width"
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(90.0, 0.0), WorkspaceModule.ResizeEdge.RIGHT
+		),
+		"right edge resize should commit",
+	)
+	var right_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(right_rect.position, start.position, "right resize must keep top-left anchored")
+	check_almost_eq(
+		right_rect.size.x, start.size.x + 90.0, 0.01, "right resize should change width"
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(0.0, 70.0), WorkspaceModule.ResizeEdge.BOTTOM
+		),
+		"bottom edge resize should commit",
+	)
+	var bottom_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(bottom_rect.position, start.position, "bottom resize must keep top edge anchored")
+	check_almost_eq(
+		bottom_rect.size.y, start.size.y + 70.0, 0.01, "bottom resize should change height"
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	var left_bottom := WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), left_bottom
+		),
+		"lower-left corner should resize both axes",
+	)
+	var lower_left_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		lower_left_rect.end.x, start.end.x, 0.01, "lower-left resize must preserve right edge"
+	)
+	check_almost_eq(
+		lower_left_rect.size.y,
+		start.size.y + 60.0,
+		0.01,
+		"lower-left resize should change height",
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	var right_bottom := WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), right_bottom
+		),
+		"lower-right corner should resize both axes",
+	)
+	var lower_right_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(
+		lower_right_rect.position, start.position, "lower-right resize must keep top-left anchored"
+	)
+	check_almost_eq(
+		lower_right_rect.size.x,
+		start.size.x + 70.0,
+		0.01,
+		"lower-right resize should change width",
+	)
+	check_almost_eq(
+		lower_right_rect.size.y,
+		start.size.y + 60.0,
+		0.01,
+		"lower-right resize should change height",
+	)
+	_free_workspace(workspace)
+
+
+func test_pop_out_restores_last_floating_rect_and_releases_dock_extent() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	var remembered := Rect2(320.0, 220.0, 360.0, 240.0)
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, remembered),
+		"Preview should first establish a floating rect",
+	)
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			DockLayout.DockZone.BOTTOM,
+			0,
+			Vector2(360.0, 180.0),
+		),
+		"Preview should dock at the bottom before pop-out",
+	)
+	var docked_content_height := host.get_content_rect().size.y
+	check_true(surface.float_from_dock(Builtins.PREVIEW_ID), "dock header pop-out should float")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		remembered,
+		"pop-out should restore the module's last floating bounds",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.NONE,
+		"pop-out must remove the module from dock layout geometry",
+	)
+	check_true(
+		host.get_content_rect().size.y > docked_content_height,
+		"releasing Bottom Dock must return its height to the central Canvas",
+	)
+	_free_workspace(workspace)
+
+
 func test_collapse_and_restore_keep_docked_panel_in_place() -> void:
 	var workspace := _make_workspace()
 	var manager: WorkspaceModuleManager = workspace["manager"]
