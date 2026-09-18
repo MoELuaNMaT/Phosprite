@@ -235,6 +235,62 @@ func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	_free_fixture(fixture)
 
 
+func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var interaction := Interaction.new()
+	root.add_child(interaction)
+	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
+	var collapse_point := Vector2(preview.size.x - 8.0, 8.0)
+
+	var touch := InputEventScreenTouch.new()
+	touch.device = 0
+	touch.index = 0
+	touch.pressed = true
+	touch.position = collapse_point
+	preview.gui_input.emit(touch)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.COLLAPSED,
+		"physical touch should collapse the module once"
+	)
+
+	var emulated_mouse := InputEventMouseButton.new()
+	emulated_mouse.device = InputEvent.DEVICE_ID_EMULATION
+	emulated_mouse.button_index = MOUSE_BUTTON_LEFT
+	emulated_mouse.pressed = true
+	emulated_mouse.position = collapse_point
+	preview.gui_input.emit(emulated_mouse)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.COLLAPSED,
+		"emulated mouse press from the same touch must not immediately restore the module"
+	)
+
+	preview.gui_input.emit(touch)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"second physical touch should restore the module once"
+	)
+	preview.gui_input.emit(emulated_mouse)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"emulated mouse press must not immediately collapse the restored module"
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
 func test_workspace_chrome_exposes_header_collapse_and_floating_resize_targets() -> void:
 	var fixture := _make_live_fixture()
 	var manager := fixture["manager"] as WorkspaceModuleManager
