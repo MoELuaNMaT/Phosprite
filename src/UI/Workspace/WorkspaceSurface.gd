@@ -134,23 +134,29 @@ func collapse_module(module_id: StringName) -> bool:
 	if placement != Placement.DOCKED and placement != Placement.FLOATING:
 		return false
 
-	var restore := _capture_restore_state(module_id, placement)
+	var module := manager.get_instance(module_id)
+	if module == null:
+		return false
 	if placement == Placement.DOCKED:
-		if not dock_host.undock_module(module_id):
+		var zone := dock_host.layout.get_module_zone(module_id)
+		if zone == WorkspaceDockLayout.DockZone.NONE or module.get_parent() != dock_host.get_zone_host(zone):
 			return false
-	else:
-		var module := manager.get_instance(module_id)
-		if module == null or module.get_parent() != _floating_layer:
-			return false
-		module.set_content_collapsed(true)
+	elif module.get_parent() != _floating_layer:
+		return false
 
+	var restore := _capture_restore_state(module_id, placement)
+	module.set_content_collapsed(true)
 	_placements[module_id] = Placement.COLLAPSED
 	_floating_rects.erase(module_id)
 	_collapsed_restore[module_id] = restore
 	_peeking.erase(module_id)
-	module_collapsed.emit(module_id)
+
 	if placement == Placement.FLOATING:
 		_apply_floating_collapsed_rect(module_id, restore.get("rect", Rect2()) as Rect2)
+	else:
+		dock_host.refresh_layout_geometry()
+
+	module_collapsed.emit(module_id)
 	return true
 
 
@@ -158,7 +164,7 @@ func peek_module(module_id: StringName) -> bool:
 	if (
 		not _is_ready()
 		or get_module_placement(module_id) != Placement.COLLAPSED
-		or is_floating_collapsed(module_id)
+		or is_in_place_collapsed(module_id)
 	):
 		return false
 	if is_peeking(module_id):
@@ -207,27 +213,40 @@ func restore_module(module_id: StringName) -> bool:
 	if is_peeking(module_id) and not end_peek(module_id):
 		return false
 
-	var restore_placement := int(restore.get("placement", Placement.NONE))
-	var restored := false
-	if restore_placement == Placement.DOCKED:
-		restored = dock_module(
-			module_id,
-			int(restore.get("zone", WorkspaceDockLayout.DockZone.NONE)),
-			int(restore.get("index", -1)),
-			restore.get("size", Vector2.ZERO) as Vector2
-		)
-	elif restore_placement == Placement.FLOATING:
-		var module := manager.get_instance(module_id)
-		var was_floating_collapsed := is_floating_collapsed(module_id)
-		if was_floating_collapsed and module != null:
-			module.set_content_collapsed(false)
-		restored = float_module(module_id, restore.get("rect", Rect2()) as Rect2)
-		if not restored and was_floating_collapsed and module != null:
-			module.set_content_collapsed(true)
-			_apply_floating_collapsed_rect(module_id, restore.get("rect", Rect2()) as Rect2)
-	if not restored:
+	var module := manager.get_instance(module_id)
+	if module == null or not module.is_content_collapsed():
 		return false
 
+	var restore_placement := int(restore.get("placement", Placement.NONE))
+	if restore_placement == Placement.DOCKED:
+		var zone := int(restore.get("zone", WorkspaceDockLayout.DockZone.NONE))
+		if (
+			dock_host.layout.get_module_zone(module_id) != zone
+			or module.get_parent() != dock_host.get_zone_host(zone)
+		):
+			return false
+		module.set_content_collapsed(false)
+		if not dock_host.set_module_size(module_id, restore.get("size", Vector2.ZERO) as Vector2):
+			module.set_content_collapsed(true)
+			dock_host.refresh_layout_geometry()
+			return false
+		_placements[module_id] = Placement.DOCKED
+		_floating_rects.erase(module_id)
+	elif restore_placement == Placement.FLOATING:
+		if module.get_parent() != _floating_layer:
+			return false
+		var rect := _constrain_floating_rect(
+			module_id, restore.get("rect", Rect2()) as Rect2
+		)
+		module.set_content_collapsed(false)
+		_apply_floating_rect(module_id, rect)
+		_placements[module_id] = Placement.FLOATING
+		_floating_rects[module_id] = rect
+	else:
+		return false
+
+	_collapsed_restore.erase(module_id)
+	_peeking.erase(module_id)
 	module_restored.emit(module_id, restore_placement)
 	return true
 
@@ -268,9 +287,15 @@ func clear_module_placement(module_id: StringName) -> bool:
 				return false
 	elif placement == Placement.COLLAPSED:
 		var module := manager.get_instance(module_id)
-		if module != null and is_floating_collapsed(module_id):
+		var restore: Dictionary = _collapsed_restore.get(module_id, {})
+		var restore_placement := int(restore.get("placement", Placement.NONE))
+		if module != null and module.is_content_collapsed():
 			module.set_content_collapsed(false)
-		if module != null and module.get_parent() != null:
+		if restore_placement == Placement.DOCKED:
+			if dock_host.layout.get_module_zone(module_id) != WorkspaceDockLayout.DockZone.NONE:
+				if not dock_host.undock_module(module_id):
+					return false
+		elif module != null and module.get_parent() != null:
 			if not manager.unmount_module(module_id):
 				return false
 
@@ -384,6 +409,17 @@ func is_floating_collapsed(module_id: StringName) -> bool:
 		return false
 	var module := manager.get_instance(module_id) if manager != null else null
 	return module != null and module.get_parent() == _floating_layer
+
+
+func is_in_place_collapsed(module_id: StringName) -> bool:
+	if get_module_placement(module_id) != Placement.COLLAPSED:
+		return false
+	var module := manager.get_instance(module_id) if manager != null else null
+	return (
+		module != null
+		and module.is_content_collapsed()
+		and module.get_parent() != null
+	)
 
 
 func get_floating_layer() -> Control:
