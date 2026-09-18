@@ -10,7 +10,9 @@ const Interaction := preload("res://src/UI/Workspace/WorkspaceInteractionControl
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 
 
-func _make_live_fixture(config_cache: ConfigFile = null) -> Dictionary:
+func _make_live_fixture(
+	config_cache: ConfigFile = null, preview_initially_visible := true
+) -> Dictionary:
 	var root := Control.new()
 	root.size = Vector2(1200.0, 800.0)
 	var legacy := DockableContainer.new()
@@ -26,6 +28,8 @@ func _make_live_fixture(config_cache: ConfigFile = null) -> Dictionary:
 	for module_id in Builtins.get_live_panel_ids():
 		var panel := Control.new()
 		panel.name = Builtins.get_live_panel_node_name(module_id)
+		if module_id == Builtins.PREVIEW_ID:
+			panel.visible = preview_initially_visible
 		legacy.add_child(panel)
 		live_controls[module_id] = panel
 
@@ -361,7 +365,7 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 	check_true(first_store.save_current_layout(false), "collapsed layout should persist to ConfigFile")
 	_free_fixture(first)
 
-	var second := _make_live_fixture(config)
+	var second := _make_live_fixture(config, false)
 	var second_manager := second["manager"] as WorkspaceModuleManager
 	var second_surface := second["surface"] as WorkspaceSurface
 
@@ -388,7 +392,10 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 			module,
 			"expanding after restart must not reparent the live panel content"
 		)
-		check_true(content.visible, "expanding after restart should reveal the original content")
+		check_true(
+			content.visible,
+			"expanding after restart should reveal the original content even if legacy Preview starts hidden"
+		)
 	_free_fixture(second)
 
 
