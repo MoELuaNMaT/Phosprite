@@ -27,7 +27,9 @@ var _resize_module_id: StringName = &""
 var _resize_touch_index := -1
 var _resize_start_pointer := Vector2.ZERO
 var _resize_start_rect := Rect2()
+var _resize_start_size := Vector2.ZERO
 var _resize_edges := WorkspaceModule.ResizeEdge.NONE
+var _resize_is_docked := false
 
 var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
@@ -205,6 +207,8 @@ func _handle_mouse_button(
 			module.accept_event()
 		return
 	var resize_edges := module.get_resize_edges(event.position)
+	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
+		resize_edges = surface.get_docked_resize_edges(module_id, event.position)
 	if resize_edges != WorkspaceModule.ResizeEdge.NONE:
 		if _begin_resize(module_id, pointer, -1, resize_edges):
 			module.accept_event()
@@ -231,6 +235,8 @@ func _handle_screen_touch(
 			module.accept_event()
 		return
 	var resize_edges := module.get_resize_edges(event.position)
+	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
+		resize_edges = surface.get_docked_resize_edges(module_id, event.position)
 	if resize_edges != WorkspaceModule.ResizeEdge.NONE:
 		if _begin_resize(module_id, pointer, event.index, resize_edges):
 			module.accept_event()
@@ -266,16 +272,22 @@ func _begin_resize(
 		return false
 	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
 		return false
-	if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING:
-		return false
-	var rect := surface.get_floating_rect(module_id)
-	if not rect.has_area():
+	var placement := surface.get_module_placement(module_id)
+	if placement != WorkspaceSurface.Placement.FLOATING and placement != WorkspaceSurface.Placement.DOCKED:
 		return false
 	_resize_module_id = module_id
 	_resize_touch_index = touch_index
 	_resize_start_pointer = pointer
-	_resize_start_rect = rect
 	_resize_edges = resize_edges
+	_resize_is_docked = placement == WorkspaceSurface.Placement.DOCKED
+	if _resize_is_docked:
+		_resize_start_size = dock_host.layout.get_module_size(module_id)
+		return _resize_start_size != Vector2.ZERO
+	var rect := surface.get_floating_rect(module_id)
+	if not rect.has_area():
+		_finish_resize()
+		return false
+	_resize_start_rect = rect
 	return true
 
 
@@ -283,7 +295,10 @@ func _update_resize(pointer: Vector2) -> void:
 	if _resize_module_id == &"":
 		return
 	var delta := pointer - _resize_start_pointer
-	surface.resize_floating_rect(_resize_module_id, _resize_start_rect, delta, _resize_edges)
+	if _resize_is_docked:
+		surface.resize_docked_module(_resize_module_id, _resize_start_size, delta, _resize_edges)
+	else:
+		surface.resize_floating_rect(_resize_module_id, _resize_start_rect, delta, _resize_edges)
 
 
 func _finish_resize() -> void:
@@ -291,7 +306,9 @@ func _finish_resize() -> void:
 	_resize_touch_index = -1
 	_resize_start_pointer = Vector2.ZERO
 	_resize_start_rect = Rect2()
+	_resize_start_size = Vector2.ZERO
 	_resize_edges = WorkspaceModule.ResizeEdge.NONE
+	_resize_is_docked = false
 
 
 func _clear_pending_touch() -> void:
