@@ -268,6 +268,8 @@ Press %s to edit the last added basis""",
 	)
 }
 
+const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
+
 var _tool_button_scene := preload("res://src/UI/ToolsPanel/ToolButton.tscn")
 var _slots: Dictionary[MouseButton, Slot] = {}
 var _panels: Dictionary[MouseButton, Control] = {}
@@ -284,7 +286,6 @@ var _right_tools_per_layer_type := {
 }
 var _tool_buttons: Node
 var _last_position := Vector2i(Vector2.INF)
-const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
 var _single_tool_assign_generation := 0
 
 
