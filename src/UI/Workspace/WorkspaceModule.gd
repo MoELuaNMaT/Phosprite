@@ -22,6 +22,7 @@ enum ResizeEdge {
 	LEFT = 1,
 	RIGHT = 2,
 	BOTTOM = 4,
+	TOP = 8,
 }
 
 const INTERACTION_TARGET_SIZE := 28.0
