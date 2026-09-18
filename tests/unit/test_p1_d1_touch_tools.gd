@@ -256,7 +256,9 @@ func test_tool_replacement_cancels_any_active_stroke_before_freeing_nodes() -> v
 	check_true(assign_pos >= 0, "Tools must expose assign_tool")
 	if assign_pos < 0:
 		return
-	var body := src.substr(assign_pos, set_tool_pos - assign_pos if set_tool_pos > assign_pos else 2400)
+	var body := src.substr(
+		assign_pos, set_tool_pos - assign_pos if set_tool_pos > assign_pos else 2400
+	)
 	check_has(
 		body,
 		"if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):",
