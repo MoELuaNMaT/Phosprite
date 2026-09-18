@@ -201,6 +201,104 @@ func test_collapse_and_restore_keep_docked_panel_in_place() -> void:
 	_free_workspace(workspace)
 
 
+func test_real_dock_containers_shrink_collapsed_module_height_in_every_zone() -> void:
+	var workspace := _make_workspace()
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	tree.root.add_child(host)
+	await tree.process_frame
+	await tree.process_frame
+
+	var cases := [
+		{
+			"zone": DockLayout.DockZone.TOP,
+			"first": &"test.collapse.top.first",
+			"second": &"test.collapse.top.second",
+		},
+		{
+			"zone": DockLayout.DockZone.LEFT,
+			"first": &"test.collapse.left.first",
+			"second": &"test.collapse.left.second",
+		},
+		{
+			"zone": DockLayout.DockZone.RIGHT,
+			"first": &"test.collapse.right.first",
+			"second": &"test.collapse.right.second",
+		},
+		{
+			"zone": DockLayout.DockZone.BOTTOM,
+			"first": &"test.collapse.bottom.first",
+			"second": &"test.collapse.bottom.second",
+		},
+	]
+
+	for entry: Dictionary in cases:
+		var first_id := entry["first"] as StringName
+		var second_id := entry["second"] as StringName
+		for module_id in [first_id, second_id]:
+			var definition := Definition.new()
+			definition.module_id = module_id
+			definition.display_name = String(module_id)
+			definition.uses_external_content = true
+			definition.minimum_size = Vector2(120.0, 80.0)
+			definition.preferred_size = Vector2(220.0, 140.0)
+			check_true(manager.register_definition(definition), "test module should register")
+			check_true(
+				manager.adopt_module(module_id, Control.new()) != null,
+				"test module should adopt simple content"
+			)
+
+		var zone := int(entry["zone"])
+		check_true(
+			surface.dock_module(first_id, zone, 0, Vector2(220.0, 140.0)),
+			"first module should dock"
+		)
+		check_true(
+			surface.dock_module(second_id, zone, 1, Vector2(220.0, 140.0)),
+			"second module should dock beside the collapse target"
+		)
+		await tree.process_frame
+		await tree.process_frame
+
+		var first: WorkspaceModule = manager.get_instance(first_id)
+		var original_parent := first.get_parent()
+		var original_position := first.position
+		check_true(
+			first.size.y > first.get_header_height(),
+			"expanded docked module should be taller than its header"
+		)
+
+		check_true(surface.collapse_module(first_id), "docked module should collapse")
+		await tree.process_frame
+		await tree.process_frame
+		check_eq(first.get_parent(), original_parent, "collapse must preserve the dock parent")
+		check_almost_eq(
+			first.position.x, original_position.x, 0.01, "collapse must preserve x position"
+		)
+		check_almost_eq(
+			first.position.y, original_position.y, 0.01, "collapse must preserve y position"
+		)
+		check_almost_eq(
+			first.size.y,
+			first.get_header_height(),
+			0.01,
+			"real Container-assigned height must shrink to the title bar"
+		)
+
+		check_true(surface.restore_module(first_id), "collapsed docked module should restore")
+		await tree.process_frame
+		await tree.process_frame
+		check_almost_eq(first.size.y, 140.0, 0.01, "restore should recover requested height")
+
+		check_true(surface.clear_module_placement(first_id), "first module should clear")
+		check_true(surface.clear_module_placement(second_id), "second module should clear")
+		await tree.process_frame
+
+	tree.root.remove_child(host)
+	_free_workspace(workspace)
+
+
 func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	var workspace := _make_workspace()
 	var manager: WorkspaceModuleManager = workspace["manager"]
