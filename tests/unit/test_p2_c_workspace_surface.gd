@@ -132,12 +132,8 @@ func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void
 		"left edge resize should commit",
 	)
 	var left_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
-	check_almost_eq(
-		left_rect.end.x, start.end.x, 0.01, "left resize must preserve the right edge"
-	)
-	check_almost_eq(
-		left_rect.size.x, start.size.x - 80.0, 0.01, "left resize should change width"
-	)
+	check_almost_eq(left_rect.end.x, start.end.x, 0.01, "left resize must preserve the right edge")
+	check_almost_eq(left_rect.size.x, start.size.x - 80.0, 0.01, "left resize should change width")
 
 	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
 	check_true(
@@ -168,9 +164,7 @@ func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void
 	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
 	var left_bottom := WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM
 	check_true(
-		surface.resize_floating_rect(
-			Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), left_bottom
-		),
+		surface.resize_floating_rect(Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), left_bottom),
 		"lower-left corner should resize both axes",
 	)
 	var lower_left_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
@@ -187,9 +181,7 @@ func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void
 	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
 	var right_bottom := WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM
 	check_true(
-		surface.resize_floating_rect(
-			Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), right_bottom
-		),
+		surface.resize_floating_rect(Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), right_bottom),
 		"lower-right corner should resize both axes",
 	)
 	var lower_right_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
@@ -221,11 +213,14 @@ func test_pop_out_restores_last_floating_rect_and_releases_dock_extent() -> void
 		"Preview should first establish a floating rect",
 	)
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(360.0, 180.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(360.0, 180.0),
+			)
 		),
 		"Preview should dock at the bottom before pop-out",
 	)

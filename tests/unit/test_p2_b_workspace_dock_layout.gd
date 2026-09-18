@@ -173,14 +173,17 @@ func test_drag_resolver_distinguishes_edge_region_from_module_insertion() -> voi
 		]
 	}
 
-	var region := DockResolver.resolve(
-		Builtins.PREVIEW_ID,
-		Vector2(600.0, 790.0),
-		zone_rects,
-		module_rects,
-		layout,
-		edge_rects,
-		workspace_rect,
+	var region := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(600.0, 790.0),
+			zone_rects,
+			module_rects,
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
 	)
 	check_true(bool(region.get("valid", false)), "outer bottom edge should resolve")
 	check_eq(
@@ -205,14 +208,17 @@ func test_drag_resolver_distinguishes_edge_region_from_module_insertion() -> voi
 		"Bottom Dock Region preview should stay attached to the bottom edge",
 	)
 
-	var insertion := DockResolver.resolve(
-		Builtins.PREVIEW_ID,
-		Vector2(180.0, 660.0),
-		zone_rects,
-		module_rects,
-		layout,
-		edge_rects,
-		workspace_rect,
+	var insertion := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(180.0, 660.0),
+			zone_rects,
+			module_rects,
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
 	)
 	check_eq(
 		StringName(insertion.get("target_kind", &"none")),

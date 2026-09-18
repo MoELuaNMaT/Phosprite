@@ -39,9 +39,7 @@ static func resolve(
 		module_size = layout.get_default_module_size(module_id)
 	var preview_rect := _make_preview_rect(zone_rect, zone, entries, insert_index, module_size)
 	if target_kind == &"region":
-		preview_rect = _make_region_preview_rect(
-			workspace_rect, zone_rect, zone, module_size
-		)
+		preview_rect = _make_region_preview_rect(workspace_rect, zone_rect, zone, module_size)
 
 	return {
 		"valid": true,
@@ -52,9 +50,7 @@ static func resolve(
 	}
 
 
-static func _find_edge_zone(
-	pointer: Vector2, edge_rects: Dictionary, workspace_rect: Rect2
-) -> int:
+static func _find_edge_zone(pointer: Vector2, edge_rects: Dictionary, workspace_rect: Rect2) -> int:
 	var candidates: Array[int] = []
 	for zone in WorkspaceDockLayout.VALID_ZONES:
 		if edge_rects.has(zone) and (edge_rects[zone] as Rect2).has_point(pointer):
@@ -132,27 +128,19 @@ static func _make_region_preview_rect(
 
 	match zone:
 		WorkspaceDockLayout.DockZone.TOP:
-			var height := minf(
-				workspace_rect.size.y, maxf(module_size.y, zone_rect.size.y)
-			)
+			var height := minf(workspace_rect.size.y, maxf(module_size.y, zone_rect.size.y))
 			return Rect2(workspace_rect.position, Vector2(workspace_rect.size.x, height))
 		WorkspaceDockLayout.DockZone.BOTTOM:
-			var height := minf(
-				workspace_rect.size.y, maxf(module_size.y, zone_rect.size.y)
-			)
+			var height := minf(workspace_rect.size.y, maxf(module_size.y, zone_rect.size.y))
 			return Rect2(
 				Vector2(workspace_rect.position.x, workspace_rect.end.y - height),
 				Vector2(workspace_rect.size.x, height)
 			)
 		WorkspaceDockLayout.DockZone.LEFT:
-			var width := minf(
-				workspace_rect.size.x, maxf(module_size.x, zone_rect.size.x)
-			)
+			var width := minf(workspace_rect.size.x, maxf(module_size.x, zone_rect.size.x))
 			return Rect2(workspace_rect.position, Vector2(width, workspace_rect.size.y))
 		WorkspaceDockLayout.DockZone.RIGHT:
-			var width := minf(
-				workspace_rect.size.x, maxf(module_size.x, zone_rect.size.x)
-			)
+			var width := minf(workspace_rect.size.x, maxf(module_size.x, zone_rect.size.x))
 			return Rect2(
 				Vector2(workspace_rect.end.x - width, workspace_rect.position.y),
 				Vector2(width, workspace_rect.size.y)

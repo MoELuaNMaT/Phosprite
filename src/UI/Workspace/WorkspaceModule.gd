@@ -252,9 +252,10 @@ func is_float_point(local_point: Vector2) -> bool:
 	):
 		return false
 	var left := maxf(0.0, size.x - INTERACTION_TARGET_SIZE * 2.0)
-	return Rect2(
-		Vector2(left, 0.0), Vector2(INTERACTION_TARGET_SIZE, get_header_height())
-	).has_point(local_point)
+	return (
+		Rect2(Vector2(left, 0.0), Vector2(INTERACTION_TARGET_SIZE, get_header_height()))
+		. has_point(local_point)
+	)
 
 
 func get_resize_edges(local_point: Vector2) -> int:
@@ -329,7 +330,12 @@ func _draw() -> void:
 		title = String(name)
 	var baseline := _visual_theme.HEADER_HEIGHT * 0.5 + _visual_theme.default_font_size * 0.35
 	var header_actions_width := INTERACTION_TARGET_SIZE
-	if definition != null and definition.can_float and _visual_state == &"docked" and not _content_collapsed:
+	if (
+		definition != null
+		and definition.can_float
+		and _visual_state == &"docked"
+		and not _content_collapsed
+	):
 		header_actions_width += INTERACTION_TARGET_SIZE
 	var title_width := maxf(
 		0.0, size.x - (_visual_theme.CONTENT_PADDING + 1.0) * 2.0 - header_actions_width
@@ -357,9 +363,7 @@ func _draw_float_affordance() -> void:
 		or _content_collapsed
 	):
 		return
-	var center := Vector2(
-		size.x - INTERACTION_TARGET_SIZE * 1.5, _visual_theme.HEADER_HEIGHT * 0.5
-	)
+	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 1.5, _visual_theme.HEADER_HEIGHT * 0.5)
 	var rect_size := Vector2(9.0, 7.0)
 	var rect := Rect2(center - rect_size * 0.5 + Vector2(-1.5, 1.5), rect_size)
 	draw_rect(rect, _visual_theme.muted_text_color, false, 1.2)

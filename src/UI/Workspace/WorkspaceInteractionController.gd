@@ -283,9 +283,7 @@ func _update_resize(pointer: Vector2) -> void:
 	if _resize_module_id == &"":
 		return
 	var delta := pointer - _resize_start_pointer
-	surface.resize_floating_rect(
-		_resize_module_id, _resize_start_rect, delta, _resize_edges
-	)
+	surface.resize_floating_rect(_resize_module_id, _resize_start_rect, delta, _resize_edges)
 
 
 func _finish_resize() -> void:
