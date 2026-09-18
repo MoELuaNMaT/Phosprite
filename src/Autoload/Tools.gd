@@ -285,7 +285,6 @@ var _right_tools_per_layer_type := {
 }
 var _tool_buttons: Node
 var _last_position := Vector2i(Vector2.INF)
-var _single_tool_assign_generation := 0
 
 
 class Tool:
@@ -555,6 +554,8 @@ func set_tool(tool_name: String, button: int) -> void:
 	if tool_name == "CurveTool":
 		write_curve_activation_phase("slot_%d:config_share_done" % button)
 	tool_changed.emit(tool_name, button)
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("complete")
 
 
 func get_tool(button: int) -> Slot:
@@ -564,11 +565,8 @@ func get_tool(button: int) -> Slot:
 func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void:
 	if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):
 		return
-	var mirror_to_secondary := Global.single_tool_mode and button == MOUSE_BUTTON_LEFT
-	if mirror_to_secondary:
-		_single_tool_assign_generation += 1
-		if tool_name == "CurveTool":
-			write_curve_activation_phase("primary_assign_begin")
+	if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:
+		assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)
 	var slot := _slots[button]
 	var panel := _panels[button]
 
@@ -590,39 +588,6 @@ func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void
 	update_tool_buttons()
 	update_tool_cursors()
 	Global.config_cache.set_value(slot.kname, "tool", tool_name)
-	if mirror_to_secondary:
-		_assign_single_tool_secondary_after_primary.call_deferred(
-			tool_name, allow_refresh, _single_tool_assign_generation
-		)
-
-
-func _assign_single_tool_secondary_after_primary(
-	tool_name: String, allow_refresh: bool, generation: int
-) -> void:
-	# The iPad defaults to single-tool mode. Keep the secondary slot mirrored, but do
-	# not instantiate both Tool Options scenes during the same input dispatch/frame.
-	# CurveTool owns a multi-state scene (Curve2D + popup controls + timer), and
-	# serializing SceneTree entry also makes the ordering deterministic for every tool.
-	await get_tree().process_frame
-	if generation != _single_tool_assign_generation or not Global.single_tool_mode:
-		return
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("secondary_assign_begin")
-	assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)
-	if tool_name != "CurveTool":
-		return
-	await get_tree().process_frame
-	if generation != _single_tool_assign_generation:
-		return
-	if (
-		_slots.has(MOUSE_BUTTON_LEFT)
-		and _slots.has(MOUSE_BUTTON_RIGHT)
-		and is_instance_valid(_slots[MOUSE_BUTTON_LEFT].tool_node)
-		and is_instance_valid(_slots[MOUSE_BUTTON_RIGHT].tool_node)
-		and _slots[MOUSE_BUTTON_LEFT].tool_node.name == "CurveTool"
-		and _slots[MOUSE_BUTTON_RIGHT].tool_node.name == "CurveTool"
-	):
-		write_curve_activation_phase("complete")
 
 
 func write_curve_activation_phase(phase: String) -> void:
@@ -644,6 +609,7 @@ func _report_previous_curve_activation_crash() -> void:
 	var phase := file.get_as_text().strip_edges()
 	if phase.is_empty() or phase == "complete":
 		return
+	write_curve_activation_phase("complete")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if not is_instance_valid(Global.error_dialog):
