@@ -685,8 +685,8 @@ func _restore_canvas_chrome() -> void:
 			continue
 		_reparent_control(control, parent)
 		parent.move_child(control, mini(int(state.get("index", 0)), parent.get_child_count() - 1))
-		var anchors := state.get("anchors", Vector4.ZERO) as Vector4
-		var offsets := state.get("offsets", Vector4.ZERO) as Vector4
+		var anchors: Vector4 = state.get("anchors", Vector4.ZERO)
+		var offsets: Vector4 = state.get("offsets", Vector4.ZERO)
 		control.anchor_left = anchors.x
 		control.anchor_top = anchors.y
 		control.anchor_right = anchors.z
