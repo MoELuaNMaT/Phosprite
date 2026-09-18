@@ -185,7 +185,12 @@ func test_adaptive_tool_grid_rejects_clipped_hits_and_defers_activation() -> voi
 	)
 	check_has(
 		src,
-		"visible_rect = visible_rect.intersection(scroll_container.get_global_rect())",
+		"is_visible_tool_touch(button.get_global_rect(), viewport_rect, screen_position)",
+		"adaptive hit testing must route every button through the clipped viewport contract"
+	)
+	check_has(
+		src,
+		"button_rect.intersection(viewport_rect)",
 		"clipped/offscreen tool buttons must not remain touch targets"
 	)
 	check_has(
