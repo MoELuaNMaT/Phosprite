@@ -284,6 +284,8 @@ var _right_tools_per_layer_type := {
 }
 var _tool_buttons: Node
 var _last_position := Vector2i(Vector2.INF)
+const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
+var _single_tool_assign_generation := 0
 
 
 class Tool:
@@ -381,6 +383,7 @@ func _ready() -> void:
 	# to bind. Skip all UI wiring to keep test output clean of null-instance errors.
 	if Global.headless_test_mode:
 		return
+	_report_previous_curve_activation_crash.call_deferred()
 	options_reset.connect(reset_options)
 	Global.cel_switched.connect(_cel_switched)
 	Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)
@@ -512,7 +515,11 @@ func set_tool(tool_name: String, button: int) -> void:
 		config_changed.disconnect(attempt_config_share)
 	var slot: Slot = _slots[button]
 	var panel: Node = _panels[button]
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:instantiate_begin" % button)
 	var node: Node = tools[tool_name].instantiate_scene()
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:instantiate_done" % button)
 	var config_slot := MOUSE_BUTTON_LEFT if button == MOUSE_BUTTON_RIGHT else MOUSE_BUTTON_RIGHT
 	if button == MOUSE_BUTTON_LEFT:  # As guides are only moved with left mouse
 		if tool_name == "Pan":  # tool you want to give more access at guides
@@ -523,7 +530,11 @@ func set_tool(tool_name: String, button: int) -> void:
 	node.tool_slot = slot
 	slot.tool_node = node
 	slot.button = button
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:add_child_begin" % button)
 	panel.add_child(slot.tool_node)
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:add_child_done" % button)
 
 	if _curr_layer_type == Global.LayerTypes.GROUP:
 		return
@@ -534,9 +545,15 @@ func set_tool(tool_name: String, button: int) -> void:
 
 	# Wait for config to get loaded, then re-connect and sync
 	await get_tree().process_frame
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:ready_frame_survived" % button)
 	if not config_changed.is_connected(attempt_config_share):
 		config_changed.connect(attempt_config_share)
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:config_share_begin" % button)
 	attempt_config_share(config_slot)  # Sync it with the other tool
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("slot_%d:config_share_done" % button)
 	tool_changed.emit(tool_name, button)
 
 
@@ -547,8 +564,11 @@ func get_tool(button: int) -> Slot:
 func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void:
 	if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):
 		return
-	if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:
-		assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)
+	var mirror_to_secondary := Global.single_tool_mode and button == MOUSE_BUTTON_LEFT
+	if mirror_to_secondary:
+		_single_tool_assign_generation += 1
+		if tool_name == "CurveTool":
+			write_curve_activation_phase("primary_assign_begin")
 	var slot := _slots[button]
 	var panel := _panels[button]
 
@@ -570,6 +590,68 @@ func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void
 	update_tool_buttons()
 	update_tool_cursors()
 	Global.config_cache.set_value(slot.kname, "tool", tool_name)
+	if mirror_to_secondary:
+		_assign_single_tool_secondary_after_primary.call_deferred(
+			tool_name, allow_refresh, _single_tool_assign_generation
+		)
+
+
+func _assign_single_tool_secondary_after_primary(
+	tool_name: String, allow_refresh: bool, generation: int
+) -> void:
+	# The iPad defaults to single-tool mode. Keep the secondary slot mirrored, but do
+	# not instantiate both Tool Options scenes during the same input dispatch/frame.
+	# CurveTool owns a multi-state scene (Curve2D + popup controls + timer), and
+	# serializing SceneTree entry also makes the ordering deterministic for every tool.
+	await get_tree().process_frame
+	if generation != _single_tool_assign_generation or not Global.single_tool_mode:
+		return
+	if tool_name == "CurveTool":
+		write_curve_activation_phase("secondary_assign_begin")
+	assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)
+	if tool_name != "CurveTool":
+		return
+	await get_tree().process_frame
+	if generation != _single_tool_assign_generation:
+		return
+	if (
+		_slots.has(MOUSE_BUTTON_LEFT)
+		and _slots.has(MOUSE_BUTTON_RIGHT)
+		and is_instance_valid(_slots[MOUSE_BUTTON_LEFT].tool_node)
+		and is_instance_valid(_slots[MOUSE_BUTTON_RIGHT].tool_node)
+		and _slots[MOUSE_BUTTON_LEFT].tool_node.name == "CurveTool"
+		and _slots[MOUSE_BUTTON_RIGHT].tool_node.name == "CurveTool"
+	):
+		write_curve_activation_phase("complete")
+
+
+func write_curve_activation_phase(phase: String) -> void:
+	if OS.get_name() != "iOS":
+		return
+	var file := FileAccess.open(CURVE_ACTIVATION_DIAGNOSTIC_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(phase)
+	file.flush()
+
+
+func _report_previous_curve_activation_crash() -> void:
+	if OS.get_name() != "iOS" or not FileAccess.file_exists(CURVE_ACTIVATION_DIAGNOSTIC_PATH):
+		return
+	var file := FileAccess.open(CURVE_ACTIVATION_DIAGNOSTIC_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var phase := file.get_as_text().strip_edges()
+	if phase.is_empty() or phase == "complete":
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(Global.error_dialog):
+		push_warning("Previous CurveTool activation stopped at: %s" % phase)
+		return
+	Global.error_dialog.title = "Curve Tool diagnostic"
+	Global.error_dialog.dialog_text = "Previous Curve Tool activation stopped at:\n%s" % phase
+	Global.error_dialog.popup_centered()
 
 
 func quick_assign_tool(tool_name: String, button: int, allow_refresh := false) -> void:
