@@ -289,12 +289,12 @@ func test_single_tool_mode_serializes_secondary_tool_scene_entry() -> void:
 			"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:\n"
 			+ "\t\tassign_tool(tool_name, MOUSE_BUTTON_RIGHT"
 		),
-		"single-tool mode must not recursively instantiate the secondary Tool Options in the same frame"
+		"single-tool mode must not recursively instantiate the secondary Tool Options in the same frame",
 	)
 	check_has(
 		assign_body,
 		"_assign_single_tool_secondary_after_primary.call_deferred(",
-		"primary activation must schedule the secondary mirror after the current dispatch"
+		"primary activation must schedule the secondary mirror after the current dispatch",
 	)
 	var next_func := src.find("\n\nfunc ", helper_pos + 5)
 	var helper_body := src.substr(
@@ -303,12 +303,12 @@ func test_single_tool_mode_serializes_secondary_tool_scene_entry() -> void:
 	check_has(
 		helper_body,
 		"await get_tree().process_frame",
-		"secondary Tool Options must enter the SceneTree on a later frame"
+		"secondary Tool Options must enter the SceneTree on a later frame",
 	)
 	check_has(
 		helper_body,
 		"assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)",
-		"the secondary slot must still mirror the selected tool"
+		"the secondary slot must still mirror the selected tool",
 	)
 
 
@@ -327,27 +327,27 @@ func test_curve_activation_has_persistent_phase_markers_and_validated_mode() -> 
 		check_has(
 			tools_src,
 			phase,
-			"Curve activation diagnostic must retain the %s checkpoint" % phase
+			"Curve activation diagnostic must retain the %s checkpoint" % phase,
 		)
 	check_has(
 		tools_src,
 		'CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"',
-		"Curve activation phase must survive a native process crash"
+		"Curve activation phase must survive a native process crash",
 	)
 	check_has(
 		tools_src,
 		'write_curve_activation_phase("complete")',
-		"a fully mirrored Curve activation must mark the diagnostic complete"
+		"a fully mirrored Curve activation must mark the diagnostic complete",
 	)
 	check_has(
 		curve_src,
 		"clampi(",
-		"persisted Curve mode must be range-validated before OptionButton.select"
+		"persisted Curve mode must be range-validated before OptionButton.select",
 	)
 	check_has(
 		curve_src,
 		"Bezier.CHAINED, Bezier.SINGLE",
-		"Curve mode validation must use the exact supported enum range"
+		"Curve mode validation must use the exact supported enum range",
 	)
 
 
