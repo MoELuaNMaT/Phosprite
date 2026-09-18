@@ -287,6 +287,56 @@ func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
 		"emulated mouse press must not immediately collapse the restored module"
 	)
 
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			WorkspaceDockLayout.DockZone.BOTTOM,
+			1,
+			Vector2(220.0, 140.0)
+		),
+		"Preview should move beside the expanded Timeline"
+	)
+	await tree.process_frame
+	await tree.process_frame
+	var timeline: WorkspaceModule = manager.get_instance(Builtins.TIMELINE_ID)
+	check_true(
+		not timeline.is_content_collapsed(),
+		"Timeline must remain expanded while its Bottom Dock sibling is tested"
+	)
+
+	collapse_point = Vector2(preview.size.x - 8.0, 8.0)
+	touch.position = collapse_point
+	emulated_mouse.position = collapse_point
+	preview.gui_input.emit(touch)
+	preview.gui_input.emit(emulated_mouse)
+	await tree.process_frame
+	await tree.process_frame
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.COLLAPSED,
+		"Bottom Dock sibling must collapse independently while Timeline is expanded"
+	)
+	check_almost_eq(
+		preview.size.y,
+		preview.get_header_height(),
+		0.01,
+		"Bottom Dock sibling must remain at header height while Timeline stays expanded"
+	)
+
+	preview.gui_input.emit(touch)
+	preview.gui_input.emit(emulated_mouse)
+	await tree.process_frame
+	await tree.process_frame
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"Bottom Dock sibling must restore independently while Timeline is expanded"
+	)
+	check_true(
+		not preview.is_content_collapsed(),
+		"Bottom Dock sibling content must stay restored after the emulated duplicate event"
+	)
+
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
 
