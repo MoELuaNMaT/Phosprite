@@ -116,6 +116,50 @@ func test_floating_drag_snaps_back_to_dock_edge() -> void:
 	_free_workspace(workspace)
 
 
+func test_bottom_region_fill_resizes_height_from_top_edge() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			DockLayout.DockZone.BOTTOM,
+			0,
+			Vector2(360.0, 180.0),
+			{},
+			true,
+		),
+		"Preview should enter Bottom Dock as Region Fill",
+	)
+	var module := workspace["manager"].get_instance(Builtins.PREVIEW_ID) as WorkspaceModule
+	check_eq(
+		surface.get_docked_resize_edges(Builtins.PREVIEW_ID, Vector2(module.size.x * 0.5, 2.0)),
+		WorkspaceModule.ResizeEdge.TOP,
+		"Bottom Region Fill should expose its top edge as a vertical resize handle",
+	)
+	var start_size := host.layout.get_module_size(Builtins.PREVIEW_ID)
+	check_true(
+		surface.resize_docked_module(
+			Builtins.PREVIEW_ID,
+			start_size,
+			Vector2(0.0, -64.0),
+			WorkspaceModule.ResizeEdge.TOP,
+		),
+		"dragging the Bottom Dock top edge upward should resize its height",
+	)
+	check_almost_eq(
+		host.layout.get_module_size(Builtins.PREVIEW_ID).y,
+		start_size.y + 64.0,
+		0.01,
+		"upward top-edge drag should increase Bottom Dock height",
+	)
+	check_true(
+		host.layout.is_module_region_fill(Builtins.PREVIEW_ID),
+		"resizing must preserve Region Fill semantics",
+	)
+	_free_workspace(workspace)
+
+
 func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void:
 	var workspace := _make_workspace()
 	var surface: WorkspaceSurface = workspace["surface"]
