@@ -8,6 +8,7 @@ const Store := preload("res://src/UI/Workspace/WorkspaceLayoutStore.gd")
 const Migration := preload("res://src/UI/Workspace/WorkspaceEditorMigration.gd")
 const Interaction := preload("res://src/UI/Workspace/WorkspaceInteractionController.gd")
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
+const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
 
 
 func _make_live_fixture(
@@ -650,8 +651,81 @@ func test_timeline_float_drag_merges_into_bottom_dock_region_and_resizes_canvas(
 		"docked Timeline must be reparented into the Bottom Dock container",
 	)
 	check_true(
+		host.layout.is_module_region_fill(Builtins.TIMELINE_ID),
+		"Bottom Region drop must persist Region Fill semantics",
+	)
+	check_eq(
+		timeline.size_flags_horizontal,
+		Control.SIZE_EXPAND_FILL,
+		"Bottom Region Timeline must expand horizontally with the workspace",
+	)
+	check_almost_eq(
+		timeline.size.x,
+		host.get_zone_host(WorkspaceDockLayout.DockZone.BOTTOM).size.x,
+		0.01,
+		"Bottom Region Timeline must adapt to the full Bottom Dock width",
+	)
+	check_true(
 		main_canvas.size.y < canvas_height_while_floating,
 		"integrating Timeline into Bottom Dock must reserve bottom UI space from Canvas",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var host := fixture["host"] as WorkspaceDockHost
+	var surface := fixture["surface"] as WorkspaceSurface
+	var theme_controller := ThemeController.new()
+	root.add_child(theme_controller)
+	check_true(
+		theme_controller.setup(manager, surface), "theme controller should initialize for chrome sync"
+	)
+	check_true(
+		theme_controller.refresh(Theme.new(), Color("2b2b2b"), Color("8aa0df")),
+		"theme controller should resolve workspace chrome",
+	)
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, Rect2(360.0, 180.0, 320.0, 220.0)),
+		"Preview should float before right-region redock",
+	)
+	await tree.process_frame
+	check_true(
+		surface.begin_module_drag(Builtins.PREVIEW_ID, Vector2(420.0, 200.0)),
+		"floating Preview drag should begin",
+	)
+	var candidate := surface.update_module_drag(Vector2(host.size.x - 4.0, host.size.y * 0.5))
+	check_eq(
+		StringName(candidate.get("target_kind", &"none")),
+		&"region",
+		"outer right edge should resolve the full Right Dock Region",
+	)
+	check_true(surface.commit_module_drag(), "Right Dock Region drop should commit")
+	await tree.process_frame
+	await tree.process_frame
+
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"Surface placement must settle to DOCKED after region drop",
+	)
+	check_eq(
+		preview.get_visual_state(),
+		&"docked",
+		"theme refresh must observe the settled DOCKED state, not stale FLOATING state",
+	)
+	check_true(
+		preview.is_float_point(Vector2(preview.size.x - 42.0, 8.0)),
+		"region-docked module must expose the Pop-out target immediately",
 	)
 
 	tree.root.remove_child(root)
