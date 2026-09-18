@@ -683,7 +683,8 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	var theme_controller := ThemeController.new()
 	root.add_child(theme_controller)
 	check_true(
-		theme_controller.setup(manager, surface), "theme controller should initialize for chrome sync"
+		theme_controller.setup(manager, surface),
+		"theme controller should initialize for chrome sync"
 	)
 	check_true(
 		theme_controller.refresh(Theme.new(), Color("2b2b2b"), Color("8aa0df")),

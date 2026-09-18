@@ -152,13 +152,16 @@ func test_snapshot_round_trip_preserves_region_fill_dock_semantics() -> void:
 	var store = workspace["store"]
 
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(360.0, 180.0),
-			{},
-			true,
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(360.0, 180.0),
+				{},
+				true,
+			)
 		),
 		"Preview should enter Bottom Dock with Region Fill before capture",
 	)
@@ -169,11 +172,14 @@ func test_snapshot_round_trip_preserves_region_fill_dock_semantics() -> void:
 	var snapshot := store.capture_snapshot()
 
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.RIGHT,
-			0,
-			Vector2(280.0, 180.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.RIGHT,
+				0,
+				Vector2(280.0, 180.0),
+			)
 		),
 		"Preview should mutate to a fixed right-dock slot",
 	)

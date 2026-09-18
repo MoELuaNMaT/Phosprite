@@ -361,7 +361,9 @@ func _apply_module_size(module_id: StringName) -> void:
 	if layout.is_module_region_fill(module_id):
 		if zone == WorkspaceDockLayout.DockZone.TOP or zone == WorkspaceDockLayout.DockZone.BOTTOM:
 			module.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		elif zone == WorkspaceDockLayout.DockZone.LEFT or zone == WorkspaceDockLayout.DockZone.RIGHT:
+		elif (
+			zone == WorkspaceDockLayout.DockZone.LEFT or zone == WorkspaceDockLayout.DockZone.RIGHT
+		):
 			module.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	module.custom_minimum_size = target_size
 	module.size = target_size
@@ -454,11 +456,7 @@ func _rollback_mount(
 
 
 func _restore_layout(
-	module_id: StringName,
-	old_zone: int,
-	old_index: int,
-	old_size: Vector2,
-	old_region_fill: bool
+	module_id: StringName, old_zone: int, old_index: int, old_size: Vector2, old_region_fill: bool
 ) -> void:
 	if old_zone == WorkspaceDockLayout.DockZone.NONE:
 		layout.remove_module(module_id)
