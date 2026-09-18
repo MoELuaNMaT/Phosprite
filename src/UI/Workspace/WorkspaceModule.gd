@@ -207,6 +207,15 @@ func get_header_height() -> float:
 	return _visual_theme.HEADER_HEIGHT if _visual_theme != null else INTERACTION_TARGET_SIZE
 
 
+func get_visual_rect() -> Rect2:
+	var visual_height := get_header_height() if _content_collapsed else size.y
+	return Rect2(Vector2.ZERO, Vector2(size.x, visual_height))
+
+
+func _has_point(point: Vector2) -> bool:
+	return get_visual_rect().has_point(point)
+
+
 func is_header_drag_point(local_point: Vector2) -> bool:
 	if local_point.y < 0.0 or local_point.y > get_header_height():
 		return false
@@ -226,7 +235,7 @@ func is_collapse_point(local_point: Vector2) -> bool:
 
 
 func is_resize_point(local_point: Vector2) -> bool:
-	if _visual_state != &"floating":
+	if _visual_state != &"floating" or _content_collapsed:
 		return false
 	return (
 		Rect2(
@@ -276,7 +285,7 @@ func _draw() -> void:
 	var module_style := _visual_theme.get_module_style(_visual_state)
 	var header_style := _visual_theme.get_header_style(_visual_state)
 	if module_style != null:
-		draw_style_box(module_style, Rect2(Vector2.ZERO, size))
+		draw_style_box(module_style, get_visual_rect())
 	var header_rect := Rect2(0.0, 0.0, size.x, _visual_theme.HEADER_HEIGHT)
 	if header_style != null:
 		draw_style_box(header_style, header_rect)
@@ -329,7 +338,7 @@ func _draw_collapse_affordance() -> void:
 
 
 func _draw_resize_affordance() -> void:
-	if _visual_state != &"floating" or _visual_theme == null:
+	if _visual_state != &"floating" or _visual_theme == null or _content_collapsed:
 		return
 	var corner := size - Vector2(6.0, 6.0)
 	for offset in [0.0, 5.0, 10.0]:
@@ -381,7 +390,10 @@ func _park_content() -> void:
 func _restore_parked_content() -> void:
 	if not is_instance_valid(content):
 		return
-	if is_instance_valid(_collapsed_content_parking) and content.get_parent() == _collapsed_content_parking:
+	if (
+		is_instance_valid(_collapsed_content_parking)
+		and content.get_parent() == _collapsed_content_parking
+	):
 		content.reparent(self, false)
 
 
