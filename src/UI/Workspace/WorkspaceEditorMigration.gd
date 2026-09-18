@@ -641,7 +641,7 @@ func _canvas_screen_rect() -> Rect2:
 		+ canvas_camera.offset.rotated(-canvas_camera.camera_angle) * -zoom
 	)
 	var project_size := Vector2(Global.current_project.size)
-	var corners := [
+	var corners: Array[Vector2] = [
 		Vector2.ZERO,
 		Vector2(project_size.x, 0.0),
 		Vector2(0.0, project_size.y),
@@ -649,8 +649,8 @@ func _canvas_screen_rect() -> Rect2:
 	]
 	var min_point := Vector2(INF, INF)
 	var max_point := Vector2(-INF, -INF)
-	for corner in corners:
-		var point := origin + corner.rotated(-canvas_camera.camera_angle) * zoom
+	for corner: Vector2 in corners:
+		var point: Vector2 = origin + corner.rotated(-canvas_camera.camera_angle) * zoom
 		min_point.x = minf(min_point.x, point.x)
 		min_point.y = minf(min_point.y, point.y)
 		max_point.x = maxf(max_point.x, point.x)
