@@ -18,6 +18,14 @@ enum LifecycleState {
 }
 
 const INTERACTION_TARGET_SIZE := 28.0
+const RESIZE_EDGE_HIT_SIZE := 18.0
+
+enum ResizeEdge {
+	NONE = 0,
+	LEFT = 1,
+	RIGHT = 2,
+	BOTTOM = 4,
+}
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -220,7 +228,7 @@ func _has_point(point: Vector2) -> bool:
 func is_header_drag_point(local_point: Vector2) -> bool:
 	if local_point.y < 0.0 or local_point.y > get_header_height():
 		return false
-	return not is_collapse_point(local_point)
+	return not is_collapse_point(local_point) and not is_float_point(local_point)
 
 
 func is_collapse_point(local_point: Vector2) -> bool:
@@ -235,19 +243,37 @@ func is_collapse_point(local_point: Vector2) -> bool:
 	)
 
 
-func is_resize_point(local_point: Vector2) -> bool:
-	if _visual_state != &"floating" or _content_collapsed:
+func is_float_point(local_point: Vector2) -> bool:
+	if (
+		definition == null
+		or not definition.can_float
+		or _visual_state != &"docked"
+		or _content_collapsed
+	):
 		return false
-	return (
-		Rect2(
-			Vector2(
-				maxf(0.0, size.x - INTERACTION_TARGET_SIZE),
-				maxf(0.0, size.y - INTERACTION_TARGET_SIZE)
-			),
-			Vector2(INTERACTION_TARGET_SIZE, INTERACTION_TARGET_SIZE)
-		)
-		. has_point(local_point)
-	)
+	var left := maxf(0.0, size.x - INTERACTION_TARGET_SIZE * 2.0)
+	return Rect2(
+		Vector2(left, 0.0), Vector2(INTERACTION_TARGET_SIZE, get_header_height())
+	).has_point(local_point)
+
+
+func get_resize_edges(local_point: Vector2) -> int:
+	if _visual_state != &"floating" or _content_collapsed:
+		return ResizeEdge.NONE
+	if not get_visual_rect().has_point(local_point):
+		return ResizeEdge.NONE
+	var edges := ResizeEdge.NONE
+	if local_point.x <= RESIZE_EDGE_HIT_SIZE:
+		edges |= ResizeEdge.LEFT
+	elif local_point.x >= size.x - RESIZE_EDGE_HIT_SIZE:
+		edges |= ResizeEdge.RIGHT
+	if local_point.y >= size.y - RESIZE_EDGE_HIT_SIZE:
+		edges |= ResizeEdge.BOTTOM
+	return edges
+
+
+func is_resize_point(local_point: Vector2) -> bool:
+	return get_resize_edges(local_point) != ResizeEdge.NONE
 
 
 func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName) -> void:
@@ -302,8 +328,11 @@ func _draw() -> void:
 	else:
 		title = String(name)
 	var baseline := _visual_theme.HEADER_HEIGHT * 0.5 + _visual_theme.default_font_size * 0.35
+	var header_actions_width := INTERACTION_TARGET_SIZE
+	if definition != null and definition.can_float and _visual_state == &"docked" and not _content_collapsed:
+		header_actions_width += INTERACTION_TARGET_SIZE
 	var title_width := maxf(
-		0.0, size.x - (_visual_theme.CONTENT_PADDING + 1.0) * 2.0 - INTERACTION_TARGET_SIZE
+		0.0, size.x - (_visual_theme.CONTENT_PADDING + 1.0) * 2.0 - header_actions_width
 	)
 	draw_string(
 		_visual_theme.default_font,
@@ -314,8 +343,44 @@ func _draw() -> void:
 		_visual_theme.default_font_size,
 		_visual_theme.text_color
 	)
+	_draw_float_affordance()
 	_draw_collapse_affordance()
 	_draw_resize_affordance()
+
+
+func _draw_float_affordance() -> void:
+	if (
+		definition == null
+		or not definition.can_float
+		or _visual_theme == null
+		or _visual_state != &"docked"
+		or _content_collapsed
+	):
+		return
+	var center := Vector2(
+		size.x - INTERACTION_TARGET_SIZE * 1.5, _visual_theme.HEADER_HEIGHT * 0.5
+	)
+	var rect_size := Vector2(9.0, 7.0)
+	var rect := Rect2(center - rect_size * 0.5 + Vector2(-1.5, 1.5), rect_size)
+	draw_rect(rect, _visual_theme.muted_text_color, false, 1.2)
+	draw_line(
+		center + Vector2(-1.0, -1.0),
+		center + Vector2(4.0, -6.0),
+		_visual_theme.muted_text_color,
+		1.2
+	)
+	draw_line(
+		center + Vector2(4.0, -6.0),
+		center + Vector2(4.0, -2.0),
+		_visual_theme.muted_text_color,
+		1.2
+	)
+	draw_line(
+		center + Vector2(4.0, -6.0),
+		center + Vector2(0.0, -6.0),
+		_visual_theme.muted_text_color,
+		1.2
+	)
 
 
 func _draw_collapse_affordance() -> void:
@@ -341,11 +406,18 @@ func _draw_collapse_affordance() -> void:
 func _draw_resize_affordance() -> void:
 	if _visual_state != &"floating" or _visual_theme == null or _content_collapsed:
 		return
-	var corner := size - Vector2(6.0, 6.0)
+	var right_corner := size - Vector2(6.0, 6.0)
+	var left_corner := Vector2(6.0, size.y - 6.0)
 	for offset in [0.0, 5.0, 10.0]:
 		draw_line(
-			corner - Vector2(offset, 0.0),
-			corner - Vector2(0.0, offset),
+			right_corner - Vector2(offset, 0.0),
+			right_corner - Vector2(0.0, offset),
+			_visual_theme.muted_text_color,
+			1.0
+		)
+		draw_line(
+			left_corner + Vector2(offset, 0.0),
+			left_corner + Vector2(0.0, -offset),
 			_visual_theme.muted_text_color,
 			1.0
 		)
