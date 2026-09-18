@@ -17,15 +17,15 @@ enum LifecycleState {
 	DISPOSED,
 }
 
-const INTERACTION_TARGET_SIZE := 28.0
-const RESIZE_EDGE_HIT_SIZE := 18.0
-
 enum ResizeEdge {
 	NONE = 0,
 	LEFT = 1,
 	RIGHT = 2,
 	BOTTOM = 4,
 }
+
+const INTERACTION_TARGET_SIZE := 28.0
+const RESIZE_EDGE_HIT_SIZE := 18.0
 
 var definition: WorkspaceModuleDefinition
 var content: Control
