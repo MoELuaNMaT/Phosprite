@@ -115,6 +115,86 @@ func test_live_migration_adopts_existing_controls_and_promotes_main_canvas() -> 
 	_free_fixture(fixture)
 
 
+func test_context_hidden_panels_keep_scene_tree_lifecycle_without_layout_geometry() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+	tree.root.add_child(root)
+	await tree.process_frame
+
+	var right_options := manager.get_instance(Builtins.RIGHT_TOOL_OPTIONS_ID)
+	check_eq(
+		surface.get_module_placement(Builtins.RIGHT_TOOL_OPTIONS_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"Right Tool Options starts in the default dock before single-tool hiding",
+	)
+	check_true(
+		migration.set_context_panel_visible(Builtins.RIGHT_TOOL_OPTIONS_ID, false),
+		"single-tool hiding should park Right Tool Options",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.RIGHT_TOOL_OPTIONS_ID),
+		WorkspaceSurface.Placement.NONE,
+		"parked context panels must not consume Workspace geometry",
+	)
+	check_true(
+		surface.is_module_parked(Builtins.RIGHT_TOOL_OPTIONS_ID),
+		"hidden Right Tool Options must remain mounted in the private context host",
+	)
+	check_true(
+		right_options.is_inside_tree(),
+		"hidden Right Tool Options must stay inside SceneTree for dynamic tool readiness",
+	)
+	check_true(
+		right_options.get_content().is_inside_tree(),
+		"the adopted Tool Options content must stay inside SceneTree while hidden",
+	)
+	check_true(
+		not right_options.is_visible_in_tree(),
+		"the parked module must remain visually hidden",
+	)
+	var dynamic_tool_child := Control.new()
+	right_options.get_content().add_child(dynamic_tool_child)
+	await tree.process_frame
+	check_true(
+		dynamic_tool_child.is_node_ready(),
+		"a tool node added while its context panel is hidden must still execute _ready",
+	)
+
+	var tiles := manager.get_instance(Builtins.TILES_ID)
+	check_eq(
+		surface.get_module_placement(Builtins.TILES_ID),
+		WorkspaceSurface.Placement.NONE,
+		"Tiles begins as a context-only panel outside layout geometry",
+	)
+	check_true(
+		migration.set_context_panel_visible(Builtins.TILES_ID, false),
+		"an initially hidden context panel should also be parked",
+	)
+	check_true(
+		surface.is_module_parked(Builtins.TILES_ID),
+		"placement NONE must not mean outside SceneTree for live context panels",
+	)
+	check_true(tiles.is_inside_tree(), "parked Tiles module must be inside SceneTree")
+
+	check_true(
+		migration.set_context_panel_visible(Builtins.RIGHT_TOOL_OPTIONS_ID, true),
+		"showing Right Tool Options should restore its previous dock placement",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.RIGHT_TOOL_OPTIONS_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"restoring a parked context panel should recover its dock placement",
+	)
+	check_true(
+		not surface.is_module_parked(Builtins.RIGHT_TOOL_OPTIONS_ID),
+		"restored Right Tool Options must leave the hidden context host",
+	)
+	_free_fixture(fixture)
+
+
 func test_dock_host_empty_space_passes_input_and_only_occupied_docks_shrink_canvas() -> void:
 	var manager := Manager.new()
 	var host := DockHost.new()
