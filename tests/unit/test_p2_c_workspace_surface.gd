@@ -116,7 +116,7 @@ func test_floating_drag_snaps_back_to_dock_edge() -> void:
 	_free_workspace(workspace)
 
 
-func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
+func test_collapse_and_restore_keep_docked_panel_in_place() -> void:
 	var workspace := _make_workspace()
 	var manager: WorkspaceModuleManager = workspace["manager"]
 	var host: WorkspaceDockHost = workspace["host"]
@@ -129,17 +129,34 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 		"Preview should dock before collapse"
 	)
 	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
+	var preview_content: Control = preview.get_content()
+	var original_parent := preview.get_parent()
+	var original_position := preview.position
+
 	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse")
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		Surface.Placement.COLLAPSED,
 		"collapsed module should enter COLLAPSED placement"
 	)
-	check_eq(preview.get_parent(), null, "collapsed module should be unmounted")
+	check_eq(
+		preview.get_parent(),
+		original_parent,
+		"docked collapse must keep the module mounted in the same dock host"
+	)
 	check_eq(
 		host.layout.get_module_zone(Builtins.PREVIEW_ID),
-		DockLayout.DockZone.NONE,
-		"collapsed module should not occupy a dock slot"
+		DockLayout.DockZone.RIGHT,
+		"docked collapse must retain the original dock slot"
+	)
+	check_eq(
+		preview.position, original_position, "collapsed docked header should stay in place"
+	)
+	check_true(not preview_content.visible, "docked collapse should hide only panel content")
+	check_eq(
+		preview.get_visual_rect().size.y,
+		preview.get_header_height(),
+		"docked collapse should expose only the title bar"
 	)
 
 	var restore: Dictionary = surface.get_restore_state(Builtins.PREVIEW_ID)
@@ -153,27 +170,30 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 		Vector2(300.0, 180.0),
 		"collapse should remember the previous dock size"
 	)
-
-	check_true(surface.peek_module(Builtins.PREVIEW_ID), "collapsed module should support Peek")
-	check_true(surface.is_peeking(Builtins.PREVIEW_ID), "Peek state should be reported")
-	check_eq(
-		preview.get_parent(),
-		surface.get_peek_layer(),
-		"Peek should temporarily mount the same instance in the peek layer"
+	check_true(
+		not surface.peek_module(Builtins.PREVIEW_ID),
+		"in-place collapse should not detach into the legacy Peek/Tray path"
 	)
-	check_true(surface.end_peek(Builtins.PREVIEW_ID), "Peek should close without restoring")
-	check_eq(preview.get_parent(), null, "ending Peek should return module to collapsed state")
 
 	check_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed module should restore")
 	check_eq(
 		manager.get_instance(Builtins.PREVIEW_ID),
 		preview,
-		"Collapse/Peek/Restore must preserve the managed instance"
+		"Collapse/Restore must preserve the managed instance"
 	)
+	check_eq(
+		preview.get_parent(),
+		original_parent,
+		"restore must expand in the same dock parent without remounting"
+	)
+	check_eq(
+		preview.position, original_position, "restore should not jump through the top-left origin"
+	)
+	check_true(preview_content.visible, "restore should reveal the same panel content")
 	check_eq(
 		host.layout.get_module_zone(Builtins.PREVIEW_ID),
 		DockLayout.DockZone.RIGHT,
-		"Restore should return Preview to its previous dock"
+		"Restore should retain the original dock"
 	)
 	check_eq(
 		host.layout.get_module_size(Builtins.PREVIEW_ID),
