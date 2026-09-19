@@ -12,6 +12,9 @@ signal migration_completed
 signal panel_visibility_changed(module_id: StringName, visible: bool)
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const GLOBAL_TOOL_OPTIONS_SCENE := preload(
+	"res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn"
+)
 
 const WORKSPACE_SIDE_MARGIN := 8.0
 
@@ -248,6 +251,13 @@ func _migrate_live_editor() -> bool:
 			return false
 		adopted.append(module_id)
 
+	if not _attach_timeline_header_options():
+		_rollback_adoption(adopted)
+		layout_store.autosave_enabled = _previous_autosave_enabled
+		_restore_legacy_shell()
+		_clear_setup()
+		return false
+
 	legacy_container.remove_child(main_canvas)
 	ui_root.add_child(main_canvas)
 	main_canvas.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -293,6 +303,22 @@ func _migrate_live_editor() -> bool:
 		_rollback_live_migration()
 		return false
 	migration_completed.emit()
+	return true
+
+
+func _attach_timeline_header_options() -> bool:
+	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
+	if timeline == null:
+		return false
+	var options := GLOBAL_TOOL_OPTIONS_SCENE.instantiate()
+	if not options is Control:
+		if options != null:
+			options.free()
+		return false
+	var options_control := options as Control
+	if not timeline.set_header_accessory(options_control):
+		options_control.free()
+		return false
 	return true
 
 
