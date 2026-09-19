@@ -151,18 +151,35 @@ func should_draw_tool_indicator() -> bool:
 	return not _adapter_pointer_mode or _adapter_tool_preview_active
 
 
+func _tool_preview_requested() -> bool:
+	return not _adapter_pointer_mode or _adapter_tool_preview_active
+
+
 func _sync_tool_cursor_visibility(visible: bool) -> void:
 	if not is_instance_valid(Global.control):
 		return
-	Global.control.left_cursor.visible = visible and Global.show_left_tool_icon
+	var pixel := Vector2i(current_pixel.floor())
+	Global.control.left_cursor.visible = (
+		visible
+		and Global.show_left_tool_icon
+		and Tools.should_show_tool_at(pixel, MOUSE_BUTTON_LEFT)
+	)
 	Global.control.right_cursor.visible = (
-		visible and Global.show_right_tool_icon and not Global.single_tool_mode
+		visible
+		and Global.show_right_tool_icon
+		and not Global.single_tool_mode
+		and Tools.should_show_tool_at(pixel, MOUSE_BUTTON_RIGHT)
 	)
 
 
 func _handle_tool_event(pixel: Vector2i, event: InputEvent) -> void:
 	sprite_changed_this_frame = false
 	Tools.handle_draw(pixel, event)
+	_sync_tool_cursor_visibility(_tool_preview_requested())
+	if is_instance_valid(indicators):
+		indicators.queue_redraw()
+	if is_instance_valid(previews):
+		previews.queue_redraw()
 	if sprite_changed_this_frame:
 		queue_redraw()
 		update_selected_cels_textures()

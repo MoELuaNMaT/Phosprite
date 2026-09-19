@@ -4,7 +4,7 @@ extends RefCounted
 ## Visual constants and theme-derived colors shared by the Canvas presentation layer.
 ## Gameplay, document pixels, and editor input must never depend on this policy.
 
-const DOCUMENT_CHECKER_SIZE := 1.0
+const DOCUMENT_CHECKER_SIZE := 2.0
 const PIXEL_GRID_ALPHA_FACTOR := 0.55
 const BORDER_MIX := 0.38
 

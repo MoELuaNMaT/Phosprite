@@ -12,24 +12,45 @@ func _make_theme(panel_color: Color, text_color: Color) -> Theme:
 	return source_theme
 
 
-func test_document_checker_contract_is_one_canvas_pixel() -> void:
+func test_document_checker_contract_uses_canvas_and_preview_cell_sizes() -> void:
 	check_eq(
 		CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE,
-		1.0,
-		"one transparency checker cell must equal one document pixel"
+		2.0,
+		"Main Canvas transparency checker cells must cover 2x2 document pixels"
 	)
 	var source := FileAccess.get_file_as_string("res://src/UI/Nodes/TransparentChecker.gd")
 	check_true(
-		source.contains("document_pixel_mode := self == Global.transparent_checker"),
-		"only the main document checker should opt into document-pixel mode"
+		source.contains("var is_main_document_checker := self == Global.transparent_checker"),
+		"main Canvas should identify its document checker explicitly"
 	)
 	check_true(
-		source.contains("CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode"),
-		"main Canvas checker must consume the one-pixel policy"
+		source.contains(
+			"var document_pixel_mode := is_main_document_checker or sync_to_document_pixels"
+		),
+		"previews should be able to opt into the same document-pixel checker mode"
+	)
+	check_true(
+		source.contains("if is_main_document_checker:"),
+		"only Main Canvas may fan out checker refreshes; Preview opt-in must not recurse"
+	)
+	check_true(
+		source.contains("document_checker_size if document_pixel_mode"),
+		"document-pixel checkers must consume their configured document-space cell size"
 	)
 	check_true(
 		source.contains("true if document_pixel_mode else Global.checker_follow_scale"),
-		"document checker must zoom with Canvas pixels while previews retain their preference"
+		"document-pixel checkers must zoom with their Canvas pixels"
+	)
+	var preview_scene := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
+	)
+	check_true(
+		preview_scene.contains("sync_to_document_pixels = true"),
+		"Canvas Preview checker must stay locked to document pixels"
+	)
+	check_true(
+		preview_scene.contains("document_checker_size = 8.0"),
+		"Canvas Preview checker cells must cover 8x8 document pixels"
 	)
 
 

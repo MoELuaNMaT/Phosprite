@@ -16,12 +16,12 @@ func setup(module_manager: WorkspaceModuleManager, workspace_surface: WorkspaceS
 	manager = module_manager
 	surface = workspace_surface
 	manager.module_created.connect(_on_module_created)
+	surface.module_docked.connect(_on_module_docked)
 	surface.module_floated.connect(_on_module_floated)
 	surface.module_collapsed.connect(_on_module_collapsed)
 	surface.module_peek_changed.connect(_on_module_peek_changed)
 	surface.module_restored.connect(_on_module_restored)
 	surface.module_cleared.connect(_on_module_cleared)
-	surface.dock_host.module_docked.connect(_on_module_docked)
 	return true
 
 

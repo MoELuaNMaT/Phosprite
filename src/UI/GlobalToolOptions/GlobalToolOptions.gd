@@ -15,8 +15,8 @@ extends PanelContainer
 func _ready() -> void:
 	Tools.options_reset.connect(reset_options)
 	mirror_options.get_popup().id_pressed.connect(_on_mirror_options_id_pressed)
-	# Resize tools panel when window gets resized
-	get_tree().get_root().size_changed.connect(_on_resized)
+	# The controls now live inside Animation Timeline's Workspace header.
+	# Keep the complete option set on a single row so the header can right-align it as one tool group.
 	horizontal_mirror.button_pressed = Tools.horizontal_mirror
 	vertical_mirror.button_pressed = Tools.vertical_mirror
 	diagonal_xy_mirror.button_pressed = Tools.diagonal_xy_mirror
@@ -33,10 +33,8 @@ func reset_options() -> void:
 
 
 func _on_resized() -> void:
-	var column_n := size.x / 36.5
-	if column_n < 1:
-		column_n = 1
-	grid_container.columns = column_n
+	if is_instance_valid(grid_container):
+		grid_container.columns = 8
 
 
 func _on_Horizontal_toggled(toggled_on: bool) -> void:
@@ -123,7 +121,7 @@ func _on_alpha_lock_toggled(toggled_on: bool) -> void:
 
 
 func _on_Dynamics_pressed() -> void:
-	var pos := dynamics.global_position + Vector2(0, 32)
+	var pos := dynamics.global_position + Vector2(0, dynamics.size.y)
 	dynamics_panel.popup_on_parent(Rect2(pos, dynamics_panel.size))
 
 

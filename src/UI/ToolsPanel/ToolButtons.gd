@@ -170,13 +170,16 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 	if not is_instance_valid(released_over) or released_over.name != candidate["tool_name"]:
 		return true
 
-	# Direct touch currently activates the Primary slot. The Primary/Secondary data model
-	# remains unchanged; D1 deliberately does not define how a future touch UI switches slots.
-	if bool(candidate.get("selection_family", false)):
-		_activate_ios_selection_tool(_ios_selection_recent_tool)
-	else:
-		Tools.assign_tool(String(candidate["tool_name"]), MOUSE_BUTTON_LEFT)
-		Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
+	# Do not mutate the active Tool Options tree while the ScreenTouch event is still
+	# traversing the GUI. A responsive HFlow exposes many more direct touch targets than
+	# the old narrow toolbar, which made re-entrant tool replacement much easier to hit.
+	# Commit the exact validated button after the current input dispatch finishes.
+	call_deferred(
+		"_commit_touch_tool_activation",
+		StringName(candidate["tool_name"]),
+		bool(candidate.get("selection_family", false)),
+		int(candidate.get("generation", -1))
+	)
 	return true
 
 
@@ -195,13 +198,68 @@ func _handle_tool_drag(event: InputEventScreenDrag) -> bool:
 
 
 func _tool_button_at(screen_position: Vector2) -> BaseButton:
+	var scroll_container := _get_tools_scroll_container()
+	if (
+		is_instance_valid(scroll_container)
+		and not scroll_container.get_global_rect().has_point(screen_position)
+	):
+		return null
 	for child in get_children():
 		var button := child as BaseButton
-		if not is_instance_valid(button) or not button.visible:
+		if (
+			not is_instance_valid(button)
+			or not button.is_visible_in_tree()
+			or button.get_parent() != self
+			or not Tools.tools.has(String(button.name))
+		):
 			continue
-		if button.get_global_rect().has_point(screen_position):
+		var viewport_rect := button.get_global_rect()
+		if is_instance_valid(scroll_container):
+			viewport_rect = scroll_container.get_global_rect()
+		if is_visible_tool_touch(button.get_global_rect(), viewport_rect, screen_position):
 			return button
 	return null
+
+
+static func is_visible_tool_touch(
+	button_rect: Rect2, viewport_rect: Rect2, screen_position: Vector2
+) -> bool:
+	var visible_rect := button_rect.intersection(viewport_rect)
+	return visible_rect.has_area() and visible_rect.has_point(screen_position)
+
+
+func _get_tools_scroll_container() -> ScrollContainer:
+	var ancestor := get_parent()
+	while ancestor != null:
+		if ancestor is ScrollContainer:
+			return ancestor as ScrollContainer
+		ancestor = ancestor.get_parent()
+	return null
+
+
+func _commit_touch_tool_activation(
+	tool_name: StringName, selection_family: bool, generation: int
+) -> void:
+	if generation != _ios_selection_touch_generation:
+		return
+	if selection_family:
+		if not is_instance_valid(_ios_selection_family_button):
+			return
+		_activate_ios_selection_tool(_ios_selection_recent_tool)
+		return
+	var key := String(tool_name)
+	if not Tools.tools.has(key):
+		return
+	var tool: Tools.Tool = Tools.tools[key]
+	var button := tool.button_node
+	if (
+		not is_instance_valid(button)
+		or button.get_parent() != self
+		or not button.is_visible_in_tree()
+	):
+		return
+	Tools.assign_tool(key, MOUSE_BUTTON_LEFT)
+	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
 
 
 func _set_touch_mouse_filter(control: Control, disabled: bool) -> void:

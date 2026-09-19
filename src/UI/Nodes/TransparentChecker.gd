@@ -5,6 +5,9 @@ extends ColorRect
 const TRANSPARENT_CHECKER := preload("uid://c50kmfvf635kb")
 const CanvasVisualPolicy := preload("res://src/UI/Canvas/CanvasVisualPolicy.gd")
 
+@export var sync_to_document_pixels := false
+@export var document_checker_size := CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE
+
 
 func _init() -> void:
 	material = ShaderMaterial.new()
@@ -24,14 +27,15 @@ func update_rect() -> void:
 	if not get_parent() is Control:
 		# Set the size to be the same as the project size if the parent is a SubViewport
 		set_bounds(Global.current_project.size)
-	var document_pixel_mode := self == Global.transparent_checker
+	var is_main_document_checker := self == Global.transparent_checker
+	var document_pixel_mode := is_main_document_checker or sync_to_document_pixels
 	if document_pixel_mode:
 		fit_rect(Global.current_project.tiles.get_bounding_rect())
-		for canvas_preview in get_tree().get_nodes_in_group("CanvasPreviews"):
-			canvas_preview.get_viewport().get_node("TransparentChecker").update_rect()
+		if is_main_document_checker:
+			for canvas_preview in get_tree().get_nodes_in_group("CanvasPreviews"):
+				canvas_preview.get_viewport().get_node("TransparentChecker").update_rect()
 	material.set_shader_parameter(
-		&"size",
-		CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode else Global.checker_size
+		&"size", document_checker_size if document_pixel_mode else Global.checker_size
 	)
 	material.set_shader_parameter(&"color1", Global.checker_color_1)
 	material.set_shader_parameter(&"color2", Global.checker_color_2)

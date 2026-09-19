@@ -18,10 +18,18 @@ var _current_state: int = SingleState.START  ## Current state of the bezier curv
 
 
 func _init() -> void:
+	Tools.write_curve_activation_phase("curve_init_enter")
 	# To prevent tool from remaining active when switching projects
 	Global.project_about_to_switch.connect(_clear)
 	_drawer.color_op = Drawer.ColorOp.new()
 	update_indicator()
+	Tools.write_curve_activation_phase("curve_init_done")
+
+
+func _ready() -> void:
+	Tools.write_curve_activation_phase("curve_ready_enter:%d" % tool_slot.button)
+	super._ready()
+	Tools.write_curve_activation_phase("curve_ready_done:%d" % tool_slot.button)
 
 
 func _on_bezier_mode_item_selected(index: int) -> void:
@@ -52,15 +60,21 @@ func get_config() -> Dictionary:
 
 
 func set_config(config: Dictionary) -> void:
+	Tools.write_curve_activation_phase("curve_set_config_enter:%d" % tool_slot.button)
 	super.set_config(config)
-	_fill_inside = config.get("fill_inside", _fill_inside)
-	_bezier_mode = config.get("bezier_mode", _bezier_mode)
+	_fill_inside = bool(config.get("fill_inside", _fill_inside))
+	_bezier_mode = clampi(
+		int(config.get("bezier_mode", _bezier_mode)), Bezier.CHAINED, Bezier.SINGLE
+	)
+	Tools.write_curve_activation_phase("curve_set_config_done:%d" % tool_slot.button)
 
 
 func update_config() -> void:
+	Tools.write_curve_activation_phase("curve_update_config_enter:%d" % tool_slot.button)
 	super.update_config()
 	$FillCheckbox.button_pressed = _fill_inside
 	bezier_option_button.select(_bezier_mode)
+	Tools.write_curve_activation_phase("curve_update_config_done:%d" % tool_slot.button)
 
 
 func _input(event: InputEvent) -> void:
@@ -312,3 +326,11 @@ func draw_empty_circle(
 
 	line_end = circle_radius.rotated(TAU) + circle_center
 	canvas.draw_line(line_origin, line_end, color)
+
+
+func _exit_tree() -> void:
+	# Curve is a multi-step tool: a partially constructed curve can stay active after
+	# the pointer is released. Always clear that state before BaseDrawTool performs its
+	# generic exit cleanup so switching tools cannot finalize a stale curve implicitly.
+	cancel_tool()
+	super()

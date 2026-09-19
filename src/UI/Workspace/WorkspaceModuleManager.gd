@@ -3,9 +3,9 @@ extends Node
 
 ## Registry, factory, and lifecycle owner for Workspace Modules.
 ##
-## P2-A keeps modules detached until an explicit mount call so registration and
-## creation do not alter the existing editor layout. P2-B can provide dock hosts
-## without changing this contract.
+## Scene-backed modules are created lazily. P2-G may instead adopt an existing
+## editor Control for any registered definition, preserving the live node
+## identity and all of its signal/state connections.
 
 signal definition_registered(module_id: StringName)
 signal module_created(module_id: StringName, module: WorkspaceModule)
@@ -64,7 +64,7 @@ func create_module(module_id: StringName, context: Dictionary = {}) -> Workspace
 		return existing
 
 	var definition := get_definition(module_id)
-	if definition == null:
+	if definition == null or definition.uses_external_content:
 		return null
 
 	var module := WorkspaceModule.new()
@@ -78,6 +78,44 @@ func create_module(module_id: StringName, context: Dictionary = {}) -> Workspace
 	_instances[module_id] = module
 	module_created.emit(module_id, module)
 	return module
+
+
+func adopt_module(
+	module_id: StringName, existing_content: Control, context: Dictionary = {}
+) -> WorkspaceModule:
+	var existing := get_instance(module_id)
+	if existing != null:
+		return existing if existing.get_content() == existing_content else null
+	var definition := get_definition(module_id)
+	if definition == null or not is_instance_valid(existing_content):
+		return null
+
+	var module := WorkspaceModule.new()
+	if not module.configure_existing(definition, existing_content):
+		module.free()
+		return null
+	if not module.initialize(context):
+		module.release_external_content()
+		module.free()
+		return null
+
+	_instances[module_id] = module
+	module_created.emit(module_id, module)
+	return module
+
+
+func release_adopted_module(module_id: StringName) -> Control:
+	var module := get_instance(module_id)
+	if module == null or not module.is_external_content():
+		return null
+	var content := module.release_external_content()
+	if content == null:
+		return null
+	_instances.erase(module_id)
+	module.dispose()
+	module.free()
+	module_destroyed.emit(module_id)
+	return content
 
 
 func has_instance(module_id: StringName) -> bool:
@@ -95,7 +133,9 @@ func get_instance(module_id: StringName) -> WorkspaceModule:
 func mount_module(
 	module_id: StringName, host: Control, context: Dictionary = {}
 ) -> WorkspaceModule:
-	var module := create_module(module_id, context)
+	var module := get_instance(module_id)
+	if module == null:
+		module = create_module(module_id, context)
 	if module == null:
 		return null
 	if module.get_lifecycle_state() == WorkspaceModule.LifecycleState.INITIALIZED:
