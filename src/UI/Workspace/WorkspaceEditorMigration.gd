@@ -12,9 +12,7 @@ signal migration_completed
 signal panel_visibility_changed(module_id: StringName, visible: bool)
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
-const GLOBAL_TOOL_OPTIONS_SCENE := preload(
-	"res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn"
-)
+const GLOBAL_TOOL_OPTIONS_SCENE := preload("res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn")
 
 const WORKSPACE_SIDE_MARGIN := 8.0
 
