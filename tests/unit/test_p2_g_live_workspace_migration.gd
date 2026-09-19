@@ -557,7 +557,9 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 		"Tools root should not scroll vertically"
 	)
 	var content := tools.get_node("Content") as VBoxContainer
-	check_true(content != null, "Tools should stack picker and options inside one content container")
+	check_true(
+		content != null, "Tools should stack picker and options inside one content container"
+	)
 	var panel := tools.get_node("Content/PanelContainer") as PanelContainer
 	check_eq(
 		panel.size_flags_horizontal,
@@ -817,8 +819,11 @@ func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -
 		"merged Tools content should stack tool picker above tool options inside the root"
 	)
 	check_true(
-		tools_scene.contains(
-			'[node name="LeftPanelContainer" type="MarginContainer" parent="Content/LeftToolOptions"'
+		(
+			tools_scene
+			. contains(
+				'[node name="LeftPanelContainer" type="MarginContainer" parent="Content/LeftToolOptions"'
+			)
 		),
 		"the original LeftPanelContainer must live in the lower Tools section"
 	)
