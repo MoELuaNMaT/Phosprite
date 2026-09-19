@@ -16,6 +16,8 @@ const COLOR_PICKER_ID := &"color_picker"
 ## Retained only so persisted pre-merge layouts can be recognized as legacy data.
 ## Global Tool Options now lives inside Animation Timeline's toolbar and is not a Workspace module.
 const GLOBAL_TOOL_OPTIONS_ID := &"global_tool_options"
+## Retained only so persisted pre-merge layouts can be recognized as legacy data.
+## Left Tool Options now lives inside the Tools content and is not a Workspace module.
 const LEFT_TOOL_OPTIONS_ID := &"left_tool_options"
 const RIGHT_TOOL_OPTIONS_ID := &"right_tool_options"
 const TILES_ID := &"tiles"
@@ -33,7 +35,6 @@ const LIVE_PANEL_NODE_NAMES := {
 	TIMELINE_ID: "Animation Timeline",
 	PREVIEW_ID: "Canvas Preview",
 	COLOR_PICKER_ID: "Color Picker",
-	LEFT_TOOL_OPTIONS_ID: "Left Tool Options",
 	RIGHT_TOOL_OPTIONS_ID: "Right Tool Options",
 	PALETTE_ID: "Palettes",
 	TILES_ID: "Tiles",
@@ -73,7 +74,7 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	palette.can_collapse = true
 	definitions.append(palette)
 
-	definitions.append(_external(TOOLS_ID, "Tools", Vector2(72.0, 180.0), Vector2(112.0, 520.0)))
+	definitions.append(_external(TOOLS_ID, "Tools", Vector2(130.0, 220.0), Vector2(180.0, 520.0)))
 	definitions.append(
 		_external(SECOND_CANVAS_ID, "Second Canvas", Vector2(260.0, 180.0), Vector2(420.0, 300.0))
 	)
@@ -82,11 +83,6 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	)
 	definitions.append(
 		_external(COLOR_PICKER_ID, "Color Picker", Vector2(220.0, 200.0), Vector2(300.0, 320.0))
-	)
-	definitions.append(
-		_external(
-			LEFT_TOOL_OPTIONS_ID, "Left Tool Options", Vector2(160.0, 140.0), Vector2(220.0, 260.0)
-		)
 	)
 	definitions.append(
 		_external(
