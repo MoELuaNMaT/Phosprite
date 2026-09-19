@@ -102,21 +102,10 @@ percent = 0.911765
 first = SubResource("Resource_4egp5")
 second = SubResource("Resource_u1u2a")
 
-[sub_resource type="Resource" id="Resource_6pwxm"]
-resource_name = "Tabs"
-script = ExtResource("36")
-names = PackedStringArray("Left Tool Options")
-
 [sub_resource type="Resource" id="Resource_24rfh"]
 resource_name = "Tabs"
 script = ExtResource("36")
 names = PackedStringArray("Right Tool Options")
-
-[sub_resource type="Resource" id="Resource_tcb26"]
-resource_name = "Split"
-script = ExtResource("27")
-first = SubResource("Resource_6pwxm")
-second = SubResource("Resource_24rfh")
 
 [sub_resource type="Resource" id="Resource_ugja0"]
 resource_name = "Tabs"
@@ -128,7 +117,7 @@ resource_name = "Split"
 script = ExtResource("27")
 direction = 1
 percent = 0.692661
-first = SubResource("Resource_tcb26")
+first = SubResource("Resource_24rfh")
 second = SubResource("Resource_ugja0")
 
 [sub_resource type="Resource" id="Resource_l8roh"]
@@ -335,16 +324,6 @@ layout_mode = 2
 
 [node name="Color Picker" parent="DockableContainer" unique_id=1359696669 instance=ExtResource("17")]
 layout_mode = 2
-
-[node name="Left Tool Options" type="ScrollContainer" parent="DockableContainer" unique_id=1020831561]
-custom_minimum_size = Vector2(72, 72)
-layout_mode = 2
-
-[node name="LeftPanelContainer" type="MarginContainer" parent="DockableContainer/Left Tool Options" unique_id=1828034153]
-custom_minimum_size = Vector2(130, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
 
 [node name="Right Tool Options" type="ScrollContainer" parent="DockableContainer" unique_id=2060219285]
 custom_minimum_size = Vector2(72, 72)
