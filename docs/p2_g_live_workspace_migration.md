@@ -6,7 +6,7 @@ The migration deliberately preserves existing editor `Control` instances. Panels
 
 ## 1. Live panel ownership
 
-`WorkspaceBuiltinModules` assigns stable module IDs to the current editor panels, including Tools, tool options, Canvas Preview, Palette, Color Picker, Timeline, Tiles, and the 3D Object Tree.
+`WorkspaceBuiltinModules` assigns stable module IDs to the current editor panels, including Tools, contextual tool options, Canvas Preview, Palette, Color Picker, Timeline, Tiles, and the 3D Object Tree. Global Tool Options is no longer a standalone Workspace module: its existing controls are embedded directly in Animation Timeline's `AnimationButtons` toolbar so they move with Timeline without becoming Timeline body content.
 
 `Main Canvas` is not a Workspace Module. It remains the central editing surface and is promoted out of the legacy `DockableContainer` during migration. Occupied Workspace docks reserve space around it; empty docks reserve no permanent space.
 
