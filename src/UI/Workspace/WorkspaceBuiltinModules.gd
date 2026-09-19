@@ -13,6 +13,8 @@ const TOOLS_ID := &"tools"
 const SECOND_CANVAS_ID := &"second_canvas"
 const TIMELINE_ID := &"animation_timeline"
 const COLOR_PICKER_ID := &"color_picker"
+## Retained only so persisted pre-merge layouts can be recognized as legacy data.
+## Global Tool Options now lives inside Animation Timeline's toolbar and is not a Workspace module.
 const GLOBAL_TOOL_OPTIONS_ID := &"global_tool_options"
 const LEFT_TOOL_OPTIONS_ID := &"left_tool_options"
 const RIGHT_TOOL_OPTIONS_ID := &"right_tool_options"
@@ -31,7 +33,6 @@ const LIVE_PANEL_NODE_NAMES := {
 	TIMELINE_ID: "Animation Timeline",
 	PREVIEW_ID: "Canvas Preview",
 	COLOR_PICKER_ID: "Color Picker",
-	GLOBAL_TOOL_OPTIONS_ID: "Global Tool Options",
 	LEFT_TOOL_OPTIONS_ID: "Left Tool Options",
 	RIGHT_TOOL_OPTIONS_ID: "Right Tool Options",
 	PALETTE_ID: "Palettes",
@@ -81,14 +82,6 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	)
 	definitions.append(
 		_external(COLOR_PICKER_ID, "Color Picker", Vector2(220.0, 200.0), Vector2(300.0, 320.0))
-	)
-	definitions.append(
-		_external(
-			GLOBAL_TOOL_OPTIONS_ID,
-			"Global Tool Options",
-			Vector2(200.0, 120.0),
-			Vector2(280.0, 200.0)
-		)
 	)
 	definitions.append(
 		_external(
