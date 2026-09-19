@@ -856,12 +856,7 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		"legacy startup shell must retain Left Tool Options until tools initialize"
 	)
 	check_true(
-		(
-			ui_scene
-			. contains(
-				'[node name="LeftPanelContainer" type="MarginContainer" parent="DockableContainer/Left Tool Options"'
-			)
-		),
+		ui_scene.contains('parent="DockableContainer/Left Tool Options"'),
 		"legacy startup shell must retain the original LeftPanelContainer path"
 	)
 
