@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://wk8okc05jsil" path="res://src/UI/ToolsPanel/ToolButtons.gd" id="1"]
 
-[node name="Tools" type="VBoxContainer" unique_id=236478578]
+[node name="Tools" type="ScrollContainer" unique_id=236478578]
 custom_minimum_size = Vector2(130, 180)
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,36 +11,36 @@ offset_right = -1242.0
 offset_bottom = -230.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 0
-
-[node name="ToolPalette" type="ScrollContainer" parent="."]
-custom_minimum_size = Vector2(36, 36)
-layout_mode = 2
-size_flags_horizontal = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 0
 
-[node name="PanelContainer" type="PanelContainer" parent="ToolPalette" unique_id=1792604337]
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="PanelContainer" type="PanelContainer" parent="Content" unique_id=1792604337]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="ToolButtons" type="HFlowContainer" parent="ToolPalette/PanelContainer" unique_id=141197070]
+[node name="ToolButtons" type="HFlowContainer" parent="Content/PanelContainer" unique_id=141197070]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
 script = ExtResource("1")
 
-[node name="ToolOptionsSeparator" type="HSeparator" parent="."]
+[node name="ToolOptionsSeparator" type="HSeparator" parent="Content"]
 layout_mode = 2
 
-[node name="LeftToolOptions" type="ScrollContainer" parent="."]
+[node name="LeftToolOptions" type="ScrollContainer" parent="Content"]
 custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="LeftPanelContainer" type="MarginContainer" parent="LeftToolOptions" unique_id=1828034153]
+[node name="LeftPanelContainer" type="MarginContainer" parent="Content/LeftToolOptions" unique_id=1828034153]
 custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 size_flags_horizontal = 3
