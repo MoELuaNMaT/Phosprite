@@ -790,7 +790,7 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	_free_fixture(fixture)
 
 
-func test_global_tool_options_are_embedded_in_timeline_toolbar_not_workspace() -> void:
+func test_global_tool_options_live_in_timeline_workspace_header_and_survive_collapse() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(
 		not ids.has(Builtins.GLOBAL_TOOL_OPTIONS_ID),
@@ -800,17 +800,65 @@ func test_global_tool_options_are_embedded_in_timeline_toolbar_not_workspace() -
 		"res://src/UI/Timeline/AnimationTimeline.tscn"
 	)
 	check_true(
-		timeline_scene.contains(
-			'path="res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn"'
-		),
-		"Animation Timeline must own the existing Global Tool Options scene"
+		not timeline_scene.contains("GlobalToolOptions"),
+		"Animation Timeline content scene must not embed Global Tool Options"
+	)
+	var migration_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 	)
 	check_true(
-		timeline_scene.contains(
-			'parent="TimelineContainer/TimelineButtons/VBoxContainer/AnimationToolsScrollContainer/AnimationTools/MarginContainer/AnimationButtons" instance=ExtResource("32_global_options")'
-		),
-		"Global Tool Options must live on AnimationButtons toolbar, not inside Timeline content"
+		migration_source.contains("timeline.set_header_accessory(options_control)"),
+		"live migration must attach Global Tool Options to the Timeline Workspace header"
 	)
+	var module_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceModule.gd"
+	)
+	check_true(
+		module_source.contains("get_header_accessory_rect().has_point(local_point)"),
+		"header accessory controls must be excluded from the module drag target"
+	)
+
+	var fixture := _make_live_fixture()
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
+	var accessory := timeline.get_header_accessory()
+	check_true(accessory != null, "Timeline must own a live header accessory")
+	check_eq(
+		accessory.name,
+		&"Global Tool Options",
+		"Timeline header accessory must be the original Global Tool Options control"
+	)
+	check_true(
+		accessory.get_parent() is Node2D,
+		"header tools must live in the Workspace header overlay, not inside Timeline content"
+	)
+	check_true(
+		timeline.get_header_height() >= 36.0,
+		"Timeline header must expand enough to contain the Global Tool Options controls"
+	)
+	var accessory_rect := timeline.get_header_accessory_rect()
+	check_true(
+		accessory_rect.end.x <= timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE * 2.0,
+		"expanded docked Timeline must right-align tools before Float and Collapse actions"
+	)
+	check_true(
+		not timeline.is_header_drag_point(accessory_rect.get_center()),
+		"touching Global Tool Options must never begin a Timeline header drag"
+	)
+	check_true(surface.collapse_module(Builtins.TIMELINE_ID), "Timeline should collapse")
+	check_true(timeline.is_content_collapsed(), "Timeline body should collapse")
+	check_true(
+		timeline.get_header_accessory() == accessory and accessory.visible,
+		"Global Tool Options must remain in the header while Timeline body is collapsed"
+	)
+	check_true(
+		timeline.get_header_accessory_rect().end.x
+		<= timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE,
+		"collapsed Timeline must keep tools right-aligned before the Collapse action"
+	)
+	_free_fixture(fixture)
+
 	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
 	check_true(
 		not ui_scene.contains('name="Global Tool Options" parent="DockableContainer"'),
@@ -823,12 +871,12 @@ func test_global_tool_options_are_embedded_in_timeline_toolbar_not_workspace() -
 		"res://src/UI/GlobalToolOptions/GlobalToolOptions.gd"
 	)
 	check_true(
-		options_scene.contains("custom_minimum_size = Vector2(292, 36)"),
-		"embedded Global Tool Options should reserve one-row toolbar width"
+		options_scene.contains("custom_minimum_size = Vector2(256, 36)"),
+		"header Global Tool Options should reserve one compact single-row width"
 	)
 	check_true(
 		options_script.contains("grid_container.columns = 8"),
-		"all eight Global Tool Options controls must remain on one toolbar row"
+		"all eight Global Tool Options controls must remain on one header row"
 	)
 
 
