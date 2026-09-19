@@ -790,6 +790,48 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	_free_fixture(fixture)
 
 
+func test_global_tool_options_are_embedded_in_timeline_toolbar_not_workspace() -> void:
+	var ids := Builtins.get_live_panel_ids()
+	check_true(
+		not ids.has(Builtins.GLOBAL_TOOL_OPTIONS_ID),
+		"Global Tool Options must no longer exist as an independent Workspace module"
+	)
+	var timeline_scene := FileAccess.get_file_as_string(
+		"res://src/UI/Timeline/AnimationTimeline.tscn"
+	)
+	check_true(
+		timeline_scene.contains(
+			'path="res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn"'
+		),
+		"Animation Timeline must own the existing Global Tool Options scene"
+	)
+	check_true(
+		timeline_scene.contains(
+			'parent="TimelineContainer/TimelineButtons/VBoxContainer/AnimationToolsScrollContainer/AnimationTools/MarginContainer/AnimationButtons" instance=ExtResource("32_global_options")'
+		),
+		"Global Tool Options must live on AnimationButtons toolbar, not inside Timeline content"
+	)
+	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
+	check_true(
+		not ui_scene.contains('name="Global Tool Options" parent="DockableContainer"'),
+		"legacy UI must not keep a duplicate standalone Global Tool Options panel"
+	)
+	var options_scene := FileAccess.get_file_as_string(
+		"res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn"
+	)
+	var options_script := FileAccess.get_file_as_string(
+		"res://src/UI/GlobalToolOptions/GlobalToolOptions.gd"
+	)
+	check_true(
+		options_scene.contains("custom_minimum_size = Vector2(292, 36)"),
+		"embedded Global Tool Options should reserve one-row toolbar width"
+	)
+	check_true(
+		options_script.contains("grid_container.columns = 8"),
+		"all eight Global Tool Options controls must remain on one toolbar row"
+	)
+
+
 func test_live_module_catalog_keeps_main_canvas_outside_workspace_modules() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(ids.has(Builtins.PREVIEW_ID), "Preview should be a live Workspace module")
