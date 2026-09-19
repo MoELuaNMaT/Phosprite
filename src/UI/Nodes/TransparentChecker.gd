@@ -6,6 +6,7 @@ const TRANSPARENT_CHECKER := preload("uid://c50kmfvf635kb")
 const CanvasVisualPolicy := preload("res://src/UI/Canvas/CanvasVisualPolicy.gd")
 
 @export var sync_to_document_pixels := false
+@export var document_checker_size := CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE
 
 
 func _init() -> void:
@@ -35,7 +36,7 @@ func update_rect() -> void:
 				canvas_preview.get_viewport().get_node("TransparentChecker").update_rect()
 	material.set_shader_parameter(
 		&"size",
-		CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode else Global.checker_size
+		document_checker_size if document_pixel_mode else Global.checker_size
 	)
 	material.set_shader_parameter(&"color1", Global.checker_color_1)
 	material.set_shader_parameter(&"color2", Global.checker_color_2)
