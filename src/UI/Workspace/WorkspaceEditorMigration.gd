@@ -410,7 +410,9 @@ func _restore_merged_tools() -> void:
 			palette_parent.add_child(palette)
 			palette_parent.move_child(
 				palette,
-				mini(int(_tools_palette_state.get("index", 0)), palette_parent.get_child_count() - 1)
+				mini(
+					int(_tools_palette_state.get("index", 0)), palette_parent.get_child_count() - 1
+				)
 			)
 		palette.size_flags_vertical = int(
 			_tools_palette_state.get("size_flags_vertical", Control.SIZE_EXPAND_FILL)
