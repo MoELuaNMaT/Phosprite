@@ -937,7 +937,7 @@ func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_out
 	)
 	check_true(
 		tools_source.contains("Ordinary tools stop at the last valid document point"),
-		"an ordinary active stroke must stop when it exits the document instead of editing background space"
+		"ordinary strokes must stop when they exit document bounds"
 	)
 	check_true(
 		(
