@@ -48,6 +48,9 @@ func _ready() -> void:
 		main_canvas_container.property_list_changed.connect(_re_configure_shader)
 		update_transparent_shader()
 	await Global.pixelorama_opened
+	await get_tree().process_frame
+	if is_workspace_live() and not workspace_migration.merge_left_tool_options_after_startup():
+		push_error("P2-G failed to merge Left Tool Options into Tools after startup")
 	_apply_context_panel_visibility()
 
 
