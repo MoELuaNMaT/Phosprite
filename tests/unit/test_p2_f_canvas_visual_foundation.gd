@@ -24,6 +24,10 @@ func test_document_checker_contract_is_one_canvas_pixel() -> void:
 		"main Canvas should auto-enable document-pixel mode while previews can opt in explicitly"
 	)
 	check_true(
+		source.contains("if is_main_document_checker:"),
+		"only Main Canvas may fan out checker refreshes; Preview opt-in must not recurse"
+	)
+	check_true(
 		source.contains("CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode"),
 		"main Canvas checker must consume the one-pixel policy"
 	)
