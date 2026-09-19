@@ -285,6 +285,7 @@ var _right_tools_per_layer_type := {
 }
 var _tool_buttons: Node
 var _last_position := Vector2i(Vector2.INF)
+var _active_last_document_position := Vector2i(Vector2.INF)
 
 
 class Tool:
@@ -893,16 +894,46 @@ func update_tool_cursors() -> void:
 	Global.control.right_cursor.texture = right_tool.cursor_icon
 
 
+func is_position_inside_document(position: Vector2i) -> bool:
+	var project := Global.current_project
+	if project == null:
+		return false
+	return Rect2i(Vector2i.ZERO, project.size).has_point(position)
+
+
+func tool_allows_outside_document(button: int) -> bool:
+	if not _slots.has(button):
+		return false
+	var slot: Slot = _slots[button]
+	return is_instance_valid(slot.tool_node) and slot.tool_node is BaseSelectionTool
+
+
+func can_start_tool_at(position: Vector2i, button: int) -> bool:
+	return is_position_inside_document(position) or tool_allows_outside_document(button)
+
+
+func should_show_tool_at(position: Vector2i, button: int) -> bool:
+	return can_start_tool_at(position, button)
+
+
 func draw_indicator() -> void:
-	if Global.right_square_indicator_visible and not Global.single_tool_mode:
+	var position := Vector2i(Global.canvas.current_pixel.floor())
+	if (
+		Global.right_square_indicator_visible
+		and not Global.single_tool_mode
+		and should_show_tool_at(position, MOUSE_BUTTON_RIGHT)
+	):
 		_slots[MOUSE_BUTTON_RIGHT].tool_node.draw_indicator(false)
-	if Global.left_square_indicator_visible:
+	if Global.left_square_indicator_visible and should_show_tool_at(position, MOUSE_BUTTON_LEFT):
 		_slots[MOUSE_BUTTON_LEFT].tool_node.draw_indicator(true)
 
 
 func draw_preview() -> void:
-	_slots[MOUSE_BUTTON_LEFT].tool_node.draw_preview()
-	_slots[MOUSE_BUTTON_RIGHT].tool_node.draw_preview()
+	var position := Vector2i(Global.canvas.current_pixel.floor())
+	if should_show_tool_at(position, MOUSE_BUTTON_LEFT):
+		_slots[MOUSE_BUTTON_LEFT].tool_node.draw_preview()
+	if should_show_tool_at(position, MOUSE_BUTTON_RIGHT):
+		_slots[MOUSE_BUTTON_RIGHT].tool_node.draw_preview()
 
 
 func handle_draw(position: Vector2i, event: InputEvent) -> void:
@@ -912,6 +943,7 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 	var draw_pos := position
 	if Global.mirror_view:
 		draw_pos.x = Global.current_project.size.x - position.x - 1
+	var inside_document := is_position_inside_document(position)
 	if event is InputEventGesture:
 		if active_button == MOUSE_BUTTON_LEFT:
 			_slots[active_button].tool_node.cancel_tool()
@@ -929,28 +961,49 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 				change_layer_automatically(draw_pos)
 				return
 
-	if event.is_action_pressed(&"activate_left_tool") and active_button == -1 and not pen_inverted:
+	if (
+		event.is_action_pressed(&"activate_left_tool")
+		and active_button == -1
+		and not pen_inverted
+		and can_start_tool_at(position, MOUSE_BUTTON_LEFT)
+	):
 		active_button = MOUSE_BUTTON_LEFT
+		_active_last_document_position = draw_pos
 		_slots[active_button].tool_node.draw_start(draw_pos)
 	elif event.is_action_released(&"activate_left_tool") and active_button == MOUSE_BUTTON_LEFT:
-		_slots[active_button].tool_node.draw_end(draw_pos)
+		var end_pos := draw_pos
+		if not tool_allows_outside_document(active_button) and not inside_document:
+			end_pos = _active_last_document_position
+		_slots[active_button].tool_node.draw_end(end_pos)
 		active_button = -1
+		_active_last_document_position = Vector2i(Vector2.INF)
 	elif (
 		(
 			event.is_action_pressed(&"activate_right_tool")
 			and active_button == -1
 			and not pen_inverted
+			and can_start_tool_at(position, MOUSE_BUTTON_RIGHT)
 		)
-		or event.is_action_pressed(&"activate_left_tool") and active_button == -1 and pen_inverted
+		or (
+			event.is_action_pressed(&"activate_left_tool")
+			and active_button == -1
+			and pen_inverted
+			and can_start_tool_at(position, MOUSE_BUTTON_RIGHT)
+		)
 	):
 		active_button = MOUSE_BUTTON_RIGHT
+		_active_last_document_position = draw_pos
 		_slots[active_button].tool_node.draw_start(draw_pos)
 	elif (
 		(event.is_action_released(&"activate_right_tool") and active_button == MOUSE_BUTTON_RIGHT)
 		or event.is_action_released(&"activate_left_tool") and active_button == MOUSE_BUTTON_RIGHT
 	):
-		_slots[active_button].tool_node.draw_end(draw_pos)
+		var end_pos := draw_pos
+		if not tool_allows_outside_document(active_button) and not inside_document:
+			end_pos = _active_last_document_position
+		_slots[active_button].tool_node.draw_end(end_pos)
 		active_button = -1
+		_active_last_document_position = Vector2i(Vector2.INF)
 
 	if event is InputEventMouseMotion:
 		pen_pressure = event.pressure
@@ -980,10 +1033,21 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 			mouse_velocity = 0.0
 		if not position == _last_position:
 			_last_position = position
-			_slots[MOUSE_BUTTON_LEFT].tool_node.cursor_move(position)
-			_slots[MOUSE_BUTTON_RIGHT].tool_node.cursor_move(position)
+			if should_show_tool_at(position, MOUSE_BUTTON_LEFT):
+				_slots[MOUSE_BUTTON_LEFT].tool_node.cursor_move(position)
+			if should_show_tool_at(position, MOUSE_BUTTON_RIGHT):
+				_slots[MOUSE_BUTTON_RIGHT].tool_node.cursor_move(position)
 			if active_button != -1:
-				_slots[active_button].tool_node.draw_move(draw_pos)
+				if tool_allows_outside_document(active_button) or inside_document:
+					_active_last_document_position = draw_pos
+					_slots[active_button].tool_node.draw_move(draw_pos)
+				elif _active_last_document_position != Vector2i(Vector2.INF):
+					# Ordinary tools stop at the last valid document point as soon as
+					# the pointer leaves the image. Selection tools intentionally keep
+					# ownership so a drag may begin outside and cross into the document.
+					_slots[active_button].tool_node.draw_end(_active_last_document_position)
+					active_button = -1
+					_active_last_document_position = Vector2i(Vector2.INF)
 
 	var project := Global.current_project
 	var text := "[%s×%s]" % [project.size.x, project.size.y]
