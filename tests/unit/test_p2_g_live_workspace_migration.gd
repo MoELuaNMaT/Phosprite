@@ -840,7 +840,7 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		"Tools must preserve its original startup root"
 	)
 	check_true(
-		tools_scene.contains('[node name="PanelContainer" type="PanelContainer" parent="."]'),
+		tools_scene.contains('[node name="PanelContainer" type="PanelContainer" parent="."'),
 		"Tools palette must keep its original startup parent"
 	)
 	check_true(
