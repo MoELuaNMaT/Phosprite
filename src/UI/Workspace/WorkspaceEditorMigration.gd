@@ -77,6 +77,7 @@ var canvas_camera: CanvasCamera
 var live := false
 
 var _ruler_overlay: Control
+var _ruler_project: Project
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
@@ -606,6 +607,8 @@ func _prepare_canvas_chrome() -> void:
 	_reparent_control(vertical_ruler, _ruler_overlay)
 	if horizontal_ruler.has_method(&"set_canvas_edge_overlay_mode"):
 		horizontal_ruler.call(&"set_canvas_edge_overlay_mode", true)
+	if vertical_ruler.has_method(&"set_canvas_edge_overlay_mode"):
+		vertical_ruler.call(&"set_canvas_edge_overlay_mode", true)
 
 	if not viewport_container.resized.is_connected(_update_canvas_chrome_geometry):
 		viewport_container.resized.connect(_update_canvas_chrome_geometry)
@@ -613,8 +616,32 @@ func _prepare_canvas_chrome() -> void:
 		for signal_name in [&"zoom_changed", &"rotation_changed", &"offset_changed"]:
 			if not canvas_camera.is_connected(signal_name, _update_canvas_chrome_geometry):
 				canvas_camera.connect(signal_name, _update_canvas_chrome_geometry)
-	if not Global.project_switched.is_connected(_update_canvas_chrome_geometry):
-		Global.project_switched.connect(_update_canvas_chrome_geometry)
+	if not Global.project_switched.is_connected(_on_canvas_project_switched):
+		Global.project_switched.connect(_on_canvas_project_switched)
+	_bind_ruler_project()
+
+
+func _on_canvas_project_switched() -> void:
+	_bind_ruler_project()
+	_update_canvas_chrome_geometry()
+
+
+func _bind_ruler_project() -> void:
+	if (
+		is_instance_valid(_ruler_project)
+		and _ruler_project.resized.is_connected(_on_document_resized)
+	):
+		_ruler_project.resized.disconnect(_on_document_resized)
+	_ruler_project = Global.current_project
+	if (
+		is_instance_valid(_ruler_project)
+		and not _ruler_project.resized.is_connected(_on_document_resized)
+	):
+		_ruler_project.resized.connect(_on_document_resized)
+
+
+func _on_document_resized() -> void:
+	_update_canvas_chrome_geometry.call_deferred()
 
 
 func _update_canvas_chrome_geometry() -> void:
@@ -632,20 +659,16 @@ func _update_canvas_chrome_geometry() -> void:
 		* viewport_container.get_global_transform_with_canvas().origin
 	)
 	var canvas_rect := _canvas_screen_rect()
+	var horizontal_height := maxf(16.0, horizontal_ruler.get_combined_minimum_size().y)
+	var vertical_width := maxf(16.0, vertical_ruler.get_combined_minimum_size().x)
 	horizontal_ruler.position = (
-		viewport_origin
-		+ Vector2(0.0, canvas_rect.position.y - horizontal_ruler.get_combined_minimum_size().y)
+		viewport_origin + Vector2(canvas_rect.position.x, canvas_rect.position.y - horizontal_height)
 	)
-	horizontal_ruler.size = Vector2(
-		viewport_container.size.x, maxf(16.0, horizontal_ruler.get_combined_minimum_size().y)
-	)
+	horizontal_ruler.size = Vector2(maxf(0.0, canvas_rect.size.x), horizontal_height)
 	vertical_ruler.position = (
-		viewport_origin
-		+ Vector2(canvas_rect.position.x - vertical_ruler.get_combined_minimum_size().x, 0.0)
+		viewport_origin + Vector2(canvas_rect.position.x - vertical_width, canvas_rect.position.y)
 	)
-	vertical_ruler.size = Vector2(
-		maxf(16.0, vertical_ruler.get_combined_minimum_size().x), viewport_container.size.y
-	)
+	vertical_ruler.size = Vector2(vertical_width, maxf(0.0, canvas_rect.size.y))
 	horizontal_ruler.queue_redraw()
 	vertical_ruler.queue_redraw()
 
@@ -699,6 +722,18 @@ func _reparent_control(control: Control, parent: Node) -> void:
 
 
 func _restore_canvas_chrome() -> void:
+	if Global.project_switched.is_connected(_on_canvas_project_switched):
+		Global.project_switched.disconnect(_on_canvas_project_switched)
+	if (
+		is_instance_valid(_ruler_project)
+		and _ruler_project.resized.is_connected(_on_document_resized)
+	):
+		_ruler_project.resized.disconnect(_on_document_resized)
+	_ruler_project = null
+	if horizontal_ruler != null and horizontal_ruler.has_method(&"set_canvas_edge_overlay_mode"):
+		horizontal_ruler.call(&"set_canvas_edge_overlay_mode", false)
+	if vertical_ruler != null and vertical_ruler.has_method(&"set_canvas_edge_overlay_mode"):
+		vertical_ruler.call(&"set_canvas_edge_overlay_mode", false)
 	for control_variant in _chrome_states.keys():
 		var control := control_variant as Control
 		if control == null:
@@ -744,5 +779,6 @@ func _clear_setup() -> void:
 	vertical_ruler = null
 	canvas_camera = null
 	_ruler_overlay = null
+	_ruler_project = null
 	_project_tabs_height = 0.0
 	live = false
