@@ -2,14 +2,6 @@ extends PanelContainer
 
 const NAVIGATION := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 
-@onready
-var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
-@onready var canvas_preview := $"%CanvasPreview" as Node2D
-@onready var camera := $"%CameraPreview" as CanvasCamera
-@onready var play_button := $"%PlayButton" as Button
-@onready var start_frame := $"%StartFrame" as ValueSlider
-@onready var end_frame := $"%EndFrame" as ValueSlider
-
 var _preview_touches: Dictionary = {}
 var _navigation_ids := PackedInt32Array()
 var _baseline_centroid := Vector2.ZERO
@@ -20,6 +12,14 @@ var _baseline_angle := 0.0
 var _anchor_canvas := Vector2.ZERO
 var _pan_active := false
 var _pinch_active := false
+
+@onready
+var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
+@onready var canvas_preview := $"%CanvasPreview" as Node2D
+@onready var camera := $"%CameraPreview" as CanvasCamera
+@onready var play_button := $"%PlayButton" as Button
+@onready var start_frame := $"%StartFrame" as ValueSlider
+@onready var end_frame := $"%EndFrame" as ValueSlider
 
 
 func _input(event: InputEvent) -> void:
