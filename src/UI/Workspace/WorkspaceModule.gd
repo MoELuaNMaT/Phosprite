@@ -321,7 +321,7 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 	var padding := int(_visual_theme.CONTENT_PADDING)
 	if state == &"collapsed" and _content_collapsed:
 		add_theme_constant_override(&"margin_left", 0)
-		add_theme_constant_override(&"margin_top", int(_visual_theme.HEADER_HEIGHT))
+		add_theme_constant_override(&"margin_top", int(get_header_height()))
 		add_theme_constant_override(&"margin_right", 0)
 		add_theme_constant_override(&"margin_bottom", 0)
 	else:
@@ -330,7 +330,7 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 			bottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))
 		add_theme_constant_override(&"margin_left", padding)
 		add_theme_constant_override(
-			&"margin_top", int(_visual_theme.HEADER_HEIGHT + _visual_theme.CONTENT_PADDING)
+			&"margin_top", int(get_header_height() + _visual_theme.CONTENT_PADDING)
 		)
 		add_theme_constant_override(&"margin_right", padding)
 		add_theme_constant_override(&"margin_bottom", bottom_margin)
@@ -349,12 +349,13 @@ func _draw() -> void:
 	var header_style := _visual_theme.get_header_style(_visual_state)
 	if module_style != null:
 		draw_style_box(module_style, get_visual_rect())
-	var header_rect := Rect2(0.0, 0.0, size.x, _visual_theme.HEADER_HEIGHT)
+	var header_height := get_header_height()
+	var header_rect := Rect2(0.0, 0.0, size.x, header_height)
 	if header_style != null:
 		draw_style_box(header_style, header_rect)
 	draw_line(
-		Vector2(0.0, _visual_theme.HEADER_HEIGHT),
-		Vector2(size.x, _visual_theme.HEADER_HEIGHT),
+		Vector2(0.0, header_height),
+		Vector2(size.x, header_height),
 		_visual_theme.border_color,
 		1.0
 	)
@@ -363,7 +364,7 @@ func _draw() -> void:
 		title = definition.get_resolved_display_name()
 	else:
 		title = String(name)
-	var baseline := _visual_theme.HEADER_HEIGHT * 0.5 + _visual_theme.default_font_size * 0.35
+	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
 	var header_actions_width := _get_header_actions_width()
 	var header_accessory_width := (
 		_header_accessory.size.x if is_instance_valid(_header_accessory) else 0.0
@@ -433,7 +434,7 @@ func _draw_float_affordance() -> void:
 		or _content_collapsed
 	):
 		return
-	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 1.5, _visual_theme.HEADER_HEIGHT * 0.5)
+	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 1.5, get_header_height() * 0.5)
 	var rect_size := Vector2(9.0, 7.0)
 	var rect := Rect2(center - rect_size * 0.5 + Vector2(-1.5, 1.5), rect_size)
 	draw_rect(rect, _visual_theme.muted_text_color, false, 1.2)
@@ -460,7 +461,7 @@ func _draw_float_affordance() -> void:
 func _draw_collapse_affordance() -> void:
 	if definition == null or not definition.can_collapse or _visual_theme == null:
 		return
-	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, _visual_theme.HEADER_HEIGHT * 0.5)
+	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, get_header_height() * 0.5)
 	var half := 4.0
 	var direction := -1.0 if _content_collapsed else 1.0
 	draw_line(
