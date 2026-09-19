@@ -12,7 +12,9 @@ const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeControlle
 
 
 func _make_live_fixture(
-	config_cache: ConfigFile = null, preview_initially_visible := true
+	config_cache: ConfigFile = null,
+	preview_initially_visible := true,
+	merge_tool_options_after_startup := true
 ) -> Dictionary:
 	var root := Control.new()
 	root.size = Vector2(1200.0, 800.0)
@@ -94,6 +96,11 @@ func _make_live_fixture(
 		migration.setup(root, legacy, manager, surface, store),
 		"live editor migration should complete transactionally"
 	)
+	if merge_tool_options_after_startup:
+		check_true(
+			migration.merge_left_tool_options_after_startup(),
+			"fixture should simulate post-startup Left Tool Options merge"
+		)
 	return {
 		"root": root,
 		"legacy": legacy,
@@ -855,14 +862,29 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		"legacy startup shell must retain the original LeftPanelContainer path"
 	)
 
-	var fixture := _make_live_fixture()
+	var fixture := _make_live_fixture(null, true, false)
 	var manager := fixture["manager"] as WorkspaceModuleManager
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+	var legacy := fixture["legacy"] as DockableContainer
 	var tools_module := manager.get_instance(Builtins.TOOLS_ID)
 	var tools_root := tools_module.get_content() as ScrollContainer
 	var left_options := fixture["left_tool_options"] as ScrollContainer
 	var left_panel := fixture["left_panel"] as MarginContainer
+	check_eq(
+		left_options.get_parent(),
+		legacy,
+		"Left Tool Options must remain in the legacy startup shell until startup completes"
+	)
+	check_true(
+		tools_root.get_node_or_null(^"MergedToolsContent") == null,
+		"Workspace setup must not mutate the Tools hierarchy during startup"
+	)
+	check_true(
+		migration.merge_left_tool_options_after_startup(),
+		"post-startup migration should merge the already initialized controls"
+	)
 	var merged := tools_root.get_node_or_null(^"MergedToolsContent") as VBoxContainer
-	check_true(merged != null, "migration should create one merged Tools content stack")
+	check_true(merged != null, "post-startup merge should create one Tools content stack")
 	check_eq(
 		left_options.get_parent(),
 		merged,
@@ -893,8 +915,8 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 	)
 	check_true(
-		migration_source.contains("_merge_left_tool_options_into_tools()"),
-		"Workspace migration must own the runtime merge"
+		migration_source.contains("merge_left_tool_options_after_startup()"),
+		"Workspace migration must expose an explicit post-startup merge"
 	)
 	check_true(
 		migration_source.contains("_restore_merged_tools()"),
