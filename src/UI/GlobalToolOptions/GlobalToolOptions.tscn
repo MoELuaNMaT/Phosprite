@@ -69,6 +69,7 @@ gradient = SubResource("3")
 gradient = SubResource("3")
 
 [node name="Global Tool Options" type="PanelContainer" unique_id=1744736398]
+custom_minimum_size = Vector2(292, 36)
 offset_left = 1.0
 offset_right = 307.0
 offset_bottom = 50.0
@@ -77,6 +78,8 @@ script = ExtResource("3")
 [node name="ScrollContainer" type="ScrollContainer" parent="." unique_id=1428651689]
 custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
 
 [node name="CenterContainer" type="CenterContainer" parent="ScrollContainer" unique_id=1011913846]
 layout_mode = 2
