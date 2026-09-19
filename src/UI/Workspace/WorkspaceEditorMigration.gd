@@ -219,6 +219,18 @@ func is_zen_mode() -> bool:
 	return _zen_mode
 
 
+func merge_left_tool_options_after_startup() -> bool:
+	if not live:
+		return false
+	if is_instance_valid(_merged_tools_content):
+		return true
+	if not _merge_left_tool_options_into_tools():
+		return false
+	if dock_host != null:
+		dock_host.refresh_layout_geometry()
+	return true
+
+
 func _migrate_live_editor() -> bool:
 	main_canvas = legacy_container.get_node_or_null(^"Main Canvas") as Control
 	_left_tool_options = legacy_container.get_node_or_null(^"Left Tool Options") as ScrollContainer
@@ -252,13 +264,6 @@ func _migrate_live_editor() -> bool:
 		adopted.append(module_id)
 
 	if not _attach_timeline_header_options():
-		_rollback_adoption(adopted)
-		layout_store.autosave_enabled = _previous_autosave_enabled
-		_restore_legacy_shell()
-		_clear_setup()
-		return false
-
-	if not _merge_left_tool_options_into_tools():
 		_rollback_adoption(adopted)
 		layout_store.autosave_enabled = _previous_autosave_enabled
 		_restore_legacy_shell()
@@ -363,7 +368,11 @@ func _merge_left_tool_options_into_tools() -> bool:
 
 
 func _restore_merged_tools() -> void:
-	if not is_instance_valid(_left_tool_options):
+	if (
+		not is_instance_valid(_left_tool_options)
+		or not is_instance_valid(_merged_tools_content)
+		or _left_tool_options_state.is_empty()
+	):
 		return
 	var tools_module := manager.get_instance(Builtins.TOOLS_ID) if manager != null else null
 	var tools_root := (
