@@ -131,3 +131,5 @@ The P2-G real-device gate passes only after these checks are performed on physic
 P2-G does not redesign the internal content of individual panels, change drawing/tool semantics, change P2-F Canvas visuals, or replace existing project/document formats. Its responsibility is live editor panel ownership, manipulation, persistence integration, and menu migration.
 
 - The Main Canvas may fill the editor background, but ordinary editing tools are acquired only inside the current document rectangle. Their cursor icon, indicator and preview are suppressed outside it. Selection tools intentionally retain outside-document acquisition so rectangular, elliptical, lasso and other selection gestures can begin outside and drag into the image.
+
+- Left Tool Options is no longer a standalone Workspace module. Its existing `LeftPanelContainer` is part of the Tools content: the tool picker remains at the top, and the selected left tool's options occupy the remaining space below it. Right Tool Options remains independent for dual-tool mode.
