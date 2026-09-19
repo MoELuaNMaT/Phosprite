@@ -49,6 +49,7 @@ render_target_update_mode = 4
 [node name="TransparentChecker" parent="VBox/HBox/PreviewViewportContainer/SubViewport" unique_id=834267784 instance=ExtResource("1")]
 material = SubResource("1")
 sync_to_document_pixels = true
+document_checker_size = 8.0
 
 [node name="CanvasPreview" parent="VBox/HBox/PreviewViewportContainer/SubViewport" unique_id=2109276218 groups=["CanvasPreviews"] instance=ExtResource("5")]
 unique_name_in_owner = true
