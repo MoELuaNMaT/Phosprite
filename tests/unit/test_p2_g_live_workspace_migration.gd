@@ -534,8 +534,8 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	var packed := load("res://src/UI/ToolsPanel/Tools.tscn") as PackedScene
 	check_true(packed != null, "Tools scene should load")
-	var tools := packed.instantiate() as ScrollContainer
-	check_true(tools != null, "Tools scene root should remain a ScrollContainer")
+	var tools := packed.instantiate() as VBoxContainer
+	check_true(tools != null, "Tools scene root should stack picker and options vertically")
 	check_eq(
 		tools.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
@@ -546,28 +546,37 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 		Control.SIZE_EXPAND_FILL,
 		"Tools root should expand to the Workspace module height"
 	)
+	var palette := tools.get_node("ToolPalette") as ScrollContainer
+	check_true(palette != null, "Tools should keep a dedicated upper tool picker section")
 	check_eq(
-		tools.horizontal_scroll_mode,
+		palette.horizontal_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"Tools should wrap to the Workspace width instead of hiding buttons horizontally"
+		"tool picker should wrap to the Workspace width instead of scrolling horizontally"
 	)
-	var panel := tools.get_node("PanelContainer") as PanelContainer
+	check_eq(
+		palette.vertical_scroll_mode,
+		ScrollContainer.SCROLL_MODE_DISABLED,
+		"tool picker should use its natural wrapped height instead of consuming options space"
+	)
+	var panel := tools.get_node("ToolPalette/PanelContainer") as PanelContainer
 	check_eq(
 		panel.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
 		"Tools panel should use all horizontal space offered by the window"
 	)
-	check_eq(
-		panel.size_flags_vertical,
-		Control.SIZE_EXPAND_FILL,
-		"Tools panel should use all vertical space offered by the window"
-	)
-	var flow := tools.get_node("PanelContainer/ToolButtons") as HFlowContainer
+	var flow := tools.get_node("ToolPalette/PanelContainer/ToolButtons") as HFlowContainer
 	check_true(flow != null, "Tools should keep HFlowContainer adaptive wrapping")
 	check_eq(
 		flow.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
 		"Tool button flow should expand to the available window width before wrapping"
+	)
+	var options := tools.get_node("LeftToolOptions") as ScrollContainer
+	check_true(options != null, "merged Left Tool Options should occupy the lower section")
+	check_eq(
+		options.size_flags_vertical,
+		Control.SIZE_EXPAND_FILL,
+		"Left Tool Options should receive the remaining vertical space below the picker"
 	)
 	tools.free()
 
