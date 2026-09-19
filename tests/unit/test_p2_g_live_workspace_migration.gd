@@ -534,8 +534,8 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	var packed := load("res://src/UI/ToolsPanel/Tools.tscn") as PackedScene
 	check_true(packed != null, "Tools scene should load")
-	var tools := packed.instantiate() as VBoxContainer
-	check_true(tools != null, "Tools scene root should stack picker and options vertically")
+	var tools := packed.instantiate() as ScrollContainer
+	check_true(tools != null, "Tools scene root must remain a ScrollContainer")
 	check_eq(
 		tools.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
@@ -546,32 +546,32 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 		Control.SIZE_EXPAND_FILL,
 		"Tools root should expand to the Workspace module height"
 	)
-	var palette := tools.get_node("ToolPalette") as ScrollContainer
-	check_true(palette != null, "Tools should keep a dedicated upper tool picker section")
 	check_eq(
-		palette.horizontal_scroll_mode,
+		tools.horizontal_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"tool picker should wrap to the Workspace width instead of scrolling horizontally"
+		"Tools root should not scroll horizontally"
 	)
 	check_eq(
-		palette.vertical_scroll_mode,
+		tools.vertical_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"tool picker should use its natural wrapped height instead of consuming options space"
+		"Tools root should not scroll vertically"
 	)
-	var panel := tools.get_node("ToolPalette/PanelContainer") as PanelContainer
+	var content := tools.get_node("Content") as VBoxContainer
+	check_true(content != null, "Tools should stack picker and options inside one content container")
+	var panel := tools.get_node("Content/PanelContainer") as PanelContainer
 	check_eq(
 		panel.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
 		"Tools panel should use all horizontal space offered by the window"
 	)
-	var flow := tools.get_node("ToolPalette/PanelContainer/ToolButtons") as HFlowContainer
+	var flow := tools.get_node("Content/PanelContainer/ToolButtons") as HFlowContainer
 	check_true(flow != null, "Tools should keep HFlowContainer adaptive wrapping")
 	check_eq(
 		flow.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
 		"Tool button flow should expand to the available window width before wrapping"
 	)
-	var options := tools.get_node("LeftToolOptions") as ScrollContainer
+	var options := tools.get_node("Content/LeftToolOptions") as ScrollContainer
 	check_true(options != null, "merged Left Tool Options should occupy the lower section")
 	check_eq(
 		options.size_flags_vertical,
@@ -809,16 +809,16 @@ func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -
 
 	var tools_scene := FileAccess.get_file_as_string("res://src/UI/ToolsPanel/Tools.tscn")
 	check_true(
-		tools_scene.contains('[node name="Tools" type="VBoxContainer"'),
-		"merged Tools content should stack tool picker above tool options"
+		tools_scene.contains('[node name="Tools" type="ScrollContainer"'),
+		"Tools must preserve its long-standing ScrollContainer root contract"
 	)
 	check_true(
-		tools_scene.contains('[node name="ToolPalette" type="ScrollContainer" parent="."]'),
-		"Tools should retain its existing picker as the upper section"
+		tools_scene.contains('[node name="Content" type="VBoxContainer" parent="."]'),
+		"merged Tools content should stack tool picker above tool options inside the root"
 	)
 	check_true(
 		tools_scene.contains(
-			'[node name="LeftPanelContainer" type="MarginContainer" parent="LeftToolOptions"'
+			'[node name="LeftPanelContainer" type="MarginContainer" parent="Content/LeftToolOptions"'
 		),
 		"the original LeftPanelContainer must live in the lower Tools section"
 	)
@@ -827,7 +827,7 @@ func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -
 			tools_scene.contains("horizontal_scroll_mode = 0")
 			and tools_scene.contains("vertical_scroll_mode = 0")
 		),
-		"tool buttons should wrap naturally instead of consuming the options area with scrolling"
+		"the legacy Tools root must stay non-scrolling while its inner options area scrolls"
 	)
 
 	var tools_autoload := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
