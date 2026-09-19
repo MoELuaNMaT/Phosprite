@@ -582,6 +582,7 @@ func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void
 			if is_instance_valid(active_slot.tool_node):
 				active_slot.tool_node.cancel_tool()
 			active_button = -1
+			_active_last_document_position = Vector2i(Vector2.INF)
 		panel.remove_child(slot.tool_node)
 		slot.tool_node.queue_free()
 
@@ -948,9 +949,11 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 		if active_button == MOUSE_BUTTON_LEFT:
 			_slots[active_button].tool_node.cancel_tool()
 			active_button = -1
+			_active_last_document_position = Vector2i(Vector2.INF)
 		elif active_button == MOUSE_BUTTON_RIGHT:
 			_slots[active_button].tool_node.cancel_tool()
 			active_button = -1
+			_active_last_document_position = Vector2i(Vector2.INF)
 	if Input.is_action_pressed(&"change_layer_automatically", true):
 		if event.is_action(&"activate_left_tool"):
 			if _slots[MOUSE_BUTTON_LEFT].tool_node is not BaseSelectionTool:
