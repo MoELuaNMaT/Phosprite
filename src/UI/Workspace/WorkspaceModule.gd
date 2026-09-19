@@ -354,10 +354,7 @@ func _draw() -> void:
 	if header_style != null:
 		draw_style_box(header_style, header_rect)
 	draw_line(
-		Vector2(0.0, header_height),
-		Vector2(size.x, header_height),
-		_visual_theme.border_color,
-		1.0
+		Vector2(0.0, header_height), Vector2(size.x, header_height), _visual_theme.border_color, 1.0
 	)
 	var title: String
 	if definition != null:
@@ -372,11 +369,13 @@ func _draw() -> void:
 	var accessory_gap := _visual_theme.CONTENT_PADDING if header_accessory_width > 0.0 else 0.0
 	var title_width := maxf(
 		0.0,
-		size.x
-		- (_visual_theme.CONTENT_PADDING + 1.0) * 2.0
-		- header_actions_width
-		- header_accessory_width
-		- accessory_gap
+		(
+			size.x
+			- (_visual_theme.CONTENT_PADDING + 1.0) * 2.0
+			- header_actions_width
+			- header_accessory_width
+			- accessory_gap
+		)
 	)
 	draw_string(
 		_visual_theme.default_font,
