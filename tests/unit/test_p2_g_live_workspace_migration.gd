@@ -951,7 +951,9 @@ func test_canvas_rulers_stop_at_document_bounds_and_label_actual_size() -> void:
 		"horizontal ruler ticks must stop at document width"
 	)
 	check_true(
-		horizontal_source.contains("_draw_document_end(font, transform, proj_size.x, origin_offset)"),
+		horizontal_source.contains(
+			"_draw_document_end(font, transform, proj_size.x, origin_offset)"
+		),
 		"horizontal ruler must force an endpoint size label"
 	)
 	check_true(
