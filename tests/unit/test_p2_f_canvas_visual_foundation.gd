@@ -20,8 +20,8 @@ func test_document_checker_contract_is_one_canvas_pixel() -> void:
 	)
 	var source := FileAccess.get_file_as_string("res://src/UI/Nodes/TransparentChecker.gd")
 	check_true(
-		source.contains("document_pixel_mode := self == Global.transparent_checker"),
-		"only the main document checker should opt into document-pixel mode"
+		source.contains("self == Global.transparent_checker or sync_to_document_pixels"),
+		"main Canvas should auto-enable document-pixel mode while previews can opt in explicitly"
 	)
 	check_true(
 		source.contains("CanvasVisualPolicy.DOCUMENT_CHECKER_SIZE if document_pixel_mode"),
@@ -29,7 +29,14 @@ func test_document_checker_contract_is_one_canvas_pixel() -> void:
 	)
 	check_true(
 		source.contains("true if document_pixel_mode else Global.checker_follow_scale"),
-		"document checker must zoom with Canvas pixels while previews retain their preference"
+		"document-pixel checkers must zoom with their Canvas pixels"
+	)
+	var preview_scene := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
+	)
+	check_true(
+		preview_scene.contains("sync_to_document_pixels = true"),
+		"Canvas Preview checker must use the same one-cell-per-document-pixel mode as Main Canvas"
 	)
 
 
