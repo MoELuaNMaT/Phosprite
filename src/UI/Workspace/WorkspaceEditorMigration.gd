@@ -326,6 +326,20 @@ func _merge_left_tool_options_into_tools() -> bool:
 	var palette := tools_root.get_node_or_null(^"PanelContainer") as PanelContainer
 	if palette == null or not is_instance_valid(_left_tool_options):
 		return false
+	var left_panel := _left_tool_options.get_node_or_null(^"LeftPanelContainer") as Control
+	if left_panel == null:
+		return false
+	if not Global.headless_test_mode:
+		if (
+			not is_instance_valid(Tools._tool_buttons)
+			or not Tools._panels.has(MOUSE_BUTTON_LEFT)
+			or Tools._panels[MOUSE_BUTTON_LEFT] != left_panel
+			or not Tools._slots.has(MOUSE_BUTTON_LEFT)
+			or not Tools._slots.has(MOUSE_BUTTON_RIGHT)
+			or not is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node)
+			or not is_instance_valid(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node)
+		):
+			return false
 	var left_parent := _left_tool_options.get_parent()
 	if left_parent == null:
 		return false
