@@ -27,13 +27,7 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.TOOLS_ID,
 		"zone": WorkspaceDockLayout.DockZone.LEFT,
 		"index": 0,
-		"size": Vector2(180.0, 220.0),
-	},
-	{
-		"id": Builtins.LEFT_TOOL_OPTIONS_ID,
-		"zone": WorkspaceDockLayout.DockZone.LEFT,
-		"index": 1,
-		"size": Vector2(180.0, 180.0),
+		"size": Vector2(180.0, 400.0),
 	},
 	{
 		"id": Builtins.PREVIEW_ID,
