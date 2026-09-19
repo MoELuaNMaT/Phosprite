@@ -17,15 +17,9 @@ const WORKSPACE_SIDE_MARGIN := 8.0
 
 const DEFAULT_LAYOUT := [
 	{
-		"id": Builtins.GLOBAL_TOOL_OPTIONS_ID,
-		"zone": WorkspaceDockLayout.DockZone.TOP,
-		"index": 0,
-		"size": Vector2(280.0, 140.0),
-	},
-	{
 		"id": Builtins.PALETTE_ID,
 		"zone": WorkspaceDockLayout.DockZone.TOP,
-		"index": 1,
+		"index": 0,
 		"size": Vector2(280.0, 140.0),
 	},
 	{
