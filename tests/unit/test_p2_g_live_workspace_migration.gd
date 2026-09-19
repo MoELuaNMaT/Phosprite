@@ -814,15 +814,20 @@ func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -
 		"the original LeftPanelContainer must live in the lower Tools section"
 	)
 	check_true(
-		tools_scene.contains("horizontal_scroll_mode = 0")
-		and tools_scene.contains("vertical_scroll_mode = 0"),
+		(
+			tools_scene.contains("horizontal_scroll_mode = 0")
+			and tools_scene.contains("vertical_scroll_mode = 0")
+		),
 		"tool buttons should wrap naturally instead of consuming the options area with scrolling"
 	)
 
 	var tools_autoload := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
 	check_true(
-		tools_autoload.contains(
-			'_panels[MOUSE_BUTTON_LEFT] = Global.control.find_child("LeftPanelContainer", true, false)'
+		(
+			tools_autoload
+			. contains(
+				'_panels[MOUSE_BUTTON_LEFT] = Global.control.find_child("LeftPanelContainer", true, false)'
+			)
 		),
 		"existing tool option injection must continue targeting the same LeftPanelContainer"
 	)
