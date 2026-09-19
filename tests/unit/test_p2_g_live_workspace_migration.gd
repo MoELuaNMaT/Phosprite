@@ -918,6 +918,68 @@ func test_live_ui_owns_restore_timing_and_window_menu_bridge() -> void:
 	)
 
 
+func test_canvas_rulers_stop_at_document_bounds_and_label_actual_size() -> void:
+	var migration_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+	)
+	check_true(
+		migration_source.contains(
+			"horizontal_ruler.size = Vector2(maxf(0.0, canvas_rect.size.x), horizontal_height)"
+		),
+		"horizontal ruler width must match the document screen bounds"
+	)
+	check_true(
+		migration_source.contains(
+			"vertical_ruler.size = Vector2(vertical_width, maxf(0.0, canvas_rect.size.y))"
+		),
+		"vertical ruler height must match the document screen bounds"
+	)
+	check_true(
+		migration_source.contains("_ruler_project.resized.connect(_on_document_resized)"),
+		"ruler bounds must refresh when the document is resized or cropped"
+	)
+
+	var horizontal_source := FileAccess.get_file_as_string(
+		"res://src/UI/Canvas/Rulers/HorizontalRuler.gd"
+	)
+	check_true(
+		horizontal_source.contains("var start_index := maxi(0, ceili(first.x))"),
+		"horizontal ruler must not draw negative-axis ticks"
+	)
+	check_true(
+		horizontal_source.contains("document_end_index := floori(float(proj_size.x) / tick_step)"),
+		"horizontal ruler ticks must stop at document width"
+	)
+	check_true(
+		horizontal_source.contains("_draw_document_end(font, transform, proj_size.x, origin_offset)"),
+		"horizontal ruler must force an endpoint size label"
+	)
+	check_true(
+		horizontal_source.contains("text_server.format_number(str(document_width))"),
+		"horizontal endpoint label must show the actual document width"
+	)
+
+	var vertical_source := FileAccess.get_file_as_string(
+		"res://src/UI/Canvas/Rulers/VerticalRuler.gd"
+	)
+	check_true(
+		vertical_source.contains("var start_index := maxi(0, ceili(first.y))"),
+		"vertical ruler must not draw negative-axis ticks"
+	)
+	check_true(
+		vertical_source.contains("document_end_index := floori(float(proj_size.y) / tick_step)"),
+		"vertical ruler ticks must stop at document height"
+	)
+	check_true(
+		vertical_source.contains("_draw_document_end(font, transform, proj_size.y)"),
+		"vertical ruler must force an endpoint size label"
+	)
+	check_true(
+		vertical_source.contains("text_server.format_number(str(document_height))"),
+		"vertical endpoint label must show the actual document height"
+	)
+
+
 func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_outside() -> void:
 	var tools_source := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
 	check_true(
