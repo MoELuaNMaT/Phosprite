@@ -280,6 +280,13 @@ func _screen_position_inside_main_viewport(screen_position: Vector2) -> bool:
 	return screen_position_inside_rect(screen_position, Global.main_viewport.get_global_rect())
 
 
+func _screen_position_can_start_primary_tool(canvas: Node2D, screen_position: Vector2) -> bool:
+	var canvas_position := (
+		canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
+	)
+	return Tools.can_start_tool_at(Vector2i(canvas_position.floor()), MOUSE_BUTTON_LEFT)
+
+
 func _handle_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	if event.pressed:
 		_begin_touch(canvas, event)
@@ -322,6 +329,8 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		canvas.set_adapter_tool_preview_active(false)
 
 	if kind == PointerKind.PENCIL:
+		if not _screen_position_can_start_primary_tool(canvas, event.position):
+			return
 		_begin_pencil_ownership(canvas, event.index)
 		_start_content(canvas, event.index, event.position)
 		return
@@ -347,7 +356,17 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		_try_promote_direct_content_to_navigation(canvas)
 		return
 
+	# When the first finger begins outside the document with a normal editing tool it
+	# intentionally stays unowned. If a second finger arrives, preserve two-finger
+	# navigation instead of letting that second contact unexpectedly start a stroke.
+	if _eligible_direct_touch_ids().size() >= 2:
+		_try_begin_navigation()
+		return
+
 	if direct_content_allowed(_finger_policy, false):
+		if not _screen_position_can_start_primary_tool(canvas, event.position):
+			_try_begin_navigation()
+			return
 		if _touch_color_sampler_requested:
 			_start_direct_color_pick(
 				canvas, event.index, event.position, COLOR_SAMPLING.TOP_COLOR, true
@@ -505,6 +524,8 @@ func _start_direct_color_pick(
 func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> void:
 	if _content_touch_id != -1 and _content_touch_id != touch_id:
 		return
+	if not _screen_position_can_start_primary_tool(canvas, screen_position):
+		return
 	_content_touch_id = touch_id
 	_clear_navigation()
 	canvas.set_adapter_tool_preview_active(true)
@@ -580,12 +601,14 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 
 
 func _sample_active_color(canvas: Node2D, screen_position: Vector2, mode: int) -> void:
-	var target_button := Tools.picking_color_for
-	if target_button not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-		target_button = MOUSE_BUTTON_LEFT
 	var canvas_position := (
 		canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
 	)
+	if not Tools.is_position_inside_document(Vector2i(canvas_position.floor())):
+		return
+	var target_button := Tools.picking_color_for
+	if target_button not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+		target_button = MOUSE_BUTTON_LEFT
 	COLOR_SAMPLING.pick_color(Vector2i(canvas_position.floor()), target_button, mode)
 
 
