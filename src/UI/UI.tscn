@@ -9,7 +9,6 @@
 [ext_resource type="Script" uid="uid://ctqrsfsbx4kwk" path="res://src/UI/Canvas/CanvasCamera.gd" id="7"]
 [ext_resource type="Shader" uid="uid://bhgdieau4cr1b" path="res://src/Shaders/Greyscale.gdshader" id="8"]
 [ext_resource type="Shader" uid="uid://c50kmfvf635kb" path="res://src/Shaders/TransparentChecker.gdshader" id="9"]
-[ext_resource type="PackedScene" uid="uid://wo0hqxkst808" path="res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn" id="10"]
 [ext_resource type="PackedScene" uid="uid://cxhs8qy5ilufv" path="res://src/UI/ReferenceImages/ReferencesPanel.tscn" id="11"]
 [ext_resource type="PackedScene" uid="uid://cap1bhavhi33g" path="res://src/UI/PerspectiveEditor/PerspectiveEditor.tscn" id="12"]
 [ext_resource type="PackedScene" uid="uid://dl6ook010q86o" path="res://src/UI/Recorder/Recorder.tscn" id="13"]
@@ -83,29 +82,17 @@ resource_name = "Tabs"
 script = ExtResource("36")
 names = PackedStringArray("Color Picker")
 
-[sub_resource type="Resource" id="Resource_c7hpy"]
-resource_name = "Tabs"
-script = ExtResource("36")
-names = PackedStringArray("Global Tool Options")
-
 [sub_resource type="Resource" id="Resource_56tpw"]
 resource_name = "Tabs"
 script = ExtResource("36")
 names = PackedStringArray("Recorder")
-
-[sub_resource type="Resource" id="Resource_fhmn0"]
-resource_name = "Split"
-script = ExtResource("27")
-direction = 1
-first = SubResource("Resource_c7hpy")
-second = SubResource("Resource_56tpw")
 
 [sub_resource type="Resource" id="Resource_u1u2a"]
 resource_name = "Split"
 script = ExtResource("27")
 direction = 1
 first = SubResource("Resource_fcw5v")
-second = SubResource("Resource_fhmn0")
+second = SubResource("Resource_56tpw")
 
 [sub_resource type="Resource" id="Resource_6eonw"]
 resource_name = "Split"
@@ -347,9 +334,6 @@ visible = false
 layout_mode = 2
 
 [node name="Color Picker" parent="DockableContainer" unique_id=1359696669 instance=ExtResource("17")]
-layout_mode = 2
-
-[node name="Global Tool Options" parent="DockableContainer" unique_id=187407303 instance=ExtResource("10")]
 layout_mode = 2
 
 [node name="Left Tool Options" type="ScrollContainer" parent="DockableContainer" unique_id=1020831561]
