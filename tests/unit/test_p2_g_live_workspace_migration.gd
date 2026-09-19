@@ -824,6 +824,7 @@ func test_global_tool_options_live_in_timeline_workspace_header_and_survive_coll
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
 	var accessory := timeline.get_header_accessory()
 	check_true(accessory != null, "Timeline must own a live header accessory")
+	timeline.apply_visual_theme(VisualTheme.new(), &"docked")
 	check_eq(
 		accessory.name,
 		&"Global Tool Options",
@@ -847,6 +848,7 @@ func test_global_tool_options_live_in_timeline_workspace_header_and_survive_coll
 		"touching Global Tool Options must never begin a Timeline header drag"
 	)
 	check_true(surface.collapse_module(Builtins.TIMELINE_ID), "Timeline should collapse")
+	timeline.apply_visual_theme(VisualTheme.new(), &"collapsed")
 	check_true(timeline.is_content_collapsed(), "Timeline body should collapse")
 	check_true(
 		timeline.get_header_accessory() == accessory and accessory.visible,
