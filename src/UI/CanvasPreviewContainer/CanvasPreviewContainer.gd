@@ -2,7 +2,8 @@ extends PanelContainer
 
 const NAVIGATION := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 
-@onready var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
+@onready
+var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
 @onready var canvas_preview := $"%CanvasPreview" as Node2D
 @onready var camera := $"%CameraPreview" as CanvasCamera
 @onready var play_button := $"%PlayButton" as Button
@@ -128,13 +129,9 @@ func _update_preview_navigation() -> void:
 	var distance := float(geometry["distance"])
 
 	if not _pan_active:
-		_pan_active = NAVIGATION.navigation_pan_exceeds_dead_zone(
-			_baseline_centroid, centroid
-		)
+		_pan_active = NAVIGATION.navigation_pan_exceeds_dead_zone(_baseline_centroid, centroid)
 	if not _pinch_active:
-		_pinch_active = NAVIGATION.navigation_pinch_exceeds_dead_zone(
-			_baseline_distance, distance
-		)
+		_pinch_active = NAVIGATION.navigation_pinch_exceeds_dead_zone(_baseline_distance, distance)
 
 	var effective_centroid := _baseline_centroid
 	if _pan_active:
@@ -144,11 +141,7 @@ func _update_preview_navigation() -> void:
 		scale_ratio = NAVIGATION.navigation_scale_ratio(_baseline_distance, distance)
 
 	var target_zoom := NAVIGATION.navigation_zoom_from_ratio(
-		_baseline_zoom,
-		scale_ratio,
-		Global.integer_zoom,
-		camera.zoom_out_max,
-		camera.zoom_in_max
+		_baseline_zoom, scale_ratio, Global.integer_zoom, camera.zoom_out_max, camera.zoom_in_max
 	)
 	var target_offset := NAVIGATION.navigation_offset_for_anchor(
 		_anchor_canvas,
