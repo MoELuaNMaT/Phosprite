@@ -29,10 +29,37 @@ func _make_live_fixture(
 	tabs.custom_minimum_size = Vector2(0.0, 32.0)
 	main_canvas.add_child(tabs)
 
+	var left_tool_options := ScrollContainer.new()
+	left_tool_options.name = &"Left Tool Options"
+	left_tool_options.custom_minimum_size = Vector2(72.0, 72.0)
+	legacy.add_child(left_tool_options)
+	var left_panel := MarginContainer.new()
+	left_panel.name = &"LeftPanelContainer"
+	left_panel.custom_minimum_size = Vector2(130.0, 0.0)
+	left_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_tool_options.add_child(left_panel)
+
 	var live_controls: Dictionary = {}
 	for module_id in Builtins.get_live_panel_ids():
-		var panel := Control.new()
-		panel.name = Builtins.get_live_panel_node_name(module_id)
+		var panel: Control
+		if module_id == Builtins.TOOLS_ID:
+			var tools := ScrollContainer.new()
+			tools.name = Builtins.get_live_panel_node_name(module_id)
+			tools.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			var palette := PanelContainer.new()
+			palette.name = &"PanelContainer"
+			palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			tools.add_child(palette)
+			var flow := HFlowContainer.new()
+			flow.name = &"ToolButtons"
+			flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			palette.add_child(flow)
+			panel = tools
+		else:
+			panel = Control.new()
+			panel.name = Builtins.get_live_panel_node_name(module_id)
 		if module_id == Builtins.PREVIEW_ID:
 			panel.visible = preview_initially_visible
 		legacy.add_child(panel)
@@ -72,6 +99,8 @@ func _make_live_fixture(
 		"legacy": legacy,
 		"main_canvas": main_canvas,
 		"controls": live_controls,
+		"left_tool_options": left_tool_options,
+		"left_panel": left_panel,
 		"manager": manager,
 		"host": host,
 		"surface": surface,
@@ -535,7 +564,7 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	var packed := load("res://src/UI/ToolsPanel/Tools.tscn") as PackedScene
 	check_true(packed != null, "Tools scene should load")
 	var tools := packed.instantiate() as ScrollContainer
-	check_true(tools != null, "Tools scene root must remain a ScrollContainer")
+	check_true(tools != null, "Tools scene root should remain a ScrollContainer")
 	check_eq(
 		tools.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
@@ -549,36 +578,25 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	check_eq(
 		tools.horizontal_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"Tools root should not scroll horizontally"
+		"Tools should wrap to the Workspace width instead of hiding buttons horizontally"
 	)
-	check_eq(
-		tools.vertical_scroll_mode,
-		ScrollContainer.SCROLL_MODE_DISABLED,
-		"Tools root should not scroll vertically"
-	)
-	var content := tools.get_node("Content") as VBoxContainer
-	check_true(
-		content != null, "Tools should stack picker and options inside one content container"
-	)
-	var panel := tools.get_node("Content/PanelContainer") as PanelContainer
+	var panel := tools.get_node("PanelContainer") as PanelContainer
 	check_eq(
 		panel.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
 		"Tools panel should use all horizontal space offered by the window"
 	)
-	var flow := tools.get_node("Content/PanelContainer/ToolButtons") as HFlowContainer
+	check_eq(
+		panel.size_flags_vertical,
+		Control.SIZE_EXPAND_FILL,
+		"Tools panel should use all vertical space offered by the window"
+	)
+	var flow := tools.get_node("PanelContainer/ToolButtons") as HFlowContainer
 	check_true(flow != null, "Tools should keep HFlowContainer adaptive wrapping")
 	check_eq(
 		flow.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
 		"Tool button flow should expand to the available window width before wrapping"
-	)
-	var options := tools.get_node("Content/LeftToolOptions") as ScrollContainer
-	check_true(options != null, "merged Left Tool Options should occupy the lower section")
-	check_eq(
-		options.size_flags_vertical,
-		Control.SIZE_EXPAND_FILL,
-		"Left Tool Options should receive the remaining vertical space below the picker"
 	)
 	tools.free()
 
@@ -801,7 +819,7 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	_free_fixture(fixture)
 
 
-func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -> void:
+func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(ids.has(Builtins.TOOLS_ID), "Tools must remain a live Workspace module")
 	check_true(
@@ -812,62 +830,79 @@ func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -
 	var tools_scene := FileAccess.get_file_as_string("res://src/UI/ToolsPanel/Tools.tscn")
 	check_true(
 		tools_scene.contains('[node name="Tools" type="ScrollContainer"'),
-		"Tools must preserve its long-standing ScrollContainer root contract"
+		"Tools must preserve its original startup root"
 	)
 	check_true(
-		tools_scene.contains('[node name="Content" type="VBoxContainer" parent="."]'),
-		"merged Tools content should stack tool picker above tool options inside the root"
+		tools_scene.contains('[node name="PanelContainer" type="PanelContainer" parent="."]'),
+		"Tools palette must keep its original startup parent"
 	)
 	check_true(
-		(
-			tools_scene
-			. contains(
-				'[node name="LeftPanelContainer" type="MarginContainer" parent="Content/LeftToolOptions"'
-			)
-		),
-		"the original LeftPanelContainer must live in the lower Tools section"
-	)
-	check_true(
-		(
-			tools_scene.contains("horizontal_scroll_mode = 0")
-			and tools_scene.contains("vertical_scroll_mode = 0")
-		),
-		"the legacy Tools root must stay non-scrolling while its inner options area scrolls"
-	)
-
-	var tools_autoload := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
-	check_true(
-		(
-			tools_autoload
-			. contains(
-				'_panels[MOUSE_BUTTON_LEFT] = Global.control.find_child("LeftPanelContainer", true, false)'
-			)
-		),
-		"existing tool option injection must continue targeting the same LeftPanelContainer"
+		not tools_scene.contains("LeftPanelContainer"),
+		"Tools scene must not embed tool options before runtime migration"
 	)
 
 	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
 	check_true(
-		not ui_scene.contains(
+		ui_scene.contains(
 			'[node name="Left Tool Options" type="ScrollContainer" parent="DockableContainer"'
 		),
-		"legacy UI must not keep a duplicate standalone Left Tool Options window"
+		"legacy startup shell must retain Left Tool Options until tools initialize"
 	)
 	check_true(
-		not ui_scene.contains('names = PackedStringArray("Left Tool Options")'),
-		"legacy Dockable layout must not expose a Left Tool Options tab"
+		ui_scene.contains(
+			'[node name="LeftPanelContainer" type="MarginContainer" parent="DockableContainer/Left Tool Options"'
+		),
+		"legacy startup shell must retain the original LeftPanelContainer path"
 	)
+
+	var fixture := _make_live_fixture()
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var tools_module := manager.get_instance(Builtins.TOOLS_ID)
+	var tools_root := tools_module.get_content() as ScrollContainer
+	var left_options := fixture["left_tool_options"] as ScrollContainer
+	var left_panel := fixture["left_panel"] as MarginContainer
+	var merged := tools_root.get_node_or_null(^"MergedToolsContent") as VBoxContainer
+	check_true(merged != null, "migration should create one merged Tools content stack")
+	check_eq(
+		left_options.get_parent(),
+		merged,
+		"existing Left Tool Options control must move into Tools only after migration"
+	)
+	check_eq(
+		left_panel.get_parent(),
+		left_options,
+		"current tool option host identity and parent must remain unchanged"
+	)
+	check_eq(
+		tools_root.get_node_or_null(^"PanelContainer"),
+		null,
+		"palette should leave the root only after migration"
+	)
+	check_true(
+		merged.get_node_or_null(^"PanelContainer") != null,
+		"existing palette should become the upper merged section"
+	)
+	check_eq(
+		tools_root.vertical_scroll_mode,
+		ScrollContainer.SCROLL_MODE_DISABLED,
+		"merged Tools root should delegate scrolling to Left Tool Options"
+	)
+	_free_fixture(fixture)
 
 	var migration_source := FileAccess.get_file_as_string(
 		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 	)
 	check_true(
-		not migration_source.contains("Builtins.LEFT_TOOL_OPTIONS_ID"),
-		"default Workspace layout must not place Left Tool Options independently"
+		migration_source.contains("_merge_left_tool_options_into_tools()"),
+		"Workspace migration must own the runtime merge"
 	)
 	check_true(
-		migration_source.contains('"size": Vector2(180.0, 400.0)'),
-		"default Tools height should reserve room for picker plus current tool options"
+		migration_source.contains("_restore_merged_tools()"),
+		"runtime merge must remain transactionally reversible"
+	)
+	check_true(
+		not migration_source.contains("Builtins.LEFT_TOOL_OPTIONS_ID"),
+		"default Workspace layout must not place Left Tool Options independently"
 	)
 
 
