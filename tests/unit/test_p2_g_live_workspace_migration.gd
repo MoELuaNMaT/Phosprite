@@ -918,6 +918,56 @@ func test_live_ui_owns_restore_timing_and_window_menu_bridge() -> void:
 	)
 
 
+func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_outside() -> void:
+	var tools_source := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
+	check_true(
+		tools_source.contains("Rect2i(Vector2i.ZERO, project.size).has_point(position)"),
+		"tool routing must distinguish the actual document rectangle from the full background Canvas"
+	)
+	check_true(
+		tools_source.contains("slot.tool_node is BaseSelectionTool"),
+		"selection tools must explicitly retain outside-document input"
+	)
+	check_true(
+		tools_source.contains("and can_start_tool_at(position, MOUSE_BUTTON_LEFT)")
+		and tools_source.contains("and can_start_tool_at(position, MOUSE_BUTTON_RIGHT)"),
+		"ordinary left/right tool presses must be gated before draw_start"
+	)
+	check_true(
+		tools_source.contains("Ordinary tools stop at the last valid document point"),
+		"an ordinary active stroke must stop when it exits the document instead of editing background space"
+	)
+	check_true(
+		tools_source.contains("should_show_tool_at(position, MOUSE_BUTTON_LEFT)")
+		and tools_source.contains("should_show_tool_at(position, MOUSE_BUTTON_RIGHT)"),
+		"indicator and tool preview rendering must use the same document-bound policy"
+	)
+
+	var canvas_source := FileAccess.get_file_as_string("res://src/UI/Canvas/Canvas.gd")
+	check_true(
+		canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_LEFT)")
+		and canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_RIGHT)"),
+		"cursor tool icons must disappear outside the document for ordinary tools"
+	)
+
+	var adapter_source := FileAccess.get_file_as_string(
+		"res://src/InputAdapter/CanvasInputAdapter.gd"
+	)
+	check_true(
+		adapter_source.contains("_screen_position_can_start_primary_tool")
+		and adapter_source.contains("Tools.can_start_tool_at"),
+		"iPad Pencil/finger acquisition must honor the same document-bound tool policy"
+	)
+	check_true(
+		adapter_source.contains("Tools.is_position_inside_document"),
+		"adapter color sampling must not act on the expanded background outside the document"
+	)
+	check_true(
+		adapter_source.contains("_eligible_direct_touch_ids().size() >= 2"),
+		"an outside first finger must remain available for two-finger Canvas navigation"
+	)
+
+
 func test_preview_touch_navigation_reuses_canvas_math_without_zoom_slider() -> void:
 	var scene_source := FileAccess.get_file_as_string(
 		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
