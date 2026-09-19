@@ -95,13 +95,9 @@ func _draw() -> void:
 			if not is_document_end:
 				_draw_value(font, pos.y, val)
 		elif j % minor_subdivision == 0:
-			draw_line(
-				Vector2(RULER_WIDTH * 0.33, pos.y), Vector2(RULER_WIDTH, pos.y), Color.WHITE
-			)
+			draw_line(Vector2(RULER_WIDTH * 0.33, pos.y), Vector2(RULER_WIDTH, pos.y), Color.WHITE)
 		else:
-			draw_line(
-				Vector2(RULER_WIDTH * 0.66, pos.y), Vector2(RULER_WIDTH, pos.y), Color.WHITE
-			)
+			draw_line(Vector2(RULER_WIDTH * 0.66, pos.y), Vector2(RULER_WIDTH, pos.y), Color.WHITE)
 
 	_draw_document_end(font, transform, proj_size.y)
 
@@ -116,9 +112,7 @@ func _draw_value(font: Font, y_position: float, value: float) -> void:
 	draw_set_transform_matrix(text_xform)
 	var str_to_draw := "%*.*f" % [0, step_decimals(value), snappedf(value, 0.1)]
 	str_to_draw = text_server.format_number(str_to_draw)
-	draw_string(
-		font, Vector2(), str_to_draw, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size()
-	)
+	draw_string(font, Vector2(), str_to_draw, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size())
 	draw_set_transform_matrix(Transform2D())
 
 
@@ -132,15 +126,13 @@ func _draw_document_end(font: Font, transform: Transform2D, document_height: int
 	var text_pos := Vector2(font.get_height() - 4, end_pos - 2)
 	if is_layout_rtl():
 		text_angle = PI / 2
-		var text_width := font.get_string_size(
-			end_text, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size()
-		).x
+		var text_width := (
+			font.get_string_size(end_text, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size()).x
+		)
 		text_pos = Vector2(font.get_height() - 18, end_pos - text_width - 2)
 	var text_xform := Transform2D(text_angle, text_pos)
 	draw_set_transform_matrix(text_xform)
-	draw_string(
-		font, Vector2(), end_text, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size()
-	)
+	draw_string(font, Vector2(), end_text, HORIZONTAL_ALIGNMENT_LEFT, -1, Themes.get_font_size())
 	draw_set_transform_matrix(Transform2D())
 
 
