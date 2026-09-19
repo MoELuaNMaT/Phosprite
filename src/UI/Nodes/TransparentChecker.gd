@@ -5,6 +5,8 @@ extends ColorRect
 const TRANSPARENT_CHECKER := preload("uid://c50kmfvf635kb")
 const CanvasVisualPolicy := preload("res://src/UI/Canvas/CanvasVisualPolicy.gd")
 
+@export var sync_to_document_pixels := false
+
 
 func _init() -> void:
 	material = ShaderMaterial.new()
@@ -24,7 +26,7 @@ func update_rect() -> void:
 	if not get_parent() is Control:
 		# Set the size to be the same as the project size if the parent is a SubViewport
 		set_bounds(Global.current_project.size)
-	var document_pixel_mode := self == Global.transparent_checker
+	var document_pixel_mode := self == Global.transparent_checker or sync_to_document_pixels
 	if document_pixel_mode:
 		fit_rect(Global.current_project.tiles.get_bounding_rect())
 		for canvas_preview in get_tree().get_nodes_in_group("CanvasPreviews"):
