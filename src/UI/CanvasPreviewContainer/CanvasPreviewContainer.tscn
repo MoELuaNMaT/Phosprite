@@ -20,7 +20,7 @@ shader_parameter/rect_size = Vector2(0, 0)
 shader_parameter/follow_movement = false
 shader_parameter/follow_scale = false
 
-[node name="CanvasPreviewContainer" type="PanelContainer" unique_id=1665289064]
+[node name="CanvasPreviewContainer" type="PanelContainer" unique_id=1665289064 groups=["CanvasTouchBlockers"]]
 custom_minimum_size = Vector2(0, 110)
 offset_right = 328.0
 offset_bottom = 174.0
@@ -32,29 +32,6 @@ layout_mode = 2
 [node name="HBox" type="HBoxContainer" parent="VBox" unique_id=359535911]
 layout_mode = 2
 size_flags_vertical = 3
-
-[node name="VBoxContainer" type="VBoxContainer" parent="VBox/HBox" unique_id=1082567405]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="VBox/HBox/VBoxContainer" unique_id=2123199402]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "+"
-
-[node name="PreviewZoomSlider" type="VSlider" parent="VBox/HBox/VBoxContainer" unique_id=1185696676]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 3
-mouse_default_cursor_shape = 2
-min_value = 1.0
-max_value = 5.0
-step = 0.01
-value = 1.0
-
-[node name="Label2" type="Label" parent="VBox/HBox/VBoxContainer" unique_id=745124252]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "-"
 
 [node name="PreviewViewportContainer" type="SubViewportContainer" parent="VBox/HBox" unique_id=573890257]
 layout_mode = 2
@@ -213,7 +190,6 @@ stretch_margin_bottom = 3
 script = ExtResource("8")
 prefix = "End frame:"
 
-[connection signal="value_changed" from="VBox/HBox/VBoxContainer/PreviewZoomSlider" to="." method="_on_PreviewZoomSlider_value_changed"]
 [connection signal="mouse_entered" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_entered"]
 [connection signal="mouse_exited" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_exited"]
 [connection signal="toggled" from="VBox/Animation/PlayButton" to="." method="_on_PlayButton_toggled"]
