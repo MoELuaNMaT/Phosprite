@@ -72,6 +72,12 @@ var live := false
 
 var _ruler_overlay: Control
 var _ruler_project: Project
+var _left_tool_options: ScrollContainer
+var _merged_tools_content: VBoxContainer
+var _merged_tools_separator: HSeparator
+var _left_tool_options_state: Dictionary = {}
+var _tools_palette_state: Dictionary = {}
+var _tools_root_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
@@ -215,7 +221,8 @@ func is_zen_mode() -> bool:
 
 func _migrate_live_editor() -> bool:
 	main_canvas = legacy_container.get_node_or_null(^"Main Canvas") as Control
-	if main_canvas == null:
+	_left_tool_options = legacy_container.get_node_or_null(^"Left Tool Options") as ScrollContainer
+	if main_canvas == null or _left_tool_options == null:
 		_clear_setup()
 		return false
 
@@ -245,6 +252,13 @@ func _migrate_live_editor() -> bool:
 		adopted.append(module_id)
 
 	if not _attach_timeline_header_options():
+		_rollback_adoption(adopted)
+		layout_store.autosave_enabled = _previous_autosave_enabled
+		_restore_legacy_shell()
+		_clear_setup()
+		return false
+
+	if not _merge_left_tool_options_into_tools():
 		_rollback_adoption(adopted)
 		layout_store.autosave_enabled = _previous_autosave_enabled
 		_restore_legacy_shell()
@@ -299,6 +313,110 @@ func _migrate_live_editor() -> bool:
 	return true
 
 
+func _merge_left_tool_options_into_tools() -> bool:
+	var tools_module := manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module == null or not tools_module.get_content() is ScrollContainer:
+		return false
+	var tools_root := tools_module.get_content() as ScrollContainer
+	var palette := tools_root.get_node_or_null(^"PanelContainer") as PanelContainer
+	if palette == null or not is_instance_valid(_left_tool_options):
+		return false
+	var left_parent := _left_tool_options.get_parent()
+	if left_parent == null:
+		return false
+
+	_tools_palette_state = {
+		"parent": palette.get_parent(),
+		"index": palette.get_index(),
+		"size_flags_vertical": palette.size_flags_vertical,
+	}
+	_left_tool_options_state = {
+		"parent": left_parent,
+		"index": _left_tool_options.get_index(),
+		"visible": _left_tool_options.visible,
+		"size_flags_horizontal": _left_tool_options.size_flags_horizontal,
+		"size_flags_vertical": _left_tool_options.size_flags_vertical,
+	}
+	_tools_root_vertical_scroll_mode = tools_root.vertical_scroll_mode
+
+	tools_root.remove_child(palette)
+	_merged_tools_content = VBoxContainer.new()
+	_merged_tools_content.name = &"MergedToolsContent"
+	_merged_tools_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_merged_tools_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_merged_tools_content.add_theme_constant_override(&"separation", 0)
+	tools_root.add_child(_merged_tools_content)
+
+	palette.size_flags_vertical = Control.SIZE_FILL
+	_merged_tools_content.add_child(palette)
+	_merged_tools_separator = HSeparator.new()
+	_merged_tools_separator.name = &"ToolOptionsSeparator"
+	_merged_tools_content.add_child(_merged_tools_separator)
+
+	left_parent.remove_child(_left_tool_options)
+	_left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_left_tool_options.visible = true
+	_merged_tools_content.add_child(_left_tool_options)
+	tools_root.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	return true
+
+
+func _restore_merged_tools() -> void:
+	if not is_instance_valid(_left_tool_options):
+		return
+	var tools_module := manager.get_instance(Builtins.TOOLS_ID) if manager != null else null
+	var tools_root := (
+		tools_module.get_content() as ScrollContainer
+		if tools_module != null and tools_module.get_content() is ScrollContainer
+		else null
+	)
+	var palette := (
+		_merged_tools_content.get_node_or_null(^"PanelContainer") as PanelContainer
+		if is_instance_valid(_merged_tools_content)
+		else null
+	)
+
+	if _left_tool_options.get_parent() != null:
+		_left_tool_options.get_parent().remove_child(_left_tool_options)
+	var left_parent := _left_tool_options_state.get("parent") as Node
+	if left_parent != null:
+		left_parent.add_child(_left_tool_options)
+		left_parent.move_child(
+			_left_tool_options,
+			mini(int(_left_tool_options_state.get("index", 0)), left_parent.get_child_count() - 1)
+		)
+	_left_tool_options.visible = bool(_left_tool_options_state.get("visible", true))
+	_left_tool_options.size_flags_horizontal = int(
+		_left_tool_options_state.get("size_flags_horizontal", Control.SIZE_FILL)
+	)
+	_left_tool_options.size_flags_vertical = int(
+		_left_tool_options_state.get("size_flags_vertical", Control.SIZE_FILL)
+	)
+
+	if palette != null:
+		_merged_tools_content.remove_child(palette)
+		var palette_parent := _tools_palette_state.get("parent") as Node
+		if palette_parent != null:
+			palette_parent.add_child(palette)
+			palette_parent.move_child(
+				palette,
+				mini(int(_tools_palette_state.get("index", 0)), palette_parent.get_child_count() - 1)
+			)
+		palette.size_flags_vertical = int(
+			_tools_palette_state.get("size_flags_vertical", Control.SIZE_EXPAND_FILL)
+		)
+
+	if is_instance_valid(_merged_tools_separator):
+		_merged_tools_separator.queue_free()
+	_merged_tools_separator = null
+	if is_instance_valid(_merged_tools_content):
+		_merged_tools_content.queue_free()
+	_merged_tools_content = null
+	if tools_root != null:
+		tools_root.vertical_scroll_mode = _tools_root_vertical_scroll_mode
+
+
 func _attach_timeline_header_options() -> bool:
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
 	if timeline == null:
@@ -347,6 +465,7 @@ func _rollback_live_migration() -> void:
 		if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.NONE:
 			surface.clear_module_placement(module_id)
 	var adopted := get_panel_ids()
+	_restore_merged_tools()
 	_rollback_adoption(adopted)
 	_restore_canvas_chrome()
 	_restore_main_canvas()
@@ -775,5 +894,10 @@ func _clear_setup() -> void:
 	canvas_camera = null
 	_ruler_overlay = null
 	_ruler_project = null
+	_left_tool_options = null
+	_merged_tools_content = null
+	_merged_tools_separator = null
+	_left_tool_options_state.clear()
+	_tools_palette_state.clear()
 	_project_tabs_height = 0.0
 	live = false
