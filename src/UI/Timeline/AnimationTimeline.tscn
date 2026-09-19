@@ -31,6 +31,7 @@
 [ext_resource type="PackedScene" uid="uid://hbgwxlin4jun" path="res://src/UI/Timeline/NewTileMapLayerDialog.tscn" id="29_t0mtf"]
 [ext_resource type="Texture2D" uid="uid://dinubfua8gqhw" path="res://assets/graphics/timeline/expandable.png" id="30"]
 [ext_resource type="Texture2D" uid="uid://fbwld5ofmocm" path="res://assets/graphics/timeline/loop.png" id="31"]
+[ext_resource type="PackedScene" uid="uid://wo0hqxkst808" path="res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn" id="32_global_options"]
 
 [sub_resource type="InputEventAction" id="InputEventAction_r3l7p"]
 action = &"new_layer"
@@ -768,6 +769,9 @@ step = 0.1
 value = 6.0
 allow_greater = true
 suffix = "FPS"
+
+[node name="GlobalToolOptions" parent="TimelineContainer/TimelineButtons/VBoxContainer/AnimationToolsScrollContainer/AnimationTools/MarginContainer/AnimationButtons" instance=ExtResource("32_global_options")]
+layout_mode = 2
 
 [node name="TagScroll" type="ScrollContainer" parent="TimelineContainer/TimelineButtons/VBoxContainer" unique_id=383551925]
 unique_name_in_owner = true
