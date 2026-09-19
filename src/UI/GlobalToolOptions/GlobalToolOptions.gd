@@ -33,7 +33,8 @@ func reset_options() -> void:
 
 
 func _on_resized() -> void:
-	grid_container.columns = 8
+	if is_instance_valid(grid_container):
+		grid_container.columns = 8
 
 
 func _on_Horizontal_toggled(toggled_on: bool) -> void:
