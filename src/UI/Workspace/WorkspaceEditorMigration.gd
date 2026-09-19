@@ -662,7 +662,8 @@ func _update_canvas_chrome_geometry() -> void:
 	var horizontal_height := maxf(16.0, horizontal_ruler.get_combined_minimum_size().y)
 	var vertical_width := maxf(16.0, vertical_ruler.get_combined_minimum_size().x)
 	horizontal_ruler.position = (
-		viewport_origin + Vector2(canvas_rect.position.x, canvas_rect.position.y - horizontal_height)
+		viewport_origin
+		+ Vector2(canvas_rect.position.x, canvas_rect.position.y - horizontal_height)
 	)
 	horizontal_ruler.size = Vector2(maxf(0.0, canvas_rect.size.x), horizontal_height)
 	vertical_ruler.position = (
