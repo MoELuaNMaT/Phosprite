@@ -20,8 +20,14 @@ func test_document_checker_contract_uses_canvas_and_preview_cell_sizes() -> void
 	)
 	var source := FileAccess.get_file_as_string("res://src/UI/Nodes/TransparentChecker.gd")
 	check_true(
-		source.contains("self == Global.transparent_checker or sync_to_document_pixels"),
-		"main Canvas should auto-enable document-pixel mode while previews can opt in explicitly"
+		source.contains("var is_main_document_checker := self == Global.transparent_checker"),
+		"main Canvas should identify its document checker explicitly"
+	)
+	check_true(
+		source.contains(
+			"var document_pixel_mode := is_main_document_checker or sync_to_document_pixels"
+		),
+		"previews should be able to opt into the same document-pixel checker mode"
 	)
 	check_true(
 		source.contains("if is_main_document_checker:"),
