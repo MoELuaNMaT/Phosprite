@@ -11,6 +11,7 @@ enum FingerPolicy { UNRESTRICTED, FINGER_NAVIGATION_ONLY, PENCIL_PRIORITY }
 
 const COLOR_SAMPLING := preload("res://src/Tools/UtilityTools/ColorSampling.gd")
 const POINTER_IDENTITY_SINGLETON := &"PhospritePointerIdentity"
+const CANVAS_TOUCH_BLOCKER_GROUP := &"CanvasTouchBlockers"
 const PREFERENCE_SECTION := "preferences"
 const FINGER_POLICY_KEY := "finger_policy"
 const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
@@ -266,6 +267,16 @@ func _screen_position_inside_main_viewport(screen_position: Vector2) -> bool:
 		return false
 	if not Global.main_viewport.is_visible_in_tree():
 		return false
+	var tree := Global.main_viewport.get_tree()
+	if tree != null:
+		for blocker_node in tree.get_nodes_in_group(CANVAS_TOUCH_BLOCKER_GROUP):
+			var blocker := blocker_node as Control
+			if (
+				is_instance_valid(blocker)
+				and blocker.is_visible_in_tree()
+				and blocker.get_global_rect().has_point(screen_position)
+			):
+				return false
 	return screen_position_inside_rect(screen_position, Global.main_viewport.get_global_rect())
 
 
