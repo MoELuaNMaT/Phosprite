@@ -790,6 +790,68 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	_free_fixture(fixture)
 
 
+func test_left_tool_options_are_embedded_below_tools_in_one_workspace_module() -> void:
+	var ids := Builtins.get_live_panel_ids()
+	check_true(ids.has(Builtins.TOOLS_ID), "Tools must remain a live Workspace module")
+	check_true(
+		not ids.has(Builtins.LEFT_TOOL_OPTIONS_ID),
+		"Left Tool Options must no longer exist as an independent Workspace module"
+	)
+
+	var tools_scene := FileAccess.get_file_as_string("res://src/UI/ToolsPanel/Tools.tscn")
+	check_true(
+		tools_scene.contains('[node name="Tools" type="VBoxContainer"'),
+		"merged Tools content should stack tool picker above tool options"
+	)
+	check_true(
+		tools_scene.contains('[node name="ToolPalette" type="ScrollContainer" parent="."]'),
+		"Tools should retain its existing picker as the upper section"
+	)
+	check_true(
+		tools_scene.contains(
+			'[node name="LeftPanelContainer" type="MarginContainer" parent="LeftToolOptions"'
+		),
+		"the original LeftPanelContainer must live in the lower Tools section"
+	)
+	check_true(
+		tools_scene.contains("horizontal_scroll_mode = 0")
+		and tools_scene.contains("vertical_scroll_mode = 0"),
+		"tool buttons should wrap naturally instead of consuming the options area with scrolling"
+	)
+
+	var tools_autoload := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
+	check_true(
+		tools_autoload.contains(
+			'_panels[MOUSE_BUTTON_LEFT] = Global.control.find_child("LeftPanelContainer", true, false)'
+		),
+		"existing tool option injection must continue targeting the same LeftPanelContainer"
+	)
+
+	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
+	check_true(
+		not ui_scene.contains(
+			'[node name="Left Tool Options" type="ScrollContainer" parent="DockableContainer"'
+		),
+		"legacy UI must not keep a duplicate standalone Left Tool Options window"
+	)
+	check_true(
+		not ui_scene.contains('names = PackedStringArray("Left Tool Options")'),
+		"legacy Dockable layout must not expose a Left Tool Options tab"
+	)
+
+	var migration_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+	)
+	check_true(
+		not migration_source.contains("Builtins.LEFT_TOOL_OPTIONS_ID"),
+		"default Workspace layout must not place Left Tool Options independently"
+	)
+	check_true(
+		migration_source.contains('"size": Vector2(180.0, 400.0)'),
+		"default Tools height should reserve room for picker plus current tool options"
+	)
+
+
 func test_global_tool_options_live_in_timeline_workspace_header_and_survive_collapse() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(
