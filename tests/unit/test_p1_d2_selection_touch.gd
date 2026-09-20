@@ -214,6 +214,40 @@ func test_ios_toolbar_removes_text_zoom_and_pan_without_deleting_tools() -> void
 		)
 
 
+func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		'FAMILY_DISCLOSURE_INDICATOR_NAME := &"FamilyDisclosureIndicator"',
+		"compact family buttons need a dedicated disclosure overlay"
+	)
+	check_has(
+		src,
+		"_ensure_family_disclosure_indicator(_ios_selection_family_button)",
+		"Selection family must receive the disclosure triangle"
+	)
+	check_has(
+		src,
+		"_ensure_family_disclosure_indicator(_ios_shape_family_button)",
+		"Shapes family must receive the disclosure triangle"
+	)
+	check_has(
+		src,
+		"indicator.polygon = PackedVector2Array",
+		"the disclosure marker should be a small drawn triangle instead of replacing tool artwork"
+	)
+	check_has(
+		src,
+		"button.resized.connect(_layout_family_disclosure_indicator.bind(button, indicator))",
+		"the disclosure triangle must follow 24/32 px toolbar button resizing"
+	)
+	check_has(
+		src,
+		"button.size",
+		"the disclosure triangle should be positioned from the button bottom-right corner"
+	)
+
+
 func test_rect_and_ellipse_perfect_hold_reuse_d1_touch_slop() -> void:
 	for path in [RECT_SOURCE, ELLIPSE_SOURCE]:
 		var src := FileAccess.get_file_as_string(path)
