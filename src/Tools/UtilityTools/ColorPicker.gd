@@ -9,7 +9,19 @@ var _color_slot := 0
 var _mode := 0
 
 
+func _ready() -> void:
+	super._ready()
+	if OS.get_name() != "iOS":
+		return
+	_color_slot = 0
+	$ColorPicker/Label.hide()
+	$ColorPicker/Options.hide()
+	$ColorPicker/Options.selected = 0
+
+
 func _input(event: InputEvent) -> void:
+	if OS.get_name() == "iOS":
+		return
 	var options: OptionButton = $ColorPicker/Options
 
 	if event.is_action_pressed("change_tool_mode"):
@@ -35,11 +47,12 @@ func _on_ExtractFrom_item_selected(index: int) -> void:
 
 
 func get_config() -> Dictionary:
-	return {"color_slot": _color_slot, "mode": _mode}
+	var color_slot := 0 if OS.get_name() == "iOS" else _color_slot
+	return {"color_slot": color_slot, "mode": _mode}
 
 
 func set_config(config: Dictionary) -> void:
-	_color_slot = config.get("color_slot", _color_slot)
+	_color_slot = 0 if OS.get_name() == "iOS" else config.get("color_slot", _color_slot)
 	_mode = config.get("mode", _mode)
 
 
@@ -63,5 +76,9 @@ func draw_end(pos: Vector2i) -> void:
 
 
 func _pick_color(pos: Vector2i) -> void:
-	var button := MOUSE_BUTTON_LEFT if _color_slot == 0 else MOUSE_BUTTON_RIGHT
+	var button := (
+		MOUSE_BUTTON_LEFT
+		if OS.get_name() == "iOS" or _color_slot == 0
+		else MOUSE_BUTTON_RIGHT
+	)
 	COLOR_SAMPLING.pick_color(pos, button, _mode)
