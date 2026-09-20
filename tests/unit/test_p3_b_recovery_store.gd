@@ -6,7 +6,7 @@ const Library := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
 
 const TEST_UUID := "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 const TEST_TARGET_DIR := "user://p3_b_recovery_store_tests"
-const TEST_TARGET := TEST_TARGET_DIR.path_join("restored.pxo")
+const TEST_TARGET := "user://p3_b_recovery_store_tests/restored.pxo"
 const MISSING_TARGET := "user://p3_b_missing_parent/restored.pxo"
 
 
