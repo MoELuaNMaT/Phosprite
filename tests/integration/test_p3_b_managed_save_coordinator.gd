@@ -6,9 +6,9 @@ const Library := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
 const RecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd")
 
 const TEST_PROJECTS_DIR := "user://p3_b_managed_save_tests"
-const FORMAL_PATH := TEST_PROJECTS_DIR.path_join("managed.pxo")
+const FORMAL_PATH := "user://p3_b_managed_save_tests/managed.pxo"
 const MISSING_DIR := "user://p3_b_missing_commit_parent"
-const MISSING_TARGET := MISSING_DIR.path_join("managed.pxo")
+const MISSING_TARGET := "user://p3_b_missing_commit_parent/managed.pxo"
 
 var _project: Project
 var _coordinator: ProjectSaveCoordinator
