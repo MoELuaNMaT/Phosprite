@@ -155,11 +155,7 @@ func test_shape_family_uses_long_press_proxy_and_persists_recent_child() -> void
 		"IOS_SHAPE_MENU_LONG_PRESS_SECONDS",
 		"Shapes entry needs an explicit long-press acquisition path"
 	)
-	check_has(
-		src,
-		"_try_open_ios_shape_menu",
-		"long press must open the five-tool Shapes submenu"
-	)
+	check_has(src, "_try_open_ios_shape_menu", "long press must open the five-tool Shapes submenu")
 	check_has(
 		src,
 		"_activate_ios_shape_tool(_ios_shape_recent_tool)",
@@ -167,7 +163,7 @@ func test_shape_family_uses_long_press_proxy_and_persists_recent_child() -> void
 	)
 	check_has(
 		src,
-		'_ios_shape_family_button = Tools.tools[String(IOS_SHAPE_DEFAULT)].button_node',
+		"_ios_shape_family_button = Tools.tools[String(IOS_SHAPE_DEFAULT)].button_node",
 		"Line Tool should remain the structural proxy for the compact Shapes entry"
 	)
 	check_has(
