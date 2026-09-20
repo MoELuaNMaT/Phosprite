@@ -149,7 +149,11 @@ func test_managed_save_timing_generation_recovery_and_restore() -> void:
 	)
 
 	var entries := Library.new(TEST_PROJECTS_DIR).scan()
-	check_eq(entries.size(), 1, "formal managed project should remain visible after a failed newer commit")
+	check_eq(
+		entries.size(),
+		1,
+		"formal managed project should remain visible after a failed newer commit"
+	)
 	if entries.size() == 1:
 		check_true(
 			entries[0].has_pending_recovery,
