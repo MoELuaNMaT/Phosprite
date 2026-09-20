@@ -857,7 +857,7 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 	check_true(
 		ui_scene.contains('parent="DockableContainer/Left Tool Options"'),
-		"legacy startup shell must retain the original LeftPanelContainer path"
+		"legacy shell must retain the original LeftPanelContainer path"
 	)
 
 	var fixture := _make_live_fixture(null, true, false)
