@@ -30,6 +30,9 @@ const IOS_SHAPE_TOOLS := [
 ]
 const IOS_TOOLBAR_REMOVED_TOOLS := [&"Text", &"Zoom", &"Pan"]
 const IOS_TOOLBAR_REMOVAL_INSTALL_MAX_RETRIES := 8
+const FAMILY_DISCLOSURE_INDICATOR_NAME := &"FamilyDisclosureIndicator"
+const FAMILY_DISCLOSURE_INDICATOR_SIZE := 5.0
+const FAMILY_DISCLOSURE_INDICATOR_MARGIN := 2.0
 
 var pen_inverted := false
 ## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
@@ -380,6 +383,38 @@ func _is_tool_available_on_current_layer(tool: Tools.Tool) -> bool:
 	return tool.layer_types.is_empty() or layer.get_layer_type() in tool.layer_types
 
 
+func _ensure_family_disclosure_indicator(button: BaseButton) -> void:
+	if not is_instance_valid(button):
+		return
+	var existing := button.get_node_or_null(NodePath(String(FAMILY_DISCLOSURE_INDICATOR_NAME)))
+	if existing is Polygon2D:
+		_layout_family_disclosure_indicator(button, existing as Polygon2D)
+		return
+	var indicator := Polygon2D.new()
+	indicator.name = FAMILY_DISCLOSURE_INDICATOR_NAME
+	indicator.polygon = PackedVector2Array(
+		[
+			Vector2(0.0, FAMILY_DISCLOSURE_INDICATOR_SIZE),
+			Vector2(FAMILY_DISCLOSURE_INDICATOR_SIZE, FAMILY_DISCLOSURE_INDICATOR_SIZE),
+			Vector2(FAMILY_DISCLOSURE_INDICATOR_SIZE, 0.0),
+		]
+	)
+	indicator.color = button.get_theme_color(&"font_color", &"Button")
+	indicator.z_index = 20
+	button.add_child(indicator)
+	button.resized.connect(_layout_family_disclosure_indicator.bind(button, indicator))
+	_layout_family_disclosure_indicator(button, indicator)
+
+
+func _layout_family_disclosure_indicator(button: BaseButton, indicator: Polygon2D) -> void:
+	if not is_instance_valid(button) or not is_instance_valid(indicator):
+		return
+	indicator.position = (
+		button.size
+		- Vector2.ONE * (FAMILY_DISCLOSURE_INDICATOR_SIZE + FAMILY_DISCLOSURE_INDICATOR_MARGIN)
+	)
+
+
 func _ios_selection_buttons_ready() -> bool:
 	for tool_name in IOS_SELECTION_TOOLS:
 		if not Tools.tools.has(String(tool_name)):
@@ -405,6 +440,7 @@ func _install_ios_selection_family() -> void:
 
 	_ios_selection_install_retry_count = 0
 	_ios_selection_family_button = Tools.tools[String(IOS_SELECTION_DEFAULT)].button_node
+	_ensure_family_disclosure_indicator(_ios_selection_family_button)
 	_ios_selection_recent_tool = normalize_ios_recent_selection_tool(
 		Global.config_cache.get_value(
 			IOS_SELECTION_RECENT_SECTION, IOS_SELECTION_RECENT_KEY, IOS_SELECTION_DEFAULT
@@ -471,6 +507,7 @@ func _install_ios_shape_family() -> void:
 
 	_ios_shape_install_retry_count = 0
 	_ios_shape_family_button = Tools.tools[String(IOS_SHAPE_DEFAULT)].button_node
+	_ensure_family_disclosure_indicator(_ios_shape_family_button)
 	_ios_shape_recent_tool = normalize_ios_recent_shape_tool(
 		Global.config_cache.get_value(
 			IOS_SHAPE_RECENT_SECTION, IOS_SHAPE_RECENT_KEY, IOS_SHAPE_DEFAULT
