@@ -4,6 +4,10 @@ const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const TOOL_BUTTONS := preload("res://src/UI/ToolsPanel/ToolButtons.gd")
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
+const CROP_TOOL_SOURCE := "res://src/Tools/UtilityTools/CropTool.gd"
+const CROP_TOOL_SCENE := "res://src/Tools/UtilityTools/CropTool.tscn"
+const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
+const COLOR_PICKER_SCENE := "res://src/Tools/UtilityTools/ColorPicker.tscn"
 const RECT_SOURCE := "res://src/Tools/SelectionTools/RectSelect.gd"
 const ELLIPSE_SOURCE := "res://src/Tools/SelectionTools/EllipseSelect.gd"
 const POLYGON_SOURCE := "res://src/Tools/SelectionTools/PolygonSelect.gd"
@@ -304,6 +308,113 @@ func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance(
 		wand_scene,
 		'[node name="ToleranceSlider"',
 		"Magic Wand must keep its existing tolerance control available to the iOS allowlist"
+	)
+
+
+func test_ios_crop_uses_margin_grid_without_mode_selector() -> void:
+	var src := FileAccess.get_file_as_string(CROP_TOOL_SOURCE)
+	check_has(
+		src,
+		'_crop.mode = CropRect.Mode.MARGINS',
+		"iOS Crop must always enter Margins mode"
+	)
+	check_has(
+		src,
+		'_crop.locked_size = false',
+		"hidden Size Lock must not preserve a stale locked state on iOS"
+	)
+	check_has(src, "$ModeLabel.hide()", "iOS Crop should hide its Mode label")
+	check_has(src, "$HBoxContainer.hide()", "iOS Crop should hide Mode and Size Lock controls")
+	check_has(
+		src,
+		'top_bottom_row.name = &"TopBottomRow"',
+		"Top and Bottom margin controls must share the first compact row"
+	)
+	check_has(
+		src,
+		'left_right_row.name = &"LeftRightRow"',
+		"Left and Right margin controls must share the second compact row"
+	)
+	check_has(
+		src,
+		"top_bottom_row.add_child(top)",
+		"Top margin must move into the first compact row"
+	)
+	check_has(
+		src,
+		"top_bottom_row.add_child(bottom)",
+		"Bottom margin must move into the first compact row"
+	)
+	check_has(
+		src,
+		"left_right_row.add_child(left)",
+		"Left margin must move into the second compact row"
+	)
+	check_has(
+		src,
+		"left_right_row.add_child(right)",
+		"Right margin must move into the second compact row"
+	)
+	check_has(
+		src,
+		"$Apply.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
+		"Apply must remain a full-width row under the margin grid"
+	)
+	check_has(
+		src,
+		'if _syncing or OS.get_name() == "iOS":',
+		"the hidden Crop mode selector must not change mode on iOS"
+	)
+	var scene_src := FileAccess.get_file_as_string(CROP_TOOL_SCENE)
+	check_has(
+		scene_src,
+		'[node name="CropMode" type="OptionButton"',
+		"desktop Crop must keep the original mode selector in the shared scene"
+	)
+
+
+func test_ios_color_picker_hides_destination_but_keeps_pick_mode() -> void:
+	var src := FileAccess.get_file_as_string(COLOR_PICKER_SOURCE)
+	check_has(
+		src,
+		'$ColorPicker/Label.hide()',
+		"iOS Color Picker should hide the Pick for label"
+	)
+	check_has(
+		src,
+		'$ColorPicker/Options.hide()',
+		"iOS Color Picker should hide the Left/Right color destination selector"
+	)
+	check_has(
+		src,
+		'var color_slot := 0 if OS.get_name() == "iOS" else _color_slot',
+		"iOS Color Picker config must persist the primary color destination"
+	)
+	check_has(
+		src,
+		'MOUSE_BUTTON_LEFT',
+		"iOS Color Picker must always write to the primary color slot"
+	)
+	var scene_src := FileAccess.get_file_as_string(COLOR_PICKER_SCENE)
+	check_has(
+		scene_src,
+		'[node name="ExtractFrom" type="OptionButton"',
+		"Color Picker must keep the sampling source selector"
+	)
+	check_has(
+		scene_src,
+		'popup/item_0/text = "Top Color"',
+		"sampling source should keep Top Color as the first/default option"
+	)
+	check_has(
+		scene_src,
+		'popup/item_1/text = "Current Layer"',
+		"sampling source should keep Current Layer as the alternate option"
+	)
+	check_has(
+		scene_src,
+		'[node name="Options" type="OptionButton"',
+		"desktop Color Picker must keep the original Left/Right destination selector"
 	)
 
 
