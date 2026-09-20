@@ -516,7 +516,7 @@ func save_pxo_file(
 	zip_packer.write_file(to_save.to_utf8_buffer())
 	zip_packer.close_file()
 
-	var gallery_data := ProjectLibraryScript.build_gallery_metadata(project.project_uuid, project.size)
+	var gallery_data := ProjectLibraryScript.build_gallery_metadata(\n\t\tproject.project_uuid, project.size\n\t)
 	zip_packer.start_file(ProjectLibraryScript.GALLERY_ENTRY)
 	zip_packer.write_file(JSON.stringify(gallery_data).to_utf8_buffer())
 	zip_packer.close_file()
