@@ -80,7 +80,7 @@ func _read_entry(path: String) -> ProjectLibraryEntry:
 func _read_gallery_metadata(reader: ZIPReader) -> Dictionary:
 	if not reader.file_exists(GALLERY_ENTRY):
 		return {}
-	var value := _parse_json(reader.read_file(GALLERY_ENTRY))
+	var value: Variant = _parse_json(reader.read_file(GALLERY_ENTRY))
 	if not value is Dictionary:
 		return {}
 	var gallery := value as Dictionary
@@ -97,7 +97,7 @@ func _read_gallery_metadata(reader: ZIPReader) -> Dictionary:
 
 
 func _read_legacy_metadata(reader: ZIPReader) -> Dictionary:
-	var value := _parse_json(reader.read_file(DATA_ENTRY))
+	var value: Variant = _parse_json(reader.read_file(DATA_ENTRY))
 	if not value is Dictionary:
 		return {}
 	var data := value as Dictionary
@@ -153,7 +153,7 @@ func _rewrite_project_identity(path: String, project_uuid: String, canvas_size: 
 	var reader := ZIPReader.new()
 	if reader.open(path) != OK or not reader.file_exists(DATA_ENTRY):
 		return false
-	var data_value := _parse_json(reader.read_file(DATA_ENTRY))
+	var data_value: Variant = _parse_json(reader.read_file(DATA_ENTRY))
 	if not data_value is Dictionary:
 		reader.close()
 		return false
