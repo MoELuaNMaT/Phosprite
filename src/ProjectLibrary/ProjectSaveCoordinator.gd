@@ -137,12 +137,10 @@ func flush_project(project: Project, reason := "forced") -> bool:
 	last_error = OK
 	if generation_is_current:
 		_reset_dirty_window(project)
-	else:
-		var last_dirty := int(state["last_dirty_msec"])
-		state["first_dirty_msec"] = (
-			Time.get_ticks_msec() if last_dirty < 0 else last_dirty
-		)
-	return true
+		return true
+	var last_dirty := int(state["last_dirty_msec"])
+	state["first_dirty_msec"] = Time.get_ticks_msec() if last_dirty < 0 else last_dirty
+	return reason == "autosave"
 
 
 func flush_all(reason := "forced") -> bool:
