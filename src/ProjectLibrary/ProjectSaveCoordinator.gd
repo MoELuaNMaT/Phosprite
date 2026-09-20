@@ -11,15 +11,17 @@ const MAX_DIRTY_AGE_MSEC := 30000
 var managed_storage_enabled := false
 var projects_directory := StoragePolicy.PROJECTS_DIRECTORY
 var last_error: Error = OK
+var show_errors := true
 
 var _states: Dictionary = {}
 
 
 func configure(
-	enabled: bool, directory := StoragePolicy.PROJECTS_DIRECTORY
+	enabled: bool, directory := StoragePolicy.PROJECTS_DIRECTORY, report_errors := true
 ) -> void:
 	managed_storage_enabled = enabled
 	projects_directory = directory
+	show_errors = report_errors
 	set_process(enabled)
 
 
@@ -223,7 +225,7 @@ func _fail_save(project: Project, reason: String, error: Error) -> bool:
 	var now_msec := Time.get_ticks_msec()
 	state["first_dirty_msec"] = now_msec
 	state["last_dirty_msec"] = now_msec
-	if not bool(state["error_reported"]):
+	if show_errors and not bool(state["error_reported"]):
 		state["error_reported"] = true
 		Global.popup_error(
 			(
