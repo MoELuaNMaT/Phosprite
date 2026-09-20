@@ -11,6 +11,8 @@ const FONT_FILE_EXTENSIONS: PackedStringArray = [
 	"ttf", "otf", "woff", "woff2", "pfb", "pfm", "fnt", "font"
 ]
 const GifImporter := preload("uid://bml2q6e8rr82h")
+const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
+const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
 
 var current_session_backup := ""
 var had_backups_on_startup := false
@@ -481,6 +483,8 @@ func save_pxo_file(
 	path: String, autosave: bool, include_blended := false, project := Global.current_project
 ) -> bool:
 	project.initialize_attribution_data()
+	if not ProjectIdentityScript.is_valid_uuid(project.project_uuid):
+		project.project_uuid = ProjectIdentityScript.generate_uuid()
 	if not autosave:
 		project.name = path.uri_decode().get_file().trim_suffix(".pxo")
 	var serialized_data := project.serialize()
@@ -510,6 +514,11 @@ func save_pxo_file(
 		return false
 	zip_packer.start_file("data.json")
 	zip_packer.write_file(to_save.to_utf8_buffer())
+	zip_packer.close_file()
+
+	var gallery_data := ProjectLibraryScript.build_gallery_metadata(project.project_uuid, project.size)
+	zip_packer.start_file(ProjectLibraryScript.GALLERY_ENTRY)
+	zip_packer.write_file(JSON.stringify(gallery_data).to_utf8_buffer())
 	zip_packer.close_file()
 
 	zip_packer.start_file("mimetype")
