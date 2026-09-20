@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Must match ProjectSettings' engine baseline (Pixelorama v1.2 / Godot 4.6.3).
+  # Must match the frozen Phosprite engine baseline (Godot 4.6.3).
   GODOT_VERSION: 4.6.3
   TEST_SCRIPT: res://tests/runner.gd
   TEST_FLAG: --phosprite-test-runner
