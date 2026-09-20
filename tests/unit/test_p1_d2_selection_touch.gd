@@ -233,18 +233,28 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 	check_has(
 		src,
-		"indicator.polygon = PackedVector2Array",
-		"the disclosure marker should be a small drawn triangle instead of replacing tool artwork"
+		"var indicator := Control.new()",
+		"the disclosure marker must live in the same Control UI layer as the tool button"
 	)
 	check_has(
 		src,
-		"button.resized.connect(_layout_family_disclosure_indicator.bind(button, indicator))",
-		"the disclosure triangle must follow 24/32 px toolbar button resizing"
+		"indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE",
+		"the disclosure overlay must never steal tool taps or long presses"
 	)
 	check_has(
 		src,
-		"button.size",
-		"the disclosure triangle should be positioned from the button bottom-right corner"
+		"indicator.anchor_left = 1.0",
+		"the disclosure overlay must anchor to the button bottom-right corner"
+	)
+	check_has(
+		src,
+		"indicator.draw_colored_polygon",
+		"the disclosure marker should draw a visible filled triangle"
+	)
+	check_has(
+		src,
+		"indicator.draw_polyline",
+		"the disclosure triangle should use a contrasting outline"
 	)
 
 
