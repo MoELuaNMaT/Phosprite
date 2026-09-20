@@ -29,8 +29,8 @@ var splash_dialog: AcceptDialog:
 			splash_dialog = load(SPLASH_DIALOG_SCENE_PATH).instantiate()
 			add_child(splash_dialog)
 		return splash_dialog
-var _last_session_last_project := ""
 var project_save_coordinator: ProjectSaveCoordinator
+var _last_session_last_project := ""
 
 @onready var top_menu_container := $MenuAndUI/TopMenuContainer as Panel
 @onready var main_ui := $MenuAndUI/UI/DockableContainer as DockableContainer
