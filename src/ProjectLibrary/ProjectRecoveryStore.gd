@@ -4,7 +4,7 @@ extends RefCounted
 const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
 
 const DIRECTORY_NAME := "projects"
-const RECOVERY_DIRECTORY := "user://backups".path_join(DIRECTORY_NAME)
+const RECOVERY_DIRECTORY := "user://backups/projects"
 const PROJECT_EXTENSION := ".pxo"
 const STAGING_SUFFIX := ".staging"
 
