@@ -248,11 +248,23 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 	check_has(
 		src,
-		"indicator.draw_colored_polygon",
-		"the disclosure marker should draw a visible filled triangle"
+		"FAMILY_DISCLOSURE_INDICATOR_SIZE := 8.0",
+		"the disclosure triangle must be large enough to remain visible on 24 px buttons"
 	)
 	check_has(
-		src, "indicator.draw_polyline", "the disclosure triangle should use a contrasting outline"
+		src,
+		"indicator.z_index = 100",
+		"the disclosure triangle must render above the dynamic tool icon and active backgrounds"
+	)
+	check_has(
+		src,
+		"indicator.draw_colored_polygon(points, Color(1.0, 1.0, 1.0, 0.96))",
+		"the disclosure marker should use a high-contrast filled triangle"
+	)
+	check_has(
+		src,
+		"indicator.draw_polyline(outline, Color(0.0, 0.0, 0.0, 0.9), 1.0, false)",
+		"the disclosure triangle should keep a dark outline on light icons"
 	)
 
 
