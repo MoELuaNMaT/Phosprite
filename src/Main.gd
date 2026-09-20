@@ -13,6 +13,7 @@ const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
 
 ## Platform policy for where .pxo files live; see the script for the iPad rules.
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
+const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
 
 var opensprite_file_selected := false
 var redone := false
@@ -29,6 +30,7 @@ var splash_dialog: AcceptDialog:
 			add_child(splash_dialog)
 		return splash_dialog
 var _last_session_last_project := ""
+var project_save_coordinator: ProjectSaveCoordinator
 
 @onready var top_menu_container := $MenuAndUI/TopMenuContainer as Panel
 @onready var main_ui := $MenuAndUI/UI/DockableContainer as DockableContainer
@@ -218,6 +220,12 @@ func _init() -> void:
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
+	project_save_coordinator = PROJECT_SAVE_COORDINATOR.new()
+	project_save_coordinator.configure(
+		STORAGE_POLICY.uses_managed_project_storage(), STORAGE_POLICY.PROJECTS_DIRECTORY
+	)
+	add_child(project_save_coordinator)
+	Global.project_switch_guard = project_save_coordinator.can_switch_project
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 
@@ -507,11 +515,13 @@ func _notification(what: int) -> void:
 		return
 	match what:
 		NOTIFICATION_WM_CLOSE_REQUEST:
-			show_quit_dialog()
+			if _flush_managed_projects("exit"):
+				show_quit_dialog()
 		NOTIFICATION_WM_GO_BACK_REQUEST:
 			var subwindows := get_window().get_embedded_subwindows()
 			if subwindows.is_empty():
-				show_quit_dialog()
+				if _flush_managed_projects("go_back"):
+					show_quit_dialog()
 			else:
 				if subwindows[-1] == save_sprite_dialog:
 					_on_save_sprite_canceled()
@@ -519,8 +529,11 @@ func _notification(what: int) -> void:
 		# If the mouse exits the window and another application has the focus,
 		# pause the application
 		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			_flush_managed_projects("background")
 			if Global.pause_when_unfocused:
 				get_tree().paused = true
+		NOTIFICATION_APPLICATION_PAUSED:
+			_flush_managed_projects("suspend")
 		NOTIFICATION_WM_MOUSE_EXIT:
 			# Do not pause the application if the mouse leaves the main window
 			# but there are child subwindows opened, because that makes them unresponsive.
@@ -534,6 +547,18 @@ func _notification(what: int) -> void:
 			get_tree().paused = false
 			Tools.quick_assign_tool_revert(MOUSE_BUTTON_RIGHT)
 			Tools.quick_assign_tool_revert(MOUSE_BUTTON_LEFT)
+
+
+func flush_before_home() -> bool:
+	if not is_instance_valid(project_save_coordinator):
+		return true
+	return project_save_coordinator.flush_before_leaving_editor()
+
+
+func _flush_managed_projects(reason: String) -> bool:
+	if not is_instance_valid(project_save_coordinator):
+		return true
+	return project_save_coordinator.flush_all(reason)
 
 
 func _on_files_dropped(files: PackedStringArray) -> void:
@@ -781,6 +806,8 @@ func _on_QuitAndSaveDialog_confirmed() -> void:
 
 
 func _quit() -> void:
+	if not _flush_managed_projects("exit"):
+		return
 	# Darken the UI to denote that the application is currently exiting
 	# (it won't respond to user input in this state).
 	modulate = Color(0.5, 0.5, 0.5)
@@ -788,6 +815,11 @@ func _quit() -> void:
 
 
 func _exit_tree() -> void:
+	if (
+		is_instance_valid(project_save_coordinator)
+		and Global.project_switch_guard == project_save_coordinator.can_switch_project
+	):
+		Global.project_switch_guard = Callable()
 	Global.pixelorama_about_to_close.emit()
 	for project in Global.projects:
 		project.remove()
