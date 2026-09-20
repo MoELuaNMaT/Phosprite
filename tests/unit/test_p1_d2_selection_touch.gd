@@ -268,6 +268,49 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 
 
+func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance() -> void:
+	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
+	check_has(
+		base_src,
+		'if OS.get_name() != "iOS":',
+		"selection option compaction must remain iOS-only"
+	)
+	check_has(
+		base_src,
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel", &"Modes"]',
+		"ordinary iOS selection tools should expose only their header and Mode control"
+	)
+	check_has(
+		base_src,
+		'if name == &"MagicWand":',
+		"Magic Wand must have an explicit compact-options exception"
+	)
+	check_has(
+		base_src,
+		'visible_controls.append(&"ToleranceSlider")',
+		"Magic Wand should retain Tolerance in addition to Mode"
+	)
+	check_has(
+		base_src,
+		"(child as Control).visible = StringName(child.name) in visible_controls",
+		"all Position/Size/Rotation/Shear/Algorithm/confirm controls should be hidden by allowlist"
+	)
+	check_has(
+		base_src,
+		'if OS.get_name() == "iOS":\n\t\t_apply_ios_compact_options()\n\t\treturn',
+		"active selection transforms must not re-show confirm/cancel or transform option rows on iOS"
+	)
+
+	var wand_scene := FileAccess.get_file_as_string(
+		"res://src/Tools/SelectionTools/MagicWand.tscn"
+	)
+	check_has(
+		wand_scene,
+		'[node name="ToleranceSlider"',
+		"Magic Wand must keep its existing tolerance control available to the iOS allowlist"
+	)
+
+
 func test_rect_and_ellipse_perfect_hold_reuse_d1_touch_slop() -> void:
 	for path in [RECT_SOURCE, ELLIPSE_SOURCE]:
 		var src := FileAccess.get_file_as_string(path)
