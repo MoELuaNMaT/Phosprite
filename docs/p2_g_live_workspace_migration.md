@@ -133,3 +133,5 @@ P2-G does not redesign the internal content of individual panels, change drawing
 - The Main Canvas may fill the editor background, but ordinary editing tools are acquired only inside the current document rectangle. Their cursor icon, indicator and preview are suppressed outside it. Selection tools intentionally retain outside-document acquisition so rectangular, elliptical, lasso and other selection gestures can begin outside and drag into the image.
 
 - Left Tool Options is no longer a standalone Workspace module. Its existing `LeftPanelContainer` is part of the Tools content: the tool picker remains at the top, and the selected left tool's options occupy the remaining space below it. Right Tool Options remains independent for dual-tool mode.
+
+- On iOS, Line Tool, Curve Tool, Rectangle Tool, Ellipse Tool and Isometric Box Tool share one compact Shapes toolbar entry. Tapping uses the most recently selected child; long-press opens the five-tool submenu and the proxy icon follows the selected child. Text, Zoom and Pan remain registered tools but are removed from the visible iOS Tools palette.
