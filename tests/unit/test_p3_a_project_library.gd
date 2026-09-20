@@ -247,7 +247,12 @@ func test_project_and_save_sources_persist_uuid_and_gallery_contract() -> void:
 	)
 	check_has(
 		save_src,
-		"ProjectLibraryScript.build_gallery_metadata(project.project_uuid, project.size)",
+		"ProjectLibraryScript.build_gallery_metadata(",
+		"normal PXO writes must call the shared Gallery metadata builder",
+	)
+	check_has(
+		save_src,
+		"project.project_uuid, project.size",
 		"normal PXO writes must build Gallery metadata from the saved Project",
 	)
 	check_has(
