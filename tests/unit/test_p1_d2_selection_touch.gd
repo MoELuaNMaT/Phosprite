@@ -313,14 +313,10 @@ func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance(
 
 func test_ios_crop_uses_margin_grid_without_mode_selector() -> void:
 	var src := FileAccess.get_file_as_string(CROP_TOOL_SOURCE)
+	check_has(src, "_crop.mode = CropRect.Mode.MARGINS", "iOS Crop must always enter Margins mode")
 	check_has(
 		src,
-		'_crop.mode = CropRect.Mode.MARGINS',
-		"iOS Crop must always enter Margins mode"
-	)
-	check_has(
-		src,
-		'_crop.locked_size = false',
+		"_crop.locked_size = false",
 		"hidden Size Lock must not preserve a stale locked state on iOS"
 	)
 	check_has(src, "$ModeLabel.hide()", "iOS Crop should hide its Mode label")
@@ -336,9 +332,7 @@ func test_ios_crop_uses_margin_grid_without_mode_selector() -> void:
 		"Left and Right margin controls must share the second compact row"
 	)
 	check_has(
-		src,
-		"top_bottom_row.add_child(top)",
-		"Top margin must move into the first compact row"
+		src, "top_bottom_row.add_child(top)", "Top margin must move into the first compact row"
 	)
 	check_has(
 		src,
@@ -346,14 +340,10 @@ func test_ios_crop_uses_margin_grid_without_mode_selector() -> void:
 		"Bottom margin must move into the first compact row"
 	)
 	check_has(
-		src,
-		"left_right_row.add_child(left)",
-		"Left margin must move into the second compact row"
+		src, "left_right_row.add_child(left)", "Left margin must move into the second compact row"
 	)
 	check_has(
-		src,
-		"left_right_row.add_child(right)",
-		"Right margin must move into the second compact row"
+		src, "left_right_row.add_child(right)", "Right margin must move into the second compact row"
 	)
 	check_has(
 		src,
@@ -375,14 +365,10 @@ func test_ios_crop_uses_margin_grid_without_mode_selector() -> void:
 
 func test_ios_color_picker_hides_destination_but_keeps_pick_mode() -> void:
 	var src := FileAccess.get_file_as_string(COLOR_PICKER_SOURCE)
+	check_has(src, "$ColorPicker/Label.hide()", "iOS Color Picker should hide the Pick for label")
 	check_has(
 		src,
-		'$ColorPicker/Label.hide()',
-		"iOS Color Picker should hide the Pick for label"
-	)
-	check_has(
-		src,
-		'$ColorPicker/Options.hide()',
+		"$ColorPicker/Options.hide()",
 		"iOS Color Picker should hide the Left/Right color destination selector"
 	)
 	check_has(
@@ -391,9 +377,7 @@ func test_ios_color_picker_hides_destination_but_keeps_pick_mode() -> void:
 		"iOS Color Picker config must persist the primary color destination"
 	)
 	check_has(
-		src,
-		'MOUSE_BUTTON_LEFT',
-		"iOS Color Picker must always write to the primary color slot"
+		src, "MOUSE_BUTTON_LEFT", "iOS Color Picker must always write to the primary color slot"
 	)
 	var scene_src := FileAccess.get_file_as_string(COLOR_PICKER_SCENE)
 	check_has(
