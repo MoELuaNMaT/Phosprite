@@ -14,6 +14,7 @@ signal frames_updated
 signal tags_changed
 
 const INDEXED_MODE := -1
+const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
 
 const WARNING_LOADING_3D_LAYERS_MSG := """Projects with 3D layers exported with a Pixelorama version
 older than 1.2 are no longer compatible with current versions. If you want to keep the 3D data
@@ -116,6 +117,7 @@ var cameras_offset: PackedVector2Array = [Vector2.ZERO, Vector2.ZERO, Vector2.ZE
 
 # Export directory path and export file name
 var save_path := ""
+var project_uuid := ""
 var export_directory_path := ""
 var file_name := "untitled"
 var file_format := Export.FileFormat.PNG
@@ -140,6 +142,7 @@ static func _uses_user_directory() -> bool:
 
 
 func _init(_frames: Array[Frame] = [], _name := tr("untitled"), _size := Vector2i(64, 64)) -> void:
+	project_uuid = ProjectIdentityScript.generate_uuid()
 	frames = _frames
 	name = _name
 	size = _size
@@ -338,6 +341,7 @@ func serialize() -> Dictionary:
 	var project_data := {
 		"pixelorama_version": Global.current_version,
 		"pxo_version": ProjectSettings.get_setting("application/config/Pxo_Version"),
+		"project_uuid": project_uuid,
 		"size_x": size.x,
 		"size_y": size.y,
 		"color_mode": color_mode,
@@ -377,6 +381,11 @@ func serialize() -> Dictionary:
 
 func deserialize(dict: Dictionary, zip_reader: ZIPReader = null, file: FileAccess = null) -> void:
 	about_to_deserialize.emit(dict)
+	var saved_project_uuid := str(dict.get("project_uuid", ""))
+	if ProjectIdentityScript.is_valid_uuid(saved_project_uuid):
+		project_uuid = saved_project_uuid
+	elif project_uuid.is_empty():
+		project_uuid = ProjectIdentityScript.generate_uuid()
 	var pxo_version = dict.get(
 		"pxo_version", ProjectSettings.get_setting("application/config/Pxo_Version")
 	)
