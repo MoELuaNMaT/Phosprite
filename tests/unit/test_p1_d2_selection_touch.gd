@@ -251,7 +251,9 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 		"indicator.draw_colored_polygon",
 		"the disclosure marker should draw a visible filled triangle"
 	)
-	check_has(src, "indicator.draw_polyline", "the disclosure triangle should use a contrasting outline")
+	check_has(
+		src, "indicator.draw_polyline", "the disclosure triangle should use a contrasting outline"
+	)
 
 
 func test_rect_and_ellipse_perfect_hold_reuse_d1_touch_slop() -> void:
