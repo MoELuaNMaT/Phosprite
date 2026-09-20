@@ -161,9 +161,7 @@ func _rewrite_project_identity(path: String, project_uuid: String, canvas_size: 
 	data["project_uuid"] = project_uuid
 
 	var temp_path := path + ".p3_uuid_tmp"
-	var old_path := path + ".p3_uuid_old"
 	_remove_if_present(temp_path)
-	_remove_if_present(old_path)
 
 	var packer := ZIPPacker.new()
 	if packer.open(temp_path) != OK:
@@ -186,9 +184,9 @@ func _rewrite_project_identity(path: String, project_uuid: String, canvas_size: 
 			break
 
 	if write_ok:
-		var gallery_bytes := JSON.stringify(
-			build_gallery_metadata(project_uuid, canvas_size)
-		).to_utf8_buffer()
+		var gallery_bytes := (
+			JSON.stringify(build_gallery_metadata(project_uuid, canvas_size)).to_utf8_buffer()
+		)
 		packer.compression_level = ZIPPacker.COMPRESSION_DEFAULT
 		if packer.start_file(GALLERY_ENTRY) != OK:
 			write_ok = false
@@ -201,14 +199,9 @@ func _rewrite_project_identity(path: String, project_uuid: String, canvas_size: 
 		_remove_if_present(temp_path)
 		return false
 
-	if DirAccess.rename_absolute(path, old_path) != OK:
-		_remove_if_present(temp_path)
-		return false
 	if DirAccess.rename_absolute(temp_path, path) != OK:
-		DirAccess.rename_absolute(old_path, path)
 		_remove_if_present(temp_path)
 		return false
-	_remove_if_present(old_path)
 	return true
 
 
