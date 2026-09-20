@@ -225,7 +225,7 @@ func test_gallery_schema_contains_only_p3_a_identity_and_canvas_metadata() -> vo
 		"gallery.json schema 1 should stay minimal and independent of full Project serialization",
 	)
 	check_eq(metadata["schema"], 1, "P3-A Gallery metadata schema should be version 1")
-	check_eq(metadata["project_uuid"], ORIGINAL_UUID, "Gallery metadata should carry stable identity")
+	check_eq(\n\t\tmetadata["project_uuid"], ORIGINAL_UUID, "Gallery metadata should carry stable identity"\n\t)
 	check_eq(metadata["size_x"], 320, "Gallery metadata should carry canvas width")
 	check_eq(metadata["size_y"], 180, "Gallery metadata should carry canvas height")
 
