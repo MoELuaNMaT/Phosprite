@@ -16,6 +16,20 @@ const IOS_SELECTION_TOOLS := [
 	&"PolygonSelect",
 	&"RectSelect",
 ]
+const IOS_SHAPE_MENU_LONG_PRESS_SECONDS := 0.45
+const IOS_SHAPE_RECENT_SECTION := "preferences"
+const IOS_SHAPE_RECENT_KEY := "ios_recent_shape_tool"
+const IOS_SHAPE_DEFAULT := &"LineTool"
+const IOS_SHAPE_INSTALL_MAX_RETRIES := 8
+const IOS_SHAPE_TOOLS := [
+	&"LineTool",
+	&"CurveTool",
+	&"RectangleTool",
+	&"EllipseTool",
+	&"IsometricBoxTool",
+]
+const IOS_TOOLBAR_REMOVED_TOOLS := [&"Text", &"Zoom", &"Pan"]
+const IOS_TOOLBAR_REMOVAL_INSTALL_MAX_RETRIES := 8
 
 var pen_inverted := false
 ## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
@@ -29,6 +43,13 @@ var _ios_selection_menu: PopupMenu
 var _ios_selection_recent_tool := IOS_SELECTION_DEFAULT
 var _ios_selection_touch_generation := 0
 var _ios_selection_install_retry_count := 0
+var _ios_shape_family_button: BaseButton
+var _ios_shape_hidden_buttons: Node
+var _ios_shape_menu: PopupMenu
+var _ios_shape_recent_tool := IOS_SHAPE_DEFAULT
+var _ios_shape_install_retry_count := 0
+var _ios_toolbar_removed_buttons: Node
+var _ios_toolbar_removal_install_retry_count := 0
 
 
 static func is_ios_selection_tool(tool_name: StringName) -> bool:
@@ -38,6 +59,19 @@ static func is_ios_selection_tool(tool_name: StringName) -> bool:
 static func normalize_ios_recent_selection_tool(value: Variant) -> StringName:
 	var tool_name := StringName(str(value))
 	return tool_name if is_ios_selection_tool(tool_name) else IOS_SELECTION_DEFAULT
+
+
+static func is_ios_shape_tool(tool_name: StringName) -> bool:
+	return tool_name in IOS_SHAPE_TOOLS
+
+
+static func normalize_ios_recent_shape_tool(value: Variant) -> StringName:
+	var tool_name := StringName(str(value))
+	return tool_name if is_ios_shape_tool(tool_name) else IOS_SHAPE_DEFAULT
+
+
+static func is_ios_toolbar_removed_tool(tool_name: StringName) -> bool:
+	return tool_name in IOS_TOOLBAR_REMOVED_TOOLS
 
 
 func _ready() -> void:
@@ -51,6 +85,8 @@ func _ready() -> void:
 		if not Global.pixelorama_opened.is_connected(_on_ios_pixelorama_opened):
 			Global.pixelorama_opened.connect(_on_ios_pixelorama_opened)
 		call_deferred("_install_ios_selection_family")
+		call_deferred("_install_ios_shape_family")
+		call_deferred("_install_ios_toolbar_removals")
 
 
 func _input(event: InputEvent) -> void:
@@ -95,6 +131,14 @@ func _input(event: InputEvent) -> void:
 			and is_instance_valid(_ios_selection_family_button)
 		):
 			tool_visible = _ios_selection_family_button.visible
+		elif (
+			OS.get_name() == "iOS"
+			and is_ios_shape_tool(StringName(tool_name))
+			and is_instance_valid(_ios_shape_family_button)
+		):
+			tool_visible = _ios_shape_family_button.visible
+		elif OS.get_name() == "iOS" and is_ios_toolbar_removed_tool(StringName(tool_name)):
+			tool_visible = _is_tool_available_on_current_layer(t)
 		if not tool_visible:
 			continue
 		var right_tool_shortcut := "right_" + t.shortcut + "_tool"
@@ -139,11 +183,13 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 		get_viewport().gui_cancel_drag()
 		_ios_selection_touch_generation += 1
 		var is_selection_family := _is_ios_selection_family_button(button)
+		var is_shape_family := _is_ios_shape_family_button(button)
 		_touch_tool_candidates[event.index] = {
 			"tool_name": StringName(button.name),
 			"origin": event.position,
 			"cancelled": false,
 			"selection_family": is_selection_family,
+			"shape_family": is_shape_family,
 			"menu_opened": false,
 			"generation": _ios_selection_touch_generation,
 		}
@@ -151,6 +197,11 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 			var timer := get_tree().create_timer(IOS_SELECTION_MENU_LONG_PRESS_SECONDS)
 			timer.timeout.connect(
 				_try_open_ios_selection_menu.bind(event.index, _ios_selection_touch_generation)
+			)
+		elif is_shape_family:
+			var timer := get_tree().create_timer(IOS_SHAPE_MENU_LONG_PRESS_SECONDS)
+			timer.timeout.connect(
+				_try_open_ios_shape_menu.bind(event.index, _ios_selection_touch_generation)
 			)
 		return true
 
@@ -162,7 +213,13 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 	get_viewport().gui_cancel_drag()
 	if bool(candidate.get("cancelled", false)):
 		return true
-	if bool(candidate.get("selection_family", false)) and bool(candidate.get("menu_opened", false)):
+	if (
+		(
+			bool(candidate.get("selection_family", false))
+			or bool(candidate.get("shape_family", false))
+		)
+		and bool(candidate.get("menu_opened", false))
+	):
 		return true
 	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
 		return true
@@ -178,6 +235,7 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 		"_commit_touch_tool_activation",
 		StringName(candidate["tool_name"]),
 		bool(candidate.get("selection_family", false)),
+		bool(candidate.get("shape_family", false)),
 		int(candidate.get("generation", -1))
 	)
 	return true
@@ -238,7 +296,7 @@ func _get_tools_scroll_container() -> ScrollContainer:
 
 
 func _commit_touch_tool_activation(
-	tool_name: StringName, selection_family: bool, generation: int
+	tool_name: StringName, selection_family: bool, shape_family: bool, generation: int
 ) -> void:
 	if generation != _ios_selection_touch_generation:
 		return
@@ -246,6 +304,11 @@ func _commit_touch_tool_activation(
 		if not is_instance_valid(_ios_selection_family_button):
 			return
 		_activate_ios_selection_tool(_ios_selection_recent_tool)
+		return
+	if shape_family:
+		if not is_instance_valid(_ios_shape_family_button):
+			return
+		_activate_ios_shape_tool(_ios_shape_recent_tool)
 		return
 	var key := String(tool_name)
 	if not Tools.tools.has(key):
@@ -307,6 +370,14 @@ func _restore_pointer_tool_ui() -> void:
 			button.tooltip_text = Tools.tools[String(button.name)].generate_hint_tooltip()
 		button.queue_redraw()
 	_sync_ios_selection_family_visual()
+	_sync_ios_shape_family_visual()
+
+
+func _is_tool_available_on_current_layer(tool: Tools.Tool) -> bool:
+	if Global.current_project == null or Global.current_project.layers.is_empty():
+		return true
+	var layer := Global.current_project.layers[Global.current_project.current_layer]
+	return tool.layer_types.is_empty() or layer.get_layer_type() in tool.layer_types
 
 
 func _ios_selection_buttons_ready() -> bool:
@@ -375,10 +446,153 @@ func _detach_ios_selection_children() -> void:
 		button.visible = false
 
 
+func _ios_shape_buttons_ready() -> bool:
+	for tool_name in IOS_SHAPE_TOOLS:
+		if not Tools.tools.has(String(tool_name)):
+			return false
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		if not is_instance_valid(tool.button_node) or tool.button_node.get_parent() != self:
+			return false
+	return true
+
+
+func _install_ios_shape_family() -> void:
+	if OS.get_name() != "iOS":
+		return
+	if is_instance_valid(_ios_shape_family_button):
+		_sync_ios_shape_family_visual()
+		return
+	if not _ios_shape_buttons_ready():
+		if _ios_shape_install_retry_count < IOS_SHAPE_INSTALL_MAX_RETRIES:
+			_ios_shape_install_retry_count += 1
+			await get_tree().process_frame
+			call_deferred("_install_ios_shape_family")
+		return
+
+	_ios_shape_install_retry_count = 0
+	_ios_shape_family_button = Tools.tools[String(IOS_SHAPE_DEFAULT)].button_node
+	_ios_shape_recent_tool = normalize_ios_recent_shape_tool(
+		Global.config_cache.get_value(
+			IOS_SHAPE_RECENT_SECTION, IOS_SHAPE_RECENT_KEY, IOS_SHAPE_DEFAULT
+		)
+	)
+	_detach_ios_shape_children()
+
+	_ios_shape_menu = PopupMenu.new()
+	_ios_shape_menu.name = "ShapeFamilyMenu"
+	for index in IOS_SHAPE_TOOLS.size():
+		var tool_name: StringName = IOS_SHAPE_TOOLS[index]
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		_ios_shape_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
+	_ios_shape_menu.id_pressed.connect(_on_ios_shape_menu_id_pressed)
+	get_parent().add_child(_ios_shape_menu)
+	_sync_ios_shape_family_visual()
+
+
+func _detach_ios_shape_children() -> void:
+	if not is_instance_valid(_ios_shape_hidden_buttons):
+		_ios_shape_hidden_buttons = Node.new()
+		_ios_shape_hidden_buttons.name = "IOSShapeHiddenButtons"
+		get_parent().add_child(_ios_shape_hidden_buttons)
+	for tool_name in IOS_SHAPE_TOOLS:
+		if tool_name == IOS_SHAPE_DEFAULT:
+			continue
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		var button := tool.button_node
+		if button.get_parent() == self:
+			remove_child(button)
+			_ios_shape_hidden_buttons.add_child(button)
+			button.visible = false
+
+
+func _ios_toolbar_removed_buttons_ready() -> bool:
+	for tool_name in IOS_TOOLBAR_REMOVED_TOOLS:
+		if not Tools.tools.has(String(tool_name)):
+			return false
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		if not is_instance_valid(tool.button_node) or tool.button_node.get_parent() != self:
+			return false
+	return true
+
+
+func _install_ios_toolbar_removals() -> void:
+	if OS.get_name() != "iOS":
+		return
+	if is_instance_valid(_ios_toolbar_removed_buttons):
+		return
+	if not _ios_toolbar_removed_buttons_ready():
+		if _ios_toolbar_removal_install_retry_count < IOS_TOOLBAR_REMOVAL_INSTALL_MAX_RETRIES:
+			_ios_toolbar_removal_install_retry_count += 1
+			await get_tree().process_frame
+			call_deferred("_install_ios_toolbar_removals")
+		return
+
+	_ios_toolbar_removal_install_retry_count = 0
+	_ios_toolbar_removed_buttons = Node.new()
+	_ios_toolbar_removed_buttons.name = "IOSToolbarRemovedButtons"
+	get_parent().add_child(_ios_toolbar_removed_buttons)
+	for tool_name in IOS_TOOLBAR_REMOVED_TOOLS:
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		var button := tool.button_node
+		remove_child(button)
+		_ios_toolbar_removed_buttons.add_child(button)
+		button.visible = false
+
+
+func _is_ios_shape_family_button(button: BaseButton) -> bool:
+	return is_instance_valid(_ios_shape_family_button) and button == _ios_shape_family_button
+
+
 func _is_ios_selection_family_button(button: BaseButton) -> bool:
 	return (
 		is_instance_valid(_ios_selection_family_button) and button == _ios_selection_family_button
 	)
+
+
+func _try_open_ios_shape_menu(touch_id: int, generation: int) -> void:
+	if not _touch_tool_candidates.has(touch_id) or not is_instance_valid(_ios_shape_menu):
+		return
+	var candidate: Dictionary = _touch_tool_candidates[touch_id]
+	if (
+		int(candidate.get("generation", -1)) != generation
+		or bool(candidate.get("cancelled", false))
+		or not bool(candidate.get("shape_family", false))
+	):
+		return
+	candidate["menu_opened"] = true
+	_touch_tool_candidates[touch_id] = candidate
+	var family_rect := _ios_shape_family_button.get_global_rect()
+	_ios_shape_menu.position = Vector2i(
+		family_rect.position + Vector2(family_rect.size.x + 4.0, 0.0)
+	)
+	_ios_shape_menu.popup()
+
+
+func _on_ios_shape_menu_id_pressed(id: int) -> void:
+	if id < 0 or id >= IOS_SHAPE_TOOLS.size():
+		return
+	_activate_ios_shape_tool(IOS_SHAPE_TOOLS[id])
+
+
+func _activate_ios_shape_tool(tool_name: StringName) -> void:
+	var normalized := normalize_ios_recent_shape_tool(tool_name)
+	_set_ios_shape_recent_tool(normalized)
+	Tools.assign_tool(String(normalized), MOUSE_BUTTON_LEFT)
+	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
+	_sync_ios_shape_family_visual()
+
+
+func _set_ios_shape_recent_tool(tool_name: StringName) -> void:
+	var normalized := normalize_ios_recent_shape_tool(tool_name)
+	if _ios_shape_recent_tool == normalized:
+		return
+	_ios_shape_recent_tool = normalized
+	Global.config_cache.set_value(
+		IOS_SHAPE_RECENT_SECTION, IOS_SHAPE_RECENT_KEY, String(_ios_shape_recent_tool)
+	)
+	var error := Global.config_cache.save(Global.CONFIG_PATH)
+	if error != OK:
+		push_warning("Could not save recent Shape tool: %s" % error_string(error))
 
 
 func _try_open_ios_selection_menu(touch_id: int, generation: int) -> void:
@@ -433,20 +647,27 @@ func _on_ios_tool_changed(tool_name: String, button: int) -> void:
 	var selection_name := StringName(tool_name)
 	if button == MOUSE_BUTTON_LEFT and is_ios_selection_tool(selection_name):
 		_set_ios_selection_recent_tool(selection_name)
+	if button == MOUSE_BUTTON_LEFT and is_ios_shape_tool(selection_name):
+		_set_ios_shape_recent_tool(selection_name)
 	_sync_ios_selection_family_visual()
+	_sync_ios_shape_family_visual()
 
 
 func _on_ios_pixelorama_opened() -> void:
 	# Covers startup orders where ToolButtons becomes ready before Tools creates all buttons.
 	call_deferred("_install_ios_selection_family")
+	call_deferred("_install_ios_shape_family")
+	call_deferred("_install_ios_toolbar_removals")
 
 
 func _on_ios_cel_switched() -> void:
 	call_deferred("_sync_ios_selection_family_visual")
+	call_deferred("_sync_ios_shape_family_visual")
 
 
 func _on_ios_single_tool_mode_changed(_mode: bool) -> void:
 	call_deferred("_sync_ios_selection_family_visual")
+	call_deferred("_sync_ios_shape_family_visual")
 
 
 func _sync_ios_selection_family_visual() -> void:
@@ -494,6 +715,49 @@ func _sync_ios_selection_family_visual() -> void:
 	_ios_selection_family_button.queue_redraw()
 
 
+func _sync_ios_shape_family_visual() -> void:
+	if OS.get_name() != "iOS" or not is_instance_valid(_ios_shape_family_button):
+		return
+	for tool_name in IOS_SHAPE_TOOLS:
+		if tool_name == IOS_SHAPE_DEFAULT:
+			continue
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		if not is_instance_valid(tool.button_node):
+			continue
+		tool.button_node.visible = false
+		var child_left := tool.button_node.get_node("BackgroundLeft") as NinePatchRect
+		var child_right := tool.button_node.get_node("BackgroundRight") as NinePatchRect
+		child_left.visible = false
+		child_right.visible = false
+	var recent_tool: Tools.Tool = Tools.tools[String(_ios_shape_recent_tool)]
+	var icon := _ios_shape_family_button.get_node("ToolIcon") as TextureRect
+	icon.texture = recent_tool.icon
+	if not _touch_ui_mode:
+		_ios_shape_family_button.tooltip_text = "Shapes: %s" % tr(recent_tool.display_name)
+	var left_name := StringName()
+	var right_name := StringName()
+	if (
+		Tools._slots.has(MOUSE_BUTTON_LEFT)
+		and is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node)
+	):
+		left_name = StringName(Tools._slots[MOUSE_BUTTON_LEFT].tool_node.name)
+	if (
+		Tools._slots.has(MOUSE_BUTTON_RIGHT)
+		and is_instance_valid(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node)
+	):
+		right_name = StringName(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node.name)
+	var left_background := _ios_shape_family_button.get_node("BackgroundLeft") as NinePatchRect
+	var right_background := _ios_shape_family_button.get_node("BackgroundRight") as NinePatchRect
+	left_background.visible = is_ios_shape_tool(left_name)
+	if Global.single_tool_mode:
+		right_background.visible = false
+		left_background.anchor_right = 1.0
+	else:
+		right_background.visible = is_ios_shape_tool(right_name)
+		left_background.anchor_right = 0.5
+	_ios_shape_family_button.queue_redraw()
+
+
 func _on_tool_pressed(tool_pressed: BaseButton) -> void:
 	var button := MOUSE_BUTTON_LEFT
 	if not Global.single_tool_mode:
@@ -509,4 +773,6 @@ func _on_tool_pressed(tool_pressed: BaseButton) -> void:
 		var tool_name := String(tool_pressed.name)
 		if OS.get_name() == "iOS" and _is_ios_selection_family_button(tool_pressed):
 			tool_name = String(_ios_selection_recent_tool)
+		elif OS.get_name() == "iOS" and _is_ios_shape_family_button(tool_pressed):
+			tool_name = String(_ios_shape_recent_tool)
 		Tools.assign_tool(tool_name, button)
