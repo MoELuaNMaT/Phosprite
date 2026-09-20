@@ -31,8 +31,8 @@ const IOS_SHAPE_TOOLS := [
 const IOS_TOOLBAR_REMOVED_TOOLS := [&"Text", &"Zoom", &"Pan"]
 const IOS_TOOLBAR_REMOVAL_INSTALL_MAX_RETRIES := 8
 const FAMILY_DISCLOSURE_INDICATOR_NAME := &"FamilyDisclosureIndicator"
-const FAMILY_DISCLOSURE_INDICATOR_SIZE := 5.0
-const FAMILY_DISCLOSURE_INDICATOR_MARGIN := 2.0
+const FAMILY_DISCLOSURE_INDICATOR_SIZE := 8.0
+const FAMILY_DISCLOSURE_INDICATOR_MARGIN := 1.0
 
 var pen_inverted := false
 ## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
@@ -387,32 +387,41 @@ func _ensure_family_disclosure_indicator(button: BaseButton) -> void:
 	if not is_instance_valid(button):
 		return
 	var existing := button.get_node_or_null(NodePath(String(FAMILY_DISCLOSURE_INDICATOR_NAME)))
-	if existing is Polygon2D:
-		_layout_family_disclosure_indicator(button, existing as Polygon2D)
+	if existing is Control:
+		(existing as Control).queue_redraw()
 		return
-	var indicator := Polygon2D.new()
+	var indicator := Control.new()
 	indicator.name = FAMILY_DISCLOSURE_INDICATOR_NAME
-	indicator.polygon = PackedVector2Array(
+	indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	indicator.focus_mode = Control.FOCUS_NONE
+	indicator.z_index = 100
+	indicator.anchor_left = 1.0
+	indicator.anchor_top = 1.0
+	indicator.anchor_right = 1.0
+	indicator.anchor_bottom = 1.0
+	indicator.offset_left = -(FAMILY_DISCLOSURE_INDICATOR_SIZE + FAMILY_DISCLOSURE_INDICATOR_MARGIN)
+	indicator.offset_top = -(FAMILY_DISCLOSURE_INDICATOR_SIZE + FAMILY_DISCLOSURE_INDICATOR_MARGIN)
+	indicator.offset_right = -FAMILY_DISCLOSURE_INDICATOR_MARGIN
+	indicator.offset_bottom = -FAMILY_DISCLOSURE_INDICATOR_MARGIN
+	indicator.draw.connect(_draw_family_disclosure_indicator.bind(indicator))
+	button.add_child(indicator)
+	indicator.queue_redraw()
+
+
+func _draw_family_disclosure_indicator(indicator: Control) -> void:
+	if not is_instance_valid(indicator):
+		return
+	var edge := indicator.size - Vector2.ONE
+	var points := PackedVector2Array(
 		[
-			Vector2(0.0, FAMILY_DISCLOSURE_INDICATOR_SIZE),
-			Vector2(FAMILY_DISCLOSURE_INDICATOR_SIZE, FAMILY_DISCLOSURE_INDICATOR_SIZE),
-			Vector2(FAMILY_DISCLOSURE_INDICATOR_SIZE, 0.0),
+			Vector2(1.0, edge.y),
+			Vector2(edge.x, edge.y),
+			Vector2(edge.x, 1.0),
 		]
 	)
-	indicator.color = button.get_theme_color(&"font_color", &"Button")
-	indicator.z_index = 20
-	button.add_child(indicator)
-	button.resized.connect(_layout_family_disclosure_indicator.bind(button, indicator))
-	_layout_family_disclosure_indicator(button, indicator)
-
-
-func _layout_family_disclosure_indicator(button: BaseButton, indicator: Polygon2D) -> void:
-	if not is_instance_valid(button) or not is_instance_valid(indicator):
-		return
-	indicator.position = (
-		button.size
-		- Vector2.ONE * (FAMILY_DISCLOSURE_INDICATOR_SIZE + FAMILY_DISCLOSURE_INDICATOR_MARGIN)
-	)
+	indicator.draw_colored_polygon(points, Color(1.0, 1.0, 1.0, 0.96))
+	var outline := PackedVector2Array([points[0], points[1], points[2], points[0]])
+	indicator.draw_polyline(outline, Color(0.0, 0.0, 0.0, 0.9), 1.0, false)
 
 
 func _ios_selection_buttons_ready() -> bool:
