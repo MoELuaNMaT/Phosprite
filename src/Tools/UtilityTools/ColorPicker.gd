@@ -77,8 +77,6 @@ func draw_end(pos: Vector2i) -> void:
 
 func _pick_color(pos: Vector2i) -> void:
 	var button := (
-		MOUSE_BUTTON_LEFT
-		if OS.get_name() == "iOS" or _color_slot == 0
-		else MOUSE_BUTTON_RIGHT
+		MOUSE_BUTTON_LEFT if OS.get_name() == "iOS" or _color_slot == 0 else MOUSE_BUTTON_RIGHT
 	)
 	COLOR_SAMPLING.pick_color(pos, button, _mode)
