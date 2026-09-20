@@ -271,9 +271,7 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance() -> void:
 	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
 	check_has(
-		base_src,
-		'if OS.get_name() != "iOS":',
-		"selection option compaction must remain iOS-only"
+		base_src, 'if OS.get_name() != "iOS":', "selection option compaction must remain iOS-only"
 	)
 	check_has(
 		base_src,
@@ -301,9 +299,7 @@ func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance(
 		"active selection transforms must not re-show confirm/cancel or transform option rows on iOS"
 	)
 
-	var wand_scene := FileAccess.get_file_as_string(
-		"res://src/Tools/SelectionTools/MagicWand.tscn"
-	)
+	var wand_scene := FileAccess.get_file_as_string("res://src/Tools/SelectionTools/MagicWand.tscn")
 	check_has(
 		wand_scene,
 		'[node name="ToleranceSlider"',
