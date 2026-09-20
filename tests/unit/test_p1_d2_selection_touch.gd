@@ -3,6 +3,7 @@ extends "res://tests/test_base.gd"
 const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const TOOL_BUTTONS := preload("res://src/UI/ToolsPanel/ToolButtons.gd")
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
+const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const RECT_SOURCE := "res://src/Tools/SelectionTools/RectSelect.gd"
 const ELLIPSE_SOURCE := "res://src/Tools/SelectionTools/EllipseSelect.gd"
 const POLYGON_SOURCE := "res://src/Tools/SelectionTools/PolygonSelect.gd"
@@ -120,6 +121,101 @@ func test_selection_family_compaction_is_transactional_and_structural() -> void:
 		"tool_name = String(_ios_selection_recent_tool)",
 		"native pointer activation of the proxy must select the represented recent child"
 	)
+
+
+func test_ios_shape_family_contains_exact_five_tools() -> void:
+	var expected := [
+		&"LineTool",
+		&"CurveTool",
+		&"RectangleTool",
+		&"EllipseTool",
+		&"IsometricBoxTool",
+	]
+	check_eq(
+		TOOL_BUTTONS.IOS_SHAPE_TOOLS,
+		expected,
+		"compact iOS Shapes entry must expose exactly the approved five tools"
+	)
+	check_eq(
+		TOOL_BUTTONS.normalize_ios_recent_shape_tool(&"EllipseTool"),
+		&"EllipseTool",
+		"a valid recent Shape subtool must survive normalization"
+	)
+	check_eq(
+		TOOL_BUTTONS.normalize_ios_recent_shape_tool(&"Pencil"),
+		&"LineTool",
+		"invalid recent Shape state must fall back to Line Tool"
+	)
+
+
+func test_shape_family_uses_long_press_proxy_and_persists_recent_child() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		"IOS_SHAPE_MENU_LONG_PRESS_SECONDS",
+		"Shapes entry needs an explicit long-press acquisition path"
+	)
+	check_has(
+		src,
+		"_try_open_ios_shape_menu",
+		"long press must open the five-tool Shapes submenu"
+	)
+	check_has(
+		src,
+		"_activate_ios_shape_tool(_ios_shape_recent_tool)",
+		"a normal tap must activate the represented recent Shape child"
+	)
+	check_has(
+		src,
+		'_ios_shape_family_button = Tools.tools[String(IOS_SHAPE_DEFAULT)].button_node',
+		"Line Tool should remain the structural proxy for the compact Shapes entry"
+	)
+	check_has(
+		src,
+		"_ios_shape_hidden_buttons.add_child(button)",
+		"four non-proxy Shape buttons must leave the generic toolbar while staying alive"
+	)
+	check_has(
+		src,
+		'IOS_SHAPE_RECENT_KEY := "ios_recent_shape_tool"',
+		"the selected Shape child must have its own persistent preference"
+	)
+	check_has(
+		src,
+		"_sync_ios_shape_family_visual()",
+		"the proxy must mirror current Shape icon and left/right active state"
+	)
+	check_has(
+		src,
+		"tool_visible = _ios_shape_family_button.visible",
+		"hidden Shape children must retain keyboard shortcut participation"
+	)
+
+
+func test_ios_toolbar_removes_text_zoom_and_pan_without_deleting_tools() -> void:
+	var buttons_src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	var tools_src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	check_eq(
+		TOOL_BUTTONS.IOS_TOOLBAR_REMOVED_TOOLS,
+		[&"Text", &"Zoom", &"Pan"],
+		"iOS toolbar must remove exactly Text, Zoom and Pan"
+	)
+	check_has(
+		buttons_src,
+		"_ios_toolbar_removed_buttons.add_child(button)",
+		"removed toolbar buttons must stay alive outside the visible ToolButtons container"
+	)
+	check_has(
+		buttons_src,
+		"tool_visible = _is_tool_available_on_current_layer(t)",
+		"toolbar removal must not disable valid keyboard shortcuts"
+	)
+	for tool_name in ["Text", "Zoom", "Pan"]:
+		check_has(
+			tools_src,
+			'"%s"' % tool_name,
+			"%s must remain registered in Tools even when hidden from the iOS toolbar" % tool_name
+		)
 
 
 func test_rect_and_ellipse_perfect_hold_reuse_d1_touch_slop() -> void:
