@@ -103,6 +103,7 @@ func test_p3_b_source_contract_keeps_timing_and_stage_boundaries() -> void:
 	var global_src := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
 	var open_save_src := FileAccess.get_file_as_string("res://src/Autoload/OpenSave.gd")
 	var library_src := FileAccess.get_file_as_string("res://src/ProjectLibrary/ProjectLibrary.gd")
+	var tabs_src := FileAccess.get_file_as_string("res://src/UI/Tabs.gd")
 
 	check_has(
 		coordinator_src,
@@ -138,6 +139,16 @@ func test_p3_b_source_contract_keeps_timing_and_stage_boundaries() -> void:
 		global_src,
 		"project_switch_guard.call(current_project, projects[value])",
 		"project switching must be cancellable when its forced save fails",
+	)
+	check_has(
+		tabs_src,
+		"if Global.current_project_index != tab:",
+		"rejected project switches must restore the visible active tab",
+	)
+	check_has(
+		tabs_src,
+		"set_block_signals(true)",
+		"tab rollback must not recursively emit another tab switch",
 	)
 	check_has(
 		open_save_src,
