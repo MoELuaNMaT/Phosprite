@@ -102,9 +102,7 @@ func test_p3_b_source_contract_keeps_timing_and_stage_boundaries() -> void:
 	var main_src := FileAccess.get_file_as_string("res://src/Main.gd")
 	var global_src := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
 	var open_save_src := FileAccess.get_file_as_string("res://src/Autoload/OpenSave.gd")
-	var library_src := FileAccess.get_file_as_string(
-		"res://src/ProjectLibrary/ProjectLibrary.gd"
-	)
+	var library_src := FileAccess.get_file_as_string("res://src/ProjectLibrary/ProjectLibrary.gd")
 
 	check_has(
 		coordinator_src,
@@ -128,12 +126,12 @@ func test_p3_b_source_contract_keeps_timing_and_stage_boundaries() -> void:
 	)
 	check_has(
 		main_src,
-		'project_save_coordinator.flush_all("background")',
-		"backgrounding must force a managed-project flush",
+		'_flush_managed_projects("background")',
+		"backgrounding must force the shared managed-project flush gate",
 	)
 	check_has(
 		main_src,
-		'project_save_coordinator.flush_before_leaving_editor()',
+		"project_save_coordinator.flush_before_leaving_editor()",
 		"P3-C Home navigation must have a blocking flush gate",
 	)
 	check_has(
