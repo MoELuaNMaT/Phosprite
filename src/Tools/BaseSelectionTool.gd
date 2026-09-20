@@ -42,6 +42,18 @@ func _ready() -> void:
 	selection_node.transformation_confirmed.connect(func(): _transformation_status_changed = true)
 	selection_node.transformation_canceled.connect(func(): _transformation_status_changed = true)
 	transformation_handles.preview_transform_changed.connect(set_confirm_buttons_visibility)
+	_apply_ios_compact_options()
+
+
+func _apply_ios_compact_options() -> void:
+	if OS.get_name() != "iOS":
+		return
+	var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel", &"Modes"]
+	if name == &"MagicWand":
+		visible_controls.append(&"ToleranceSlider")
+	for child in get_children():
+		if child is Control:
+			(child as Control).visible = StringName(child.name) in visible_controls
 
 
 func set_confirm_buttons_visibility() -> void:
@@ -49,6 +61,9 @@ func set_confirm_buttons_visibility() -> void:
 		return
 	await get_tree().process_frame
 	set_spinbox_values()
+	if OS.get_name() == "iOS":
+		_apply_ios_compact_options()
+		return
 	get_tree().set_group(
 		&"ShowOnActiveTransformation", "visible", transformation_handles.is_transforming()
 	)
