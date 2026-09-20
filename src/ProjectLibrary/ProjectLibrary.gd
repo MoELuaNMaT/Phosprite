@@ -4,6 +4,7 @@ extends RefCounted
 const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
+const RecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd")
 
 const GALLERY_SCHEMA := 1
 const GALLERY_ENTRY := "gallery.json"
@@ -33,6 +34,11 @@ func scan() -> Array[ProjectLibraryEntry]:
 		entries.append(_read_entry(projects_directory.path_join(file_name)))
 
 	_repair_duplicate_uuids(entries)
+	for entry: ProjectLibraryEntry in entries:
+		entry.has_pending_recovery = (
+			entry.health_state == ProjectLibraryEntry.HealthState.OK
+			and RecoveryStore.has_pending_recovery(entry.uuid)
+		)
 	entries.sort_custom(_sort_newest_first)
 	return entries
 
