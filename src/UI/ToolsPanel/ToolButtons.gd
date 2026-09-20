@@ -486,6 +486,13 @@ func _install_ios_shape_family() -> void:
 		_ios_shape_menu.add_icon_item(tool.icon, tr(tool.display_name), index)
 	_ios_shape_menu.id_pressed.connect(_on_ios_shape_menu_id_pressed)
 	get_parent().add_child(_ios_shape_menu)
+
+	if not Tools.tool_changed.is_connected(_on_ios_tool_changed):
+		Tools.tool_changed.connect(_on_ios_tool_changed)
+	if not Global.single_tool_mode_changed.is_connected(_on_ios_single_tool_mode_changed):
+		Global.single_tool_mode_changed.connect(_on_ios_single_tool_mode_changed)
+	if not Global.cel_switched.is_connected(_on_ios_cel_switched):
+		Global.cel_switched.connect(_on_ios_cel_switched)
 	_sync_ios_shape_family_visual()
 
 
