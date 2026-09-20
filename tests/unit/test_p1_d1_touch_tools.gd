@@ -2,10 +2,13 @@ extends "res://tests/test_base.gd"
 
 const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const ADAPTER_SOURCE := "res://src/InputAdapter/CanvasInputAdapter.gd"
+const TOOL_BUTTONS := preload("res://src/UI/ToolsPanel/ToolButtons.gd")
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
+const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
 const COLOR_SAMPLING_SOURCE := "res://src/Tools/UtilityTools/ColorSampling.gd"
 const UI_COLOR_PICKER_SOURCE := "res://src/UI/ColorPickers/ColorPicker.gd"
+const CURVE_TOOL_SOURCE := "res://src/Tools/DesignTools/CurveTool.gd"
 
 
 func test_color_picker_bypasses_long_press_arbitration() -> void:
@@ -16,6 +19,33 @@ func test_color_picker_bypasses_long_press_arbitration() -> void:
 	check_true(
 		ADAPTER.should_defer_finger_content_for_long_press(&"Pencil"),
 		"ordinary Primary tools must defer the first finger stroke for long-press arbitration"
+	)
+
+
+func test_canvas_touch_boundary_rejects_workspace_ui_before_ownership() -> void:
+	var viewport_rect := Rect2(100.0, 80.0, 640.0, 480.0)
+	check_true(
+		ADAPTER.screen_position_inside_rect(Vector2(120.0, 100.0), viewport_rect),
+		"touches inside Main Canvas geometry must remain eligible for canvas ownership"
+	)
+	check_true(
+		not ADAPTER.screen_position_inside_rect(Vector2(80.0, 100.0), viewport_rect),
+		"touches in docked Workspace UI must be outside Main Canvas ownership"
+	)
+
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	var begin_pos := src.find("func _begin_touch(")
+	var consume_pos := src.find("_consume_pointer_info(event.index)", begin_pos)
+	var boundary_pos := src.find("_screen_position_inside_main_viewport(event.position)", begin_pos)
+	var state_pos := src.find("_touches[event.index] = state", begin_pos)
+	check_true(begin_pos >= 0, "adapter must expose touch-begin arbitration")
+	check_true(
+		consume_pos > begin_pos and boundary_pos > consume_pos,
+		"native Pointer Identity must be consumed before UI touches are rejected"
+	)
+	check_true(
+		state_pos > boundary_pos,
+		"Workspace UI touches must be rejected before Canvas touch state is created"
 	)
 
 
@@ -165,6 +195,177 @@ func test_tool_buttons_keep_touch_ownership_and_suppress_pointer_drag_preview() 
 		src,
 		"MOUSE_BUTTON_LEFT",
 		"direct touch must operate the current Primary slot without deleting Secondary state"
+	)
+
+
+func test_adaptive_tool_grid_rejects_clipped_hits_and_defers_activation() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		"_get_tools_scroll_container()",
+		"adaptive Tools hit testing must know the visible ScrollContainer viewport"
+	)
+	check_has(
+		src,
+		"scroll_container.get_global_rect().has_point(screen_position)",
+		"touches outside the visible Tools viewport must be rejected"
+	)
+	check_has(
+		src,
+		"is_visible_tool_touch(button.get_global_rect(), viewport_rect, screen_position)",
+		"adaptive hit testing must route every button through the clipped viewport contract"
+	)
+	check_has(
+		src,
+		"button_rect.intersection(viewport_rect)",
+		"clipped/offscreen tool buttons must not remain touch targets"
+	)
+	check_has(
+		src,
+		'call_deferred(\n\t\t"_commit_touch_tool_activation"',
+		"tool replacement must wait until the current ScreenTouch dispatch finishes"
+	)
+	check_has(
+		src,
+		"generation != _ios_selection_touch_generation",
+		"stale deferred tool activations must not survive a newer touch"
+	)
+
+
+func test_curve_tool_clears_multistep_state_before_generic_exit_cleanup() -> void:
+	var src := FileAccess.get_file_as_string(CURVE_TOOL_SOURCE)
+	var exit_pos := src.find("func _exit_tree() -> void:")
+	var cancel_pos := src.find("cancel_tool()", exit_pos)
+	var super_pos := src.find("super()", cancel_pos)
+	check_true(exit_pos >= 0, "Curve Tool needs explicit exit cleanup")
+	check_true(
+		cancel_pos > exit_pos,
+		"Curve Tool must cancel its partially constructed curve before leaving the tree"
+	)
+	check_true(
+		super_pos > cancel_pos,
+		"generic BaseDrawTool exit cleanup must run only after Curve state is cleared"
+	)
+
+
+func test_adaptive_tool_grid_hit_math_rejects_clipped_and_blank_regions() -> void:
+	var viewport := Rect2(100.0, 100.0, 120.0, 120.0)
+	check_true(
+		TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(110.0, 110.0, 24.0, 24.0), viewport, Vector2(120.0, 120.0)
+		),
+		"fully visible tool buttons must remain tappable"
+	)
+	check_true(
+		not TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(110.0, 230.0, 24.0, 24.0), viewport, Vector2(120.0, 235.0)
+		),
+		"a button below the ScrollContainer viewport must not be tappable through clipping"
+	)
+	check_true(
+		not TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(205.0, 205.0, 24.0, 24.0), viewport, Vector2(224.0, 224.0)
+		),
+		"the clipped portion of a partially visible button must not remain a touch target"
+	)
+	check_true(
+		not TOOL_BUTTONS.is_visible_tool_touch(
+			Rect2(110.0, 110.0, 24.0, 24.0), viewport, Vector2(160.0, 160.0)
+		),
+		"blank HFlow space between visible tool buttons must not activate a tool"
+	)
+
+
+func test_single_tool_mode_keeps_legacy_dual_slot_assignment_contract() -> void:
+	var src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	var assign_pos := src.find("func assign_tool(")
+	var next_func := src.find("\n\nfunc ", assign_pos + 5)
+	check_true(assign_pos >= 0, "Tools must expose assign_tool")
+	if assign_pos < 0:
+		return
+	var assign_body := src.substr(
+		assign_pos, next_func - assign_pos if next_func > assign_pos else 2600
+	)
+	check_has(
+		assign_body,
+		"if Global.single_tool_mode and button == MOUSE_BUTTON_LEFT:",
+		"single-tool mode must keep mirroring the selected tool into the right slot",
+	)
+	check_has(
+		assign_body,
+		"assign_tool(tool_name, MOUSE_BUTTON_RIGHT, allow_refresh)",
+		"the right slot must still receive the same tool synchronously",
+	)
+	check_true(
+		not src.contains("func _assign_single_tool_secondary_after_primary("),
+		"Workspace lifecycle must make hidden Tool Options safe without deferred slot hacks",
+	)
+
+
+func test_curve_activation_has_persistent_phase_markers_and_validated_mode() -> void:
+	var tools_src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	var curve_src := FileAccess.get_file_as_string(CURVE_TOOL_SOURCE)
+	for phase in [
+		"instantiate_begin",
+		"instantiate_done",
+		"add_child_begin",
+		"add_child_done",
+		"ready_frame_survived",
+		"config_share_begin",
+		"config_share_done",
+	]:
+		check_has(
+			tools_src,
+			phase,
+			"Curve activation diagnostic must retain the %s checkpoint" % phase,
+		)
+	check_has(
+		tools_src,
+		'CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"',
+		"Curve activation phase must survive a native process crash",
+	)
+	check_has(
+		tools_src,
+		'write_curve_activation_phase("complete")',
+		"a fully mirrored Curve activation must mark the diagnostic complete",
+	)
+	check_has(
+		curve_src,
+		"clampi(",
+		"persisted Curve mode must be range-validated before OptionButton.select",
+	)
+	check_has(
+		curve_src,
+		"Bezier.CHAINED, Bezier.SINGLE",
+		"Curve mode validation must use the exact supported enum range",
+	)
+
+
+func test_tool_replacement_cancels_any_active_stroke_before_freeing_nodes() -> void:
+	var src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	var assign_pos := src.find("func assign_tool(")
+	var set_tool_pos := src.find("func set_tool(", assign_pos + 1)
+	check_true(assign_pos >= 0, "Tools must expose assign_tool")
+	if assign_pos < 0:
+		return
+	var body := src.substr(
+		assign_pos, set_tool_pos - assign_pos if set_tool_pos > assign_pos else 2400
+	)
+	check_has(
+		body,
+		"if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):",
+		"stale or invalid palette targets must be rejected before replacing a tool"
+	)
+	check_has(
+		body,
+		"active_slot.tool_node.cancel_tool()",
+		"switching tools must explicitly cancel an active canvas interaction"
+	)
+	var cancel_pos := body.find("active_slot.tool_node.cancel_tool()")
+	var remove_pos := body.find("panel.remove_child(slot.tool_node)")
+	check_true(
+		cancel_pos >= 0 and remove_pos > cancel_pos,
+		"active interaction cancellation must happen before the old Tool Options node is detached"
 	)
 
 

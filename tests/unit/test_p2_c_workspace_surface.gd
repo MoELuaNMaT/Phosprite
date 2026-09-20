@@ -21,9 +21,9 @@ func _make_workspace() -> Dictionary:
 
 
 func _free_workspace(workspace: Dictionary) -> void:
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 	manager.destroy_all_modules()
 	surface.free()
 	host.free()
@@ -32,15 +32,15 @@ func _free_workspace(workspace: Dictionary) -> void:
 
 func test_float_preserves_instance_and_detaches_from_dock_model() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 
 	check_true(
 		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
 		"Preview should start docked"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(420.0, 180.0, 360.0, 260.0)),
 		"docked Preview should become floating"
@@ -75,21 +75,21 @@ func test_float_preserves_instance_and_detaches_from_dock_model() -> void:
 
 func test_floating_drag_snaps_back_to_dock_edge() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 
 	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(420.0, 180.0, 320.0, 220.0)),
 		"Preview should start floating"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	check_true(
 		surface.begin_module_drag(Builtins.PREVIEW_ID, Vector2(500.0, 220.0)),
 		"floating module drag should begin"
 	)
 	var left_rect: Rect2 = host.get_zone_rects()[DockLayout.DockZone.LEFT]
-	var candidate := surface.update_module_drag(left_rect.get_center())
+	var candidate: Dictionary = surface.update_module_drag(left_rect.get_center())
 	check_true(bool(candidate.get("valid", false)), "left edge should resolve a valid target")
 	check_eq(
 		int(candidate.get("placement", Surface.Placement.NONE)),
@@ -116,11 +116,188 @@ func test_floating_drag_snaps_back_to_dock_edge() -> void:
 	_free_workspace(workspace)
 
 
-func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
+func test_bottom_region_fill_resizes_height_from_top_edge() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var host = workspace["host"]
-	var surface = workspace["surface"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(360.0, 180.0),
+				{},
+				true,
+			)
+		),
+		"Preview should enter Bottom Dock as Region Fill",
+	)
+	var module := workspace["manager"].get_instance(Builtins.PREVIEW_ID) as WorkspaceModule
+	check_eq(
+		surface.get_docked_resize_edges(Builtins.PREVIEW_ID, Vector2(module.size.x * 0.5, 2.0)),
+		WorkspaceModule.ResizeEdge.TOP,
+		"Bottom Region Fill should expose its top edge as a vertical resize handle",
+	)
+	var start_size := host.layout.get_module_size(Builtins.PREVIEW_ID)
+	check_true(
+		(
+			surface
+			. resize_docked_module(
+				Builtins.PREVIEW_ID,
+				start_size,
+				Vector2(0.0, -64.0),
+				WorkspaceModule.ResizeEdge.TOP,
+			)
+		),
+		"dragging the Bottom Dock top edge upward should resize its height",
+	)
+	check_almost_eq(
+		host.layout.get_module_size(Builtins.PREVIEW_ID).y,
+		start_size.y + 64.0,
+		0.01,
+		"upward top-edge drag should increase Bottom Dock height",
+	)
+	check_true(
+		host.layout.is_module_region_fill(Builtins.PREVIEW_ID),
+		"resizing must preserve Region Fill semantics",
+	)
+	_free_workspace(workspace)
+
+
+func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void:
+	var workspace := _make_workspace()
+	var surface: WorkspaceSurface = workspace["surface"]
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)),
+		"Preview should float before resize validation",
+	)
+
+	var start := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(80.0, 0.0), WorkspaceModule.ResizeEdge.LEFT
+		),
+		"left edge resize should commit",
+	)
+	var left_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(left_rect.end.x, start.end.x, 0.01, "left resize must preserve the right edge")
+	check_almost_eq(left_rect.size.x, start.size.x - 80.0, 0.01, "left resize should change width")
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(90.0, 0.0), WorkspaceModule.ResizeEdge.RIGHT
+		),
+		"right edge resize should commit",
+	)
+	var right_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(right_rect.position, start.position, "right resize must keep top-left anchored")
+	check_almost_eq(
+		right_rect.size.x, start.size.x + 90.0, 0.01, "right resize should change width"
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(0.0, 70.0), WorkspaceModule.ResizeEdge.BOTTOM
+		),
+		"bottom edge resize should commit",
+	)
+	var bottom_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(bottom_rect.position, start.position, "bottom resize must keep top edge anchored")
+	check_almost_eq(
+		bottom_rect.size.y, start.size.y + 70.0, 0.01, "bottom resize should change height"
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	var left_bottom := WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM
+	check_true(
+		surface.resize_floating_rect(Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), left_bottom),
+		"lower-left corner should resize both axes",
+	)
+	var lower_left_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		lower_left_rect.end.x, start.end.x, 0.01, "lower-left resize must preserve right edge"
+	)
+	check_almost_eq(
+		lower_left_rect.size.y,
+		start.size.y + 60.0,
+		0.01,
+		"lower-left resize should change height",
+	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	var right_bottom := WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM
+	check_true(
+		surface.resize_floating_rect(Builtins.PREVIEW_ID, start, Vector2(70.0, 60.0), right_bottom),
+		"lower-right corner should resize both axes",
+	)
+	var lower_right_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(
+		lower_right_rect.position, start.position, "lower-right resize must keep top-left anchored"
+	)
+	check_almost_eq(
+		lower_right_rect.size.x,
+		start.size.x + 70.0,
+		0.01,
+		"lower-right resize should change width",
+	)
+	check_almost_eq(
+		lower_right_rect.size.y,
+		start.size.y + 60.0,
+		0.01,
+		"lower-right resize should change height",
+	)
+	_free_workspace(workspace)
+
+
+func test_pop_out_restores_last_floating_rect_and_releases_dock_extent() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	var remembered := Rect2(320.0, 220.0, 360.0, 240.0)
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, remembered),
+		"Preview should first establish a floating rect",
+	)
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(360.0, 180.0),
+			)
+		),
+		"Preview should dock at the bottom before pop-out",
+	)
+	var docked_content_height := host.get_content_rect().size.y
+	check_true(surface.float_from_dock(Builtins.PREVIEW_ID), "dock header pop-out should float")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		remembered,
+		"pop-out should restore the module's last floating bounds",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.NONE,
+		"pop-out must remove the module from dock layout geometry",
+	)
+	check_true(
+		host.get_content_rect().size.y > docked_content_height,
+		"releasing Bottom Dock must return its height to the central Canvas",
+	)
+	_free_workspace(workspace)
+
+
+func test_collapse_and_restore_keep_docked_panel_in_place() -> void:
+	var workspace := _make_workspace()
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
 
 	check_true(
 		surface.dock_module(
@@ -128,21 +305,36 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 		),
 		"Preview should dock before collapse"
 	)
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
+	var preview_content: Control = preview.get_content()
+	var original_parent := preview.get_parent()
+	var original_position := preview.position
+
 	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse")
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		Surface.Placement.COLLAPSED,
 		"collapsed module should enter COLLAPSED placement"
 	)
-	check_eq(preview.get_parent(), null, "collapsed module should be unmounted")
+	check_eq(
+		preview.get_parent(),
+		original_parent,
+		"docked collapse must keep the module mounted in the same dock host"
+	)
 	check_eq(
 		host.layout.get_module_zone(Builtins.PREVIEW_ID),
-		DockLayout.DockZone.NONE,
-		"collapsed module should not occupy a dock slot"
+		DockLayout.DockZone.RIGHT,
+		"docked collapse must retain the original dock slot"
+	)
+	check_eq(preview.position, original_position, "collapsed docked header should stay in place")
+	check_true(not preview_content.visible, "docked collapse should hide only panel content")
+	check_eq(
+		preview.get_visual_rect().size.y,
+		preview.get_header_height(),
+		"docked collapse should expose only the title bar"
 	)
 
-	var restore := surface.get_restore_state(Builtins.PREVIEW_ID)
+	var restore: Dictionary = surface.get_restore_state(Builtins.PREVIEW_ID)
 	check_eq(
 		int(restore.get("zone", DockLayout.DockZone.NONE)),
 		DockLayout.DockZone.RIGHT,
@@ -153,27 +345,30 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 		Vector2(300.0, 180.0),
 		"collapse should remember the previous dock size"
 	)
-
-	check_true(surface.peek_module(Builtins.PREVIEW_ID), "collapsed module should support Peek")
-	check_true(surface.is_peeking(Builtins.PREVIEW_ID), "Peek state should be reported")
-	check_eq(
-		preview.get_parent(),
-		surface.get_peek_layer(),
-		"Peek should temporarily mount the same instance in the peek layer"
+	check_true(
+		not surface.peek_module(Builtins.PREVIEW_ID),
+		"in-place collapse should not detach into the legacy Peek/Tray path"
 	)
-	check_true(surface.end_peek(Builtins.PREVIEW_ID), "Peek should close without restoring")
-	check_eq(preview.get_parent(), null, "ending Peek should return module to collapsed state")
 
 	check_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed module should restore")
 	check_eq(
 		manager.get_instance(Builtins.PREVIEW_ID),
 		preview,
-		"Collapse/Peek/Restore must preserve the managed instance"
+		"Collapse/Restore must preserve the managed instance"
 	)
+	check_eq(
+		preview.get_parent(),
+		original_parent,
+		"restore must expand in the same dock parent without remounting"
+	)
+	check_eq(
+		preview.position, original_position, "restore should not jump through the top-left origin"
+	)
+	check_true(preview_content.visible, "restore should reveal the same panel content")
 	check_eq(
 		host.layout.get_module_zone(Builtins.PREVIEW_ID),
 		DockLayout.DockZone.RIGHT,
-		"Restore should return Preview to its previous dock"
+		"Restore should retain the original dock"
 	)
 	check_eq(
 		host.layout.get_module_size(Builtins.PREVIEW_ID),
@@ -183,18 +378,141 @@ func test_collapse_peek_and_restore_preserve_docked_placement() -> void:
 	_free_workspace(workspace)
 
 
+func test_real_dock_containers_shrink_collapsed_module_height_in_every_zone() -> void:
+	var workspace := _make_workspace()
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	tree.root.add_child(host)
+	await tree.process_frame
+	await tree.process_frame
+
+	var cases := [
+		{
+			"zone": DockLayout.DockZone.TOP,
+			"first": &"test.collapse.top.first",
+			"second": &"test.collapse.top.second",
+		},
+		{
+			"zone": DockLayout.DockZone.LEFT,
+			"first": &"test.collapse.left.first",
+			"second": &"test.collapse.left.second",
+		},
+		{
+			"zone": DockLayout.DockZone.RIGHT,
+			"first": &"test.collapse.right.first",
+			"second": &"test.collapse.right.second",
+		},
+		{
+			"zone": DockLayout.DockZone.BOTTOM,
+			"first": &"test.collapse.bottom.first",
+			"second": &"test.collapse.bottom.second",
+		},
+	]
+
+	for entry: Dictionary in cases:
+		var first_id := entry["first"] as StringName
+		var second_id := entry["second"] as StringName
+		for module_id in [first_id, second_id]:
+			var definition := Definition.new()
+			definition.module_id = module_id
+			definition.display_name = String(module_id)
+			definition.uses_external_content = true
+			definition.minimum_size = Vector2(120.0, 80.0)
+			definition.preferred_size = Vector2(220.0, 140.0)
+			check_true(manager.register_definition(definition), "test module should register")
+			check_true(
+				manager.adopt_module(module_id, Control.new()) != null,
+				"test module should adopt simple content"
+			)
+
+		var zone := int(entry["zone"])
+		check_true(
+			surface.dock_module(first_id, zone, 0, Vector2(220.0, 140.0)),
+			"first module should dock"
+		)
+		check_true(
+			surface.dock_module(second_id, zone, 1, Vector2(220.0, 140.0)),
+			"second module should dock beside the collapse target"
+		)
+		await tree.process_frame
+		await tree.process_frame
+
+		var first: WorkspaceModule = manager.get_instance(first_id)
+		var original_parent := first.get_parent()
+		var original_position := first.position
+		check_true(
+			first.size.y > first.get_header_height(),
+			"expanded docked module should be taller than its header"
+		)
+
+		check_true(surface.collapse_module(first_id), "docked module should collapse")
+		await tree.process_frame
+		await tree.process_frame
+		check_eq(first.get_parent(), original_parent, "collapse must preserve the dock parent")
+		check_almost_eq(
+			first.position.x, original_position.x, 0.01, "collapse must preserve x position"
+		)
+		check_almost_eq(
+			first.position.y, original_position.y, 0.01, "collapse must preserve y position"
+		)
+		check_almost_eq(
+			first.size.y,
+			first.get_header_height(),
+			0.01,
+			"real Container-assigned height must shrink to the title bar"
+		)
+
+		check_true(surface.restore_module(first_id), "collapsed docked module should restore")
+		await tree.process_frame
+		await tree.process_frame
+		check_almost_eq(first.size.y, 140.0, 0.01, "restore should recover requested height")
+
+		check_true(surface.clear_module_placement(first_id), "first module should clear")
+		check_true(surface.clear_module_placement(second_id), "second module should clear")
+		await tree.process_frame
+
+	tree.root.remove_child(host)
+	_free_workspace(workspace)
+
+
 func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	var workspace := _make_workspace()
-	var manager = workspace["manager"]
-	var surface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var surface: WorkspaceSurface = workspace["surface"]
 	var floating_rect := Rect2(500.0, 240.0, 340.0, 240.0)
 
 	check_true(
 		surface.float_module(Builtins.PALETTE_ID, floating_rect), "Palette should become floating"
 	)
-	var palette := manager.get_instance(Builtins.PALETTE_ID)
+	var palette: WorkspaceModule = manager.get_instance(Builtins.PALETTE_ID)
+	var palette_content: Control = palette.get_content()
 	check_true(surface.collapse_module(Builtins.PALETTE_ID), "floating Palette should collapse")
+	check_true(
+		surface.is_floating_collapsed(Builtins.PALETTE_ID),
+		"floating collapse should remain an in-place floating title bar"
+	)
+	check_eq(
+		palette.get_parent(),
+		surface.get_floating_layer(),
+		"floating collapse must keep the module in the floating layer"
+	)
+	check_true(not palette_content.visible, "floating collapse should hide only panel content")
+	check_eq(palette.position, floating_rect.position, "floating collapse should keep its position")
+	check_eq(palette.size.x, floating_rect.size.x, "floating collapse should keep its width")
+	check_eq(
+		palette.get_visual_rect().size.y,
+		palette.get_header_height(),
+		"floating collapse should expose only the header as its visual frame"
+	)
+	check_true(
+		not palette.is_resize_point(
+			Vector2(palette.size.x - 2.0, palette.get_header_height() - 2.0)
+		),
+		"floating collapse should disable its resize affordance"
+	)
 	check_true(surface.restore_module(Builtins.PALETTE_ID), "floating Palette should restore")
+	check_true(palette_content.visible, "restoring the floating bar should reveal its content")
 	check_eq(
 		surface.get_module_placement(Builtins.PALETTE_ID),
 		Surface.Placement.FLOATING,

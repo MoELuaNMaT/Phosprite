@@ -147,6 +147,91 @@ func test_drag_resolver_returns_insert_position_and_snap_preview() -> void:
 	manager.free()
 
 
+func test_drag_resolver_distinguishes_edge_region_from_module_insertion() -> void:
+	var manager := Manager.new()
+	var layout := DockLayout.new()
+	Builtins.register_defaults(manager)
+	check_true(layout.configure(manager), "dock layout should configure")
+	check_true(
+		layout.place_module(Builtins.PREVIEW_ID, DockLayout.DockZone.BOTTOM),
+		"Preview should provide a bottom module size",
+	)
+	var workspace_rect := Rect2(0.0, 0.0, 1200.0, 800.0)
+	var zone_rects := {
+		DockLayout.DockZone.BOTTOM: Rect2(0.0, 620.0, 1200.0, 180.0),
+	}
+	var edge_rects := {
+		DockLayout.DockZone.BOTTOM: Rect2(0.0, 728.0, 1200.0, 72.0),
+	}
+	var module_rects := {
+		DockLayout.DockZone.BOTTOM:
+		[
+			{
+				"module_id": Builtins.PALETTE_ID,
+				"rect": Rect2(0.0, 620.0, 300.0, 180.0),
+			},
+		]
+	}
+
+	var region := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(600.0, 790.0),
+			zone_rects,
+			module_rects,
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
+	)
+	check_true(bool(region.get("valid", false)), "outer bottom edge should resolve")
+	check_eq(
+		StringName(region.get("target_kind", &"none")),
+		&"region",
+		"outer edge must resolve the whole Bottom Dock Region",
+	)
+	var region_preview := region.get("preview_rect", Rect2()) as Rect2
+	check_almost_eq(
+		region_preview.position.x, 0.0, 0.01, "region preview should start at workspace left"
+	)
+	check_almost_eq(
+		region_preview.size.x,
+		workspace_rect.size.x,
+		0.01,
+		"Bottom Dock Region preview should span the workspace width",
+	)
+	check_almost_eq(
+		region_preview.end.y,
+		workspace_rect.end.y,
+		0.01,
+		"Bottom Dock Region preview should stay attached to the bottom edge",
+	)
+
+	var insertion := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(180.0, 660.0),
+			zone_rects,
+			module_rects,
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
+	)
+	check_eq(
+		StringName(insertion.get("target_kind", &"none")),
+		&"insert",
+		"inside an occupied dock but away from the outer edge should use insertion targeting",
+	)
+	check_true(
+		(insertion.get("preview_rect", Rect2()) as Rect2).size.x < workspace_rect.size.x,
+		"insertion preview should remain local instead of highlighting the whole edge",
+	)
+	manager.free()
+
+
 func test_dock_host_reparents_reorders_and_commits_cross_zone_drag() -> void:
 	var manager := Manager.new()
 	var host := DockHost.new()

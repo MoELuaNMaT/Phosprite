@@ -5,7 +5,8 @@ extends Node
 ##
 ## The current layout is stored in the application's existing ConfigFile while
 ## named Workspace presets live below the existing layouts directory in their
-## own subdirectory. The legacy DockableLayout files remain untouched until P2-G.
+## own subdirectory. P2-G also uses transient updates for context-driven panel
+## visibility changes that must not overwrite the user's chosen layout.
 
 signal current_layout_saved(snapshot: Dictionary)
 signal preset_saved(preset_name: String)
@@ -30,6 +31,7 @@ var autosave_enabled := true
 
 var _applying_snapshot := false
 var _autosave_queued := false
+var _transient_update_depth := 0
 
 
 func setup(
@@ -101,6 +103,19 @@ func restore_current_layout() -> bool:
 	if not value is Dictionary:
 		return false
 	return apply_snapshot(value as Dictionary)
+
+
+func begin_transient_update() -> void:
+	if _transient_update_depth == 0 and _autosave_queued:
+		_autosave_queued = false
+		save_current_layout()
+	_transient_update_depth += 1
+
+
+func end_transient_update() -> void:
+	if _transient_update_depth <= 0:
+		return
+	_transient_update_depth -= 1
 
 
 func save_preset(preset_name: String) -> bool:
@@ -185,6 +200,7 @@ func _capture_module(module_id: StringName) -> Dictionary:
 			)
 			entry["index"] = surface.dock_host.layout.get_module_index(module_id)
 			entry["size"] = _vector_to_array(surface.dock_host.layout.get_module_size(module_id))
+			entry["region_fill"] = surface.dock_host.layout.is_module_region_fill(module_id)
 		WorkspaceSurface.Placement.FLOATING:
 			entry["rect"] = _rect_to_array(surface.get_floating_rect(module_id))
 		WorkspaceSurface.Placement.COLLAPSED:
@@ -224,7 +240,9 @@ func _apply_module_entry(entry: Dictionary) -> bool:
 				module_id,
 				_zone_from_name(str(entry.get("zone", "none"))),
 				int(entry.get("index", -1)),
-				_array_to_vector(entry.get("size", []))
+				_array_to_vector(entry.get("size", [])),
+				{},
+				bool(entry.get("region_fill", false))
 			)
 		"floating":
 			return surface.float_module(module_id, _array_to_rect(entry.get("rect", [])))
@@ -242,12 +260,20 @@ func _apply_collapsed_entry(module_id: StringName, restore: Dictionary) -> bool:
 			module_id,
 			_zone_from_name(str(restore.get("zone", "none"))),
 			int(restore.get("index", -1)),
-			_array_to_vector(restore.get("size", []))
+			_array_to_vector(restore.get("size", [])),
+			{},
+			bool(restore.get("region_fill", false))
 		)
 	elif restore_placement == "floating":
 		placed = surface.float_module(module_id, _array_to_rect(restore.get("rect", [])))
 	if not placed:
 		return false
+	var module := manager.get_instance(module_id)
+	if module != null and module.get_content() != null:
+		# A persisted collapsed entry represents a visible panel whose body is folded.
+		# Some legacy panels (notably Canvas Preview) start hidden in UI.tscn, so seed
+		# the expanded visibility before collapse records its restore state.
+		module.get_content().visible = true
 	return surface.collapse_module(module_id)
 
 
@@ -323,6 +349,7 @@ func _encode_restore_state(restore: Dictionary) -> Dictionary:
 			"zone": String(WorkspaceDockLayout.zone_name(int(restore.get("zone", -1)))),
 			"index": int(restore.get("index", -1)),
 			"size": _vector_to_array(restore.get("size", Vector2.ZERO) as Vector2),
+			"region_fill": bool(restore.get("region_fill", false)),
 		}
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		return {
@@ -353,7 +380,7 @@ func _connect_layout_signals() -> void:
 	surface.module_collapsed.connect(_on_module_collapsed)
 	surface.module_restored.connect(_on_module_restored)
 	surface.module_cleared.connect(_on_module_cleared)
-	surface.dock_host.module_docked.connect(_on_module_docked)
+	surface.module_docked.connect(_on_module_docked)
 	surface.dock_host.layout.module_size_changed.connect(_on_module_size_changed)
 
 
@@ -382,7 +409,12 @@ func _on_module_size_changed(_module_id: StringName, _size: Vector2) -> void:
 
 
 func _queue_autosave() -> void:
-	if not autosave_enabled or _applying_snapshot or _autosave_queued:
+	if (
+		not autosave_enabled
+		or _applying_snapshot
+		or _transient_update_depth > 0
+		or _autosave_queued
+	):
 		return
 	_autosave_queued = true
 	call_deferred(&"_flush_queued_autosave")
@@ -390,7 +422,7 @@ func _queue_autosave() -> void:
 
 func _flush_queued_autosave() -> void:
 	_autosave_queued = false
-	if autosave_enabled and not _applying_snapshot:
+	if autosave_enabled and not _applying_snapshot and _transient_update_depth == 0:
 		save_current_layout()
 
 

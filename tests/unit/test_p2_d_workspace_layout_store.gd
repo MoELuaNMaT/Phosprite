@@ -145,6 +145,62 @@ func test_snapshot_round_trip_preserves_all_workspace_placements() -> void:
 	_free_workspace(workspace)
 
 
+func test_snapshot_round_trip_preserves_region_fill_dock_semantics() -> void:
+	var workspace := _make_workspace()
+	var host = workspace["host"]
+	var surface = workspace["surface"]
+	var store = workspace["store"]
+
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(360.0, 180.0),
+				{},
+				true,
+			)
+		),
+		"Preview should enter Bottom Dock with Region Fill before capture",
+	)
+	check_true(
+		host.layout.is_module_region_fill(Builtins.PREVIEW_ID),
+		"Region Fill should be active before capture",
+	)
+	var snapshot := store.capture_snapshot()
+
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.RIGHT,
+				0,
+				Vector2(280.0, 180.0),
+			)
+		),
+		"Preview should mutate to a fixed right-dock slot",
+	)
+	check_true(
+		not host.layout.is_module_region_fill(Builtins.PREVIEW_ID),
+		"normal slot docking should clear Region Fill",
+	)
+
+	check_true(store.apply_snapshot(snapshot), "Region Fill snapshot should restore")
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.BOTTOM,
+		"snapshot should recover Bottom Dock",
+	)
+	check_true(
+		host.layout.is_module_region_fill(Builtins.PREVIEW_ID),
+		"snapshot should recover Region Fill semantics",
+	)
+	_free_workspace(workspace)
+
+
 func test_none_state_clears_existing_placement_and_unknown_modules_are_ignored() -> void:
 	var workspace := _make_workspace()
 	var surface = workspace["surface"]

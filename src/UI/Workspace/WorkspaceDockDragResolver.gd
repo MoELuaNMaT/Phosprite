@@ -15,12 +15,19 @@ static func resolve(
 	pointer: Vector2,
 	zone_rects: Dictionary,
 	module_rects: Dictionary,
-	layout: WorkspaceDockLayout
+	layout: WorkspaceDockLayout,
+	edge_rects: Dictionary = {},
+	workspace_rect: Rect2 = Rect2()
 ) -> Dictionary:
 	if layout == null or not layout.can_dock_module(module_id):
 		return _invalid_result()
 
-	var zone := _find_zone(pointer, zone_rects)
+	var edge_zone := _find_edge_zone(pointer, edge_rects, workspace_rect)
+	var zone := edge_zone
+	var target_kind := &"region"
+	if zone == WorkspaceDockLayout.DockZone.NONE:
+		zone = _find_zone(pointer, zone_rects)
+		target_kind = &"insert"
 	if zone == WorkspaceDockLayout.DockZone.NONE:
 		return _invalid_result()
 
@@ -31,13 +38,45 @@ static func resolve(
 	if layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
 		module_size = layout.get_default_module_size(module_id)
 	var preview_rect := _make_preview_rect(zone_rect, zone, entries, insert_index, module_size)
+	if target_kind == &"region":
+		preview_rect = _make_region_preview_rect(workspace_rect, zone_rect, zone, module_size)
 
 	return {
 		"valid": true,
 		"zone": zone,
 		"index": insert_index,
+		"target_kind": target_kind,
 		"preview_rect": preview_rect,
 	}
+
+
+static func _find_edge_zone(pointer: Vector2, edge_rects: Dictionary, workspace_rect: Rect2) -> int:
+	var candidates: Array[int] = []
+	for zone in WorkspaceDockLayout.VALID_ZONES:
+		if edge_rects.has(zone) and (edge_rects[zone] as Rect2).has_point(pointer):
+			candidates.append(zone)
+	if candidates.is_empty():
+		return WorkspaceDockLayout.DockZone.NONE
+	if candidates.size() == 1 or not workspace_rect.has_area():
+		return candidates[0]
+
+	var resolved := candidates[0]
+	var best_distance := INF
+	for zone in candidates:
+		var distance := INF
+		match zone:
+			WorkspaceDockLayout.DockZone.TOP:
+				distance = absf(pointer.y - workspace_rect.position.y)
+			WorkspaceDockLayout.DockZone.BOTTOM:
+				distance = absf(workspace_rect.end.y - pointer.y)
+			WorkspaceDockLayout.DockZone.LEFT:
+				distance = absf(pointer.x - workspace_rect.position.x)
+			WorkspaceDockLayout.DockZone.RIGHT:
+				distance = absf(workspace_rect.end.x - pointer.x)
+		if distance < best_distance:
+			best_distance = distance
+			resolved = zone
+	return resolved
 
 
 static func _find_zone(pointer: Vector2, zone_rects: Dictionary) -> int:
@@ -77,6 +116,36 @@ static func _find_insertion_index(pointer: Vector2, zone: int, entries: Array) -
 		if pointer_axis < midpoint:
 			return index
 	return entries.size()
+
+
+static func _make_region_preview_rect(
+	workspace_rect: Rect2, zone_rect: Rect2, zone: int, module_size: Vector2
+) -> Rect2:
+	if not workspace_rect.has_area():
+		workspace_rect = zone_rect
+	if not workspace_rect.has_area():
+		return Rect2()
+
+	match zone:
+		WorkspaceDockLayout.DockZone.TOP:
+			var height := minf(workspace_rect.size.y, maxf(module_size.y, zone_rect.size.y))
+			return Rect2(workspace_rect.position, Vector2(workspace_rect.size.x, height))
+		WorkspaceDockLayout.DockZone.BOTTOM:
+			var height := minf(workspace_rect.size.y, maxf(module_size.y, zone_rect.size.y))
+			return Rect2(
+				Vector2(workspace_rect.position.x, workspace_rect.end.y - height),
+				Vector2(workspace_rect.size.x, height)
+			)
+		WorkspaceDockLayout.DockZone.LEFT:
+			var width := minf(workspace_rect.size.x, maxf(module_size.x, zone_rect.size.x))
+			return Rect2(workspace_rect.position, Vector2(width, workspace_rect.size.y))
+		WorkspaceDockLayout.DockZone.RIGHT:
+			var width := minf(workspace_rect.size.x, maxf(module_size.x, zone_rect.size.x))
+			return Rect2(
+				Vector2(workspace_rect.end.x - width, workspace_rect.position.y),
+				Vector2(width, workspace_rect.size.y)
+			)
+	return Rect2()
 
 
 static func _make_preview_rect(
@@ -125,5 +194,6 @@ static func _invalid_result() -> Dictionary:
 		"valid": false,
 		"zone": WorkspaceDockLayout.DockZone.NONE,
 		"index": -1,
+		"target_kind": &"none",
 		"preview_rect": Rect2(),
 	}

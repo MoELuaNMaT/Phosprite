@@ -121,16 +121,23 @@ func test_controller_tracks_placement_and_preserves_module_identity() -> void:
 	check_eq(preview.get_content(), content, "theme chrome must preserve the original content root")
 	check_eq(preview.get_visual_state(), &"floating", "floating module should use floating chrome")
 
-	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "Preview should collapse")
+	check_true(
+		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
+		"Preview should dock again before in-place collapse"
+	)
+	var dock_parent := preview.get_parent()
+	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse")
 	check_eq(
 		preview.get_visual_state(), &"collapsed", "collapsed module should retain collapsed state"
 	)
-	check_true(surface.peek_module(Builtins.PREVIEW_ID), "collapsed Preview should Peek")
-	check_eq(preview.get_visual_state(), &"peek", "Peek should use elevated peek chrome")
-	check_true(surface.end_peek(Builtins.PREVIEW_ID), "Peek should close")
-	check_eq(
-		preview.get_visual_state(), &"collapsed", "ending Peek should recover collapsed chrome"
+	check_eq(preview.get_parent(), dock_parent, "in-place collapse should preserve the dock parent")
+	check_true(
+		not surface.peek_module(Builtins.PREVIEW_ID),
+		"in-place collapse should not enter the legacy Peek path"
 	)
+	check_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed Preview should restore")
+	check_eq(preview.get_visual_state(), &"docked", "restore should recover docked chrome")
+	check_eq(preview.get_parent(), dock_parent, "restore should expand in the same dock parent")
 	_free_workspace(workspace)
 
 
