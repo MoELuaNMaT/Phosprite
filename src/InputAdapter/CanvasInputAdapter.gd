@@ -226,14 +226,27 @@ static func navigation_zoom_from_ratio(
 	return Vector2.ONE * target_scalar
 
 
+static func screen_to_viewport_point(screen_position: Vector2, viewport_rect: Rect2) -> Vector2:
+	# InputEventScreenTouch/Drag positions belong to the root Window. Canvas math,
+	# however, runs in the embedded SubViewport. The top safe-area + editor toolbar
+	# therefore must be removed before any document hit-test or camera transform.
+	return screen_position - viewport_rect.position
+
+
+func main_viewport_position(screen_position: Vector2) -> Vector2:
+	if not is_instance_valid(Global.main_viewport):
+		return screen_position
+	return screen_to_viewport_point(screen_position, Global.main_viewport.get_global_rect())
+
+
 static func screen_to_canvas_point(
-	screen_position: Vector2,
+	viewport_position: Vector2,
 	viewport_size: Vector2,
 	zoom: Vector2,
 	offset: Vector2,
 	camera_angle: float
 ) -> Vector2:
-	return offset + ((screen_position - viewport_size * 0.5) / zoom).rotated(camera_angle)
+	return offset + ((viewport_position - viewport_size * 0.5) / zoom).rotated(camera_angle)
 
 
 static func navigation_offset_for_anchor(
@@ -281,8 +294,9 @@ func _screen_position_inside_main_viewport(screen_position: Vector2) -> bool:
 
 
 func _screen_position_can_start_primary_tool(canvas: Node2D, screen_position: Vector2) -> bool:
+	var viewport_position := main_viewport_position(screen_position)
 	var canvas_position := (
-		canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
+		canvas.get_global_transform_with_canvas().affine_inverse() * viewport_position
 	)
 	return Tools.can_start_tool_at(Vector2i(canvas_position.floor()), MOUSE_BUTTON_LEFT)
 
@@ -601,8 +615,9 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 
 
 func _sample_active_color(canvas: Node2D, screen_position: Vector2, mode: int) -> void:
+	var viewport_position := main_viewport_position(screen_position)
 	var canvas_position := (
-		canvas.get_global_transform_with_canvas().affine_inverse() * screen_position
+		canvas.get_global_transform_with_canvas().affine_inverse() * viewport_position
 	)
 	if not Tools.is_position_inside_document(Vector2i(canvas_position.floor())):
 		return
@@ -707,8 +722,9 @@ func _capture_navigation_camera_baseline() -> bool:
 	_navigation_baseline_zoom = camera.zoom
 	_navigation_baseline_offset = camera.offset
 	_navigation_baseline_camera_angle = camera.camera_angle
+	var viewport_centroid := main_viewport_position(_navigation_baseline_centroid)
 	_navigation_anchor_canvas = screen_to_canvas_point(
-		_navigation_baseline_centroid,
+		viewport_centroid,
 		camera.viewport_container.size,
 		_navigation_baseline_zoom,
 		_navigation_baseline_offset,
@@ -781,9 +797,10 @@ func _update_navigation() -> void:
 		camera.zoom_out_max,
 		camera.zoom_in_max
 	)
+	var viewport_centroid := main_viewport_position(effective_centroid)
 	var target_offset := navigation_offset_for_anchor(
 		_navigation_anchor_canvas,
-		effective_centroid,
+		viewport_centroid,
 		camera.viewport_container.size,
 		target_zoom,
 		target_angle
