@@ -159,9 +159,7 @@ func _write_snapshot(path: String, project_uuid: String) -> bool:
 	):
 		packer.close()
 		return false
-	if not _write_zip_entry(
-		packer, "mimetype", "application/x-pixelorama".to_utf8_buffer()
-	):
+	if not _write_zip_entry(packer, "mimetype", "application/x-pixelorama".to_utf8_buffer()):
 		packer.close()
 		return false
 	return packer.close() == OK
