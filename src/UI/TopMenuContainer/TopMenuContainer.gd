@@ -138,6 +138,14 @@ func _ready() -> void:
 
 func set_return_home_visible(should_show: bool) -> void:
 	return_home_button.visible = should_show
+	if not should_show:
+		return
+	var row := return_home_button.get_parent()
+	if row == null:
+		return
+	# iPadOS owns the center of the title bar for its multitasking ellipsis.
+	# Keep Projects immediately after the app menu so it stays in the left safe area.
+	row.move_child(return_home_button, mini(menu_bar.get_index() + 1, row.get_child_count() - 1))
 
 
 func _on_return_home_pressed() -> void:
