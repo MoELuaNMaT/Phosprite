@@ -11,6 +11,7 @@ var _pressed_since_msec := -1
 var _pressed_position := Vector2.ZERO
 var _press_consumed := false
 var _long_press_emitted := false
+var _double_tap_pending := false
 
 var _pending_single_path := ""
 var _pending_single_deadline_msec := -1
@@ -33,13 +34,16 @@ func pointer_down(path: String, position: Vector2, now_msec: int) -> Array[Dicti
 		and _pending_single_deadline_msec >= 0
 		and now_msec <= _pending_single_deadline_msec
 	):
-		actions.append(_action(ActionKind.DOUBLE_TAP, path, position))
+		# Do not emit while the originating Button is still physically pressed.
+		# Opening a PopupMenu here steals the second release and leaves the card's
+		# native pressed/hover draw state latched on iPad.
 		_clear_pending_single()
 		_pressed_path = path
 		_pressed_since_msec = now_msec
 		_pressed_position = position
-		_press_consumed = true
+		_press_consumed = false
 		_long_press_emitted = false
+		_double_tap_pending = true
 		return actions
 
 	actions.append_array(poll(now_msec))
@@ -60,6 +64,10 @@ func pointer_down(path: String, position: Vector2, now_msec: int) -> Array[Dicti
 func pointer_up(path: String, position: Vector2, now_msec: int) -> Array[Dictionary]:
 	var actions := poll(now_msec)
 	if path.is_empty() or path != _pressed_path:
+		_clear_press()
+		return actions
+	if _double_tap_pending:
+		actions.append(_action(ActionKind.DOUBLE_TAP, path, position))
 		_clear_press()
 		return actions
 	if _press_consumed or _long_press_emitted:
@@ -84,6 +92,7 @@ func poll(now_msec: int) -> Array[Dictionary]:
 		not _pressed_path.is_empty()
 		and not _press_consumed
 		and not _long_press_emitted
+		and not _double_tap_pending
 		and _pressed_since_msec >= 0
 		and now_msec - _pressed_since_msec >= LONG_PRESS_MSEC
 	):
@@ -118,6 +127,7 @@ func _clear_press() -> void:
 	_pressed_position = Vector2.ZERO
 	_press_consumed = false
 	_long_press_emitted = false
+	_double_tap_pending = false
 
 
 func _clear_pending_single() -> void:
