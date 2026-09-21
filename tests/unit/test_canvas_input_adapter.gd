@@ -75,45 +75,41 @@ func test_direct_content_can_upgrade_to_two_finger_navigation() -> void:
 	)
 
 
-func test_screen_to_viewport_point_removes_editor_shell_origin() -> void:
-	var viewport_rect := Rect2(Vector2(24, 68), Vector2(980, 700))
-	check_eq(
-		ADAPTER.screen_to_viewport_point(Vector2(24, 68), viewport_rect),
-		Vector2.ZERO,
-		"the first visible viewport pixel must remain addressable after safe-area and toolbar offsets",
+func test_viewport_bounds_use_local_subviewport_coordinates() -> void:
+	check_true(
+		ADAPTER.viewport_position_inside_size(Vector2.ZERO, Vector2(980, 700)),
+		"the top-left SubViewport pixel must remain a valid canvas input position",
 	)
-	check_eq(
-		ADAPTER.screen_to_viewport_point(Vector2(40, 84), viewport_rect),
-		Vector2(16, 16),
-		"screen input must subtract the embedded viewport origin before Canvas transforms",
+	check_true(
+		ADAPTER.viewport_position_inside_size(Vector2(979, 699), Vector2(980, 700)),
+		"the final visible SubViewport pixel must remain addressable",
+	)
+	check_true(
+		not ADAPTER.viewport_position_inside_size(Vector2(20, -1), Vector2(980, 700)),
+		"negative local Y must be rejected instead of compensating for editor chrome",
 	)
 
 
-func test_adapter_routes_all_canvas_coordinate_consumers_through_viewport_space() -> void:
+func test_adapter_does_not_subtract_editor_origin_from_ios_input() -> void:
 	var adapter := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	var canvas := FileAccess.get_file_as_string(CANVAS_SOURCE)
-	var router := FileAccess.get_file_as_string(
-		"res://src/InputAdapter/TouchTransformHandleRouter.gd"
+	check_true(
+		not adapter.contains("screen_to_viewport_point"),
+		"iOS Canvas events are already SubViewport-local and must not subtract the toolbar origin",
+	)
+	check_true(
+		not adapter.contains("main_viewport_position"),
+		"all adapter coordinate consumers must use the event's SubViewport-local position directly",
 	)
 	check_has(
 		adapter,
-		"var viewport_position := main_viewport_position(screen_position)",
-		"tool eligibility and color sampling must normalize root-screen input first",
-	)
-	check_has(
-		adapter,
-		"var viewport_centroid := main_viewport_position(_navigation_baseline_centroid)",
-		"two-finger navigation anchor must use SubViewport-local coordinates",
+		"viewport_position_inside_size(viewport_position, Global.main_viewport.size)",
+		"canvas acquisition must use a zero-origin local SubViewport rectangle",
 	)
 	check_has(
 		canvas,
-		"var viewport_position := _input_adapter.main_viewport_position(screen_position)",
-		"tool dispatch must normalize the top toolbar/safe-area offset",
-	)
-	check_has(
-		router,
-		"* viewport_position",
-		"selection transform handles must use the same normalized coordinates",
+		"func handle_adapter_tool_event(viewport_position: Vector2, event: InputEvent) -> void:",
+		"tool dispatch must accept the already-local SubViewport coordinate",
 	)
 
 
