@@ -1216,3 +1216,24 @@ func test_preview_touch_navigation_reuses_canvas_math_without_zoom_slider() -> v
 		),
 		"Main Canvas touch arbitration should reject touches that begin over Preview"
 	)
+
+
+func test_managed_editor_removes_project_tabs_and_their_canvas_dead_strip() -> void:
+	var migration_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+	)
+	check_has(
+		migration_source,
+		"_single_project_editor = STORAGE_POLICY.uses_managed_project_storage()",
+		"managed iPad editor must explicitly select the single-project chrome policy",
+	)
+	check_has(
+		migration_source,
+		"project_tabs.visible = false",
+		"managed single-project editor must not render the legacy project TabBar",
+	)
+	check_has(
+		migration_source,
+		"_project_tabs_height = 0.0",
+		"removing project tabs must also remove their reserved Canvas input strip",
+	)
