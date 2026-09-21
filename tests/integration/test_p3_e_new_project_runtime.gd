@@ -2,6 +2,7 @@ extends "res://tests/test_base.gd"
 
 const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 const RecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd")
+const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 
 const TEST_ROOT := "user://p3_e_new_project_tests"
 const BLOCKER_PATH := "user://p3_e_new_project_blocker"
@@ -63,8 +64,6 @@ func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -
 	_reset_root()
 	_configure_managed(TEST_ROOT)
 
-	var count_before := Global.projects.size()
-	var tabs_before := Global.tabs.tab_count
 	check_true(
 		_main.app_shell_controller.create_new_project(Vector2i(85, 64)),
 		"P3-E should create and commit a valid 4:3 project",
@@ -76,13 +75,13 @@ func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -
 	)
 	check_eq(
 		Global.projects.size(),
-		count_before + 1,
-		"successful New Project must append exactly one runtime project",
+		1,
+		"managed Editor must keep only the newly created runtime Project",
 	)
 	check_eq(
 		Global.tabs.tab_count,
-		tabs_before + 1,
-		"successful New Project must append exactly one editor tab",
+		1,
+		"legacy runtime must retain only one logical tab even though managed UI hides the TabBar",
 	)
 
 	var project := Global.current_project
@@ -184,14 +183,27 @@ func _configure_managed(directory: String) -> void:
 
 
 func _cleanup_added_projects() -> void:
-	while Global.projects.size() > _baseline_project_count:
-		var index := Global.projects.size() - 1
+	Global.tabs.set_block_signals(true)
+	for index in range(Global.projects.size() - 1, -1, -1):
 		var project := Global.projects[index]
+		if not (
+			project.save_path.begins_with(TEST_ROOT)
+			or project.save_path.begins_with(BLOCKER_PATH)
+		):
+			continue
 		if index < Global.tabs.tab_count:
 			Global.tabs.remove_tab(index)
 		project.remove()
+	Global.tabs.set_block_signals(false)
+	if Global.projects.is_empty():
+		var replacement := ProjectFactoryScript.create_blank_project(
+			tr("untitled"), ProjectFactoryScript.DEFAULT_SIZE
+		)
+		Global.projects.append(replacement)
 	if Global.projects.size() > 0:
 		Global.current_project_index = mini(_baseline_current_index, Global.projects.size() - 1)
+		if Global.current_project_index < Global.tabs.tab_count:
+			Global.tabs.current_tab = Global.current_project_index
 
 
 func _reset_root() -> void:
