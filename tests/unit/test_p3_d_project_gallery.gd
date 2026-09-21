@@ -3,6 +3,7 @@ extends "res://tests/test_base.gd"
 const Library := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
 const CardScene := preload("res://src/UI/ProjectGallery/ProjectGalleryCard.tscn")
+const GalleryScript := preload("res://src/UI/ProjectGallery/ProjectGallery.gd")
 
 const TEST_ROOT := "user://p3_d_gallery_tests"
 const TEST_UUID := "dddddddd-eeee-4fff-8aaa-bbbbbbbbbbbb"
@@ -98,6 +99,32 @@ func test_gallery_source_contract_matches_p3_d_layout() -> void:
 		"Time.get_time_zone_from_system()",
 		"Gallery modification time must follow the device local time zone",
 	)
+
+
+func test_gallery_orientation_and_thumbnail_hit_target_regressions() -> void:
+	check_eq(
+		GalleryScript.columns_for_viewport_size(Vector2(1366, 1024)),
+		6,
+		"landscape Gallery must resolve to six columns",
+	)
+	check_eq(
+		GalleryScript.columns_for_viewport_size(Vector2(1024, 1366)),
+		4,
+		"portrait Gallery must resolve to four columns even with five or more cards",
+	)
+
+	var card := CardScene.instantiate() as ProjectGalleryCard
+	check_true(card != null, "Gallery card scene must instantiate for hit-target regression")
+	if card == null:
+		return
+	tree.root.add_child(card)
+	check_eq(
+		card.thumbnail_frame.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"thumbnail frame must pass tap/double-tap/long-press input through to the whole card",
+	)
+	card.get_parent().remove_child(card)
+	card.free()
 
 
 func test_project_library_supports_lazy_thumbnail_decode() -> void:
