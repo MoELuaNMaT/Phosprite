@@ -51,8 +51,7 @@ func test_native_batch_handoff_imports_all_paths_and_enters_editor_only_on_last(
 	)
 
 	var mode_events: Array[int] = []
-	var collect_mode := func(next_mode: AppShellController.Mode):
-		mode_events.append(next_mode)
+	var collect_mode := func(next_mode: AppShellController.Mode): mode_events.append(next_mode)
 	_main.app_shell_controller.mode_changed.connect(collect_mode)
 
 	var before := Global.projects.size()
