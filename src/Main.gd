@@ -289,7 +289,7 @@ func _ready() -> void:
 	if top_menu_container.has_signal("return_home_requested"):
 		top_menu_container.return_home_requested.connect(_on_return_home_requested)
 	if OS.get_name() == "Android":
-		var intent_data := Applinks.get_data()
+		var intent_data: String = Applinks.get_data()
 		if not intent_data.is_empty():
 			_on_applinks_data_received(intent_data)
 	if not DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE_EXTRA):

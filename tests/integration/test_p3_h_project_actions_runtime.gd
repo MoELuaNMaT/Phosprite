@@ -46,7 +46,9 @@ func test_loaded_project_tracks_gallery_rename_and_delete() -> void:
 	Global.current_project_index = project_index
 	_main.project_gallery_root.refresh()
 
-	var rename := _main.project_gallery_root.rename_project(source_path, "runtime_renamed")
+	var rename: Dictionary = _main.project_gallery_root.rename_project(
+		source_path, "runtime_renamed"
+	)
 	var renamed_path := TEST_ROOT.path_join("runtime_renamed.pxo")
 	check_true(bool(rename.get("ok", false)), "Gallery rename should succeed")
 	check_eq(
@@ -62,7 +64,7 @@ func test_loaded_project_tracks_gallery_rename_and_delete() -> void:
 	)
 	check_file_exists(renamed_path, "renamed managed project must exist on disk")
 
-	var duplicate := _main.project_gallery_root.duplicate_projects(
+	var duplicate: Dictionary = _main.project_gallery_root.duplicate_projects(
 		PackedStringArray([renamed_path])
 	)
 	var created: PackedStringArray = duplicate.get("created", PackedStringArray())
@@ -75,7 +77,9 @@ func test_loaded_project_tracks_gallery_rename_and_delete() -> void:
 		)
 		check_file_exists(created[0], "runtime duplicate must exist on disk")
 
-	var deleted := _main.project_gallery_root.delete_projects(PackedStringArray([renamed_path]))
+	var deleted: Dictionary = _main.project_gallery_root.delete_projects(
+		PackedStringArray([renamed_path])
+	)
 	var deleted_paths: PackedStringArray = deleted.get("deleted", PackedStringArray())
 	check_eq(
 		deleted_paths.size(),

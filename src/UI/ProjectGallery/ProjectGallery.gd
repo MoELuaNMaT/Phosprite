@@ -264,13 +264,15 @@ func _update_layout() -> void:
 	for card: ProjectGalleryCard in _cards:
 		card.set_card_width(card_width)
 
-	_layout_generation += 1
-	var generation := _layout_generation
 	if should_reflow and not old_rects.is_empty():
+		_layout_generation += 1
+		var generation := _layout_generation
 		get_tree().process_frame.connect(
 			_start_reflow.bind(old_rects, generation), CONNECT_ONE_SHOT
 		)
-	else:
+	elif should_reflow:
+		set_interaction_locked(&"reflow", false)
+	elif not _interaction_locks.has(&"reflow"):
 		set_interaction_locked(&"reflow", false)
 	call_deferred("_load_visible_thumbnails")
 

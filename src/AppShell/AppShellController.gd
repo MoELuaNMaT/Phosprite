@@ -63,7 +63,10 @@ func configure(
 	if is_instance_valid(editor_root) and editor_root.get_instance_id() != _editor_base_instance_id:
 		_editor_base_instance_id = editor_root.get_instance_id()
 		_editor_base_position = editor_root.position
-	if is_instance_valid(gallery_root) and gallery_root.get_instance_id() != _gallery_base_instance_id:
+	if (
+		is_instance_valid(gallery_root)
+		and gallery_root.get_instance_id() != _gallery_base_instance_id
+	):
 		_gallery_base_instance_id = gallery_root.get_instance_id()
 		_gallery_base_position = gallery_root.position
 	if import_service == null:
