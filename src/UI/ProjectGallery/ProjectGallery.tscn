@@ -134,6 +134,33 @@ theme_override_constants/h_separation = 16
 theme_override_constants/v_separation = 20
 columns = 6
 
+[node name="ProjectActionMenu" type="PopupMenu" parent="."]
+unique_name_in_owner = true
+
+[node name="BatchActionMenu" type="PopupMenu" parent="."]
+unique_name_in_owner = true
+
+[node name="RenameProjectDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+initial_position = 2
+title = "Rename Project"
+dialog_text = "Enter a new project name."
+
+[node name="RenameProjectEdit" type="LineEdit" parent="RenameProjectDialog"]
+unique_name_in_owner = true
+offset_left = 16.0
+offset_top = 58.0
+offset_right = 404.0
+offset_bottom = 90.0
+placeholder_text = "Project name"
+select_all_on_focus = true
+
+[node name="DeleteProjectsDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+initial_position = 2
+title = "Delete Project"
+dialog_text = "Permanently delete this project? This cannot be undone."
+
 [connection signal="pressed" from="Shell/TopBar/Margin/Row/ExitMultiSelect" to="." method="_on_exit_multiselect_pressed"]
 [connection signal="pressed" from="Shell/TopBar/Margin/Row/Import" to="." method="_on_import_pressed"]
 [connection signal="pressed" from="Shell/TopBar/Margin/Row/New" to="." method="_on_new_project_pressed"]

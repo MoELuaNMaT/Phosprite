@@ -135,6 +135,48 @@ func _connect_gallery() -> void:
 		gallery_root.new_project_requested.connect(_on_new_project_requested)
 	if not gallery_root.import_requested.is_connected(_on_import_requested):
 		gallery_root.import_requested.connect(_on_import_requested)
+	if not gallery_root.project_renamed.is_connected(_on_gallery_project_renamed):
+		gallery_root.project_renamed.connect(_on_gallery_project_renamed)
+	if not gallery_root.projects_deleted.is_connected(_on_gallery_projects_deleted):
+		gallery_root.projects_deleted.connect(_on_gallery_projects_deleted)
+
+
+func _on_gallery_project_renamed(old_path: String, new_path: String, new_name: String) -> void:
+	var project_index := _find_open_project(old_path)
+	if project_index < 0:
+		return
+	var project := Global.projects[project_index]
+	project.save_path = new_path
+	project.file_name = new_name
+	project.name = new_name
+	if project_index < Global.tabs.get_tab_count():
+		Global.tabs.set_tab_title(project_index, new_name)
+
+
+func _on_gallery_projects_deleted(paths: PackedStringArray) -> void:
+	var previous_current := Global.current_project
+	var previous_index := Global.current_project_index
+	for path in paths:
+		var project_index := _find_open_project(path)
+		if project_index < 0:
+			continue
+		var project := Global.projects[project_index]
+		if is_instance_valid(save_coordinator):
+			save_coordinator.forget_project(project, true)
+		if project_index < Global.tabs.get_tab_count():
+			Global.tabs.remove_tab(project_index)
+		project.remove()
+
+	if Global.projects.is_empty():
+		var replacement := ProjectFactoryScript.create_blank_project(
+			tr("untitled"), ProjectFactoryScript.DEFAULT_SIZE
+		)
+		Global.projects.append(replacement)
+		Global.current_project_index = 0
+	elif previous_current != null and Global.projects.has(previous_current):
+		Global.current_project_index = Global.projects.find(previous_current)
+	else:
+		Global.current_project_index = mini(previous_index, Global.projects.size() - 1)
 
 
 func _connect_recovery_dialog() -> void:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/UI/ProjectGallery/ProjectGalleryCard.gd" id="1"]
 
@@ -27,6 +27,18 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="SelectionOutlineStyle"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.345098, 0.741176, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="ProjectGalleryCard" type="Button"]
 custom_minimum_size = Vector2(160, 214)
@@ -105,3 +117,34 @@ mouse_filter = 2
 theme_override_colors/font_color = Color(0.568627, 0.584314, 0.615686, 1)
 theme_override_font_sizes/font_size = 12
 text = "2026-09-21  12:00"
+
+[node name="SelectionOutline" type="Panel" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("SelectionOutlineStyle")
+
+[node name="SelectionCheck" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -34.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 34.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.345098, 0.741176, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "✓"
+horizontal_alignment = 1
+vertical_alignment = 1

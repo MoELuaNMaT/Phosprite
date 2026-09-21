@@ -1,29 +1,33 @@
 class_name ProjectGalleryCard
 extends Button
 
-signal open_requested(path: String)
+signal pointer_down(path: String, position: Vector2, timestamp_msec: int)
+signal pointer_up(path: String, position: Vector2, timestamp_msec: int)
+signal pointer_cancel(path: String)
 
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
+const DRAG_CANCEL_DISTANCE := 12.0
 
 var entry: ProjectLibraryEntry
 var thumbnail_loaded := false
+var selected := false
+var _pointer_active := false
+var _pointer_origin := Vector2.ZERO
 
 @onready var thumbnail_frame := %ThumbnailFrame as Control
 @onready var thumbnail_rect := %Thumbnail as TextureRect
 @onready var thumbnail_status := %ThumbnailStatus as Label
 @onready var size_label := %CanvasSize as Label
 @onready var modified_label := %ModifiedTime as Label
-
-
-func _ready() -> void:
-	if not pressed.is_connected(_on_pressed):
-		pressed.connect(_on_pressed)
+@onready var selection_outline := %SelectionOutline as Panel
+@onready var selection_check := %SelectionCheck as Label
 
 
 func bind(project_entry: ProjectLibraryEntry) -> void:
 	entry = project_entry
 	thumbnail_loaded = false
 	thumbnail_rect.texture = null
+	set_selected(false)
 	if entry.health_state == Entry.HealthState.CORRUPTED:
 		thumbnail_status.text = tr("Corrupted")
 		thumbnail_status.visible = true
@@ -55,9 +59,65 @@ func set_thumbnail(image: Image) -> void:
 	thumbnail_status.visible = false
 
 
-func _on_pressed() -> void:
-	if entry != null:
-		open_requested.emit(entry.path)
+func set_selected(value: bool) -> void:
+	selected = value
+	if is_instance_valid(selection_outline):
+		selection_outline.visible = value
+	if is_instance_valid(selection_check):
+		selection_check.visible = value
+
+
+func _gui_input(event: InputEvent) -> void:
+	if entry == null:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			_begin_pointer(touch.position)
+		else:
+			_finish_pointer(touch.position)
+		return
+	if event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		_maybe_cancel_pointer(drag.position)
+		return
+	if event is InputEventMouseButton:
+		var mouse_button := event as InputEventMouseButton
+		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse_button.pressed:
+			_begin_pointer(mouse_button.position)
+		else:
+			_finish_pointer(mouse_button.position)
+		return
+	if event is InputEventMouseMotion:
+		var mouse_motion := event as InputEventMouseMotion
+		if (mouse_motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			_maybe_cancel_pointer(mouse_motion.position)
+
+
+func _begin_pointer(local_position: Vector2) -> void:
+	_pointer_active = true
+	_pointer_origin = local_position
+	pointer_down.emit(entry.path, _to_global_position(local_position), Time.get_ticks_msec())
+
+
+func _finish_pointer(local_position: Vector2) -> void:
+	if not _pointer_active:
+		return
+	_pointer_active = false
+	pointer_up.emit(entry.path, _to_global_position(local_position), Time.get_ticks_msec())
+
+
+func _maybe_cancel_pointer(local_position: Vector2) -> void:
+	if not _pointer_active or local_position.distance_to(_pointer_origin) <= DRAG_CANCEL_DISTANCE:
+		return
+	_pointer_active = false
+	pointer_cancel.emit(entry.path)
+
+
+func _to_global_position(local_position: Vector2) -> Vector2:
+	return get_global_transform_with_canvas() * local_position
 
 
 func _format_modified_time(unix_time: int) -> String:

@@ -252,6 +252,12 @@ func _ready() -> void:
 		ios_document_bridge = IOS_DOCUMENT_BRIDGE.new()
 		ios_document_bridge.configure(app_shell_controller)
 		add_child(ios_document_bridge)
+		if not project_gallery_root.reveal_in_files_requested.is_connected(
+			_on_gallery_reveal_in_files_requested
+		):
+			project_gallery_root.reveal_in_files_requested.connect(
+				_on_gallery_reveal_in_files_requested
+			)
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 
@@ -297,6 +303,11 @@ func _ready() -> void:
 	Global.pixelorama_has_loaded = true
 	Global.pixelorama_opened.emit()
 	print("Time Phosprite took to open: %sms" % Time.get_ticks_msec())
+
+
+func _on_gallery_reveal_in_files_requested(path: String) -> void:
+	if not is_instance_valid(ios_document_bridge) or not ios_document_bridge.reveal_in_files(path):
+		Global.popup_error(tr("Could not show this project in Files."))
 
 
 func _input(event: InputEvent) -> void:

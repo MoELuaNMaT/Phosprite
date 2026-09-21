@@ -72,6 +72,73 @@ func load_thumbnail(entry: ProjectLibraryEntry) -> Image:
 	return image
 
 
+func rename_project(path: String, requested_name: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"ok": false, "error": ERR_FILE_NOT_FOUND, "path": path, "name": ""}
+	var entry := _read_entry(path, false)
+	if entry.health_state != ProjectLibraryEntry.HealthState.OK:
+		return {"ok": false, "error": ERR_FILE_CORRUPT, "path": path, "name": ""}
+
+	var base_name := requested_name.strip_edges()
+	if base_name.get_extension().to_lower() == StoragePolicy.PROJECT_EXTENSION.trim_prefix("."):
+		base_name = base_name.get_basename().get_file()
+	if base_name.is_empty() or base_name.validate_filename() != base_name:
+		return {"ok": false, "error": ERR_INVALID_PARAMETER, "path": path, "name": base_name}
+
+	var target_path := path.get_base_dir().path_join(base_name + StoragePolicy.PROJECT_EXTENSION)
+	if _normalized_path(target_path) == _normalized_path(path):
+		return {"ok": true, "error": OK, "path": path, "name": base_name}
+	if FileAccess.file_exists(target_path):
+		return {"ok": false, "error": ERR_ALREADY_EXISTS, "path": path, "name": base_name}
+
+	var error := DirAccess.rename_absolute(path, target_path)
+	if error != OK:
+		return {"ok": false, "error": error, "path": path, "name": base_name}
+	return {"ok": true, "error": OK, "path": target_path, "name": base_name}
+
+
+func duplicate_project(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"ok": false, "error": ERR_FILE_NOT_FOUND, "path": "", "uuid": ""}
+	var entry := _read_entry(path, false)
+	if entry.health_state != ProjectLibraryEntry.HealthState.OK:
+		return {"ok": false, "error": ERR_FILE_CORRUPT, "path": "", "uuid": ""}
+
+	var reserved_uuids: Dictionary = {}
+	for existing: ProjectLibraryEntry in scan(false):
+		if (
+			existing.health_state == ProjectLibraryEntry.HealthState.OK
+			and not existing.uuid.is_empty()
+		):
+			reserved_uuids[existing.uuid] = true
+
+	var target_path := _next_duplicate_path(path)
+	var copy_error := DirAccess.copy_absolute(path, target_path)
+	if copy_error != OK:
+		return {"ok": false, "error": copy_error, "path": "", "uuid": ""}
+
+	var project_uuid := _unique_uuid(reserved_uuids)
+	if project_uuid.is_empty():
+		_remove_if_present(target_path)
+		return {"ok": false, "error": ERR_CANT_CREATE, "path": "", "uuid": ""}
+	if not _rewrite_project_identity(target_path, project_uuid, entry.canvas_size):
+		_remove_if_present(target_path)
+		return {"ok": false, "error": ERR_FILE_CORRUPT, "path": "", "uuid": ""}
+	return {"ok": true, "error": OK, "path": target_path, "uuid": project_uuid}
+
+
+func delete_project(path: String, project_uuid := "") -> Error:
+	if not FileAccess.file_exists(path):
+		return ERR_FILE_NOT_FOUND
+	var error := DirAccess.remove_absolute(path)
+	if error != OK:
+		return error
+	if ProjectIdentityScript.is_valid_uuid(project_uuid):
+		RecoveryStore.remove_staging(project_uuid)
+		RecoveryStore.discard(project_uuid)
+	return OK
+
+
 func _read_entry(path: String, include_thumbnail := true) -> ProjectLibraryEntry:
 	var entry := Entry.new(path)
 	entry.modified_time = FileAccess.get_modified_time(path)
@@ -229,6 +296,21 @@ func _rewrite_project_identity(path: String, project_uuid: String, canvas_size: 
 		_remove_if_present(temp_path)
 		return false
 	return true
+
+
+func _next_duplicate_path(path: String) -> String:
+	var directory := path.get_base_dir()
+	var base_name := path.get_file().get_basename()
+	var suffix := 1
+	var candidate := directory.path_join(
+		"%s_%d%s" % [base_name, suffix, StoragePolicy.PROJECT_EXTENSION]
+	)
+	while FileAccess.file_exists(candidate):
+		suffix += 1
+		candidate = directory.path_join(
+			"%s_%d%s" % [base_name, suffix, StoragePolicy.PROJECT_EXTENSION]
+		)
+	return candidate
 
 
 func _unique_uuid(reserved_uuids: Dictionary) -> String:

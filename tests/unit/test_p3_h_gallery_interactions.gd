@@ -1,0 +1,220 @@
+extends "res://tests/test_base.gd"
+
+const Resolver := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
+const Library := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
+const Identity := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
+
+const TEST_ROOT := "user://p3_h_gallery_unit_tests"
+const UUID_A := "11111111-2222-4333-8444-555555555555"
+
+
+func teardown() -> void:
+	_remove_tree(TEST_ROOT)
+
+
+func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
+	var resolver := Resolver.new()
+	var path := TEST_ROOT.path_join("gesture.pxo")
+
+	check_eq(resolver.pointer_down(path, Vector2(10, 10), 0).size(), 0, "down must not open")
+	check_eq(
+		resolver.pointer_up(path, Vector2(10, 10), 50).size(), 0, "first up is delayed"
+	)
+	check_eq(
+		resolver.poll(349).size(), 0, "single tap must wait the full 300 ms window"
+	)
+	var single := resolver.poll(350)
+	check_eq(single.size(), 1, "single tap must resolve after 300 ms")
+	if single.size() == 1:
+		check_eq(
+			single[0]["kind"], Resolver.ActionKind.SINGLE_TAP, "resolved action must be single"
+		)
+
+	resolver.reset()
+	resolver.pointer_down(path, Vector2(20, 20), 1000)
+	resolver.pointer_up(path, Vector2(20, 20), 1050)
+	var double := resolver.pointer_down(path, Vector2(22, 22), 1350)
+	check_eq(
+		double.size(), 1, "second down at the 300 ms boundary must resolve double tap"
+	)
+	if double.size() == 1:
+		check_eq(
+			double[0]["kind"], Resolver.ActionKind.DOUBLE_TAP, "action must be double tap"
+		)
+	check_eq(
+		resolver.pointer_up(path, Vector2(22, 22), 1380).size(),
+		0,
+		"double release must be consumed",
+	)
+	check_eq(resolver.poll(2000).size(), 0, "double tap must not leak a delayed single")
+
+	resolver.reset()
+	resolver.pointer_down(path, Vector2(30, 30), 3000)
+	var long_press := resolver.poll(4000)
+	check_eq(long_press.size(), 1, "one second hold must resolve long press")
+	if long_press.size() == 1:
+		check_eq(
+			long_press[0]["kind"], Resolver.ActionKind.LONG_PRESS, "action must be long press"
+		)
+	check_eq(
+		resolver.pointer_up(path, Vector2(30, 30), 4050).size(),
+		0,
+		"long release must not click",
+	)
+	check_eq(resolver.poll(4500).size(), 0, "long press must not schedule a delayed single")
+
+
+func test_project_library_rename_duplicate_and_delete_contract() -> void:
+	_reset_test_root()
+	var foo_path := TEST_ROOT.path_join("foo.pxo")
+	check_true(_write_pxo(foo_path, UUID_A), "source PXO fixture should be writable")
+	var library := Library.new(TEST_ROOT)
+
+	var duplicate_one := library.duplicate_project(foo_path)
+	check_true(bool(duplicate_one.get("ok", false)), "first duplicate should succeed")
+	check_eq(
+		str(duplicate_one.get("path", "")).get_file(),
+		"foo_1.pxo",
+		"foo must duplicate to foo_1",
+	)
+	check_true(
+		Identity.is_valid_uuid(str(duplicate_one.get("uuid", ""))),
+		"duplicate must receive a UUID",
+	)
+	check_ne(
+		str(duplicate_one.get("uuid", "")), UUID_A, "duplicate UUID must differ from source"
+	)
+
+	var duplicate_two := library.duplicate_project(foo_path)
+	check_eq(
+		str(duplicate_two.get("path", "")).get_file(),
+		"foo_2.pxo",
+		"next duplicate must be foo_2",
+	)
+	var duplicate_nested := library.duplicate_project(str(duplicate_one.get("path", "")))
+	check_eq(
+		str(duplicate_nested.get("path", "")).get_file(),
+		"foo_1_1.pxo",
+		"duplicating foo_1 must become foo_1_1",
+	)
+
+	var rename := library.rename_project(foo_path, "renamed")
+	check_true(bool(rename.get("ok", false)), "healthy project rename should succeed")
+	var renamed_path := str(rename.get("path", ""))
+	check_eq(renamed_path.get_file(), "renamed.pxo", "rename must change only the filename")
+	check_true(not FileAccess.file_exists(foo_path), "old path must disappear after rename")
+	var renamed_uuid := ""
+	for entry: ProjectLibraryEntry in library.scan(false):
+		if entry.path.get_file() == "renamed.pxo":
+			renamed_uuid = entry.uuid
+	check_eq(renamed_uuid, UUID_A, "rename must preserve project UUID")
+
+	var conflict := library.rename_project(renamed_path, "foo_1")
+	check_true(not bool(conflict.get("ok", true)), "rename collision must be rejected")
+	check_eq(
+		int(conflict.get("error", OK)),
+		ERR_ALREADY_EXISTS,
+		"collision must report already exists",
+	)
+	check_true(
+		FileAccess.file_exists(renamed_path), "failed rename must leave source untouched"
+	)
+
+	check_eq(
+		library.delete_project(renamed_path, UUID_A),
+		OK,
+		"delete must remove the formal PXO",
+	)
+	check_true(
+		not FileAccess.file_exists(renamed_path), "deleted project must be permanently removed"
+	)
+
+
+func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> void:
+	var gallery_src := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/ProjectGallery.gd"
+	)
+	var card_scene := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/ProjectGalleryCard.tscn"
+	)
+	var main_src := FileAccess.get_file_as_string("res://src/Main.gd")
+	check_has(
+		gallery_src,
+		"var selected := get_selected_paths()",
+		"multiselect double tap must operate on the existing selected set",
+	)
+	check_has(
+		card_scene,
+		"SelectionOutline",
+		"selected cards must have a prominent outline",
+	)
+	check_has(
+		card_scene,
+		"SelectionCheck",
+		"selected cards must have a top-right checkmark",
+	)
+	check_has(
+		gallery_src,
+		"reveal_in_files_requested.emit",
+		"single project menu must expose Reveal in Files",
+	)
+	check_has(
+		gallery_src,
+		"export_projects_requested.emit",
+		"P3-H must expose the deferred P3-I export hook",
+	)
+	check_has(
+		main_src,
+		"ios_document_bridge.reveal_in_files(path)",
+		"Reveal in Files must route into the P3-G native bridge",
+	)
+
+
+func _write_pxo(path: String, project_uuid: String) -> bool:
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var packer := ZIPPacker.new()
+	if packer.open(path) != OK:
+		return false
+	var data := {
+		"project_uuid": project_uuid,
+		"size_x": 16,
+		"size_y": 16,
+		"layers": [],
+		"frames": [],
+	}
+	if not _write_entry(packer, "data.json", JSON.stringify(data).to_utf8_buffer()):
+		packer.close()
+		return false
+	var gallery := Library.build_gallery_metadata(project_uuid, Vector2i(16, 16))
+	if not _write_entry(
+		packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()
+	):
+		packer.close()
+		return false
+	if not _write_entry(packer, "mimetype", "application/x-pixelorama".to_utf8_buffer()):
+		packer.close()
+		return false
+	return packer.close() == OK
+
+
+func _write_entry(packer: ZIPPacker, path: String, bytes: PackedByteArray) -> bool:
+	if packer.start_file(path) != OK:
+		return false
+	if packer.write_file(bytes) != OK:
+		return false
+	return packer.close_file() == OK
+
+
+func _reset_test_root() -> void:
+	_remove_tree(TEST_ROOT)
+	DirAccess.make_dir_recursive_absolute(TEST_ROOT)
+
+
+func _remove_tree(path: String) -> void:
+	if not DirAccess.dir_exists_absolute(path):
+		return
+	for directory in DirAccess.get_directories_at(path):
+		_remove_tree(path.path_join(directory))
+	for file_name in DirAccess.get_files_at(path):
+		DirAccess.remove_absolute(path.path_join(file_name))
+	DirAccess.remove_absolute(path)
