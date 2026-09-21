@@ -19,11 +19,11 @@ func _ready() -> void:
 	_build_preset_buttons(square_presets, ProjectFactoryScript.SQUARE_PRESETS)
 	_build_preset_buttons(four_three_presets, ProjectFactoryScript.FOUR_THREE_PRESETS)
 	_build_preset_buttons(sixteen_nine_presets, ProjectFactoryScript.SIXTEEN_NINE_PRESETS)
-	_apply_size(ProjectFactoryScript.DEFAULT_SIZE, false)
+	_apply_size(ProjectFactoryScript.DEFAULT_SIZE)
 
 
 func popup_for_new_project() -> void:
-	_apply_size(ProjectFactoryScript.DEFAULT_SIZE, false)
+	_apply_size(ProjectFactoryScript.DEFAULT_SIZE)
 	popup_centered_clamped()
 
 
