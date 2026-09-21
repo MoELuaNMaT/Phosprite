@@ -3,7 +3,7 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ main, phosprite-main ]
+    branches: [ main, phosprite-main, codex/implement-p3-project-gallery ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
