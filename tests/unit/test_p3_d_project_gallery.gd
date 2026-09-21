@@ -112,6 +112,24 @@ func test_gallery_orientation_and_thumbnail_hit_target_regressions() -> void:
 		4,
 		"portrait Gallery must resolve to four columns even with five or more cards",
 	)
+	var gallery_src := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/ProjectGallery.gd"
+	)
+	var main_src := FileAccess.get_file_as_string("res://src/Main.gd")
+	check_has(
+		gallery_src,
+		"if size.x > 0.0 and size.y > 0.0:",
+		"Gallery orientation must come from its actual safe-area Control geometry",
+	)
+	check_true(
+		not gallery_src.contains('if OS.get_name() == "iOS":\n\t\tvar window := get_window()'),
+		"iPad Gallery must not bypass its safe-area layout by preferring Window.size",
+	)
+	check_has(
+		main_src,
+		"get_window().size_changed.connect(_on_mobile_window_size_changed)",
+		"sensor rotation must re-resolve the mobile safe area",
+	)
 
 	var card := CardScene.instantiate() as ProjectGalleryCard
 	check_true(card != null, "Gallery card scene must instantiate for hit-target regression")
