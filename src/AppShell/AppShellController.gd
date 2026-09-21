@@ -121,8 +121,8 @@ func open_project_path(path: String) -> bool:
 		return true
 	var existing_index := _find_open_project(path)
 	if existing_index >= 0:
-		Global.current_project_index = existing_index
-		if Global.current_project_index != existing_index:
+		var existing_project := Global.projects[existing_index]
+		if not _activate_managed_editor_project(existing_project):
 			return false
 		show_editor()
 		return true
@@ -294,12 +294,7 @@ func create_new_project(canvas_size: Vector2i) -> bool:
 		_rollback_uncommitted_project(project, target_path)
 		return false
 
-	var project_index := Global.projects.find(project)
-	if project_index < 0:
-		_rollback_uncommitted_project(project, target_path)
-		return false
-	Global.tabs.current_tab = project_index
-	if Global.current_project_index != project_index:
+	if not _activate_managed_editor_project(project):
 		_rollback_uncommitted_project(project, target_path)
 		return false
 	show_editor()
@@ -421,8 +416,7 @@ func _finish_managed_import(project: Project, source_path: String, enter_editor 
 		return false
 	if not enter_editor:
 		return true
-	Global.tabs.current_tab = project_index
-	if Global.current_project_index != project_index:
+	if not _activate_managed_editor_project(project):
 		_report_import_failure(source_path)
 		return false
 	show_editor()
@@ -506,14 +500,61 @@ func _on_recovery_canceled() -> void:
 
 
 func _open_formal_project(path: String) -> bool:
-	OpenSave.open_pxo_file(path)
+	var project := OpenSave.open_pxo_file(path)
 	if (
-		Global.current_project == null
-		or _normalized_path(Global.current_project.save_path) != _normalized_path(path)
+		project == null
+		or _normalized_path(project.save_path) != _normalized_path(path)
+		or not _activate_managed_editor_project(project)
 	):
 		return false
 	show_editor()
 	return true
+
+
+func _activate_managed_editor_project(project: Project) -> bool:
+	if project == null:
+		return false
+	var target_index := Global.projects.find(project)
+	if target_index < 0:
+		return false
+
+	if Global.current_project != project:
+		Global.tabs.current_tab = target_index
+		if Global.current_project_index != target_index:
+			return false
+
+	# P3 managed storage has one Editor project at a time. Keep the Gallery-only
+	# sentinel/previous saved project out of the active runtime so legacy Pixelorama
+	# tabs cannot leak a second "untitled" document into the editor.
+	if is_instance_valid(save_coordinator):
+		for other: Project in Global.projects:
+			if (
+				other != project
+				and other.has_changed
+				and not other.save_path.is_empty()
+				and not save_coordinator.flush_project(other, "single_project_handoff")
+			):
+				return false
+
+	Global.tabs.set_block_signals(true)
+	for index in range(Global.projects.size() - 1, -1, -1):
+		var other := Global.projects[index]
+		if other == project:
+			continue
+		if is_instance_valid(save_coordinator):
+			save_coordinator.forget_project(other, false)
+		if index < Global.tabs.tab_count:
+			Global.tabs.remove_tab(index)
+		other.remove()
+	Global.tabs.set_block_signals(false)
+
+	var final_index := Global.projects.find(project)
+	if final_index < 0:
+		return false
+	if final_index < Global.tabs.tab_count:
+		Global.tabs.current_tab = final_index
+	Global.current_project_index = final_index
+	return Global.projects.size() == 1 and Global.current_project == project
 
 
 func _find_open_project(path: String) -> int:
