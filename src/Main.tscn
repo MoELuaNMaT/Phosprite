@@ -17,6 +17,7 @@
 [ext_resource type="PackedScene" uid="uid://clsp16gq4sng3" path="res://src/UI/Dialogs/ImportTagDialog.tscn" id="16_ohhks"]
 [ext_resource type="PackedScene" uid="uid://clbjfkdupw52l" path="res://src/UI/Timeline/CelProperties.tscn" id="17_ucs64"]
 [ext_resource type="PackedScene" uid="uid://clgu8wb5o6oup" path="res://src/UI/Dialogs/ExportDialog.tscn" id="39"]
+[ext_resource type="PackedScene" path="res://src/UI/ProjectGallery/ProjectGallery.tscn" id="40_p3c"]
 
 [node name="Control" type="Control" unique_id=1088730198]
 layout_mode = 3
@@ -28,6 +29,8 @@ grow_vertical = 2
 mouse_filter = 1
 theme = ExtResource("1")
 script = ExtResource("2")
+
+[node name="ProjectGalleryRoot" parent="." instance=ExtResource("40_p3c")]
 
 [node name="MenuAndUI" type="VBoxContainer" parent="." unique_id=481271712]
 layout_mode = 0
@@ -71,6 +74,11 @@ dialog_text = "Project %s has unsaved progress. How do you wish to proceed?"
 
 [node name="RestoreSessionConfirmationDialog" type="ConfirmationDialog" parent="Dialogs" unique_id=1360804656]
 dialog_text = "Phosprite did not close properly last time. Would you like to restore a previous session?"
+
+[node name="ProjectRecoveryDialog" type="ConfirmationDialog" parent="Dialogs"]
+title = "Recover Project?"
+ok_button_text = "Restore"
+dialog_text = "Phosprite found recovery data for this project."
 
 [node name="ErrorDialog" type="AcceptDialog" parent="Dialogs" unique_id=1836925387]
 dialog_text = "This is an error message!"
