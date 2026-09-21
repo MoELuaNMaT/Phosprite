@@ -33,6 +33,16 @@ func test_p3_g_native_bridge_contract_and_security_scope() -> void:
 	)
 	check_has(
 		native_src,
+		"CGImageGetWidth(p_image.CGImage)",
+		"Photos import must derive temporary PNG dimensions from source pixels rather than UIImage points",
+	)
+	check_has(
+		native_src,
+		"format.scale = 1.0",
+		"Photos import renderer must not multiply pixel-art dimensions by the Retina screen scale",
+	)
+	check_has(
+		native_src,
 		"startAccessingSecurityScopedResource",
 		"external Files URLs must enter a security-scoped access window",
 	)
