@@ -110,8 +110,8 @@ func test_p3_c_gallery_remains_a_shell_api_before_p3_d_visual_grid() -> void:
 	)
 	check_has(
 		gallery_src,
-		"entries = library.scan()",
-		"Gallery shell refresh must consume the P3-A Project Library",
+		"entries = library.scan(",
+		"Gallery refresh must continue consuming the P3-A Project Library",
 	)
 	check_has(
 		gallery_src,
