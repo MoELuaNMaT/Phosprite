@@ -22,6 +22,10 @@ const PORTRAIT_COLUMNS := 4
 const GRID_SIDE_MARGIN := 32.0
 const GRID_SEPARATION := 16.0
 const THUMBNAIL_PRELOAD_MARGIN := 96.0
+const REFLOW_DURATION := 0.18
+const FEEDBACK_DURATION := 2.4
+const FEEDBACK_NORMAL_COLOR := Color(0.65, 0.68, 0.74, 1.0)
+const FEEDBACK_ERROR_COLOR := Color(1.0, 0.45, 0.42, 1.0)
 
 var library: ProjectLibrary
 var entries: Array[ProjectLibraryEntry] = []
@@ -36,10 +40,21 @@ var _action_path := ""
 var _rename_source_path := ""
 var _pending_delete_paths := PackedStringArray()
 var _delete_was_multiselect := false
+var _current_columns := 0
+var _layout_generation := 0
+var _reflow_gate_tween: Tween
+var _interaction_locks: Dictionary = {}
+var _popover_anchor_path := ""
+var _popover_anchor_fraction := Vector2(0.5, 0.5)
+var _popover_menu: PopupMenu
+var _feedback_generation := 0
 
 @onready var scroll_container := %ProjectScroll as ScrollContainer
 @onready var grid := %ProjectGrid as GridContainer
-@onready var empty_state := %EmptyState as Label
+@onready var empty_state := %EmptyState as Control
+@onready var feedback_banner := %FeedbackBanner as Label
+@onready var import_button := %Import as Button
+@onready var new_button := %New as Button
 @onready var exit_multiselect_button := %ExitMultiSelect as Button
 @onready var project_action_menu := %ProjectActionMenu as PopupMenu
 @onready var batch_action_menu := %BatchActionMenu as PopupMenu
@@ -70,6 +85,10 @@ func _ready() -> void:
 		delete_dialog.confirmed.connect(_on_delete_confirmed)
 	if not delete_dialog.canceled.is_connected(_on_delete_canceled):
 		delete_dialog.canceled.connect(_on_delete_canceled)
+	if not project_action_menu.popup_hide.is_connected(_on_popover_hidden):
+		project_action_menu.popup_hide.connect(_on_popover_hidden)
+	if not batch_action_menu.popup_hide.is_connected(_on_popover_hidden):
+		batch_action_menu.popup_hide.connect(_on_popover_hidden)
 	call_deferred("_update_layout")
 
 
@@ -97,7 +116,31 @@ func reset_scroll_position() -> void:
 	scroll_container.scroll_horizontal = 0
 	scroll_container.scroll_vertical = 0
 	scroll_reset_count += 1
+	call_deferred("_apply_scroll_top_after_layout", scroll_reset_count)
 	call_deferred("_load_visible_thumbnails")
+
+
+func set_interaction_locked(reason: StringName, locked: bool) -> void:
+	if locked:
+		_interaction_locks[reason] = true
+	else:
+		_interaction_locks.erase(reason)
+	_sync_interaction_state()
+
+
+func show_feedback(message: String, is_error := false, duration := FEEDBACK_DURATION) -> void:
+	_feedback_generation += 1
+	var generation := _feedback_generation
+	feedback_banner.text = message
+	feedback_banner.visible = not message.is_empty()
+	feedback_banner.add_theme_color_override(
+		"font_color", FEEDBACK_ERROR_COLOR if is_error else FEEDBACK_NORMAL_COLOR
+	)
+	if duration <= 0.0 or message.is_empty():
+		return
+	var tween := create_tween()
+	tween.tween_interval(duration)
+	tween.tween_callback(_hide_feedback_if_current.bind(generation))
 
 
 func find_entry(path: String) -> ProjectLibraryEntry:
@@ -116,8 +159,7 @@ func set_multiselect_mode(enabled: bool) -> void:
 	multiselect_mode = enabled
 	exit_multiselect_button.visible = enabled
 	_gesture_resolver.reset()
-	project_action_menu.hide()
-	batch_action_menu.hide()
+	_hide_popovers()
 	if not enabled:
 		_selected_paths.clear()
 	_sync_card_selection()
@@ -194,6 +236,7 @@ func _rebuild_cards() -> void:
 		_cards.append(card)
 
 	empty_state.visible = entries.is_empty()
+	_sync_interaction_state()
 	call_deferred("_update_layout")
 	call_deferred("_load_visible_thumbnails")
 
@@ -202,12 +245,32 @@ func _update_layout() -> void:
 	if not is_instance_valid(grid) or not is_instance_valid(scroll_container):
 		return
 	var columns := LANDSCAPE_COLUMNS if size.x >= size.y else PORTRAIT_COLUMNS
+	var should_reflow := visible and _current_columns > 0 and columns != _current_columns
+	var old_rects: Dictionary = {}
+	if should_reflow:
+		for card: ProjectGalleryCard in _cards:
+			if card.entry != null:
+				old_rects[_normalized_path(card.entry.path)] = card.get_global_rect()
+		_gesture_resolver.reset()
+		_hide_popovers()
+		set_interaction_locked(&"reflow", true)
+
+	_current_columns = columns
 	grid.columns = columns
 	var available_width := maxf(scroll_container.size.x - GRID_SIDE_MARGIN * 2.0, 1.0)
 	var separators := GRID_SEPARATION * float(columns - 1)
 	var card_width := maxf(floorf((available_width - separators) / float(columns)), 72.0)
 	for card: ProjectGalleryCard in _cards:
 		card.set_card_width(card_width)
+
+	_layout_generation += 1
+	var generation := _layout_generation
+	if should_reflow and not old_rects.is_empty():
+		get_tree().process_frame.connect(
+			_start_reflow.bind(old_rects, generation), CONNECT_ONE_SHOT
+		)
+	else:
+		set_interaction_locked(&"reflow", false)
 	call_deferred("_load_visible_thumbnails")
 
 
@@ -251,7 +314,7 @@ func _on_resolved_double_tap(path: String, position: Vector2) -> void:
 		var selected := get_selected_paths()
 		if selected.is_empty():
 			return
-		_show_batch_action_menu(position)
+		_show_batch_action_menu(position, path)
 		return
 	_show_project_action_menu(path, position)
 
@@ -278,25 +341,34 @@ func _show_project_action_menu(path: String, position: Vector2) -> void:
 	else:
 		project_action_menu.add_item(tr("Delete"), ActionMenuId.DELETE)
 		project_action_menu.add_item(tr("Reveal in Files"), ActionMenuId.REVEAL)
-	_popup_near(project_action_menu, position)
+	_popup_anchored(project_action_menu, path, position)
 
 
-func _show_batch_action_menu(position: Vector2) -> void:
+func _show_batch_action_menu(position: Vector2, anchor_path := "") -> void:
 	batch_action_menu.clear()
 	if _selected_all_healthy():
 		batch_action_menu.add_item(tr("Duplicate"), ActionMenuId.DUPLICATE)
 	batch_action_menu.add_item(tr("Delete"), ActionMenuId.DELETE)
 	if _selected_all_healthy():
 		batch_action_menu.add_item(tr("Export"), ActionMenuId.EXPORT)
-	_popup_near(batch_action_menu, position)
+	_popup_anchored(batch_action_menu, anchor_path, position)
 
 
-func _popup_near(menu: PopupMenu, position: Vector2) -> void:
-	var viewport_size := get_viewport_rect().size
-	var x := clampi(roundi(position.x), 0, maxi(roundi(viewport_size.x) - 1, 0))
-	var y := clampi(roundi(position.y), 0, maxi(roundi(viewport_size.y) - 1, 0))
-	menu.position = Vector2i(x, y)
+func _popup_anchored(menu: PopupMenu, path: String, position: Vector2) -> void:
+	var card := _find_card(path)
+	if card == null:
+		return
+	var rect := card.get_global_rect()
+	var local_anchor := position - rect.position
+	_popover_anchor_fraction = Vector2(
+		clampf(local_anchor.x / maxf(rect.size.x, 1.0), 0.0, 1.0),
+		clampf(local_anchor.y / maxf(rect.size.y, 1.0), 0.0, 1.0)
+	)
+	_popover_anchor_path = path
+	_popover_menu = menu
+	_place_open_popover()
 	menu.popup()
+	call_deferred("_place_open_popover")
 
 
 func _selected_all_healthy() -> bool:
@@ -362,7 +434,11 @@ func _on_project_action_pressed(id: int) -> void:
 		ActionMenuId.RENAME:
 			_begin_rename(_action_path)
 		ActionMenuId.DUPLICATE:
-			_report_action_errors(duplicate_projects(PackedStringArray([_action_path])))
+			var result := duplicate_projects(PackedStringArray([_action_path]))
+			_report_action_errors(result)
+			var errors: Array = result.get("errors", [])
+			if errors.is_empty():
+				show_feedback(tr("Project duplicated."))
 		ActionMenuId.DELETE:
 			_begin_delete(PackedStringArray([_action_path]), false)
 		ActionMenuId.EXPORT:
@@ -377,7 +453,11 @@ func _on_batch_action_pressed(id: int) -> void:
 		return
 	match id:
 		ActionMenuId.DUPLICATE:
-			_report_action_errors(duplicate_projects(selected))
+			var result := duplicate_projects(selected)
+			_report_action_errors(result)
+			var errors: Array = result.get("errors", [])
+			if errors.is_empty():
+				show_feedback(tr("%d projects duplicated.") % selected.size())
 		ActionMenuId.DELETE:
 			_begin_delete(selected, true)
 		ActionMenuId.EXPORT:
@@ -404,6 +484,7 @@ func _on_rename_confirmed() -> void:
 		return
 	var result := rename_project(source_path, rename_edit.text)
 	if bool(result.get("ok", false)):
+		show_feedback(tr("Project renamed."))
 		return
 	var error := int(result.get("error", FAILED))
 	if error == ERR_ALREADY_EXISTS:
@@ -444,6 +525,12 @@ func _on_delete_confirmed() -> void:
 	Global.dialog_open(false)
 	var result := delete_projects(paths)
 	_report_action_errors(result)
+	var errors: Array = result.get("errors", [])
+	if errors.is_empty():
+		if paths.size() == 1:
+			show_feedback(tr("Project deleted."))
+		else:
+			show_feedback(tr("%d projects deleted.") % paths.size())
 	if was_multiselect:
 		set_multiselect_mode(false)
 
@@ -458,22 +545,24 @@ func _report_action_errors(result: Dictionary) -> void:
 	var errors: Array = result.get("errors", [])
 	if errors.is_empty():
 		return
+	show_feedback(tr("One or more project operations could not be completed."), true)
 	Global.popup_error(tr("One or more project operations could not be completed."))
 
 
 func _on_gallery_resized() -> void:
 	call_deferred("_update_layout")
+	call_deferred("_place_open_popover")
 
 
 func _on_scroll_changed(_value: float) -> void:
 	call_deferred("_load_visible_thumbnails")
+	call_deferred("_place_open_popover")
 
 
 func _on_visibility_changed() -> void:
 	if not visible:
 		_gesture_resolver.reset()
-		project_action_menu.hide()
-		batch_action_menu.hide()
+		_hide_popovers()
 
 
 func _on_new_project_pressed() -> void:
@@ -487,6 +576,104 @@ func _on_import_pressed() -> void:
 func _on_exit_multiselect_pressed() -> void:
 	set_multiselect_mode(false)
 	exit_multiselect_requested.emit()
+
+
+func _start_reflow(old_rects: Dictionary, generation: int) -> void:
+	if generation != _layout_generation or not visible:
+		set_interaction_locked(&"reflow", false)
+		return
+	for card: ProjectGalleryCard in _cards:
+		if card.entry == null:
+			continue
+		var key := _normalized_path(card.entry.path)
+		if old_rects.has(key):
+			var old_rect: Rect2 = old_rects[key]
+			card.prepare_reflow(old_rect)
+			card.play_reflow(REFLOW_DURATION)
+	if is_instance_valid(_reflow_gate_tween):
+		_reflow_gate_tween.kill()
+	_reflow_gate_tween = create_tween()
+	_reflow_gate_tween.tween_interval(REFLOW_DURATION)
+	_reflow_gate_tween.tween_callback(_finish_reflow.bind(generation))
+
+
+func _finish_reflow(generation: int) -> void:
+	if generation != _layout_generation:
+		return
+	for card: ProjectGalleryCard in _cards:
+		card.reset_visual_transform()
+	set_interaction_locked(&"reflow", false)
+	_place_open_popover()
+
+
+func _sync_interaction_state() -> void:
+	var enabled := _interaction_locks.is_empty()
+	if not enabled:
+		_gesture_resolver.reset()
+	import_button.disabled = not enabled
+	new_button.disabled = not enabled
+	exit_multiselect_button.disabled = not enabled
+	for card: ProjectGalleryCard in _cards:
+		card.set_interaction_enabled(enabled)
+
+
+func _find_card(path: String) -> ProjectGalleryCard:
+	var normalized := _normalized_path(path)
+	for card: ProjectGalleryCard in _cards:
+		if card.entry != null and _normalized_path(card.entry.path) == normalized:
+			return card
+	return null
+
+
+func _place_open_popover() -> void:
+	if _popover_menu == null or _popover_anchor_path.is_empty():
+		return
+	var card := _find_card(_popover_anchor_path)
+	if card == null:
+		_hide_popovers()
+		return
+	var card_rect := card.get_global_rect()
+	var visible_rect := scroll_container.get_global_rect()
+	if not visible_rect.intersects(card_rect):
+		_hide_popovers()
+		return
+	var anchor := card_rect.position + card_rect.size * _popover_anchor_fraction
+	var viewport_size := get_viewport_rect().size
+	var menu_size := Vector2(_popover_menu.size)
+	var max_x := maxf(viewport_size.x - menu_size.x, 0.0)
+	var max_y := maxf(viewport_size.y - menu_size.y, 0.0)
+	_popover_menu.position = Vector2i(
+		roundi(clampf(anchor.x, 0.0, max_x)), roundi(clampf(anchor.y, 0.0, max_y))
+	)
+
+
+func _hide_popovers() -> void:
+	project_action_menu.hide()
+	batch_action_menu.hide()
+	_clear_popover_anchor()
+
+
+func _on_popover_hidden() -> void:
+	if not project_action_menu.visible and not batch_action_menu.visible:
+		_clear_popover_anchor()
+
+
+func _clear_popover_anchor() -> void:
+	_popover_anchor_path = ""
+	_popover_anchor_fraction = Vector2(0.5, 0.5)
+	_popover_menu = null
+
+
+func _apply_scroll_top_after_layout(generation: int) -> void:
+	if generation != scroll_reset_count or not is_instance_valid(scroll_container):
+		return
+	scroll_container.scroll_horizontal = 0
+	scroll_container.scroll_vertical = 0
+
+
+func _hide_feedback_if_current(generation: int) -> void:
+	if generation == _feedback_generation:
+		feedback_banner.visible = false
 
 
 func _normalized_path(path: String) -> String:

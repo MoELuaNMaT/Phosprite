@@ -51,7 +51,17 @@ theme_override_styles/hover = SubResource("CardHover")
 theme_override_styles/pressed = SubResource("CardHover")
 script = ExtResource("1")
 
-[node name="Content" type="VBoxContainer" parent="."]
+[node name="VisualRoot" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Content" type="VBoxContainer" parent="VisualRoot"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -65,14 +75,14 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="ThumbnailFrame" type="PanelContainer" parent="Content"]
+[node name="ThumbnailFrame" type="PanelContainer" parent="VisualRoot/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(144, 144)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("ThumbnailBackground")
 
-[node name="Thumbnail" type="TextureRect" parent="Content/ThumbnailFrame"]
+[node name="Thumbnail" type="TextureRect" parent="VisualRoot/Content/ThumbnailFrame"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -84,7 +94,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ThumbnailStatus" type="Label" parent="Content/ThumbnailFrame"]
+[node name="ThumbnailStatus" type="Label" parent="VisualRoot/Content/ThumbnailFrame"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -98,19 +108,19 @@ text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Metadata" type="VBoxContainer" parent="Content"]
+[node name="Metadata" type="VBoxContainer" parent="VisualRoot/Content"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 2
 
-[node name="CanvasSize" type="Label" parent="Content/Metadata"]
+[node name="CanvasSize" type="Label" parent="VisualRoot/Content/Metadata"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.9, 0.905882, 0.921569, 1)
 text = "64 × 64 px"
 
-[node name="ModifiedTime" type="Label" parent="Content/Metadata"]
+[node name="ModifiedTime" type="Label" parent="VisualRoot/Content/Metadata"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
@@ -118,7 +128,7 @@ theme_override_colors/font_color = Color(0.568627, 0.584314, 0.615686, 1)
 theme_override_font_sizes/font_size = 12
 text = "2026-09-21  12:00"
 
-[node name="SelectionOutline" type="Panel" parent="."]
+[node name="SelectionOutline" type="Panel" parent="VisualRoot"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -130,7 +140,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("SelectionOutlineStyle")
 
-[node name="SelectionCheck" type="Label" parent="."]
+[node name="SelectionCheck" type="Label" parent="VisualRoot"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1

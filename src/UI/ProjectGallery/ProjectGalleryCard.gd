@@ -7,13 +7,17 @@ signal pointer_cancel(path: String)
 
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
 const DRAG_CANCEL_DISTANCE := 12.0
+const STATUS_NORMAL_COLOR := Color(0.721569, 0.733333, 0.756863, 1.0)
+const STATUS_ERROR_COLOR := Color(1.0, 0.45, 0.42, 1.0)
 
 var entry: ProjectLibraryEntry
 var thumbnail_loaded := false
 var selected := false
+var interaction_enabled := true
 var _pointer_active := false
 var _pointer_origin := Vector2.ZERO
 
+@onready var visual_root := %VisualRoot as Control
 @onready var thumbnail_frame := %ThumbnailFrame as Control
 @onready var thumbnail_rect := %Thumbnail as TextureRect
 @onready var thumbnail_status := %ThumbnailStatus as Label
@@ -29,14 +33,12 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 	thumbnail_rect.texture = null
 	set_selected(false)
 	if entry.health_state == Entry.HealthState.CORRUPTED:
-		thumbnail_status.text = tr("Corrupted")
-		thumbnail_status.visible = true
+		_set_thumbnail_status(tr("Corrupted"), true)
 		size_label.text = tr("Unreadable project")
 		modified_label.text = _format_modified_time(entry.modified_time)
 		thumbnail_loaded = true
 		return
-	thumbnail_status.text = ""
-	thumbnail_status.visible = false
+	_set_thumbnail_status(tr("Loading preview…"), false)
 	size_label.text = "%d × %d px" % [entry.canvas_size.x, entry.canvas_size.y]
 	modified_label.text = _format_modified_time(entry.modified_time)
 
@@ -52,11 +54,45 @@ func set_thumbnail(image: Image) -> void:
 	thumbnail_loaded = true
 	if image == null or image.is_empty():
 		thumbnail_rect.texture = null
-		thumbnail_status.text = tr("No preview")
-		thumbnail_status.visible = true
+		_set_thumbnail_status(tr("Preview unavailable"), true)
 		return
 	thumbnail_rect.texture = ImageTexture.create_from_image(image)
 	thumbnail_status.visible = false
+
+
+func set_interaction_enabled(value: bool) -> void:
+	interaction_enabled = value
+	if not value:
+		_pointer_active = false
+
+
+func prepare_reflow(old_rect: Rect2) -> void:
+	if not is_instance_valid(visual_root):
+		return
+	var new_rect := get_global_rect()
+	if new_rect.size.x <= 0.0 or new_rect.size.y <= 0.0:
+		return
+	visual_root.position = old_rect.position - new_rect.position
+	visual_root.scale = Vector2(
+		maxf(old_rect.size.x / new_rect.size.x, 0.01),
+		maxf(old_rect.size.y / new_rect.size.y, 0.01)
+	)
+
+
+func play_reflow(duration: float) -> void:
+	if not is_instance_valid(visual_root):
+		return
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(visual_root, "position", Vector2.ZERO, duration)
+	tween.tween_property(visual_root, "scale", Vector2.ONE, duration)
+
+
+func reset_visual_transform() -> void:
+	if not is_instance_valid(visual_root):
+		return
+	visual_root.position = Vector2.ZERO
+	visual_root.scale = Vector2.ONE
 
 
 func set_selected(value: bool) -> void:
@@ -68,7 +104,7 @@ func set_selected(value: bool) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if entry == null:
+	if entry == null or not interaction_enabled:
 		return
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
@@ -118,6 +154,14 @@ func _maybe_cancel_pointer(local_position: Vector2) -> void:
 
 func _to_global_position(local_position: Vector2) -> Vector2:
 	return get_global_transform_with_canvas() * local_position
+
+
+func _set_thumbnail_status(message: String, is_error: bool) -> void:
+	thumbnail_status.text = message
+	thumbnail_status.visible = true
+	thumbnail_status.add_theme_color_override(
+		"font_color", STATUS_ERROR_COLOR if is_error else STATUS_NORMAL_COLOR
+	)
 
 
 func _format_modified_time(unix_time: int) -> String:

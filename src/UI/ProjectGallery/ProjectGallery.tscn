@@ -86,12 +86,14 @@ mouse_default_cursor_shape = 2
 text = "Exit Multi-Select"
 
 [node name="Import" type="Button" parent="Shell/TopBar/Margin/Row"]
+unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 text = "Import"
 
 [node name="New" type="Button" parent="Shell/TopBar/Margin/Row"]
+unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
@@ -116,15 +118,43 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 20
 
-[node name="EmptyState" type="Label" parent="Shell/ProjectScroll/ContentMargin/Content"]
+[node name="FeedbackBanner" type="Label" parent="Shell/ProjectScroll/ContentMargin/Content"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.568627, 0.584314, 0.615686, 1)
-text = "No projects yet"
+theme_override_colors/font_color = Color(0.65, 0.68, 0.74, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="EmptyState" type="VBoxContainer" parent="Shell/ProjectScroll/ContentMargin/Content"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SpacerTop" type="Control" parent="Shell/ProjectScroll/ContentMargin/Content/EmptyState"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Shell/ProjectScroll/ContentMargin/Content/EmptyState"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.87, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "No projects yet"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="Shell/ProjectScroll/ContentMargin/Content/EmptyState"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.568627, 0.584314, 0.615686, 1)
+text = "Create a new project or import artwork to get started."
+horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="ProjectGrid" type="GridContainer" parent="Shell/ProjectScroll/ContentMargin/Content"]
 unique_name_in_owner = true

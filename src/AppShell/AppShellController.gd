@@ -15,6 +15,9 @@ const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.g
 const ProjectImportServiceScript := preload("res://src/ProjectLibrary/ProjectImportService.gd")
 const CanvasSizeResolverScript := preload("res://src/ProjectLibrary/CanvasSizeResolver.gd")
 
+const MODE_TRANSITION_DURATION := 0.16
+const MODE_TRANSITION_OFFSET := 10.0
+
 var managed_mode := false
 var mode := Mode.EDITOR
 var editor_root: Control
@@ -32,6 +35,9 @@ var pending_import_path := ""
 var pending_import_image: Image
 var pending_import_enter_editor := true
 var pending_new_project_purpose := NewProjectPurpose.NONE
+var _mode_tween: Tween
+var _editor_base_position := Vector2.ZERO
+var _gallery_base_position := Vector2.ZERO
 
 
 func configure(
@@ -52,6 +58,10 @@ func configure(
 	import_source_dialog = import_source_panel
 	image_import_mode_dialog = image_mode_panel
 	save_coordinator = coordinator
+	if is_instance_valid(editor_root):
+		_editor_base_position = editor_root.position
+	if is_instance_valid(gallery_root):
+		_gallery_base_position = gallery_root.position
 	if import_service == null:
 		import_service = ProjectImportServiceScript.new()
 	import_service.configure(save_coordinator, save_coordinator.projects_directory)
@@ -60,34 +70,34 @@ func configure(
 	_connect_new_project_dialog()
 	_connect_import_dialogs()
 	if managed_mode:
-		_set_mode(Mode.GALLERY)
+		_set_mode(Mode.GALLERY, false)
 	else:
-		_set_mode(Mode.EDITOR)
+		_set_mode(Mode.EDITOR, false)
 
 
 func startup() -> void:
 	if managed_mode:
-		show_gallery(true)
+		show_gallery(true, true)
 	else:
-		_set_mode(Mode.EDITOR)
+		_set_mode(Mode.EDITOR, false)
 
 
 func is_gallery() -> bool:
 	return mode == Mode.GALLERY
 
 
-func show_gallery(refresh := true) -> bool:
+func show_gallery(refresh := true, animate := true) -> bool:
 	if not managed_mode:
 		return false
 	if refresh and is_instance_valid(gallery_root):
 		gallery_root.refresh()
 		gallery_root.reset_scroll_position()
-	_set_mode(Mode.GALLERY)
+	_set_mode(Mode.GALLERY, animate)
 	return true
 
 
-func show_editor() -> void:
-	_set_mode(Mode.EDITOR)
+func show_editor(animate := true) -> void:
+	_set_mode(Mode.EDITOR, animate)
 
 
 func return_home() -> bool:
@@ -508,13 +518,42 @@ func _find_open_project(path: String) -> int:
 	return -1
 
 
-func _set_mode(next_mode: Mode) -> void:
+func _set_mode(next_mode: Mode, animate := true) -> void:
 	mode = next_mode
+	if is_instance_valid(_mode_tween):
+		_mode_tween.kill()
+
 	if is_instance_valid(editor_root):
 		editor_root.visible = mode == Mode.EDITOR
+		editor_root.modulate = Color.WHITE
+		editor_root.position = _editor_base_position
 	if is_instance_valid(gallery_root):
 		gallery_root.visible = mode == Mode.GALLERY
+		gallery_root.modulate = Color.WHITE
+		gallery_root.position = _gallery_base_position
+		gallery_root.set_interaction_locked(&"mode_transition", animate)
+
+	var target: Control = editor_root if mode == Mode.EDITOR else gallery_root
+	if animate and is_instance_valid(target):
+		target.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		var base_position := _editor_base_position if mode == Mode.EDITOR else _gallery_base_position
+		target.position = base_position + Vector2(0.0, MODE_TRANSITION_OFFSET)
+		_mode_tween = create_tween().set_parallel(true)
+		_mode_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_mode_tween.tween_property(target, "modulate:a", 1.0, MODE_TRANSITION_DURATION)
+		_mode_tween.tween_property(target, "position", base_position, MODE_TRANSITION_DURATION)
+		_mode_tween.chain().tween_callback(_finish_mode_transition.bind(next_mode))
+	elif is_instance_valid(gallery_root):
+		gallery_root.set_interaction_locked(&"mode_transition", false)
+
 	mode_changed.emit(mode)
+
+
+func _finish_mode_transition(expected_mode: Mode) -> void:
+	if mode != expected_mode:
+		return
+	if is_instance_valid(gallery_root):
+		gallery_root.set_interaction_locked(&"mode_transition", false)
 
 
 func _clear_pending_recovery() -> void:
