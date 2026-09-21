@@ -362,13 +362,15 @@ func _on_resolved_single_tap(path: String) -> void:
 
 
 func _on_resolved_double_tap(path: String, position: Vector2) -> void:
+	# DOUBLE_TAP resolves from the second release. Defer popup creation until that
+	# GUI input has fully unwound so BaseButton can leave its native pressed state.
 	if multiselect_mode:
 		var selected := get_selected_paths()
 		if selected.is_empty():
 			return
-		_show_batch_action_menu(position, path)
+		call_deferred("_show_batch_action_menu", position, path)
 		return
-	_show_project_action_menu(path, position)
+	call_deferred("_show_project_action_menu", path, position)
 
 
 func _on_resolved_long_press(path: String) -> void:
