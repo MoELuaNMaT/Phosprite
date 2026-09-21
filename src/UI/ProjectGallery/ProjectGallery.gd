@@ -126,15 +126,20 @@ func _current_orientation_size() -> Vector2:
 	return Vector2(window.size) if is_instance_valid(window) else Vector2.ZERO
 
 
-static func effective_layout_width(shell_width: float, scroll_width: float) -> float:
-	if shell_width > 0.0 and scroll_width > 0.0:
-		return minf(shell_width, scroll_width)
-	return maxf(shell_width, scroll_width)
+static func effective_layout_width(
+	shell_width: float, scroll_width: float, viewport_width: float
+) -> float:
+	var width := INF
+	for candidate in [shell_width, scroll_width, viewport_width]:
+		if candidate > 0.0:
+			width = minf(width, candidate)
+	return 0.0 if is_inf(width) else width
 
 
 func _current_layout_width() -> float:
 	var scroll_width := scroll_container.size.x if is_instance_valid(scroll_container) else 0.0
-	return effective_layout_width(size.x, scroll_width)
+	var viewport_width := get_viewport_rect().size.x
+	return effective_layout_width(size.x, scroll_width, viewport_width)
 
 
 func configure(directory := StoragePolicy.PROJECTS_DIRECTORY) -> void:
