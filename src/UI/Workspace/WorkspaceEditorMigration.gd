@@ -12,6 +12,7 @@ signal migration_completed
 signal panel_visibility_changed(module_id: StringName, visible: bool)
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const GLOBAL_TOOL_OPTIONS_SCENE := preload("res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn")
 
 const WORKSPACE_SIDE_MARGIN := 8.0
@@ -88,6 +89,7 @@ var _legacy_visible := true
 var _legacy_processing := true
 var _previous_autosave_enabled := true
 var _zen_mode := false
+var _single_project_editor := false
 
 
 func setup(
@@ -113,6 +115,7 @@ func setup(
 	surface = workspace_surface
 	dock_host = surface.dock_host
 	layout_store = store
+	_single_project_editor = STORAGE_POLICY.uses_managed_project_storage()
 	if dock_host == null:
 		_clear_setup()
 		return false
@@ -721,14 +724,21 @@ func _prepare_canvas_chrome() -> void:
 			_capture_chrome_state(control)
 
 	if project_tabs != null:
-		_project_tabs_height = maxf(
-			32.0, maxf(project_tabs.size.y, project_tabs.get_combined_minimum_size().y)
-		)
-		_reparent_control(project_tabs, ui_root)
-		project_tabs.set_anchors_preset(Control.PRESET_TOP_WIDE)
-		project_tabs.position = Vector2.ZERO
-		project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
-		project_tabs.z_index = 20
+		if _single_project_editor:
+			# P3 managed storage owns one Editor project at a time. The legacy project
+			# TabBar is both redundant and a source of a dead input strip above Canvas.
+			project_tabs.visible = false
+			project_tabs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_project_tabs_height = 0.0
+		else:
+			_project_tabs_height = maxf(
+				32.0, maxf(project_tabs.size.y, project_tabs.get_combined_minimum_size().y)
+			)
+			_reparent_control(project_tabs, ui_root)
+			project_tabs.set_anchors_preset(Control.PRESET_TOP_WIDE)
+			project_tabs.position = Vector2.ZERO
+			project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
+			project_tabs.z_index = 20
 
 	if horizontal_ruler == null or vertical_ruler == null or viewport_container == null:
 		return
@@ -851,6 +861,8 @@ func _capture_chrome_state(control: Control) -> void:
 			control.offset_left, control.offset_top, control.offset_right, control.offset_bottom
 		),
 		"z_index": control.z_index,
+		"visible": control.visible,
+		"mouse_filter": control.mouse_filter,
 	}
 
 
@@ -894,6 +906,8 @@ func _restore_canvas_chrome() -> void:
 		control.offset_right = offsets.z
 		control.offset_bottom = offsets.w
 		control.z_index = int(state.get("z_index", 0))
+		control.visible = bool(state.get("visible", true))
+		control.mouse_filter = int(state.get("mouse_filter", Control.MOUSE_FILTER_STOP))
 	if is_instance_valid(_ruler_overlay):
 		_ruler_overlay.queue_free()
 	_ruler_overlay = null
@@ -925,4 +939,5 @@ func _clear_setup() -> void:
 	_left_tool_options_state.clear()
 	_tools_palette_state.clear()
 	_project_tabs_height = 0.0
+	_single_project_editor = false
 	live = false
