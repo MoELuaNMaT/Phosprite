@@ -46,10 +46,7 @@ func test_image_layer_import_downfits_centers_and_commits_managed_pxo() -> void:
 	var source_bytes := FileAccess.get_file_as_bytes(SOURCE_IMAGE)
 
 	var project := _main.app_shell_controller.import_service.import_image(
-		SOURCE_IMAGE,
-		source,
-		ImportService.ImageMode.LAYER,
-		Vector2i(64, 64)
+		SOURCE_IMAGE, source, ImportService.ImageMode.LAYER, Vector2i(64, 64)
 	)
 	check_true(project != null, "image-as-layer import should create a managed Project")
 	if project == null:
@@ -87,10 +84,7 @@ func test_image_reference_import_preserves_source_pixels_and_centers_transform()
 		return
 	var canvas_size := Resolver.resolve(source.get_size())
 	var project := _main.app_shell_controller.import_service.import_image(
-		SOURCE_IMAGE,
-		source,
-		ImportService.ImageMode.REFERENCE,
-		canvas_size
+		SOURCE_IMAGE, source, ImportService.ImageMode.REFERENCE, canvas_size
 	)
 	check_true(project != null, "image-as-reference import should create a managed Project")
 	if project == null:
