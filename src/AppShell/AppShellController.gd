@@ -2,12 +2,17 @@ class_name AppShellController
 extends Node
 
 signal mode_changed(mode: Mode)
+signal files_import_source_requested
+signal photos_import_source_requested
 
 enum Mode { GALLERY, EDITOR }
+enum NewProjectPurpose { NONE, BLANK, IMPORT_LAYER }
 
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
 const RecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd")
 const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
+const ProjectImportServiceScript := preload("res://src/ProjectLibrary/ProjectImportService.gd")
+const CanvasSizeResolverScript := preload("res://src/ProjectLibrary/CanvasSizeResolver.gd")
 
 var managed_mode := false
 var mode := Mode.EDITOR
@@ -15,10 +20,16 @@ var editor_root: Control
 var gallery_root: ProjectGallery
 var recovery_dialog: ConfirmationDialog
 var new_project_dialog: NewProjectDialog
+var import_source_dialog: ImportSourceDialog
+var image_import_mode_dialog: ImageImportModeDialog
 var save_coordinator: ProjectSaveCoordinator
+var import_service: ProjectImportService
 
 var pending_recovery_uuid := ""
 var pending_recovery_path := ""
+var pending_import_path := ""
+var pending_import_image: Image
+var pending_new_project_purpose := NewProjectPurpose.NONE
 
 
 func configure(
@@ -27,17 +38,25 @@ func configure(
 	gallery: ProjectGallery,
 	dialog: ConfirmationDialog,
 	coordinator: ProjectSaveCoordinator,
-	new_project_panel: NewProjectDialog = null
+	new_project_panel: NewProjectDialog = null,
+	import_source_panel: ImportSourceDialog = null,
+	image_mode_panel: ImageImportModeDialog = null
 ) -> void:
 	managed_mode = enabled
 	editor_root = editor
 	gallery_root = gallery
 	recovery_dialog = dialog
 	new_project_dialog = new_project_panel
+	import_source_dialog = import_source_panel
+	image_import_mode_dialog = image_mode_panel
 	save_coordinator = coordinator
+	if import_service == null:
+		import_service = ProjectImportServiceScript.new()
+	import_service.configure(save_coordinator, save_coordinator.projects_directory)
 	_connect_gallery()
 	_connect_recovery_dialog()
 	_connect_new_project_dialog()
+	_connect_import_dialogs()
 	if managed_mode:
 		_set_mode(Mode.GALLERY)
 	else:
@@ -112,6 +131,8 @@ func _connect_gallery() -> void:
 		gallery_root.project_open_requested.connect(open_project_path)
 	if not gallery_root.new_project_requested.is_connected(_on_new_project_requested):
 		gallery_root.new_project_requested.connect(_on_new_project_requested)
+	if not gallery_root.import_requested.is_connected(_on_import_requested):
+		gallery_root.import_requested.connect(_on_import_requested)
 
 
 func _connect_recovery_dialog() -> void:
@@ -135,6 +156,57 @@ func _connect_new_project_dialog() -> void:
 		new_project_dialog.create_requested.connect(_on_new_project_create_requested)
 	if not new_project_dialog.canceled.is_connected(_on_new_project_canceled):
 		new_project_dialog.canceled.connect(_on_new_project_canceled)
+
+
+func handoff_import_path(source_path: String) -> bool:
+	if not managed_mode or import_service == null:
+		return false
+	_clear_pending_import()
+	match import_service.classify_path(source_path):
+		ProjectImportService.ImportKind.PXO:
+			var project := import_service.import_pxo(source_path)
+			return _finish_managed_import(project, source_path)
+		ProjectImportService.ImportKind.ASEPRITE:
+			var project := import_service.import_aseprite(source_path)
+			return _finish_managed_import(project, source_path)
+		ProjectImportService.ImportKind.IMAGE:
+			var image := import_service.load_image(source_path)
+			if image == null:
+				_report_import_failure(source_path)
+				return false
+			pending_import_path = source_path
+			pending_import_image = image
+			if not is_instance_valid(image_import_mode_dialog):
+				_report_import_failure(source_path)
+				_clear_pending_import()
+				return false
+			Global.dialog_open(true)
+			image_import_mode_dialog.popup_for_image()
+			return true
+		_:
+			Global.popup_error(
+				tr("This file type is not supported by the Project Gallery import pipeline.")
+			)
+			return false
+
+
+func _connect_import_dialogs() -> void:
+	if is_instance_valid(import_source_dialog):
+		if not import_source_dialog.files_requested.is_connected(_on_files_source_requested):
+			import_source_dialog.files_requested.connect(_on_files_source_requested)
+		if not import_source_dialog.photos_requested.is_connected(_on_photos_source_requested):
+			import_source_dialog.photos_requested.connect(_on_photos_source_requested)
+		if not import_source_dialog.dismissed.is_connected(_on_import_source_dismissed):
+			import_source_dialog.dismissed.connect(_on_import_source_dismissed)
+	if is_instance_valid(image_import_mode_dialog):
+		if not image_import_mode_dialog.layer_requested.is_connected(_on_image_layer_requested):
+			image_import_mode_dialog.layer_requested.connect(_on_image_layer_requested)
+		if not image_import_mode_dialog.reference_requested.is_connected(
+			_on_image_reference_requested
+		):
+			image_import_mode_dialog.reference_requested.connect(_on_image_reference_requested)
+		if not image_import_mode_dialog.dismissed.is_connected(_on_image_mode_dismissed):
+			image_import_mode_dialog.dismissed.connect(_on_image_mode_dismissed)
 
 
 func create_new_project(canvas_size: Vector2i) -> bool:
@@ -177,17 +249,120 @@ func _rollback_uncommitted_project(project: Project, target_path: String) -> voi
 func _on_new_project_requested() -> void:
 	if not managed_mode or not is_instance_valid(new_project_dialog):
 		return
+	_clear_pending_import()
+	pending_new_project_purpose = NewProjectPurpose.BLANK
 	Global.dialog_open(true)
 	new_project_dialog.popup_for_new_project()
 
 
+func _on_import_requested() -> void:
+	if not managed_mode or not is_instance_valid(import_source_dialog):
+		return
+	_clear_pending_import()
+	Global.dialog_open(true)
+	import_source_dialog.popup_for_import()
+
+
+func _on_files_source_requested() -> void:
+	Global.dialog_open(false)
+	files_import_source_requested.emit()
+
+
+func _on_photos_source_requested() -> void:
+	Global.dialog_open(false)
+	photos_import_source_requested.emit()
+
+
+func _on_import_source_dismissed() -> void:
+	Global.dialog_open(false)
+
+
+func _on_image_layer_requested() -> void:
+	if pending_import_image == null or pending_import_path.is_empty():
+		_clear_pending_import()
+		Global.dialog_open(false)
+		return
+	pending_new_project_purpose = NewProjectPurpose.IMPORT_LAYER
+	var inferred_size := CanvasSizeResolverScript.resolve(pending_import_image.get_size())
+	new_project_dialog.popup_with_size(inferred_size)
+
+
+func _on_image_reference_requested() -> void:
+	if pending_import_image == null or pending_import_path.is_empty():
+		_clear_pending_import()
+		Global.dialog_open(false)
+		return
+	var source_path := pending_import_path
+	var image := pending_import_image
+	var canvas_size := CanvasSizeResolverScript.resolve(image.get_size())
+	var project := import_service.import_image(
+		source_path, image, ProjectImportService.ImageMode.REFERENCE, canvas_size
+	)
+	_clear_pending_import()
+	Global.dialog_open(false)
+	_finish_managed_import(project, source_path)
+
+
+func _on_image_mode_dismissed() -> void:
+	_clear_pending_import()
+	Global.dialog_open(false)
+
+
 func _on_new_project_create_requested(canvas_size: Vector2i) -> void:
 	Global.dialog_open(false)
+	if pending_new_project_purpose == NewProjectPurpose.IMPORT_LAYER:
+		var source_path := pending_import_path
+		var image := pending_import_image
+		var project := import_service.import_image(
+			source_path, image, ProjectImportService.ImageMode.LAYER, canvas_size
+		)
+		_clear_pending_import()
+		pending_new_project_purpose = NewProjectPurpose.NONE
+		_finish_managed_import(project, source_path)
+		return
+	pending_new_project_purpose = NewProjectPurpose.NONE
 	create_new_project(canvas_size)
 
 
 func _on_new_project_canceled() -> void:
+	if pending_new_project_purpose == NewProjectPurpose.IMPORT_LAYER:
+		_clear_pending_import()
+	pending_new_project_purpose = NewProjectPurpose.NONE
 	Global.dialog_open(false)
+
+
+func _finish_managed_import(project: Project, source_path: String) -> bool:
+	if project == null:
+		_report_import_failure(source_path)
+		return false
+	var project_index := Global.projects.find(project)
+	if project_index < 0:
+		_report_import_failure(source_path)
+		return false
+	Global.tabs.current_tab = project_index
+	if Global.current_project_index != project_index:
+		_report_import_failure(source_path)
+		return false
+	show_editor()
+	return true
+
+
+func _report_import_failure(source_path: String) -> void:
+	var detail := ""
+	if import_service != null:
+		detail = import_service.last_error
+	var file_name := source_path.uri_decode().get_file()
+	if detail.is_empty():
+		Global.popup_error(tr("Could not import '%s'.") % file_name)
+	else:
+		Global.popup_error(tr("Could not import '%s'. %s") % [file_name, detail])
+
+
+func _clear_pending_import() -> void:
+	pending_import_path = ""
+	pending_import_image = null
+	if pending_new_project_purpose == NewProjectPurpose.IMPORT_LAYER:
+		pending_new_project_purpose = NewProjectPurpose.NONE
 
 
 func _show_recovery_prompt(entry: ProjectLibraryEntry) -> void:
