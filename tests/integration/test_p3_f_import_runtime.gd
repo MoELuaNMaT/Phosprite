@@ -229,8 +229,8 @@ func test_image_handoff_opens_mode_then_seeds_layer_canvas_dialog_from_source_si
 	_main.image_import_mode_dialog.layer_requested.emit()
 	check_eq(
 		_main.new_project_dialog.selected_size,
-		Vector2i(67, 50),
-		"作为图层 must seed NewProjectDialog with CanvasSizeResolver output",
+		Vector2i(60, 40),
+		"作为图层 must seed NewProjectDialog with the exact source pixel dimensions",
 	)
 	_main.new_project_dialog.hide()
 	_main.app_shell_controller._on_new_project_canceled()
