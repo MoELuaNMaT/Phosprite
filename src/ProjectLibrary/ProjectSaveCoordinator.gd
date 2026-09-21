@@ -76,7 +76,7 @@ func is_save_due(project: Project, now_msec := -1) -> bool:
 	)
 
 
-func flush_project(project: Project, reason := "forced") -> bool:
+func flush_project(project: Project, reason := "forced", target_path_override := "") -> bool:
 	if project == null or not managed_storage_enabled:
 		return true
 	if not project.has_changed:
@@ -101,7 +101,7 @@ func flush_project(project: Project, reason := "forced") -> bool:
 	if recovery_error != OK:
 		return _fail_save(project, reason, recovery_error)
 
-	var target_path := _target_path(project)
+	var target_path := target_path_override if not target_path_override.is_empty() else _target_path(project)
 	if target_path.is_empty():
 		return _fail_save(project, reason, ERR_INVALID_PARAMETER)
 	var staged_path := RecoveryStore.staging_path(project.project_uuid)
@@ -143,6 +143,15 @@ func flush_project(project: Project, reason := "forced") -> bool:
 	var last_dirty := int(state["last_dirty_msec"])
 	state["first_dirty_msec"] = Time.get_ticks_msec() if last_dirty < 0 else last_dirty
 	return reason == "autosave"
+
+
+func forget_project(project: Project, discard_recovery := false) -> void:
+	if project == null:
+		return
+	_states.erase(project.project_uuid)
+	RecoveryStore.remove_staging(project.project_uuid)
+	if discard_recovery:
+		RecoveryStore.discard(project.project_uuid)
 
 
 func flush_all(reason := "forced") -> bool:
