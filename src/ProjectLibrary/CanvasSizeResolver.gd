@@ -30,8 +30,7 @@ static func fit_layer_size(source_size: Vector2i, canvas_size: Vector2i) -> Vect
 	if source_size.x <= canvas_size.x and source_size.y <= canvas_size.y:
 		return source_size
 	var scale_factor := minf(
-		float(canvas_size.x) / float(source_size.x),
-		float(canvas_size.y) / float(source_size.y)
+		float(canvas_size.x) / float(source_size.x), float(canvas_size.y) / float(source_size.y)
 	)
 	return Vector2i(
 		maxi(1, floori(float(source_size.x) * scale_factor)),
@@ -50,8 +49,7 @@ static func reference_scale(source_size: Vector2i, canvas_size: Vector2i) -> flo
 	if source_size.x <= 0 or source_size.y <= 0 or canvas_size.x <= 0 or canvas_size.y <= 0:
 		return 1.0
 	return minf(
-		float(canvas_size.x) / float(source_size.x),
-		float(canvas_size.y) / float(source_size.y)
+		float(canvas_size.x) / float(source_size.x), float(canvas_size.y) / float(source_size.y)
 	)
 
 
