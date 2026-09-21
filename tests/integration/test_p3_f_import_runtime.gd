@@ -95,10 +95,20 @@ func test_image_layer_import_keeps_64px_sprite_exactly_one_to_one() -> void:
 	check_eq(project.size, Vector2i(64, 64), "64×64 source must create a 64×64 project by default")
 	var cel := project.frames[0].cels[0] as PixelCel
 	var imported := cel.get_image()
-	check_eq(imported.get_size(), Vector2i(64, 64), "imported layer must keep the source dimensions")
-	check_eq(imported.get_pixel(0, 0), Color.RED, "top-left pixel must remain at the same coordinate")
-	check_eq(imported.get_pixel(17, 31), Color.BLUE, "interior pixel must remain at the same coordinate")
-	check_eq(imported.get_pixel(63, 63), Color.GREEN, "bottom-right pixel must remain at the same coordinate")
+	check_eq(
+		imported.get_size(), Vector2i(64, 64), "imported layer must keep the source dimensions"
+	)
+	check_eq(
+		imported.get_pixel(0, 0), Color.RED, "top-left pixel must remain at the same coordinate"
+	)
+	check_eq(
+		imported.get_pixel(17, 31), Color.BLUE, "interior pixel must remain at the same coordinate"
+	)
+	check_eq(
+		imported.get_pixel(63, 63),
+		Color.GREEN,
+		"bottom-right pixel must remain at the same coordinate",
+	)
 
 
 func test_image_reference_import_preserves_source_pixels_and_centers_transform() -> void:
