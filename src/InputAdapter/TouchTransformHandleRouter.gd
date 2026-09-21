@@ -9,7 +9,7 @@ const TOUCH_HANDLE_RADIUS_PX := TOUCH_HANDLE_DIAMETER_PX * 0.5
 const MIN_ZOOM := 0.0001
 
 
-static func handle_event(canvas, screen_position: Vector2, event: InputEvent) -> bool:
+static func handle_event(canvas, viewport_position: Vector2, event: InputEvent) -> bool:
 	if event is not InputEventMouseButton and event is not InputEventMouseMotion:
 		return false
 	if not is_instance_valid(canvas) or not is_instance_valid(canvas.selection):
@@ -29,7 +29,7 @@ static func handle_event(canvas, screen_position: Vector2, event: InputEvent) ->
 		return false
 
 	var local_position: Vector2 = (
-		transformation_handles.get_global_transform_with_canvas().affine_inverse() * screen_position
+		transformation_handles.get_global_transform_with_canvas().affine_inverse() * viewport_position
 	)
 	if Global.mirror_view:
 		local_position.x = project.size.x - local_position.x
