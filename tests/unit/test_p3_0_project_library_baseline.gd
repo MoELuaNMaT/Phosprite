@@ -108,26 +108,21 @@ func test_p3_0_legacy_autosave_is_crash_backup_not_managed_save() -> void:
 
 
 func test_p3_0_records_legacy_startup_before_gallery_routing() -> void:
-	var src := FileAccess.get_file_as_string(MAIN_SOURCE)
+	var doc := FileAccess.get_file_as_string(BASELINE_DOC)
 	check_has(
-		src,
-		"if Global.session_crashed_last_time() and OpenSave.had_backups_on_startup:",
-		"P3-0 must record the legacy startup crash-recovery gate before P3-C changes it",
+		doc,
+		"RestoreSessionConfirmationDialog",
+		"P3-0 must preserve evidence of the legacy global startup recovery popup",
 	)
 	check_has(
-		src,
-		"restore_session_confirmation_dialog.popup_centered_clamped()",
-		"P3-0 must record the existing global startup recovery popup",
+		doc,
+		"Global.open_last_project",
+		"P3-0 must preserve evidence of the legacy last-project startup gate",
 	)
 	check_has(
-		src,
-		"if Global.open_last_project:",
-		"P3-0 must record the existing last-project startup gate",
-	)
-	check_has(
-		src,
-		"load_last_project(true)",
-		"P3-0 must record the existing automatic last-project load",
+		doc,
+		"the global startup recovery popup is removed",
+		"the baseline must record that P3-C is allowed to replace the startup recovery flow",
 	)
 
 
