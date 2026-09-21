@@ -9,8 +9,6 @@
 
 PhospriteNativeDocuments *PhospriteNativeDocuments::singleton = nullptr;
 
-namespace {
-
 static NSMutableArray<NSString *> *cold_open_paths = nil;
 static id document_picker_delegate = nil;
 static id photo_picker_delegate = nil;
@@ -444,8 +442,6 @@ static bool cleanup_temp_path(NSString *p_path) {
 	NSURL *folder = [file_url URLByDeletingLastPathComponent];
 	return [[NSFileManager defaultManager] removeItemAtURL:folder error:nil];
 }
-
-} // namespace
 
 void PhospriteNativeDocuments::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("present_document_picker"), &PhospriteNativeDocuments::present_document_picker);
