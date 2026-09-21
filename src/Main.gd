@@ -233,8 +233,9 @@ func _init() -> void:
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
-	if OS.has_feature("mobile") and not get_window().size_changed.is_connected(
-		_on_mobile_window_size_changed
+	if (
+		OS.has_feature("mobile")
+		and not get_window().size_changed.is_connected(_on_mobile_window_size_changed)
 	):
 		get_window().size_changed.connect(_on_mobile_window_size_changed)
 	var managed_storage := STORAGE_POLICY.uses_managed_project_storage()
