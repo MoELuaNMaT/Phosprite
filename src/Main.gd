@@ -50,6 +50,7 @@ var _last_session_last_project := ""
 	$Dialogs/RestoreSessionConfirmationDialog as ConfirmationDialog
 )
 @onready var project_recovery_dialog := $Dialogs/ProjectRecoveryDialog as ConfirmationDialog
+@onready var new_project_dialog := $Dialogs/NewProjectDialog as NewProjectDialog
 @onready var download_confirmation := $Dialogs/DownloadImageConfirmationDialog as ConfirmationDialog
 @onready var left_cursor: Sprite2D = $LeftCursor
 @onready var right_cursor: Sprite2D = $RightCursor
@@ -238,7 +239,8 @@ func _ready() -> void:
 		editor_root,
 		project_gallery_root,
 		project_recovery_dialog,
-		project_save_coordinator
+		project_save_coordinator,
+		new_project_dialog
 	)
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
