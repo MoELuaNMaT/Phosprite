@@ -75,6 +75,32 @@ func test_image_layer_import_downfits_centers_and_commits_managed_pxo() -> void:
 	)
 
 
+func test_image_layer_import_keeps_64px_sprite_exactly_one_to_one() -> void:
+	_prepare_managed_main()
+	if _main == null:
+		return
+	var source := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	source.fill(Color.TRANSPARENT)
+	source.set_pixel(0, 0, Color.RED)
+	source.set_pixel(17, 31, Color.BLUE)
+	source.set_pixel(63, 63, Color.GREEN)
+	check_eq(source.save_png(SOURCE_IMAGE), OK, "64×64 pixel fixture must be writable")
+
+	var project: Project = _main.app_shell_controller.import_service.import_image(
+		SOURCE_IMAGE, source, ImportService.ImageMode.LAYER, source.get_size()
+	)
+	check_true(project != null, "64×64 image-as-layer import should create a managed Project")
+	if project == null:
+		return
+	check_eq(project.size, Vector2i(64, 64), "64×64 source must create a 64×64 project by default")
+	var cel := project.frames[0].cels[0] as PixelCel
+	var imported := cel.get_image()
+	check_eq(imported.get_size(), Vector2i(64, 64), "imported layer must keep the source dimensions")
+	check_eq(imported.get_pixel(0, 0), Color.RED, "top-left pixel must remain at the same coordinate")
+	check_eq(imported.get_pixel(17, 31), Color.BLUE, "interior pixel must remain at the same coordinate")
+	check_eq(imported.get_pixel(63, 63), Color.GREEN, "bottom-right pixel must remain at the same coordinate")
+
+
 func test_image_reference_import_preserves_source_pixels_and_centers_transform() -> void:
 	_prepare_managed_main()
 	if _main == null:
@@ -173,7 +199,7 @@ func test_pxo_copy_in_preserves_source_and_repairs_only_imported_duplicate_uuid(
 	)
 
 
-func test_image_handoff_opens_mode_then_seeds_layer_canvas_dialog_from_resolver() -> void:
+func test_image_handoff_opens_mode_then_seeds_layer_canvas_dialog_from_source_size() -> void:
 	_prepare_managed_main()
 	if _main == null:
 		return
