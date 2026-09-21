@@ -116,8 +116,8 @@ func test_p3_f_supported_import_types_and_stage_boundaries() -> void:
 	)
 	check_has(
 		shell_src,
-		"func handoff_import_path(source_path: String) -> bool:",
-		"P3-G must have one ordinary-path handoff entry into the P3-F business layer",
+		"func handoff_import_path(source_path: String",
+		"P3-G may extend the handoff signature, but P3-F must retain one path-based business entry",
 	)
 	check_has(
 		service_src,
