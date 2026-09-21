@@ -258,7 +258,9 @@ static func navigation_target_angle(
 	return wrapf(baseline_camera_angle + pair_delta, -PI, PI)
 
 
-static func viewport_position_inside_size(viewport_position: Vector2, viewport_size: Vector2) -> bool:
+static func viewport_position_inside_size(
+	viewport_position: Vector2, viewport_size: Vector2
+) -> bool:
 	return Rect2(Vector2.ZERO, viewport_size).has_point(viewport_position)
 
 
@@ -271,9 +273,7 @@ func _viewport_position_inside_main_viewport(viewport_position: Vector2) -> bool
 	# transformed ScreenTouch/ScreenDrag positions into that viewport's local
 	# coordinates, so comparing them against a root/global Control rect rejects
 	# the top strip by exactly the editor toolbar offset.
-	var root_position := (
-		Global.main_viewport.get_global_transform_with_canvas() * viewport_position
-	)
+	var root_position := Global.main_viewport.get_global_transform_with_canvas() * viewport_position
 	var tree := Global.main_viewport.get_tree()
 	if tree != null:
 		for blocker_node in tree.get_nodes_in_group(CANVAS_TOUCH_BLOCKER_GROUP):
