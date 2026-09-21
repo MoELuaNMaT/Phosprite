@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" uid="uid://clbjfkdupw52l" path="res://src/UI/Timeline/CelProperties.tscn" id="17_ucs64"]
 [ext_resource type="PackedScene" uid="uid://clgu8wb5o6oup" path="res://src/UI/Dialogs/ExportDialog.tscn" id="39"]
 [ext_resource type="PackedScene" path="res://src/UI/ProjectGallery/ProjectGallery.tscn" id="40_p3c"]
+[ext_resource type="PackedScene" path="res://src/UI/ProjectGallery/NewProjectDialog.tscn" id="41_p3e"]
 
 [node name="Control" type="Control" unique_id=1088730198]
 layout_mode = 3
@@ -79,6 +80,8 @@ dialog_text = "Phosprite did not close properly last time. Would you like to res
 title = "Recover Project?"
 ok_button_text = "Restore"
 dialog_text = "Phosprite found recovery data for this project."
+
+[node name="NewProjectDialog" parent="Dialogs" instance=ExtResource("41_p3e")]
 
 [node name="ErrorDialog" type="AcceptDialog" parent="Dialogs" unique_id=1836925387]
 dialog_text = "This is an error message!"
