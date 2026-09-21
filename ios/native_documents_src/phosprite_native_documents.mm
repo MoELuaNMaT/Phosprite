@@ -308,7 +308,8 @@ static void install_scene_url_hooks() {
 		NSItemProvider *provider = result.itemProvider;
 		dispatch_group_enter(group);
 		[provider loadObjectOfClass:[UIImage class]
-			completionHandler:^(UIImage *image, NSError *error) {
+			completionHandler:^(id<NSItemProviderReading> object, NSError *error) {
+				UIImage *image = [object isKindOfClass:[UIImage class]] ? (UIImage *)object : nil;
 				if (image && !error) {
 					NSURL *destination = write_photo_png(image, provider.suggestedName);
 					if (destination) {
