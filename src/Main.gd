@@ -14,6 +14,7 @@ const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
 ## Platform policy for where .pxo files live; see the script for the iPad rules.
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
+const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
 
 var opensprite_file_selected := false
 var redone := false
@@ -30,8 +31,11 @@ var splash_dialog: AcceptDialog:
 			add_child(splash_dialog)
 		return splash_dialog
 var project_save_coordinator: ProjectSaveCoordinator
+var app_shell_controller: AppShellController
 var _last_session_last_project := ""
 
+@onready var project_gallery_root := $ProjectGalleryRoot as ProjectGallery
+@onready var editor_root := $MenuAndUI as Control
 @onready var top_menu_container := $MenuAndUI/TopMenuContainer as Panel
 @onready var main_ui := $MenuAndUI/UI/DockableContainer as DockableContainer
 ## Dialog used to open images and project (.pxo) files.
@@ -45,6 +49,7 @@ var _last_session_last_project := ""
 @onready var restore_session_confirmation_dialog := (
 	$Dialogs/RestoreSessionConfirmationDialog as ConfirmationDialog
 )
+@onready var project_recovery_dialog := $Dialogs/ProjectRecoveryDialog as ConfirmationDialog
 @onready var download_confirmation := $Dialogs/DownloadImageConfirmationDialog as ConfirmationDialog
 @onready var left_cursor: Sprite2D = $LeftCursor
 @onready var right_cursor: Sprite2D = $RightCursor
@@ -220,12 +225,21 @@ func _init() -> void:
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
+	var managed_storage := STORAGE_POLICY.uses_managed_project_storage()
 	project_save_coordinator = PROJECT_SAVE_COORDINATOR.new()
-	project_save_coordinator.configure(
-		STORAGE_POLICY.uses_managed_project_storage(), STORAGE_POLICY.PROJECTS_DIRECTORY
-	)
+	project_save_coordinator.configure(managed_storage, STORAGE_POLICY.PROJECTS_DIRECTORY)
 	add_child(project_save_coordinator)
 	Global.project_switch_guard = project_save_coordinator.can_switch_project
+
+	app_shell_controller = APP_SHELL_CONTROLLER.new()
+	add_child(app_shell_controller)
+	app_shell_controller.configure(
+		managed_storage,
+		editor_root,
+		project_gallery_root,
+		project_recovery_dialog,
+		project_save_coordinator
+	)
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 
@@ -239,6 +253,10 @@ func _ready() -> void:
 	_last_session_last_project = get_last_project_path()
 	_handle_cmdline_arguments()
 	get_tree().root.files_dropped.connect(_on_files_dropped)
+	if top_menu_container.has_method("set_return_home_visible"):
+		top_menu_container.set_return_home_visible(managed_storage)
+	if top_menu_container.has_signal("return_home_requested"):
+		top_menu_container.return_home_requested.connect(_on_return_home_requested)
 	if OS.get_name() == "Android":
 		var intent_data := Applinks.get_data()
 		if not intent_data.is_empty():
@@ -246,20 +264,30 @@ func _ready() -> void:
 	if not DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE_EXTRA):
 		save_sprite_dialog.option_count = 0
 
-	# Detect if Pixelorama crashed last time.
-	if Global.session_crashed_last_time() and OpenSave.had_backups_on_startup:
+	# Desktop keeps the legacy Pixelorama startup flow. Managed iPad storage starts
+	# in the Project Gallery and defers recovery decisions until that project is opened.
+	if (
+		not managed_storage
+		and Global.session_crashed_last_time()
+		and OpenSave.had_backups_on_startup
+	):
 		restore_session_confirmation_dialog.popup_centered_clamped()
 	await get_tree().process_frame
-	if Global.open_last_project:
+	if not managed_storage and Global.open_last_project:
 		load_last_project(true)
 	_setup_application_window_size()
-	_show_splash_screen()
+	if managed_storage:
+		app_shell_controller.startup()
+	else:
+		_show_splash_screen()
 	Global.pixelorama_has_loaded = true
 	Global.pixelorama_opened.emit()
 	print("Time Phosprite took to open: %sms" % Time.get_ticks_msec())
 
 
 func _input(event: InputEvent) -> void:
+	if is_instance_valid(app_shell_controller) and app_shell_controller.is_gallery():
+		return
 	if event.is_action_pressed(&"layer_visibility"):
 		for selected_cel in Global.current_project.selected_cels:
 			var layer := Global.current_project.layers[selected_cel[1]]
@@ -276,6 +304,11 @@ func _input(event: InputEvent) -> void:
 		Global.main_viewport.get_child(0).push_input(event)
 	left_cursor.position = get_global_mouse_position() + Vector2(-32, 32)
 	right_cursor.position = get_global_mouse_position() + Vector2(32, 32)
+
+
+func _on_return_home_requested() -> void:
+	if is_instance_valid(app_shell_controller):
+		app_shell_controller.return_home()
 
 
 func _project_switched() -> void:
@@ -381,15 +414,18 @@ func set_mobile_fullscreen_safe_area() -> void:
 		(get_window().mode == Window.MODE_EXCLUSIVE_FULLSCREEN)
 		or (get_window().mode == Window.MODE_FULLSCREEN)
 	)
-	var menu_and_ui: VBoxContainer = $MenuAndUI
+	var shell_roots: Array[Control] = [editor_root, project_gallery_root]
 	if is_fullscreen:
 		var safe_area := DisplayServer.get_display_safe_area()
-		menu_and_ui.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		var pos := safe_area.position / get_window().content_scale_factor
-		menu_and_ui.position = pos
-		menu_and_ui.size = (safe_area.size / get_window().content_scale_factor)
+		var shell_size := safe_area.size / get_window().content_scale_factor
+		for shell_root: Control in shell_roots:
+			shell_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			shell_root.position = pos
+			shell_root.size = shell_size
 	else:
-		menu_and_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		for shell_root: Control in shell_roots:
+			shell_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func set_custom_cursor() -> void:
