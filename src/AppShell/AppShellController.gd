@@ -292,6 +292,7 @@ func _on_image_layer_requested() -> void:
 	if pending_import_image == null or pending_import_path.is_empty():
 		_clear_pending_import()
 		Global.dialog_open(false)
+		import_flow_finished.emit(false)
 		return
 	pending_new_project_purpose = NewProjectPurpose.IMPORT_LAYER
 	var inferred_size := CanvasSizeResolverScript.resolve(pending_import_image.get_size())
@@ -302,6 +303,7 @@ func _on_image_reference_requested() -> void:
 	if pending_import_image == null or pending_import_path.is_empty():
 		_clear_pending_import()
 		Global.dialog_open(false)
+		import_flow_finished.emit(false)
 		return
 	var source_path := pending_import_path
 	var image := pending_import_image
