@@ -45,7 +45,7 @@ func test_image_layer_import_downfits_centers_and_commits_managed_pxo() -> void:
 		return
 	var source_bytes := FileAccess.get_file_as_bytes(SOURCE_IMAGE)
 
-	var project := _main.app_shell_controller.import_service.import_image(
+	var project: Project = _main.app_shell_controller.import_service.import_image(
 		SOURCE_IMAGE, source, ImportService.ImageMode.LAYER, Vector2i(64, 64)
 	)
 	check_true(project != null, "image-as-layer import should create a managed Project")
@@ -83,7 +83,7 @@ func test_image_reference_import_preserves_source_pixels_and_centers_transform()
 	if source == null:
 		return
 	var canvas_size := Resolver.resolve(source.get_size())
-	var project := _main.app_shell_controller.import_service.import_image(
+	var project: Project = _main.app_shell_controller.import_service.import_image(
 		SOURCE_IMAGE, source, ImportService.ImageMode.REFERENCE, canvas_size
 	)
 	check_true(project != null, "image-as-reference import should create a managed Project")
@@ -124,7 +124,7 @@ func test_pxo_copy_in_preserves_source_and_repairs_only_imported_duplicate_uuid(
 	var source_bytes := FileAccess.get_file_as_bytes(SOURCE_PXO)
 	var source_uuid := fixture.project_uuid
 
-	var first := _main.app_shell_controller.import_service.import_pxo(SOURCE_PXO)
+	var first: Project = _main.app_shell_controller.import_service.import_pxo(SOURCE_PXO)
 	check_true(first != null, "first PXO copy-in should succeed")
 	if first == null:
 		return
@@ -135,8 +135,8 @@ func test_pxo_copy_in_preserves_source_and_repairs_only_imported_duplicate_uuid(
 		"first PXO copy-in should retain the basename inside managed Projects",
 	)
 
-	var first_uuid := first.project_uuid
-	var second := _main.app_shell_controller.import_service.import_pxo(SOURCE_PXO)
+	var first_uuid: String = first.project_uuid
+	var second: Project = _main.app_shell_controller.import_service.import_pxo(SOURCE_PXO)
 	check_true(second != null, "second PXO copy-in should resolve the path collision")
 	if second == null:
 		return
