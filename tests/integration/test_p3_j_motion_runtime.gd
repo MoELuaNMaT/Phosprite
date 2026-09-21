@@ -65,8 +65,8 @@ func test_gallery_return_scroll_and_mode_transition_finish_stably() -> void:
 		"Gallery transition must finish at full opacity",
 	)
 	check_true(
-		gallery.position.distance_to(Vector2.ZERO) < 0.01,
-		"Gallery transition must settle back at its base position",
+		gallery.position.distance_to(shell._gallery_base_position) < 0.01,
+		"Gallery transition must settle back at its captured base position",
 	)
 
 
@@ -92,6 +92,7 @@ func test_orientation_reflow_preserves_card_order_and_unlocks_touch() -> void:
 	check_eq(gallery.grid.columns, 6, "landscape Gallery must use six columns")
 	var order_before := _card_paths(gallery)
 
+	var reflow_before := gallery.reflow_animation_count
 	gallery.size = Vector2(700, 1200)
 	gallery._update_layout()
 	check_eq(gallery.grid.columns, 4, "portrait Gallery must use four columns")
@@ -107,15 +108,12 @@ func test_orientation_reflow_preserves_card_order_and_unlocks_touch() -> void:
 	)
 
 	await tree.process_frame
-	var has_visual_delta := false
-	for card: ProjectGalleryCard in gallery._cards:
-		if (
-			card.visual_root.position.distance_to(Vector2.ZERO) > 0.01
-			or card.visual_root.scale.distance_to(Vector2.ONE) > 0.01
-		):
-			has_visual_delta = true
-			break
-	check_true(has_visual_delta, "orientation change must visibly interpolate from the old layout")
+	await tree.process_frame
+	check_eq(
+		gallery.reflow_animation_count,
+		reflow_before + 1,
+		"orientation change must start exactly one FLIP reflow",
+	)
 
 	await tree.create_timer(0.24).timeout
 	check_true(

@@ -31,6 +31,7 @@ var library: ProjectLibrary
 var entries: Array[ProjectLibraryEntry] = []
 var refresh_count := 0
 var scroll_reset_count := 0
+var reflow_animation_count := 0
 var multiselect_mode := false
 
 var _cards: Array[ProjectGalleryCard] = []
@@ -582,6 +583,7 @@ func _start_reflow(old_rects: Dictionary, generation: int) -> void:
 	if generation != _layout_generation or not visible:
 		set_interaction_locked(&"reflow", false)
 		return
+	reflow_animation_count += 1
 	for card: ProjectGalleryCard in _cards:
 		if card.entry == null:
 			continue

@@ -38,6 +38,8 @@ var pending_new_project_purpose := NewProjectPurpose.NONE
 var _mode_tween: Tween
 var _editor_base_position := Vector2.ZERO
 var _gallery_base_position := Vector2.ZERO
+var _editor_base_instance_id := 0
+var _gallery_base_instance_id := 0
 
 
 func configure(
@@ -58,9 +60,11 @@ func configure(
 	import_source_dialog = import_source_panel
 	image_import_mode_dialog = image_mode_panel
 	save_coordinator = coordinator
-	if is_instance_valid(editor_root):
+	if is_instance_valid(editor_root) and editor_root.get_instance_id() != _editor_base_instance_id:
+		_editor_base_instance_id = editor_root.get_instance_id()
 		_editor_base_position = editor_root.position
-	if is_instance_valid(gallery_root):
+	if is_instance_valid(gallery_root) and gallery_root.get_instance_id() != _gallery_base_instance_id:
+		_gallery_base_instance_id = gallery_root.get_instance_id()
 		_gallery_base_position = gallery_root.position
 	if import_service == null:
 		import_service = ProjectImportServiceScript.new()
@@ -536,7 +540,9 @@ func _set_mode(next_mode: Mode, animate := true) -> void:
 	var target: Control = editor_root if mode == Mode.EDITOR else gallery_root
 	if animate and is_instance_valid(target):
 		target.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		var base_position := _editor_base_position if mode == Mode.EDITOR else _gallery_base_position
+		var base_position := (
+			_editor_base_position if mode == Mode.EDITOR else _gallery_base_position
+		)
 		target.position = base_position + Vector2(0.0, MODE_TRANSITION_OFFSET)
 		_mode_tween = create_tween().set_parallel(true)
 		_mode_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

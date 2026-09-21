@@ -130,8 +130,10 @@ func test_project_card_reflow_transform_returns_to_identity() -> void:
 		"prepared FLIP visual must start from the old/new size ratio",
 	)
 
-	card.play_reflow(0.02)
-	await tree.create_timer(0.04).timeout
+	var tween := card.play_reflow(1.0)
+	check_true(tween != null, "card reflow must return its tween for deterministic stepping")
+	if tween != null:
+		tween.custom_step(1.0)
 	check_true(
 		card.visual_root.position.distance_to(Vector2.ZERO) < 0.01,
 		"FLIP translation must finish at identity",

@@ -74,18 +74,18 @@ func prepare_reflow(old_rect: Rect2) -> void:
 		return
 	visual_root.position = old_rect.position - new_rect.position
 	visual_root.scale = Vector2(
-		maxf(old_rect.size.x / new_rect.size.x, 0.01),
-		maxf(old_rect.size.y / new_rect.size.y, 0.01)
+		maxf(old_rect.size.x / new_rect.size.x, 0.01), maxf(old_rect.size.y / new_rect.size.y, 0.01)
 	)
 
 
-func play_reflow(duration: float) -> void:
+func play_reflow(duration: float) -> Tween:
 	if not is_instance_valid(visual_root):
-		return
+		return null
 	var tween := create_tween().set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(visual_root, "position", Vector2.ZERO, duration)
 	tween.tween_property(visual_root, "scale", Vector2.ONE, duration)
+	return tween
 
 
 func reset_visual_transform() -> void:
