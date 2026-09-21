@@ -1161,7 +1161,7 @@ func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_out
 	)
 	check_true(
 		(
-			adapter_source.contains("_screen_position_can_start_primary_tool")
+			adapter_source.contains("_viewport_position_can_start_primary_tool")
 			and adapter_source.contains("Tools.can_start_tool_at")
 		),
 		"iPad Pencil/finger acquisition must honor the same document-bound tool policy"
