@@ -69,6 +69,9 @@ func _ready() -> void:
 		library = ProjectLibraryScript.new(StoragePolicy.PROJECTS_DIRECTORY)
 	if not resized.is_connected(_on_gallery_resized):
 		resized.connect(_on_gallery_resized)
+	var window := get_window()
+	if is_instance_valid(window) and not window.size_changed.is_connected(_on_gallery_resized):
+		window.size_changed.connect(_on_gallery_resized)
 	if not visibility_changed.is_connected(_on_visibility_changed):
 		visibility_changed.connect(_on_visibility_changed)
 	var vertical_scroll := scroll_container.get_v_scroll_bar()
@@ -96,7 +99,23 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	var expected_columns := columns_for_viewport_size(_current_orientation_size())
+	if expected_columns != _current_columns:
+		_update_layout()
 	_consume_gesture_actions(_gesture_resolver.poll(Time.get_ticks_msec()))
+
+
+static func columns_for_viewport_size(viewport_size: Vector2) -> int:
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return LANDSCAPE_COLUMNS
+	return LANDSCAPE_COLUMNS if viewport_size.x >= viewport_size.y else PORTRAIT_COLUMNS
+
+
+func _current_orientation_size() -> Vector2:
+	var window := get_window()
+	if is_instance_valid(window) and window.size.x > 0 and window.size.y > 0:
+		return Vector2(window.size)
+	return size
 
 
 func configure(directory := StoragePolicy.PROJECTS_DIRECTORY) -> void:
@@ -245,7 +264,7 @@ func _rebuild_cards() -> void:
 func _update_layout() -> void:
 	if not is_instance_valid(grid) or not is_instance_valid(scroll_container):
 		return
-	var columns := LANDSCAPE_COLUMNS if size.x >= size.y else PORTRAIT_COLUMNS
+	var columns := columns_for_viewport_size(_current_orientation_size())
 	var should_reflow := visible and _current_columns > 0 and columns != _current_columns
 	var old_rects: Dictionary = {}
 	if should_reflow:
