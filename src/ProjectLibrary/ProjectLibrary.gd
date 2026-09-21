@@ -20,7 +20,7 @@ func _init(directory := StoragePolicy.PROJECTS_DIRECTORY) -> void:
 
 ## Returns the current managed-project library without instantiating Project objects.
 ## Only ZIP metadata, preview.png and filesystem timestamps are read on the healthy fast path.
-func scan() -> Array[ProjectLibraryEntry]:
+func scan(include_thumbnails := true) -> Array[ProjectLibraryEntry]:
 	var entries: Array[ProjectLibraryEntry] = []
 	if not DirAccess.dir_exists_absolute(projects_directory):
 		var dir_error := DirAccess.make_dir_recursive_absolute(projects_directory)
@@ -31,7 +31,7 @@ func scan() -> Array[ProjectLibraryEntry]:
 	for file_name in file_names:
 		if file_name.get_extension().to_lower() != StoragePolicy.PROJECT_EXTENSION.trim_prefix("."):
 			continue
-		entries.append(_read_entry(projects_directory.path_join(file_name)))
+		entries.append(_read_entry(projects_directory.path_join(file_name), include_thumbnails))
 
 	_repair_duplicate_uuids(entries)
 	for entry: ProjectLibraryEntry in entries:
@@ -52,7 +52,27 @@ static func build_gallery_metadata(project_uuid: String, canvas_size: Vector2i) 
 	}
 
 
-func _read_entry(path: String) -> ProjectLibraryEntry:
+func load_thumbnail(entry: ProjectLibraryEntry) -> Image:
+	if entry == null or entry.health_state != ProjectLibraryEntry.HealthState.OK:
+		return null
+	if entry.thumbnail != null:
+		return entry.thumbnail
+	var reader := ZIPReader.new()
+	if reader.open(entry.path) != OK:
+		return null
+	if not reader.file_exists(PREVIEW_ENTRY):
+		reader.close()
+		return null
+	var image := Image.new()
+	var error := image.load_png_from_buffer(reader.read_file(PREVIEW_ENTRY))
+	reader.close()
+	if error != OK:
+		return null
+	entry.thumbnail = image
+	return image
+
+
+func _read_entry(path: String, include_thumbnail := true) -> ProjectLibraryEntry:
 	var entry := Entry.new(path)
 	entry.modified_time = FileAccess.get_modified_time(path)
 
@@ -75,7 +95,7 @@ func _read_entry(path: String) -> ProjectLibraryEntry:
 
 	entry.uuid = metadata["project_uuid"]
 	entry.canvas_size = Vector2i(metadata["size_x"], metadata["size_y"])
-	if reader.file_exists(PREVIEW_ENTRY):
+	if include_thumbnail and reader.file_exists(PREVIEW_ENTRY):
 		var image := Image.new()
 		if image.load_png_from_buffer(reader.read_file(PREVIEW_ENTRY)) == OK:
 			entry.thumbnail = image
