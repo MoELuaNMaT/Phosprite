@@ -4,7 +4,7 @@
 #include "core/object/class_db.h"
 #include "core/variant/array.h"
 #include "core/variant/dictionary.h"
-#include "core/variant/packed_string_array.h"
+#include "core/variant/variant.h"
 
 class PhospriteNativeDocuments : public Object {
 	GDCLASS(PhospriteNativeDocuments, Object);
