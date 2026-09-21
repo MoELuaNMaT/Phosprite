@@ -106,9 +106,24 @@ static NSURL *write_photo_png(UIImage *p_image, NSString *p_name) {
 		return nil;
 	}
 
-	UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:p_image.size];
+	// UIImage.size is expressed in points. Using a default UIGraphicsImageRenderer
+	// multiplies that logical size by the device screen scale, so a 64×64 pixel
+	// sprite can silently become 128×128 on a 2x iPad. Normalize orientation at
+	// scale 1.0 using the source image's real pixel dimensions instead.
+	CGFloat pixel_width = p_image.CGImage ? (CGFloat)CGImageGetWidth(p_image.CGImage) : p_image.size.width * p_image.scale;
+	CGFloat pixel_height = p_image.CGImage ? (CGFloat)CGImageGetHeight(p_image.CGImage) : p_image.size.height * p_image.scale;
+	BOOL swaps_axes =
+		p_image.imageOrientation == UIImageOrientationLeft ||
+		p_image.imageOrientation == UIImageOrientationLeftMirrored ||
+		p_image.imageOrientation == UIImageOrientationRight ||
+		p_image.imageOrientation == UIImageOrientationRightMirrored;
+	CGSize output_size = swaps_axes ? CGSizeMake(pixel_height, pixel_width) : CGSizeMake(pixel_width, pixel_height);
+	UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+	format.scale = 1.0;
+	format.opaque = NO;
+	UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:output_size format:format];
 	UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
-		[p_image drawInRect:CGRectMake(0, 0, p_image.size.width, p_image.size.height)];
+		[p_image drawInRect:CGRectMake(0, 0, output_size.width, output_size.height)];
 	}];
 	NSData *data = UIImagePNGRepresentation(normalized);
 	if (!data || ![data writeToURL:destination atomically:YES]) {
