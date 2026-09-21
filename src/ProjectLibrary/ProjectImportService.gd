@@ -216,6 +216,8 @@ func _avoid_managed_uuid_collision(project: Project, reserved: Dictionary) -> vo
 
 func _rollback_import(project: Project, target_path: String, previous_index: int) -> void:
 	var project_index := Global.projects.find(project)
+	var switch_guard := Global.project_switch_guard
+	Global.project_switch_guard = Callable()
 	if project_index >= 0 and project_index < Global.tabs.tab_count:
 		if (
 			Global.tabs.current_tab == project_index
@@ -225,6 +227,7 @@ func _rollback_import(project: Project, target_path: String, previous_index: int
 		):
 			Global.tabs.current_tab = previous_index
 		Global.tabs.remove_tab(project_index)
+	Global.project_switch_guard = switch_guard
 	save_coordinator.forget_project(project, true)
 	project.remove()
 	if FileAccess.file_exists(target_path):
