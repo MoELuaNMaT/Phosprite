@@ -161,9 +161,7 @@ func _write_snapshot(path: String, project_uuid: String, payload: String) -> boo
 		packer.close()
 		return false
 	var gallery := Library.build_gallery_metadata(project_uuid, Vector2i(32, 24))
-	if not _write_entry(
-		packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()
-	):
+	if not _write_entry(packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()):
 		packer.close()
 		return false
 	if not _write_entry(packer, "payload.txt", payload.to_utf8_buffer()):

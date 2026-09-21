@@ -62,22 +62,12 @@ func test_large_library_scan_stays_metadata_only_and_tracks_external_rescan() ->
 	)
 	check_true(
 		_write_pxo(
-			modified_path,
-			modified_uuid,
-			Vector2i(321, 123),
-			preview_bytes,
-			"externally-modified"
+			modified_path, modified_uuid, Vector2i(321, 123), preview_bytes, "externally-modified"
 		),
 		"external modification should rewrite the selected PXO",
 	)
 	check_true(
-		_write_pxo(
-			added_path,
-			_uuid_for(999),
-			Vector2i(48, 24),
-			preview_bytes,
-			"externally-added"
-		),
+		_write_pxo(added_path, _uuid_for(999), Vector2i(48, 24), preview_bytes, "externally-added"),
 		"external add should create a new managed PXO",
 	)
 	var corrupt := FileAccess.open(corrupted_path, FileAccess.WRITE)
@@ -197,24 +187,12 @@ func test_interrupted_transaction_boundaries_preserve_formal_and_recovery() -> v
 	var preview_bytes := _preview_bytes()
 	var formal_path := TEST_ROOT.path_join("recovery_target.pxo")
 	check_true(
-		_write_pxo(
-			formal_path,
-			RECOVERY_UUID,
-			Vector2i(40, 30),
-			preview_bytes,
-			"formal-v1"
-		),
+		_write_pxo(formal_path, RECOVERY_UUID, Vector2i(40, 30), preview_bytes, "formal-v1"),
 		"formal recovery fixture should be writable",
 	)
 	var staged_path := RecoveryStore.staging_path(RECOVERY_UUID)
 	check_true(
-		_write_pxo(
-			staged_path,
-			RECOVERY_UUID,
-			Vector2i(40, 30),
-			preview_bytes,
-			"recovery-v2"
-		),
+		_write_pxo(staged_path, RECOVERY_UUID, Vector2i(40, 30), preview_bytes, "recovery-v2"),
 		"staging recovery fixture should be writable",
 	)
 	check_true(
@@ -316,9 +294,7 @@ func _write_pxo(
 		packer.close()
 		return false
 	var gallery := Library.build_gallery_metadata(project_uuid, canvas_size)
-	if not _write_entry(
-		packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()
-	):
+	if not _write_entry(packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()):
 		packer.close()
 		return false
 	if not preview_bytes.is_empty():
