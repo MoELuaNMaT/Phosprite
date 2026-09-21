@@ -51,6 +51,8 @@ var _last_session_last_project := ""
 )
 @onready var project_recovery_dialog := $Dialogs/ProjectRecoveryDialog as ConfirmationDialog
 @onready var new_project_dialog := $Dialogs/NewProjectDialog as NewProjectDialog
+@onready var import_source_dialog := $Dialogs/ImportSourceDialog as ImportSourceDialog
+@onready var image_import_mode_dialog := $Dialogs/ImageImportModeDialog as ImageImportModeDialog
 @onready var download_confirmation := $Dialogs/DownloadImageConfirmationDialog as ConfirmationDialog
 @onready var left_cursor: Sprite2D = $LeftCursor
 @onready var right_cursor: Sprite2D = $RightCursor
@@ -240,7 +242,9 @@ func _ready() -> void:
 		project_gallery_root,
 		project_recovery_dialog,
 		project_save_coordinator,
-		new_project_dialog
+		new_project_dialog,
+		import_source_dialog,
+		image_import_mode_dialog
 	)
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
