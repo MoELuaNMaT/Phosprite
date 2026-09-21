@@ -29,15 +29,16 @@ func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
 	resolver.reset()
 	resolver.pointer_down(path, Vector2(20, 20), 1000)
 	resolver.pointer_up(path, Vector2(20, 20), 1050)
-	var double := resolver.pointer_down(path, Vector2(22, 22), 1350)
-	check_eq(double.size(), 1, "second down at the 300 ms boundary must resolve double tap")
+	var second_down := resolver.pointer_down(path, Vector2(22, 22), 1350)
+	check_eq(
+		second_down.size(),
+		0,
+		"second down at the 300 ms boundary must wait for release before opening a popup",
+	)
+	var double := resolver.pointer_up(path, Vector2(22, 22), 1380)
+	check_eq(double.size(), 1, "second release must resolve exactly one double tap")
 	if double.size() == 1:
 		check_eq(double[0]["kind"], Resolver.ActionKind.DOUBLE_TAP, "action must be double tap")
-	check_eq(
-		resolver.pointer_up(path, Vector2(22, 22), 1380).size(),
-		0,
-		"double release must be consumed",
-	)
 	check_eq(resolver.poll(2000).size(), 0, "double tap must not leak a delayed single")
 
 	resolver.reset()
@@ -131,6 +132,16 @@ func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> voi
 		gallery_src,
 		"var selected := get_selected_paths()",
 		"multiselect double tap must operate on the existing selected set",
+	)
+	check_has(
+		gallery_src,
+		'call_deferred("_show_project_action_menu", path, position)',
+		"single-project action menu must open only after the second release event unwinds",
+	)
+	check_has(
+		gallery_src,
+		'call_deferred("_show_batch_action_menu", position, path)',
+		"batch action menu must also avoid stealing the originating Button release",
 	)
 	check_has(
 		card_scene,
