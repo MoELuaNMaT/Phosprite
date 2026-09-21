@@ -39,8 +39,9 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 
 func set_card_width(card_width: float) -> void:
 	var width := maxf(card_width, 1.0)
+	var thumbnail_width := maxf(width - 16.0, 1.0)
 	custom_minimum_size = Vector2(width, width + 54.0)
-	thumbnail_frame.custom_minimum_size = Vector2(width, width)
+	thumbnail_frame.custom_minimum_size = Vector2(thumbnail_width, thumbnail_width)
 
 
 func set_thumbnail(image: Image) -> void:
