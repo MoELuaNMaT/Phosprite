@@ -112,11 +112,16 @@ static func columns_for_viewport_size(viewport_size: Vector2) -> int:
 
 
 func _current_orientation_size() -> Vector2:
-	if OS.get_name() == "iOS":
-		var window := get_window()
-		if is_instance_valid(window) and window.size.x > 0 and window.size.y > 0:
-			return Vector2(window.size)
-	return size
+	# The Gallery is laid out inside Main's mobile safe-area shell. Window.size is
+	# not an authoritative layout size on iPad after a sensor rotation: it may
+	# update before/after the safe-area Control or remain in a different scale.
+	# Always prefer the Control that actually owns the card grid.
+	if size.x > 0.0 and size.y > 0.0:
+		return size
+	if is_instance_valid(scroll_container) and scroll_container.size.x > 0.0:
+		return scroll_container.size
+	var window := get_window()
+	return Vector2(window.size) if is_instance_valid(window) else Vector2.ZERO
 
 
 func configure(directory := StoragePolicy.PROJECTS_DIRECTORY) -> void:
@@ -280,7 +285,10 @@ func _update_layout() -> void:
 	grid.columns = columns
 	var available_width := maxf(scroll_container.size.x - GRID_SIDE_MARGIN * 2.0, 1.0)
 	var separators := GRID_SEPARATION * float(columns - 1)
-	var card_width := maxf(floorf((available_width - separators) / float(columns)), 72.0)
+	# Never let a per-card minimum force the Grid wider than the safe-area viewport.
+	# Four portrait columns are an invariant; narrow safe areas shrink cards instead
+	# of growing the content horizontally.
+	var card_width := maxf(floorf((available_width - separators) / float(columns)), 1.0)
 	for card: ProjectGalleryCard in _cards:
 		card.set_card_width(card_width)
 
