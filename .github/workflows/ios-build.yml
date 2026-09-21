@@ -102,6 +102,7 @@ jobs:
           test -f ios/plugins/PhospritePointerIdentity.gdip
           test -d ios/plugins/PhospritePointerIdentity.xcframework
 
+          cd "${BUILD_ROOT}"
           scons \
             target=release \
             arch=arm64 \
