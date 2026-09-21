@@ -101,7 +101,9 @@ func flush_project(project: Project, reason := "forced", target_path_override :=
 	if recovery_error != OK:
 		return _fail_save(project, reason, recovery_error)
 
-	var target_path := target_path_override if not target_path_override.is_empty() else _target_path(project)
+	var target_path := (
+		target_path_override if not target_path_override.is_empty() else _target_path(project)
+	)
 	if target_path.is_empty():
 		return _fail_save(project, reason, ERR_INVALID_PARAMETER)
 	var staged_path := RecoveryStore.staging_path(project.project_uuid)
