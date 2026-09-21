@@ -10,24 +10,28 @@ const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.g
 const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
 const CanvasSizeResolverScript := preload("res://src/ProjectLibrary/CanvasSizeResolver.gd")
 
-const IMAGE_EXTENSIONS := PackedStringArray([
-	"png",
-	"bmp",
-	"hdr",
-	"jpg",
-	"jpeg",
-	"svg",
-	"tga",
-	"webp",
-	"exr",
-])
+const IMAGE_EXTENSIONS := PackedStringArray(
+	[
+		"png",
+		"bmp",
+		"hdr",
+		"jpg",
+		"jpeg",
+		"svg",
+		"tga",
+		"webp",
+		"exr",
+	]
+)
 
 var save_coordinator: ProjectSaveCoordinator
 var projects_directory := StoragePolicy.PROJECTS_DIRECTORY
 var last_error := ""
 
 
-func configure(coordinator: ProjectSaveCoordinator, directory := StoragePolicy.PROJECTS_DIRECTORY) -> void:
+func configure(
+	coordinator: ProjectSaveCoordinator, directory := StoragePolicy.PROJECTS_DIRECTORY
+) -> void:
 	save_coordinator = coordinator
 	projects_directory = directory
 
@@ -65,7 +69,9 @@ func import_pxo(source_path: String) -> Project:
 
 	var source_name := source_path.uri_decode().get_file().get_basename()
 	var reserved_uuids := _managed_uuid_set()
-	var target_path := ProjectFactoryScript.make_unique_project_path(source_name, projects_directory)
+	var target_path := ProjectFactoryScript.make_unique_project_path(
+		source_name, projects_directory
+	)
 	var copy_error := DirAccess.copy_absolute(source_path, target_path)
 	if copy_error != OK:
 		last_error = "Project copy failed: %s" % error_string(copy_error)
@@ -131,7 +137,9 @@ func import_image(
 		return null
 
 	var project_name := source_path.uri_decode().get_file().get_basename()
-	var target_path := ProjectFactoryScript.make_unique_project_path(project_name, projects_directory)
+	var target_path := ProjectFactoryScript.make_unique_project_path(
+		project_name, projects_directory
+	)
 	var project := ProjectFactoryScript.create_blank_project(project_name, canvas_size)
 	if image_mode == ImageMode.LAYER:
 		_apply_image_layer(project, image, project_name)
@@ -148,7 +156,9 @@ func import_image(
 
 
 func _apply_image_layer(project: Project, source_image: Image, layer_name: String) -> void:
-	var fitted_size := CanvasSizeResolverScript.fit_layer_size(source_image.get_size(), project.size)
+	var fitted_size := CanvasSizeResolverScript.fit_layer_size(
+		source_image.get_size(), project.size
+	)
 	var fitted := source_image.duplicate()
 	if fitted.get_size() != fitted_size:
 		fitted.resize(fitted_size.x, fitted_size.y, Image.INTERPOLATE_NEAREST)
@@ -170,7 +180,9 @@ func _apply_reference_image(project: Project, source_image: Image) -> void:
 	reference.create_from_image(source_image.duplicate())
 	if not project.reference_images.has(reference):
 		project.reference_images.append(reference)
-	var scale_factor := CanvasSizeResolverScript.reference_scale(source_image.get_size(), project.size)
+	var scale_factor := CanvasSizeResolverScript.reference_scale(
+		source_image.get_size(), project.size
+	)
 	reference.scale = Vector2.ONE * scale_factor
 	reference.position = CanvasSizeResolverScript.reference_position(
 		source_image.get_size(), project.size, scale_factor
