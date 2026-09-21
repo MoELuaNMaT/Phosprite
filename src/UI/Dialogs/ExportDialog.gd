@@ -3,8 +3,12 @@ extends ConfirmationDialog
 ## Called when user resumes export after filename collision
 signal resume_export_function
 signal about_to_preview(dict: Dictionary)
+signal gallery_profile_confirmed(profile: ExportProfile)
+signal configured_export_finished(success: bool, project: Project)
+signal configured_export_canceled(project: Project)
 
 const SHARE_SERVICE := preload("res://src/PlatformServices/ShareService.gd")
+const EXPORT_PROFILE := preload("res://src/ProjectLibrary/ExportProfile.gd")
 
 var preview_current_frame := 0
 var preview_frames: Array[Texture2D] = []
@@ -28,6 +32,8 @@ var spritesheet_exports: Array[Export.FileFormat] = [
 ]
 
 var _preview_images: Array[Export.ProcessedImage]
+var _configured_project: Project
+var _profile_only := false
 
 @onready var tabs: TabBar = $VBoxContainer/TabBar
 @onready var checker: ColorRect = $"%TransparentChecker"
@@ -96,6 +102,25 @@ func _ready() -> void:
 	for dialog_child in path_dialog_popup.find_children("", "Window", true, false):
 		if dialog_child is Window:
 			dialog_child.always_on_top = path_dialog_popup.always_on_top
+	if not canceled.is_connected(_on_dialog_canceled):
+		canceled.connect(_on_dialog_canceled)
+
+
+func configure_for_project(project: Project, profile_only := false) -> void:
+	_configured_project = project
+	_profile_only = profile_only
+
+
+func clear_configured_project() -> void:
+	_configured_project = null
+	_profile_only = false
+	path_line_edit.editable = true
+
+
+func _target_project() -> Project:
+	if _configured_project != null:
+		return _configured_project
+	return Global.current_project
 
 
 func show_tab() -> void:
@@ -106,19 +131,20 @@ func show_tab() -> void:
 	frames_option_button.select(Export.frame_current_tag)
 	create_layer_list()
 	layers_option_button.select(Export.export_layers)
+	var project := _target_project()
 	match Export.current_tab:
 		Export.ExportTab.IMAGE:
-			Export.process_animation()
+			Export.process_animation(project)
 			get_tree().call_group("ExportImageOptions", "show")
 			get_tree().set_group(
-				"ExportMultipleFilesOptions", "disabled", Export.is_single_file_format()
+				"ExportMultipleFilesOptions", "disabled", Export.is_single_file_format(_target_project())
 			)
 			get_tree().set_group(
-				"ExportMultipleFilesEditableOptions", "editable", !Export.is_single_file_format()
+				"ExportMultipleFilesEditableOptions", "editable", !Export.is_single_file_format(_target_project())
 			)
 		Export.ExportTab.SPRITESHEET:
 			frame_timer.stop()
-			Export.process_spritesheet()
+			Export.process_spritesheet(project)
 			spritesheet_orientation.selected = Export.orientation
 			spritesheet_lines_count.max_value = Export.number_of_frames
 			spritesheet_lines_count.value = Export.lines_count
@@ -139,7 +165,7 @@ func set_preview() -> void:
 	if _preview_images.is_empty():
 		return
 	var preview_data := {
-		"exporter_id": Global.current_project.file_format,
+		"exporter_id": _target_project().file_format,
 		"export_tab": Export.current_tab,
 		"preview_images": _preview_images,
 	}
@@ -149,7 +175,7 @@ func set_preview() -> void:
 		previews.columns = 1
 		add_image_preview(_preview_images[0].image)
 	else:
-		if Export.is_single_file_format():
+		if Export.is_single_file_format(_target_project()):
 			previews.columns = 1
 			add_animated_preview()
 		else:
@@ -227,7 +253,7 @@ func set_file_format_selector() -> void:
 ## Updates the suitable list of file formats. First is preferred.
 ## Note that if the current format is in the list, it stays for consistency.
 func _set_file_format_selector_suitable_file_formats(formats: Array[Export.FileFormat]) -> void:
-	var project := Global.current_project
+	var project := _target_project()
 	file_format_options.clear()
 	path_dialog_popup.clear_filters()
 	var ffmpeg_installed := Export.is_ffmpeg_installed()
@@ -264,7 +290,7 @@ func create_frame_tag_list() -> void:
 	frames_option_button.add_item("Selected frames", 1)
 
 	# Repopulate list with current tag list
-	for item in Global.current_project.animation_tags:
+	for item in _target_project().animation_tags:
 		frames_option_button.add_item(item.name)
 
 
@@ -276,7 +302,7 @@ func create_layer_list() -> void:
 	layers_option_button.add_item("Selected layers", 1)
 
 	# Repopulate list with current tag list
-	for layer in Global.current_project.layers:
+	for layer in _target_project().layers:
 		var layer_name := tr("Pixel layer:")
 		if layer is GroupLayer:
 			layer_name = tr("Group layer:")
@@ -327,7 +353,8 @@ func set_export_progress_bar(value: float) -> void:
 func _on_about_to_popup() -> void:
 	get_ok_button().text = "Export"
 	Global.transform_content_confirmed.emit()
-	var project := Global.current_project
+	var project := _target_project()
+	path_line_edit.editable = not _profile_only
 	if SHARE_SERVICE.is_share_export_platform():
 		# Destination is selected later in iOS Share Sheet. The Pixelorama exporter
 		# still needs a real writable directory, so point it at private staging.
@@ -351,7 +378,7 @@ func _on_about_to_popup() -> void:
 		path_line_edit.text = project.export_directory_path.path_join(project.file_name) + file_ext
 	if not SHARE_SERVICE.is_share_export_platform():
 		path_dialog_popup.current_dir = project.export_directory_path
-	Export.cache_blended_frames()
+	Export.cache_blended_frames(project)
 	show_tab()
 
 	# Set the size of the preview checker
@@ -367,7 +394,7 @@ func _on_orientation_item_selected(id: Export.Orientation) -> void:
 	Export.orientation = id
 	_handle_orientation_ui()
 	spritesheet_lines_count.value = Export.frames_divided_by_spritesheet_lines()
-	Export.process_spritesheet()
+	Export.process_spritesheet(_target_project())
 	update_dimensions_label()
 	set_preview()
 
@@ -388,7 +415,7 @@ func _handle_orientation_ui() -> void:
 
 func _on_lines_count_value_changed(value: float) -> void:
 	Export.lines_count = value
-	Export.process_spritesheet()
+	Export.process_spritesheet(_target_project())
 	update_dimensions_label()
 	set_preview()
 
@@ -396,7 +423,7 @@ func _on_lines_count_value_changed(value: float) -> void:
 func _on_direction_item_selected(id: Export.AnimationDirection) -> void:
 	Export.direction = id
 	preview_current_frame = 0
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 	spritesheet_lines_count.max_value = Export.number_of_frames
 	update_dimensions_label()
@@ -405,7 +432,7 @@ func _on_direction_item_selected(id: Export.AnimationDirection) -> void:
 func _on_repeat_count_changed(value: int) -> void:
 	Export.repeat_count = value
 	preview_current_frame = 0
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 	spritesheet_lines_count.max_value = Export.number_of_frames
 	update_dimensions_label()
@@ -425,11 +452,17 @@ func _on_interpolation_item_selected(id: Image.Interpolation) -> void:
 
 
 func _on_confirmed() -> void:
-	export()
+	var project := _target_project()
+	if _profile_only:
+		gallery_profile_confirmed.emit(EXPORT_PROFILE.capture(project))
+		return
+	var success := await export()
+	if _configured_project != null:
+		configured_export_finished.emit(success, project)
 
 
-func export() -> void:
-	var project := Global.current_project
+func export() -> bool:
+	var project := _target_project()
 	project.export_overwrite = false
 	var share_export := SHARE_SERVICE.is_share_export_platform()
 	if share_export:
@@ -445,7 +478,7 @@ func export() -> void:
 					)
 				)
 			)
-			return
+			return false
 		var staging_err := SHARE_SERVICE.reset_staging_directory()
 		if staging_err != OK:
 			Global.popup_error(
@@ -454,14 +487,14 @@ func export() -> void:
 					% [staging_err, error_string(staging_err)]
 				)
 			)
-			return
+			return false
 		project.export_directory_path = SHARE_SERVICE.STAGING_DIRECTORY
 
 	if not await Export.export_processed_images(false, self, project):
-		return
+		return false
 	if not share_export:
 		hide()
-		return
+		return true
 
 	# GIF/APNG may be encoded on Export's worker thread. Its public export method
 	# can return after the worker starts, so wait without blocking the main loop,
@@ -477,10 +510,10 @@ func export() -> void:
 		Global.popup_error(
 			tr("Share Export expected one finished file, but found %d.") % artifacts.size()
 		)
-		return
+		return false
 	if not SHARE_SERVICE.share_file(artifacts[0], tr("Phosprite Export")):
 		Global.popup_error(tr("The iOS Share Sheet is unavailable in this build."))
-		return
+		return false
 
 	# On iOS Export is a share action, not a persistent destination. Do not let
 	# Pixelorama's next quick-export bypass the dialog/Share Sheet.
@@ -488,6 +521,7 @@ func export() -> void:
 	if is_instance_valid(Global.top_menu_container):
 		Global.top_menu_container.call("_update_file_menu_buttons", project)
 	hide()
+	return true
 
 
 func _supports_single_share_artifact(project: Project) -> bool:
@@ -504,12 +538,13 @@ func _on_path_button_pressed() -> void:
 func _on_path_line_edit_text_changed(new_text: String) -> void:
 	# Where the field holds a bare file name, its base dir is meaningless
 	# ("." for a plain name) and must not clobber the resolved export directory.
+	var project := _target_project()
 	if not _uses_bare_file_name():
-		Global.current_project.export_directory_path = new_text.get_base_dir()
-	Global.current_project.file_name = new_text.get_file().get_basename()
+		project.export_directory_path = new_text.get_base_dir()
+	project.file_name = new_text.get_file().get_basename()
 	var file_format := Export.get_file_format_from_extension(new_text.get_extension())
-	Global.current_project.file_format = file_format
-	if not Export.is_single_file_format():
+	project.file_format = file_format
+	if not Export.is_single_file_format(_target_project()):
 		get_tree().set_group("ExportMultipleFilesOptions", "disabled", false)
 		get_tree().set_group("ExportMultipleFilesEditableOptions", "editable", true)
 		frame_timer.stop()
@@ -534,7 +569,7 @@ func _on_path_dialog_file_selected(path: String) -> void:
 
 func _on_path_dialog_dir_selected(dir: String) -> void:
 	directory_path_label.text = dir
-	Global.current_project.export_directory_path = dir
+	_target_project().export_directory_path = dir
 
 
 func _on_path_dialog_canceled() -> void:
@@ -597,6 +632,11 @@ func _on_ExportDialog_visibility_changed() -> void:
 		Export.processed_images.clear()
 
 
+func _on_dialog_canceled() -> void:
+	if _configured_project != null:
+		configured_export_canceled.emit(_configured_project)
+
+
 func _on_export_json_toggled(toggled_on: bool) -> void:
 	Export.export_json = toggled_on
 
@@ -604,13 +644,13 @@ func _on_export_json_toggled(toggled_on: bool) -> void:
 func _on_split_layers_toggled(toggled_on: bool) -> void:
 	Export.split_layers = toggled_on
 	spritesheet_layers_as_separate_files.disabled = !Export.split_layers
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_layers_as_separate_files_toggled(toggled_on: bool) -> void:
 	Export.sheet_layers_as_separate_files = toggled_on
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 
 
@@ -625,19 +665,19 @@ func _on_multiple_animations_directories_toggled(button_pressed: bool) -> void:
 func _on_crop_image_option_selected(index: int) -> void:
 	Export.crop_mode = index as Export.CropMode
 	erase_outside_selection.disabled = index == Export.CropMode.SELECTION
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_clip_images_selection_toggled(toggled_on: bool) -> void:
 	Export.erase_unselected_area = toggled_on
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_frames_item_selected(id: int) -> void:
 	Export.frame_current_tag = id
-	Export.process_data()
+	Export.process_data(_target_project())
 	set_preview()
 	spritesheet_lines_count.max_value = Export.number_of_frames
 	spritesheet_lines_count.value = Export.lines_count
@@ -645,8 +685,8 @@ func _on_frames_item_selected(id: int) -> void:
 
 func _on_layers_item_selected(id: int) -> void:
 	Export.export_layers = id
-	Export.cache_blended_frames()
-	Export.process_data()
+	Export.cache_blended_frames(_target_project())
+	Export.process_data(_target_project())
 	set_preview()
 
 

@@ -298,8 +298,10 @@ func handle_loading_video(file: String) -> bool:
 	return true
 
 
-func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> void:
-	var empty_project := Global.current_project.is_empty() and replace_empty
+func open_pxo_file(
+	path: String, is_backup := false, replace_empty := true, transient := false
+) -> Project:
+	var empty_project := Global.current_project.is_empty() and replace_empty and not transient
 	var new_project: Project
 	var zip_reader := ZIPReader.new()
 	var err := zip_reader.open(path)
@@ -307,10 +309,10 @@ func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> v
 		# Most likely uses the old pxo format, load that
 		new_project = open_v0_pxo_file(path, empty_project)
 		if not is_instance_valid(new_project):
-			return
+			return null
 	elif err != OK:
 		Global.popup_error(tr("File failed to open. Error code %s (%s)") % [err, error_string(err)])
-		return
+		return null
 	else:  # Parse the ZIP file
 		if empty_project:
 			new_project = Global.current_project
@@ -326,12 +328,12 @@ func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> v
 		if error != OK:
 			print("Error, corrupt pxo file. Error code %s (%s)" % [error, error_string(error)])
 			zip_reader.close()
-			return
+			return null
 		var result = test_json_conv.get_data()
 		if typeof(result) != TYPE_DICTIONARY:
 			print("Error, json parsed result is: %s" % typeof(result))
 			zip_reader.close()
-			return
+			return null
 
 		new_project.deserialize(result, zip_reader)
 		if result.has("brushes"):
@@ -398,27 +400,33 @@ func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> v
 		Global.cel_switched.emit()
 	else:
 		Global.projects.append(new_project)
-		Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
+		if not transient:
+			Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
 
 	if is_backup:
 		new_project.backup_path = path
 	else:
-		# Loading a backup should not change window title and save path
+		# Loading a backup should not change window title and save path.
 		new_project.save_path = path
-		get_window().title = (
-			new_project.name + " - " + Global.PRODUCT_NAME + " " + Global.current_version
-		)
-		# Set last opened project path and save
-		Global.config_cache.set_value("data", "current_dir", path.get_base_dir())
-		Global.config_cache.set_value("data", "last_project_path", path)
-		Global.config_cache.save(Global.CONFIG_PATH)
 		new_project.was_exported = false
-		Global.top_menu_container.file_menu.set_item_text(
-			Global.FileMenu.SAVE, tr("Save") + " %s" % path.uri_decode().get_file()
-		)
-		Global.top_menu_container.file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export"))
+		if not transient:
+			get_window().title = (
+				new_project.name + " - " + Global.PRODUCT_NAME + " " + Global.current_version
+			)
+			# Set last opened project path and save.
+			Global.config_cache.set_value("data", "current_dir", path.get_base_dir())
+			Global.config_cache.set_value("data", "last_project_path", path)
+			Global.config_cache.save(Global.CONFIG_PATH)
+			Global.top_menu_container.file_menu.set_item_text(
+				Global.FileMenu.SAVE, tr("Save") + " %s" % path.uri_decode().get_file()
+			)
+			Global.top_menu_container.file_menu.set_item_text(
+				Global.FileMenu.EXPORT, tr("Export")
+			)
 
-	save_project_to_recent_list(path)
+	if not transient:
+		save_project_to_recent_list(path)
+	return new_project
 
 
 func open_v0_pxo_file(path: String, empty_project: bool) -> Project:

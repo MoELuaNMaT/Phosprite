@@ -16,6 +16,9 @@ const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
 const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
 const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
+const PROJECT_EXPORT_COORDINATOR := preload(
+	"res://src/ProjectLibrary/ProjectExportCoordinator.gd"
+)
 
 var opensprite_file_selected := false
 var redone := false
@@ -34,6 +37,7 @@ var splash_dialog: AcceptDialog:
 var project_save_coordinator: ProjectSaveCoordinator
 var app_shell_controller: AppShellController
 var ios_document_bridge: IOSDocumentBridge
+var project_export_coordinator: ProjectExportCoordinator
 var _last_session_last_project := ""
 
 @onready var project_gallery_root := $ProjectGalleryRoot as ProjectGallery
@@ -55,6 +59,7 @@ var _last_session_last_project := ""
 @onready var new_project_dialog := $Dialogs/NewProjectDialog as NewProjectDialog
 @onready var import_source_dialog := $Dialogs/ImportSourceDialog as ImportSourceDialog
 @onready var image_import_mode_dialog := $Dialogs/ImageImportModeDialog as ImageImportModeDialog
+@onready var export_dialog := $Dialogs/ExportDialog as ConfirmationDialog
 @onready var download_confirmation := $Dialogs/DownloadImageConfirmationDialog as ConfirmationDialog
 @onready var left_cursor: Sprite2D = $LeftCursor
 @onready var right_cursor: Sprite2D = $RightCursor
@@ -249,6 +254,16 @@ func _ready() -> void:
 		image_import_mode_dialog
 	)
 	if managed_storage:
+		project_export_coordinator = PROJECT_EXPORT_COORDINATOR.new()
+		project_export_coordinator.configure(export_dialog)
+		add_child(project_export_coordinator)
+		if not project_gallery_root.export_projects_requested.is_connected(
+			_on_gallery_export_projects_requested
+		):
+			project_gallery_root.export_projects_requested.connect(
+				_on_gallery_export_projects_requested
+			)
+
 		ios_document_bridge = IOS_DOCUMENT_BRIDGE.new()
 		ios_document_bridge.configure(app_shell_controller)
 		add_child(ios_document_bridge)
@@ -303,6 +318,14 @@ func _ready() -> void:
 	Global.pixelorama_has_loaded = true
 	Global.pixelorama_opened.emit()
 	print("Time Phosprite took to open: %sms" % Time.get_ticks_msec())
+
+
+func _on_gallery_export_projects_requested(paths: PackedStringArray) -> void:
+	if not is_instance_valid(project_export_coordinator):
+		Global.popup_error(tr("Project export is unavailable."))
+		return
+	if not project_export_coordinator.begin_export(paths):
+		Global.popup_error(tr("Could not start project export."))
 
 
 func _on_gallery_reveal_in_files_requested(path: String) -> void:
