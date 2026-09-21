@@ -1,5 +1,7 @@
 extends Panel
 
+signal return_home_requested
+
 enum ColorModes { RGBA, INDEXED }
 
 const DOCS_URL := "https://www.pixelorama.org/Introduction/"
@@ -81,6 +83,7 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var layout_from_option_button := %LayoutFrom as OptionButton
 @onready var cursor_position_label := %CursorPosition as Label
 @onready var current_frame_mark := %CurrentFrameMark as Label
+@onready var return_home_button := %ReturnHome as Button
 
 @onready var greyscale_vision: ColorRect = main_ui.find_child("GreyscaleVision")
 
@@ -131,6 +134,14 @@ func _ready() -> void:
 	# Fill the copy layout from option button with the default layouts
 	for layout in Global.default_layouts:
 		layout_from_option_button.add_item(layout.resource_path.get_basename().get_file())
+
+
+func set_return_home_visible(should_show: bool) -> void:
+	return_home_button.visible = should_show
+
+
+func _on_return_home_pressed() -> void:
+	return_home_requested.emit()
 
 
 func _input(event: InputEvent) -> void:
