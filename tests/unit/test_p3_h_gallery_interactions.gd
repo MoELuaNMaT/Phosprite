@@ -135,7 +135,10 @@ func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> voi
 	)
 	check_has(
 		gallery_src,
-		'show_feedback(tr("%d projects duplicated.") % selected.size())\n\t\t\t\tset_multiselect_mode(false)',
+		(
+			'show_feedback(tr("%d projects duplicated.") % selected.size())'
+			+ "\n\t\t\t\tset_multiselect_mode(false)"
+		),
 		"successful batch duplicate must finish the multi-select task and clear selection mode",
 	)
 	check_has(
