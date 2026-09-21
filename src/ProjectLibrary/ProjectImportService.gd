@@ -176,8 +176,7 @@ func _apply_reference_image(project: Project, source_image: Image) -> void:
 	var reference := ReferenceImage.new()
 	reference.project = project
 	reference.create_from_image(source_image.duplicate())
-	if not project.reference_images.has(reference):
-		project.reference_images.append(reference)
+	Global.canvas.reference_image_container.add_child(reference)
 	var scale_factor := CanvasSizeResolverScript.reference_scale(
 		source_image.get_size(), project.size
 	)
