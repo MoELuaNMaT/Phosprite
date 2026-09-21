@@ -112,9 +112,10 @@ static func columns_for_viewport_size(viewport_size: Vector2) -> int:
 
 
 func _current_orientation_size() -> Vector2:
-	var window := get_window()
-	if is_instance_valid(window) and window.size.x > 0 and window.size.y > 0:
-		return Vector2(window.size)
+	if OS.get_name() == "iOS":
+		var window := get_window()
+		if is_instance_valid(window) and window.size.x > 0 and window.size.y > 0:
+			return Vector2(window.size)
 	return size
 
 
