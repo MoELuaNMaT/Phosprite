@@ -7,12 +7,14 @@ enum Mode { GALLERY, EDITOR }
 
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
 const RecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd")
+const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 
 var managed_mode := false
 var mode := Mode.EDITOR
 var editor_root: Control
 var gallery_root: ProjectGallery
 var recovery_dialog: ConfirmationDialog
+var new_project_dialog: NewProjectDialog
 var save_coordinator: ProjectSaveCoordinator
 
 var pending_recovery_uuid := ""
@@ -24,15 +26,18 @@ func configure(
 	editor: Control,
 	gallery: ProjectGallery,
 	dialog: ConfirmationDialog,
-	coordinator: ProjectSaveCoordinator
+	coordinator: ProjectSaveCoordinator,
+	new_project_panel: NewProjectDialog = null
 ) -> void:
 	managed_mode = enabled
 	editor_root = editor
 	gallery_root = gallery
 	recovery_dialog = dialog
+	new_project_dialog = new_project_panel
 	save_coordinator = coordinator
 	_connect_gallery()
 	_connect_recovery_dialog()
+	_connect_new_project_dialog()
 	if managed_mode:
 		_set_mode(Mode.GALLERY)
 	else:
@@ -105,6 +110,8 @@ func _connect_gallery() -> void:
 		return
 	if not gallery_root.project_open_requested.is_connected(open_project_path):
 		gallery_root.project_open_requested.connect(open_project_path)
+	if not gallery_root.new_project_requested.is_connected(_on_new_project_requested):
+		gallery_root.new_project_requested.connect(_on_new_project_requested)
 
 
 func _connect_recovery_dialog() -> void:
@@ -119,6 +126,68 @@ func _connect_recovery_dialog() -> void:
 	if not recovery_dialog.has_meta("p3_discard_button"):
 		recovery_dialog.add_button(tr("Discard"), false, "Discard")
 		recovery_dialog.set_meta("p3_discard_button", true)
+
+
+func _connect_new_project_dialog() -> void:
+	if not is_instance_valid(new_project_dialog):
+		return
+	if not new_project_dialog.create_requested.is_connected(_on_new_project_create_requested):
+		new_project_dialog.create_requested.connect(_on_new_project_create_requested)
+	if not new_project_dialog.canceled.is_connected(_on_new_project_canceled):
+		new_project_dialog.canceled.connect(_on_new_project_canceled)
+
+
+func create_new_project(canvas_size: Vector2i) -> bool:
+	if not managed_mode or not is_instance_valid(save_coordinator):
+		return false
+	var project_name := ProjectFactoryScript.make_untitled_name()
+	var target_path := ProjectFactoryScript.make_unique_project_path(
+		project_name, save_coordinator.projects_directory
+	)
+	var project := ProjectFactoryScript.create_blank_project(project_name, canvas_size)
+	Global.projects.append(project)
+	project.has_changed = true
+
+	if not save_coordinator.flush_project(project, "new_project", target_path):
+		_rollback_uncommitted_project(project, target_path)
+		return false
+
+	var project_index := Global.projects.find(project)
+	if project_index < 0:
+		_rollback_uncommitted_project(project, target_path)
+		return false
+	Global.tabs.current_tab = project_index
+	if Global.current_project_index != project_index:
+		_rollback_uncommitted_project(project, target_path)
+		return false
+	show_editor()
+	return true
+
+
+func _rollback_uncommitted_project(project: Project, target_path: String) -> void:
+	var project_index := Global.projects.find(project)
+	if project_index >= 0 and project_index < Global.tabs.tab_count:
+		Global.tabs.remove_tab(project_index)
+	save_coordinator.forget_project(project, true)
+	project.remove()
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+
+
+func _on_new_project_requested() -> void:
+	if not managed_mode or not is_instance_valid(new_project_dialog):
+		return
+	Global.dialog_open(true)
+	new_project_dialog.popup_for_new_project()
+
+
+func _on_new_project_create_requested(canvas_size: Vector2i) -> void:
+	Global.dialog_open(false)
+	create_new_project(canvas_size)
+
+
+func _on_new_project_canceled() -> void:
+	Global.dialog_open(false)
 
 
 func _show_recovery_prompt(entry: ProjectLibraryEntry) -> void:
