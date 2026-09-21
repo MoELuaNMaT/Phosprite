@@ -45,6 +45,12 @@ jobs:
           cp ios/pointer_identity_src/phosprite_pointer_identity.mm "${PLUGIN_DIR}/"
           cp ios/pointer_identity_src/phosprite_pointer_identity_module.cpp "${PLUGIN_DIR}/"
 
+          NATIVE_DOCS_DIR="${BUILD_ROOT}/plugins/phosprite_native_documents"
+          mkdir -p "${NATIVE_DOCS_DIR}"
+          cp ios/native_documents_src/phosprite_native_documents.h "${NATIVE_DOCS_DIR}/"
+          cp ios/native_documents_src/phosprite_native_documents.mm "${NATIVE_DOCS_DIR}/"
+          cp ios/native_documents_src/phosprite_native_documents_module.cpp "${NATIVE_DOCS_DIR}/"
+
           python3 - <<'PY'
           from pathlib import Path
           import os
@@ -52,7 +58,7 @@ jobs:
           path = Path(os.environ["RUNNER_TEMP"]) / "phosprite-pointer-identity" / "SConstruct"
           text = path.read_text(encoding="utf-8")
           needle = "'photo_picker']))"
-          replacement = "'photo_picker', 'phosprite_pointer_identity']))"
+          replacement = "'photo_picker', 'phosprite_pointer_identity', 'phosprite_native_documents']))"
           if needle not in text:
               raise SystemExit("Godot iOS plugin SConstruct plugin enum changed")
           path.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
@@ -95,6 +101,27 @@ jobs:
             ios/plugins/PhospritePointerIdentity.gdip
           test -f ios/plugins/PhospritePointerIdentity.gdip
           test -d ios/plugins/PhospritePointerIdentity.xcframework
+
+          scons \
+            target=release \
+            arch=arm64 \
+            simulator=no \
+            plugin=phosprite_native_documents \
+            version=4.0 \
+            target_path="${BUILD_ROOT}/bin/" \
+            -j2
+
+          NATIVE_DOCS_LIB="$(find "${BUILD_ROOT}/bin" -name 'libphosprite_native_documents.arm64-ios.release.a' -print -quit)"
+          test -n "${NATIVE_DOCS_LIB}"
+          cd "${GITHUB_WORKSPACE}"
+          rm -rf ios/plugins/PhospriteNativeDocuments.xcframework
+          xcodebuild -create-xcframework \
+            -library "${NATIVE_DOCS_LIB}" \
+            -output ios/plugins/PhospriteNativeDocuments.xcframework
+          cp ios/native_documents_src/PhospriteNativeDocuments.gdip \
+            ios/plugins/PhospriteNativeDocuments.gdip
+          test -f ios/plugins/PhospriteNativeDocuments.gdip
+          test -d ios/plugins/PhospriteNativeDocuments.xcframework
 
       - name: Install pinned Godot Share plugin 📤
         shell: bash
@@ -151,6 +178,7 @@ jobs:
           required_plugins = (
               "plugins/SharePlugin=true",
               "plugins/PhospritePointerIdentity=true",
+              "plugins/PhospriteNativeDocuments=true",
           )
           marker = "\nentitlements/increased_memory_limit="
           insert_at = section.find(marker)
@@ -168,9 +196,12 @@ jobs:
           test -d ./ios/plugins/SharePlugin.debug.xcframework
           test -f ./ios/plugins/PhospritePointerIdentity.gdip
           test -d ./ios/plugins/PhospritePointerIdentity.xcframework
+          test -f ./ios/plugins/PhospriteNativeDocuments.gdip
+          test -d ./ios/plugins/PhospriteNativeDocuments.xcframework
           grep -q 'res://addons/SharePlugin/plugin.cfg' project.godot
           grep -q 'plugins/SharePlugin=true' export_presets.cfg
           grep -q 'plugins/PhospritePointerIdentity=true' export_presets.cfg
+          grep -q 'plugins/PhospriteNativeDocuments=true' export_presets.cfg
 
       - name: Download and extract export templates 💾
         run: |
@@ -202,8 +233,17 @@ jobs:
           test -f "${PBXPROJ}"
           grep -q 'SharePlugin' "${PBXPROJ}"
           grep -q 'PhospritePointerIdentity' "${PBXPROJ}"
+          grep -q 'PhospriteNativeDocuments' "${PBXPROJ}"
+          INFO_PLIST="./build/ios/${EXPORT_NAME}/${EXPORT_NAME}-Info.plist"
+          test -f "${INFO_PLIST}"
+          grep -q 'com.phosprite.project' "${INFO_PLIST}"
+          grep -q 'com.phosprite.import.aseprite' "${INFO_PLIST}"
+          grep -q 'CFBundleDocumentTypes' "${INFO_PLIST}"
+          grep -q 'UIFileSharingEnabled' "${INFO_PLIST}"
+          grep -q 'LSSupportsOpeningDocumentsInPlace' "${INFO_PLIST}"
           find ./build/ios -iname '*SharePlugin*' -print
           find ./build/ios -iname '*PhospritePointerIdentity*' -print
+          find ./build/ios -iname '*PhospriteNativeDocuments*' -print
 
       - name: Build unsigned .xcarchive 🔧
         run: |
