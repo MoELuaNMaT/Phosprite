@@ -42,6 +42,7 @@ var _rename_source_path := ""
 var _pending_delete_paths := PackedStringArray()
 var _delete_was_multiselect := false
 var _current_columns := 0
+var _last_layout_width := -1.0
 var _layout_generation := 0
 var _reflow_gate_tween: Tween
 var _interaction_locks: Dictionary = {}
@@ -100,7 +101,8 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	var expected_columns := columns_for_viewport_size(_current_orientation_size())
-	if expected_columns != _current_columns:
+	var layout_width := _current_layout_width()
+	if expected_columns != _current_columns or absf(layout_width - _last_layout_width) > 0.5:
 		_update_layout()
 	_consume_gesture_actions(_gesture_resolver.poll(Time.get_ticks_msec()))
 
@@ -122,6 +124,17 @@ func _current_orientation_size() -> Vector2:
 		return scroll_container.size
 	var window := get_window()
 	return Vector2(window.size) if is_instance_valid(window) else Vector2.ZERO
+
+
+static func effective_layout_width(shell_width: float, scroll_width: float) -> float:
+	if shell_width > 0.0 and scroll_width > 0.0:
+		return minf(shell_width, scroll_width)
+	return maxf(shell_width, scroll_width)
+
+
+func _current_layout_width() -> float:
+	var scroll_width := scroll_container.size.x if is_instance_valid(scroll_container) else 0.0
+	return effective_layout_width(size.x, scroll_width)
 
 
 func configure(directory := StoragePolicy.PROJECTS_DIRECTORY) -> void:
@@ -283,12 +296,15 @@ func _update_layout() -> void:
 
 	_current_columns = columns
 	grid.columns = columns
-	var available_width := maxf(scroll_container.size.x - GRID_SIDE_MARGIN * 2.0, 1.0)
+	var layout_width := _current_layout_width()
+	_last_layout_width = layout_width
+	var available_width := maxf(layout_width - GRID_SIDE_MARGIN * 2.0, 1.0)
 	var separators := GRID_SEPARATION * float(columns - 1)
-	# Never let a per-card minimum force the Grid wider than the safe-area viewport.
-	# Four portrait columns are an invariant; narrow safe areas shrink cards instead
-	# of growing the content horizontally.
+	# The ScrollContainer can retain its previous landscape width for a frame (or
+	# longer on iPad safe-area rotation). Derive card geometry from the live shell
+	# width and keep the Grid shrink-wrapped so stale parent width cannot expand it.
 	var card_width := maxf(floorf((available_width - separators) / float(columns)), 1.0)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	for card: ProjectGalleryCard in _cards:
 		card.set_card_width(card_width)
 
