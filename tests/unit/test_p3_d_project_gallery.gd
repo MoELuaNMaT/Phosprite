@@ -93,6 +93,11 @@ func test_gallery_source_contract_matches_p3_d_layout() -> void:
 		"_format_modified_time(entry.modified_time)",
 		"cards must display last modification time",
 	)
+	check_has(
+		card_src,
+		"Time.get_time_zone_from_system()",
+		"Gallery modification time must follow the device local time zone",
+	)
 
 
 func test_project_library_supports_lazy_thumbnail_decode() -> void:
