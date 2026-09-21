@@ -148,7 +148,10 @@ func test_pxo_copy_in_preserves_source_and_repairs_only_imported_duplicate_uuid(
 	check_ne(
 		second.project_uuid,
 		first_uuid,
-		"duplicate PXO import must assign identity to the imported copy, not rewrite the existing project",
+		(
+			"duplicate PXO import must assign identity to the imported copy, "
+			+ "not rewrite the existing project"
+		),
 	)
 	check_eq(
 		first.project_uuid,
