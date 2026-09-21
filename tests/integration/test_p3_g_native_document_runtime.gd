@@ -54,15 +54,14 @@ func test_native_batch_handoff_imports_all_paths_and_enters_editor_only_on_last(
 	var collect_mode := func(next_mode: AppShellController.Mode): mode_events.append(next_mode)
 	_main.app_shell_controller.mode_changed.connect(collect_mode)
 
-	var before := Global.projects.size()
 	_bridge.enqueue_import_paths(PackedStringArray([FIRST_SOURCE, SECOND_SOURCE]))
 	for _frame in 6:
 		await tree.process_frame
 
 	check_eq(
 		Global.projects.size(),
-		before + 2,
-		"one native multi-selection batch must import every selected path",
+		1,
+		"managed Editor must keep only the final imported runtime Project",
 	)
 	check_file_exists(
 		TEST_ROOT.path_join("first.pxo"),
@@ -144,17 +143,25 @@ func _write_external_project(path: String, project_name: String, size: Vector2i)
 
 
 func _cleanup_added_projects() -> void:
-	while Global.projects.size() > _baseline_project_count:
-		var index := Global.projects.size() - 1
+	Global.tabs.set_block_signals(true)
+	for index in range(Global.projects.size() - 1, -1, -1):
 		var project := Global.projects[index]
+		if not project.save_path.begins_with(TEST_ROOT):
+			continue
 		if index < Global.tabs.tab_count:
 			Global.tabs.remove_tab(index)
 		if not project.project_uuid.is_empty():
 			RecoveryStore.discard(project.project_uuid)
 			RecoveryStore.remove_staging(project.project_uuid)
 		project.remove()
+	Global.tabs.set_block_signals(false)
+	if Global.projects.is_empty():
+		var replacement := Factory.create_blank_project(tr("untitled"), Factory.DEFAULT_SIZE)
+		Global.projects.append(replacement)
 	if Global.projects.size() > 0:
 		Global.current_project_index = mini(_baseline_current_index, Global.projects.size() - 1)
+		if Global.current_project_index < Global.tabs.tab_count:
+			Global.tabs.current_tab = Global.current_project_index
 
 
 func _remove_tree(path: String) -> void:
