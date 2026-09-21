@@ -233,6 +233,10 @@ func _init() -> void:
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
+	if OS.has_feature("mobile") and not get_window().size_changed.is_connected(
+		_on_mobile_window_size_changed
+	):
+		get_window().size_changed.connect(_on_mobile_window_size_changed)
 	var managed_storage := STORAGE_POLICY.uses_managed_project_storage()
 	project_save_coordinator = PROJECT_SAVE_COORDINATOR.new()
 	project_save_coordinator.configure(managed_storage, STORAGE_POLICY.PROJECTS_DIRECTORY)
@@ -452,6 +456,13 @@ func set_display_scale() -> void:
 	set_custom_cursor()
 
 
+func _on_mobile_window_size_changed() -> void:
+	# iPad sensor rotation changes the safe area independently of the P3 shell
+	# Controls, which are intentionally anchored TOP_LEFT while fullscreen.
+	# Re-resolve it after the Window reports its new geometry.
+	set_mobile_fullscreen_safe_area()
+
+
 func set_mobile_fullscreen_safe_area() -> void:
 	if not OS.has_feature("mobile"):
 		return
@@ -469,6 +480,8 @@ func set_mobile_fullscreen_safe_area() -> void:
 			shell_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 			shell_root.position = pos
 			shell_root.size = shell_size
+		if is_instance_valid(project_gallery_root):
+			project_gallery_root.call_deferred("_update_layout")
 	else:
 		for shell_root: Control in shell_roots:
 			shell_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
