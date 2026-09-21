@@ -34,7 +34,10 @@ func test_p3_g_native_bridge_contract_and_security_scope() -> void:
 	check_has(
 		native_src,
 		"CGImageGetWidth(p_image.CGImage)",
-		"Photos import must derive temporary PNG dimensions from source pixels rather than UIImage points",
+		(
+			"Photos import must derive temporary PNG dimensions from source pixels "
+			+ "rather than UIImage points"
+		),
 	)
 	check_has(
 		native_src,
