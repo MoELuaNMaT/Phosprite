@@ -10,7 +10,7 @@ func test_adapter_routes_transform_handles_before_selection_tool_draw() -> void:
 	var canvas := FileAccess.get_file_as_string(CANVAS_SOURCE)
 	check_has(
 		canvas,
-		"TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, screen_position, event)",
+		"TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, viewport_position, event)",
 		"CanvasInputAdapter-owned content events must get a transform-handle acquisition chance"
 	)
 	var handler_start := canvas.find("func handle_adapter_tool_event")
@@ -22,7 +22,7 @@ func test_adapter_routes_transform_handles_before_selection_tool_draw() -> void:
 	)
 	check_has(
 		canvas,
-		"if TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, screen_position, event):\n\t\treturn",
+		"if TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, viewport_position, event):\n\t\treturn",
 		"acquired handles must consume adapter events before Selection content move"
 	)
 
@@ -65,7 +65,7 @@ func test_touch_handle_target_is_44px_and_nearest_wins() -> void:
 	check_has(
 		router,
 		"get_global_transform_with_canvas().affine_inverse()",
-		"adapter screen coordinates must be converted into TransformationHandles local space"
+		"adapter viewport coordinates must be converted into TransformationHandles local space"
 	)
 	check_has(
 		router, "if Global.mirror_view:", "touch hit testing must preserve mirrored-canvas behavior"
