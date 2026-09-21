@@ -63,7 +63,9 @@ func _on_pressed() -> void:
 func _format_modified_time(unix_time: int) -> String:
 	if unix_time <= 0:
 		return tr("Unknown date")
-	var value := Time.get_datetime_dict_from_unix_time(unix_time)
+	var time_zone := Time.get_time_zone_from_system()
+	var local_unix_time := unix_time + int(time_zone.get("bias", 0)) * 60
+	var value := Time.get_datetime_dict_from_unix_time(local_unix_time)
 	return (
 		"%04d-%02d-%02d  %02d:%02d"
 		% [
