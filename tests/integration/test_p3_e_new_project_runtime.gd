@@ -29,6 +29,33 @@ func teardown() -> void:
 		DirAccess.remove_absolute(BLOCKER_PATH)
 
 
+func test_new_project_dialog_reopens_with_synced_64_by_64_default() -> void:
+	_prepare_main()
+	if _main == null:
+		return
+	var dialog := _main.new_project_dialog as NewProjectDialog
+	dialog.width_value.value = 123
+	dialog.height_value.value = 45
+	dialog.popup_for_new_project()
+
+	check_eq(
+		dialog.selected_size,
+		Vector2i(64, 64),
+		"each P3-E New Project session must reset its selected size to 64x64",
+	)
+	check_eq(
+		int(dialog.width_value.value),
+		64,
+		"reopened New Project width input must match the 64x64 default",
+	)
+	check_eq(
+		int(dialog.height_value.value),
+		64,
+		"reopened New Project height input must match the 64x64 default",
+	)
+	dialog.hide()
+
+
 func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -> void:
 	_prepare_main()
 	if _main == null:
