@@ -10,6 +10,8 @@ signal projects_deleted(paths: PackedStringArray)
 signal reveal_in_files_requested(path: String)
 signal export_projects_requested(paths: PackedStringArray)
 
+enum ActionMenuId { RENAME = 1, DUPLICATE, DELETE, EXPORT, REVEAL }
+
 const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
 const GestureResolverScript := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
@@ -20,8 +22,6 @@ const PORTRAIT_COLUMNS := 4
 const GRID_SIDE_MARGIN := 32.0
 const GRID_SEPARATION := 16.0
 const THUMBNAIL_PRELOAD_MARGIN := 96.0
-
-enum ActionMenuId { RENAME = 1, DUPLICATE, DELETE, EXPORT, REVEAL }
 
 var library: ProjectLibrary
 var entries: Array[ProjectLibraryEntry] = []
