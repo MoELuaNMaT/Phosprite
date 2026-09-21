@@ -45,8 +45,7 @@ static func all_presets() -> Array[Vector2i]:
 
 static func create_blank_project(project_name: String, canvas_size: Vector2i) -> Project:
 	var safe_size := Vector2i(
-		clampi(canvas_size.x, 1, MAX_CANVAS_SIDE),
-		clampi(canvas_size.y, 1, MAX_CANVAS_SIDE)
+		clampi(canvas_size.x, 1, MAX_CANVAS_SIDE), clampi(canvas_size.y, 1, MAX_CANVAS_SIDE)
 	)
 	var project := Project.new([], project_name, safe_size)
 	project.layers.append(PixelLayer.new(project))
@@ -58,17 +57,22 @@ static func make_untitled_name(date_time := {}) -> String:
 	var value: Dictionary = date_time
 	if value.is_empty():
 		value = Time.get_datetime_dict_from_system()
-	return "未命名_%04d-%02d-%02d_%02d-%02d-%02d" % [
-		int(value.get("year", 0)),
-		int(value.get("month", 0)),
-		int(value.get("day", 0)),
-		int(value.get("hour", 0)),
-		int(value.get("minute", 0)),
-		int(value.get("second", 0)),
-	]
+	return (
+		"未命名_%04d-%02d-%02d_%02d-%02d-%02d"
+		% [
+			int(value.get("year", 0)),
+			int(value.get("month", 0)),
+			int(value.get("day", 0)),
+			int(value.get("hour", 0)),
+			int(value.get("minute", 0)),
+			int(value.get("second", 0)),
+		]
+	)
 
 
-static func make_unique_project_path(base_name: String, directory := StoragePolicy.PROJECTS_DIRECTORY) -> String:
+static func make_unique_project_path(
+	base_name: String, directory := StoragePolicy.PROJECTS_DIRECTORY
+) -> String:
 	var safe_name := base_name.validate_filename()
 	if safe_name.ends_with(StoragePolicy.PROJECT_EXTENSION):
 		safe_name = safe_name.trim_suffix(StoragePolicy.PROJECT_EXTENSION)
