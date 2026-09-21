@@ -226,19 +226,6 @@ static func navigation_zoom_from_ratio(
 	return Vector2.ONE * target_scalar
 
 
-static func screen_to_viewport_point(screen_position: Vector2, viewport_rect: Rect2) -> Vector2:
-	# InputEventScreenTouch/Drag positions belong to the root Window. Canvas math,
-	# however, runs in the embedded SubViewport. The top safe-area + editor toolbar
-	# therefore must be removed before any document hit-test or camera transform.
-	return screen_position - viewport_rect.position
-
-
-func main_viewport_position(screen_position: Vector2) -> Vector2:
-	if not is_instance_valid(Global.main_viewport):
-		return screen_position
-	return screen_to_viewport_point(screen_position, Global.main_viewport.get_global_rect())
-
-
 static func screen_to_canvas_point(
 	viewport_position: Vector2,
 	viewport_size: Vector2,
@@ -271,15 +258,22 @@ static func navigation_target_angle(
 	return wrapf(baseline_camera_angle + pair_delta, -PI, PI)
 
 
-static func screen_position_inside_rect(screen_position: Vector2, rect: Rect2) -> bool:
-	return rect.has_point(screen_position)
+static func viewport_position_inside_size(viewport_position: Vector2, viewport_size: Vector2) -> bool:
+	return Rect2(Vector2.ZERO, viewport_size).has_point(viewport_position)
 
 
-func _screen_position_inside_main_viewport(screen_position: Vector2) -> bool:
+func _viewport_position_inside_main_viewport(viewport_position: Vector2) -> bool:
 	if not is_instance_valid(Global.main_viewport):
 		return false
 	if not Global.main_viewport.is_visible_in_tree():
 		return false
+	# Canvas._input() runs inside the embedded SubViewport. Godot has already
+	# transformed ScreenTouch/ScreenDrag positions into that viewport's local
+	# coordinates, so comparing them against a root/global Control rect rejects
+	# the top strip by exactly the editor toolbar offset.
+	var root_position := (
+		Global.main_viewport.get_global_transform_with_canvas() * viewport_position
+	)
 	var tree := Global.main_viewport.get_tree()
 	if tree != null:
 		for blocker_node in tree.get_nodes_in_group(CANVAS_TOUCH_BLOCKER_GROUP):
@@ -287,14 +281,13 @@ func _screen_position_inside_main_viewport(screen_position: Vector2) -> bool:
 			if (
 				is_instance_valid(blocker)
 				and blocker.is_visible_in_tree()
-				and blocker.get_global_rect().has_point(screen_position)
+				and blocker.get_global_rect().has_point(root_position)
 			):
 				return false
-	return screen_position_inside_rect(screen_position, Global.main_viewport.get_global_rect())
+	return viewport_position_inside_size(viewport_position, Global.main_viewport.size)
 
 
-func _screen_position_can_start_primary_tool(canvas: Node2D, screen_position: Vector2) -> bool:
-	var viewport_position := main_viewport_position(screen_position)
+func _viewport_position_can_start_primary_tool(canvas: Node2D, viewport_position: Vector2) -> bool:
 	var canvas_position := (
 		canvas.get_global_transform_with_canvas().affine_inverse() * viewport_position
 	)
@@ -314,7 +307,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	# stays aligned, but only acquire canvas ownership when the contact actually
 	# begins inside the visible Main Canvas viewport.
 	var info := _consume_pointer_info(event.index)
-	if not _screen_position_inside_main_viewport(event.position):
+	if not _viewport_position_inside_main_viewport(event.position):
 		return
 	var kind := int(info.get("kind", PointerKind.UNKNOWN))
 	if kind == PointerKind.UNKNOWN:
@@ -343,7 +336,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		canvas.set_adapter_tool_preview_active(false)
 
 	if kind == PointerKind.PENCIL:
-		if not _screen_position_can_start_primary_tool(canvas, event.position):
+		if not _viewport_position_can_start_primary_tool(canvas, event.position):
 			return
 		_begin_pencil_ownership(canvas, event.index)
 		_start_content(canvas, event.index, event.position)
@@ -378,7 +371,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		return
 
 	if direct_content_allowed(_finger_policy, false):
-		if not _screen_position_can_start_primary_tool(canvas, event.position):
+		if not _viewport_position_can_start_primary_tool(canvas, event.position):
 			_try_begin_navigation()
 			return
 		if _touch_color_sampler_requested:
@@ -538,7 +531,7 @@ func _start_direct_color_pick(
 func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> void:
 	if _content_touch_id != -1 and _content_touch_id != touch_id:
 		return
-	if not _screen_position_can_start_primary_tool(canvas, screen_position):
+	if not _viewport_position_can_start_primary_tool(canvas, screen_position):
 		return
 	_content_touch_id = touch_id
 	_clear_navigation()
@@ -614,8 +607,7 @@ func _dispatch_motion(canvas: Node2D, drag: InputEventScreenDrag, kind: int) -> 
 	canvas.handle_adapter_tool_event(drag.position, event)
 
 
-func _sample_active_color(canvas: Node2D, screen_position: Vector2, mode: int) -> void:
-	var viewport_position := main_viewport_position(screen_position)
+func _sample_active_color(canvas: Node2D, viewport_position: Vector2, mode: int) -> void:
 	var canvas_position := (
 		canvas.get_global_transform_with_canvas().affine_inverse() * viewport_position
 	)
@@ -722,9 +714,8 @@ func _capture_navigation_camera_baseline() -> bool:
 	_navigation_baseline_zoom = camera.zoom
 	_navigation_baseline_offset = camera.offset
 	_navigation_baseline_camera_angle = camera.camera_angle
-	var viewport_centroid := main_viewport_position(_navigation_baseline_centroid)
 	_navigation_anchor_canvas = screen_to_canvas_point(
-		viewport_centroid,
+		_navigation_baseline_centroid,
 		camera.viewport_container.size,
 		_navigation_baseline_zoom,
 		_navigation_baseline_offset,
@@ -797,10 +788,9 @@ func _update_navigation() -> void:
 		camera.zoom_out_max,
 		camera.zoom_in_max
 	)
-	var viewport_centroid := main_viewport_position(effective_centroid)
 	var target_offset := navigation_offset_for_anchor(
 		_navigation_anchor_canvas,
-		viewport_centroid,
+		effective_centroid,
 		camera.viewport_container.size,
 		target_zoom,
 		target_angle
