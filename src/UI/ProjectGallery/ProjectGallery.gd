@@ -512,6 +512,7 @@ func _on_batch_action_pressed(id: int) -> void:
 			var errors: Array = result.get("errors", [])
 			if errors.is_empty():
 				show_feedback(tr("%d projects duplicated.") % selected.size())
+				set_multiselect_mode(false)
 		ActionMenuId.DELETE:
 			_begin_delete(selected, true)
 		ActionMenuId.EXPORT:
