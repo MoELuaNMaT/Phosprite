@@ -116,13 +116,9 @@ func _connect_recovery_dialog() -> void:
 		recovery_dialog.custom_action.connect(_on_recovery_custom_action)
 	if not recovery_dialog.canceled.is_connected(_on_recovery_canceled):
 		recovery_dialog.canceled.connect(_on_recovery_canceled)
-	var has_discard := false
-	for index in recovery_dialog.get_button_count():
-		if recovery_dialog.get_button(index).text == tr("Discard"):
-			has_discard = true
-			break
-	if not has_discard:
+	if not recovery_dialog.has_meta("p3_discard_button"):
 		recovery_dialog.add_button(tr("Discard"), false, "Discard")
+		recovery_dialog.set_meta("p3_discard_button", true)
 
 
 func _show_recovery_prompt(entry: ProjectLibraryEntry) -> void:
