@@ -124,6 +124,9 @@ func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> voi
 		"res://src/UI/ProjectGallery/ProjectGalleryCard.tscn"
 	)
 	var main_src := FileAccess.get_file_as_string("res://src/Main.gd")
+	var top_menu_src := FileAccess.get_file_as_string(
+		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
+	)
 	check_has(
 		gallery_src,
 		"var selected := get_selected_paths()",
@@ -153,6 +156,11 @@ func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> voi
 		main_src,
 		"ios_document_bridge.reveal_in_files(path)",
 		"Reveal in Files must route into the P3-G native bridge",
+	)
+	check_has(
+		top_menu_src,
+		"row.move_child(return_home_button, mini(menu_bar.get_index() + 1",
+		"managed Projects/Home button must stay left of the iPadOS center multitasking control",
 	)
 
 
