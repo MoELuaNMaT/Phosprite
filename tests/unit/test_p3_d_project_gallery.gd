@@ -130,7 +130,7 @@ func test_corrupted_card_remains_renderable_without_project_name() -> void:
 	check_true(card != null, "P3-D ProjectGalleryCard scene must instantiate")
 	if card == null:
 		return
-	tree.current_scene.add_child(card)
+	tree.root.add_child(card)
 	var entry := Entry.new(TEST_ROOT.path_join("broken.pxo"))
 	entry.health_state = Entry.HealthState.CORRUPTED
 	entry.modified_time = 1
