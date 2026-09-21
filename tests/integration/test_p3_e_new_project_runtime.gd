@@ -187,8 +187,7 @@ func _cleanup_added_projects() -> void:
 	for index in range(Global.projects.size() - 1, -1, -1):
 		var project := Global.projects[index]
 		if not (
-			project.save_path.begins_with(TEST_ROOT)
-			or project.save_path.begins_with(BLOCKER_PATH)
+			project.save_path.begins_with(TEST_ROOT) or project.save_path.begins_with(BLOCKER_PATH)
 		):
 			continue
 		if index < Global.tabs.tab_count:
