@@ -142,7 +142,9 @@ func test_corrupted_card_remains_renderable_without_project_name() -> void:
 		"Unreadable project",
 		"corrupted project must retain a visible abnormal card state",
 	)
-	check_eq(card.thumbnail_status.text, "Corrupted", "corrupted card must identify its failure state")
+	check_eq(
+		card.thumbnail_status.text, "Corrupted", "corrupted card must identify its failure state"
+	)
 	card.get_parent().remove_child(card)
 	card.free()
 
@@ -163,9 +165,7 @@ func _write_pxo(path: String, project_uuid: String, canvas_size: Vector2i) -> bo
 		packer.close()
 		return false
 	var gallery := Library.build_gallery_metadata(project_uuid, canvas_size)
-	if not _write_entry(
-		packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()
-	):
+	if not _write_entry(packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()):
 		packer.close()
 		return false
 	var preview := Image.create(3, 2, false, Image.FORMAT_RGBA8)
