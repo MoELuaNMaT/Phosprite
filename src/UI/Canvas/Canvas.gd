@@ -119,15 +119,14 @@ func _input(event: InputEvent) -> void:
 	_handle_tool_event(Vector2i(current_pixel.floor()), event)
 
 
-func handle_adapter_tool_event(screen_position: Vector2, event: InputEvent) -> void:
-	var viewport_position := _input_adapter.main_viewport_position(screen_position)
+func handle_adapter_tool_event(viewport_position: Vector2, event: InputEvent) -> void:
 	if TOUCH_TRANSFORM_HANDLE_ROUTER.handle_event(self, viewport_position, event):
 		return
 	var canvas_position := get_global_transform_with_canvas().affine_inverse() * viewport_position
 	if event is InputEventMouse:
 		var mouse_event := event as InputEventMouse
 		mouse_event.position = viewport_position
-		mouse_event.global_position = screen_position
+		mouse_event.global_position = viewport_position
 	current_pixel = canvas_position
 	_handle_tool_event(Vector2i(canvas_position.floor()), event)
 
