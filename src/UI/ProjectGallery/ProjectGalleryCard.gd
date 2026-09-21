@@ -64,10 +64,13 @@ func _format_modified_time(unix_time: int) -> String:
 	if unix_time <= 0:
 		return tr("Unknown date")
 	var value := Time.get_datetime_dict_from_unix_time(unix_time)
-	return "%04d-%02d-%02d  %02d:%02d" % [
-		int(value.get("year", 0)),
-		int(value.get("month", 0)),
-		int(value.get("day", 0)),
-		int(value.get("hour", 0)),
-		int(value.get("minute", 0)),
-	]
+	return (
+		"%04d-%02d-%02d  %02d:%02d"
+		% [
+			int(value.get("year", 0)),
+			int(value.get("month", 0)),
+			int(value.get("day", 0)),
+			int(value.get("hour", 0)),
+			int(value.get("minute", 0)),
+		]
+	)
