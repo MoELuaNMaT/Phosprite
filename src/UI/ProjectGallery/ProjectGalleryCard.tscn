@@ -80,6 +80,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(144, 144)
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_styles/panel = SubResource("ThumbnailBackground")
 
 [node name="Thumbnail" type="TextureRect" parent="VisualRoot/Content/ThumbnailFrame"]
