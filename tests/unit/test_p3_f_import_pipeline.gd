@@ -120,6 +120,11 @@ func test_p3_f_supported_import_types_and_stage_boundaries() -> void:
 		"P3-G may extend the handoff signature, but P3-F must retain one path-based business entry",
 	)
 	check_has(
+		shell_src,
+		"new_project_dialog.popup_with_size(source_size)",
+		"image-as-layer must seed the project dialog from exact decoded source dimensions",
+	)
+	check_has(
 		service_src,
 		"DirAccess.copy_absolute(source_path, target_path)",
 		"PXO import must copy into managed Projects instead of editing the external source",
