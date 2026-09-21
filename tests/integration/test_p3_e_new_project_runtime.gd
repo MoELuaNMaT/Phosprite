@@ -73,7 +73,9 @@ func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -
 		RecoveryStore.validate_snapshot(project.save_path, project.project_uuid),
 		"formal PXO must validate against the new Project UUID",
 	)
-	check_true(not project.has_changed, "successful first commit must clear the new Project dirty bit")
+	check_true(
+		not project.has_changed, "successful first commit must clear the new Project dirty bit"
+	)
 	check_true(
 		not RecoveryStore.has_pending_recovery(project.project_uuid),
 		"successful first commit must not leave a recovery candidate behind",
