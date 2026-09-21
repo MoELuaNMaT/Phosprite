@@ -23,7 +23,11 @@ func _ready() -> void:
 
 
 func popup_for_new_project() -> void:
-	_apply_size(ProjectFactoryScript.DEFAULT_SIZE)
+	popup_with_size(ProjectFactoryScript.DEFAULT_SIZE)
+
+
+func popup_with_size(initial_size: Vector2i) -> void:
+	_apply_size(initial_size)
 	popup_centered_clamped()
 
 
