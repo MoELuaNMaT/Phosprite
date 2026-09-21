@@ -15,6 +15,7 @@ const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
 const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
+const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
 
 var opensprite_file_selected := false
 var redone := false
@@ -32,6 +33,7 @@ var splash_dialog: AcceptDialog:
 		return splash_dialog
 var project_save_coordinator: ProjectSaveCoordinator
 var app_shell_controller: AppShellController
+var ios_document_bridge: IOSDocumentBridge
 var _last_session_last_project := ""
 
 @onready var project_gallery_root := $ProjectGalleryRoot as ProjectGallery
@@ -246,6 +248,10 @@ func _ready() -> void:
 		import_source_dialog,
 		image_import_mode_dialog
 	)
+	if managed_storage:
+		ios_document_bridge = IOS_DOCUMENT_BRIDGE.new()
+		ios_document_bridge.configure(app_shell_controller)
+		add_child(ios_document_bridge)
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 
@@ -284,6 +290,8 @@ func _ready() -> void:
 	_setup_application_window_size()
 	if managed_storage:
 		app_shell_controller.startup()
+		if is_instance_valid(ios_document_bridge):
+			ios_document_bridge.start()
 	else:
 		_show_splash_screen()
 	Global.pixelorama_has_loaded = true
