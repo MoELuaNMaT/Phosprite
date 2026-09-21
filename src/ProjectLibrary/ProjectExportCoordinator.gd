@@ -149,8 +149,10 @@ func _export_one(project: Project) -> bool:
 		var staging_error := ShareService.reset_staging_directory()
 		if staging_error != OK:
 			Global.popup_error(
-				tr("Could not prepare the Share Export folder. Error code %s (%s)")
-				% [staging_error, error_string(staging_error)]
+				(
+					tr("Could not prepare the Share Export folder. Error code %s (%s)")
+					% [staging_error, error_string(staging_error)]
+				)
 			)
 			return false
 		project.export_directory_path = ShareService.STAGING_DIRECTORY

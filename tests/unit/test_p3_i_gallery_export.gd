@@ -23,9 +23,15 @@ func test_p3_i_export_dialog_can_target_gallery_project() -> void:
 		"gallery_profile_confirmed.emit(EXPORT_PROFILE.capture(project))",
 		"batch export must snapshot one ExportProfile from the configured dialog",
 	)
-	check_true(
-		not src.contains("Global.current_project"),
-		"configured ExportDialog logic must not leak back to Global.current_project",
+	check_has(
+		src,
+		"return Global.current_project",
+		"Editor export must retain Global.current_project as the unconfigured fallback",
+	)
+	check_has(
+		src,
+		"Export.process_animation(project)",
+		"configured preview processing must use the resolved target project",
 	)
 
 

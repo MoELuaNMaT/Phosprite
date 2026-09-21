@@ -137,10 +137,14 @@ func show_tab() -> void:
 			Export.process_animation(project)
 			get_tree().call_group("ExportImageOptions", "show")
 			get_tree().set_group(
-				"ExportMultipleFilesOptions", "disabled", Export.is_single_file_format(_target_project())
+				"ExportMultipleFilesOptions",
+				"disabled",
+				Export.is_single_file_format(_target_project())
 			)
 			get_tree().set_group(
-				"ExportMultipleFilesEditableOptions", "editable", !Export.is_single_file_format(_target_project())
+				"ExportMultipleFilesEditableOptions",
+				"editable",
+				!Export.is_single_file_format(_target_project())
 			)
 		Export.ExportTab.SPRITESHEET:
 			frame_timer.stop()

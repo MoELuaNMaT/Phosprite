@@ -16,9 +16,7 @@ const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
 const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
 const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
-const PROJECT_EXPORT_COORDINATOR := preload(
-	"res://src/ProjectLibrary/ProjectExportCoordinator.gd"
-)
+const PROJECT_EXPORT_COORDINATOR := preload("res://src/ProjectLibrary/ProjectExportCoordinator.gd")
 
 var opensprite_file_selected := false
 var redone := false

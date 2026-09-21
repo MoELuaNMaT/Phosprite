@@ -420,9 +420,7 @@ func open_pxo_file(
 			Global.top_menu_container.file_menu.set_item_text(
 				Global.FileMenu.SAVE, tr("Save") + " %s" % path.uri_decode().get_file()
 			)
-			Global.top_menu_container.file_menu.set_item_text(
-				Global.FileMenu.EXPORT, tr("Export")
-			)
+			Global.top_menu_container.file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export"))
 
 	if not transient:
 		save_project_to_recent_list(path)

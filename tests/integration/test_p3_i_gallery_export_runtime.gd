@@ -20,9 +20,7 @@ func teardown() -> void:
 	if is_instance_valid(_coordinator):
 		_coordinator.queue_free()
 	if is_instance_valid(_main):
-		_main.project_save_coordinator.configure(
-			false, StoragePolicy.PROJECTS_DIRECTORY, false
-		)
+		_main.project_save_coordinator.configure(false, StoragePolicy.PROJECTS_DIRECTORY, false)
 	_remove_tree(TEST_ROOT)
 
 
@@ -119,8 +117,6 @@ func _write_project_fixture(path: String, size: Vector2i, color: Color) -> bool:
 	if index >= 0 and index < Global.tabs.get_tab_count():
 		Global.tabs.remove_tab(index)
 	project.remove()
-	if _baseline_current_project != null and Global.projects.has(_baseline_current_project):
-		Global.current_project_index = Global.projects.find(_baseline_current_project)
 	return saved
 
 
