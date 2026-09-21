@@ -141,8 +141,7 @@ func _on_restore_requested() -> void:
 	var error := RecoveryStore.restore_to_project(project_uuid, project_path)
 	if error != OK:
 		Global.popup_error(
-			tr("Could not restore this project. Error code %s (%s)")
-			% [error, error_string(error)]
+			tr("Could not restore this project. Error code %s (%s)") % [error, error_string(error)]
 		)
 		Global.dialog_open(false)
 		return
@@ -163,8 +162,7 @@ func _on_recovery_custom_action(action: StringName) -> void:
 	var error := RecoveryStore.discard(project_uuid)
 	if error != OK:
 		Global.popup_error(
-			tr("Could not discard recovery data. Error code %s (%s)")
-			% [error, error_string(error)]
+			tr("Could not discard recovery data. Error code %s (%s)") % [error, error_string(error)]
 		)
 		Global.dialog_open(false)
 		return
@@ -182,7 +180,10 @@ func _on_recovery_canceled() -> void:
 
 func _open_formal_project(path: String) -> bool:
 	OpenSave.open_pxo_file(path)
-	if Global.current_project == null or _normalized_path(Global.current_project.save_path) != _normalized_path(path):
+	if (
+		Global.current_project == null
+		or _normalized_path(Global.current_project.save_path) != _normalized_path(path)
+	):
 		return false
 	show_editor()
 	return true
