@@ -349,8 +349,11 @@ func _on_image_layer_requested() -> void:
 		import_flow_finished.emit(false)
 		return
 	pending_new_project_purpose = NewProjectPurpose.IMPORT_LAYER
-	var inferred_size := CanvasSizeResolverScript.resolve(pending_import_image.get_size())
-	new_project_dialog.popup_with_size(inferred_size)
+	# Import-as-layer is a pixel-preserving path. The default project must match
+	# the decoded source exactly so a 64×64 sprite opens as a 64×64 project with
+	# no preset expansion or resampling. The user may still choose another size.
+	var source_size := pending_import_image.get_size()
+	new_project_dialog.popup_with_size(source_size)
 
 
 func _on_image_reference_requested() -> void:
