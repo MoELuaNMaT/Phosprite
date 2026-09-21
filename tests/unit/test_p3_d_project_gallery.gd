@@ -112,14 +112,24 @@ func test_gallery_orientation_and_thumbnail_hit_target_regressions() -> void:
 		4,
 		"portrait Gallery must resolve to four columns even with five or more cards",
 	)
+	check_eq(
+		GalleryScript.effective_layout_width(1366.0, 1366.0, 1024.0),
+		1024.0,
+		"portrait root viewport must cap stale landscape shell/scroll widths",
+	)
+	check_eq(
+		GalleryScript.effective_layout_width(1024.0, 1366.0, 1024.0),
+		1024.0,
+		"stale ScrollContainer width must never expand the four-column grid",
+	)
 	var gallery_src := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/ProjectGallery.gd"
 	)
 	var main_src := FileAccess.get_file_as_string("res://src/Main.gd")
 	check_has(
 		gallery_src,
-		"if size.x > 0.0 and size.y > 0.0:",
-		"Gallery orientation must come from its actual safe-area Control geometry",
+		"return effective_layout_width(size.x, scroll_width, viewport_width)",
+		"Gallery width must be capped by the live root viewport as well as shell/scroll geometry",
 	)
 	check_true(
 		not gallery_src.contains('if OS.get_name() == "iOS":\n\t\tvar window := get_window()'),
