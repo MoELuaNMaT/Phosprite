@@ -13,9 +13,7 @@ var _baseline_current_project: Project
 
 func teardown() -> void:
 	if is_instance_valid(_main):
-		_main.project_save_coordinator.configure(
-			false, StoragePolicy.PROJECTS_DIRECTORY, false
-		)
+		_main.project_save_coordinator.configure(false, StoragePolicy.PROJECTS_DIRECTORY, false)
 		_cleanup_added_projects()
 		_main.project_gallery_root.configure(StoragePolicy.PROJECTS_DIRECTORY)
 		_main.app_shell_controller.configure(

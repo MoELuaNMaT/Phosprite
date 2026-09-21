@@ -17,12 +17,8 @@ func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
 	var path := TEST_ROOT.path_join("gesture.pxo")
 
 	check_eq(resolver.pointer_down(path, Vector2(10, 10), 0).size(), 0, "down must not open")
-	check_eq(
-		resolver.pointer_up(path, Vector2(10, 10), 50).size(), 0, "first up is delayed"
-	)
-	check_eq(
-		resolver.poll(349).size(), 0, "single tap must wait the full 300 ms window"
-	)
+	check_eq(resolver.pointer_up(path, Vector2(10, 10), 50).size(), 0, "first up is delayed")
+	check_eq(resolver.poll(349).size(), 0, "single tap must wait the full 300 ms window")
 	var single := resolver.poll(350)
 	check_eq(single.size(), 1, "single tap must resolve after 300 ms")
 	if single.size() == 1:
@@ -34,13 +30,9 @@ func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
 	resolver.pointer_down(path, Vector2(20, 20), 1000)
 	resolver.pointer_up(path, Vector2(20, 20), 1050)
 	var double := resolver.pointer_down(path, Vector2(22, 22), 1350)
-	check_eq(
-		double.size(), 1, "second down at the 300 ms boundary must resolve double tap"
-	)
+	check_eq(double.size(), 1, "second down at the 300 ms boundary must resolve double tap")
 	if double.size() == 1:
-		check_eq(
-			double[0]["kind"], Resolver.ActionKind.DOUBLE_TAP, "action must be double tap"
-		)
+		check_eq(double[0]["kind"], Resolver.ActionKind.DOUBLE_TAP, "action must be double tap")
 	check_eq(
 		resolver.pointer_up(path, Vector2(22, 22), 1380).size(),
 		0,
@@ -53,9 +45,7 @@ func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
 	var long_press := resolver.poll(4000)
 	check_eq(long_press.size(), 1, "one second hold must resolve long press")
 	if long_press.size() == 1:
-		check_eq(
-			long_press[0]["kind"], Resolver.ActionKind.LONG_PRESS, "action must be long press"
-		)
+		check_eq(long_press[0]["kind"], Resolver.ActionKind.LONG_PRESS, "action must be long press")
 	check_eq(
 		resolver.pointer_up(path, Vector2(30, 30), 4050).size(),
 		0,
@@ -81,9 +71,7 @@ func test_project_library_rename_duplicate_and_delete_contract() -> void:
 		Identity.is_valid_uuid(str(duplicate_one.get("uuid", ""))),
 		"duplicate must receive a UUID",
 	)
-	check_ne(
-		str(duplicate_one.get("uuid", "")), UUID_A, "duplicate UUID must differ from source"
-	)
+	check_ne(str(duplicate_one.get("uuid", "")), UUID_A, "duplicate UUID must differ from source")
 
 	var duplicate_two := library.duplicate_project(foo_path)
 	check_eq(
@@ -116,9 +104,7 @@ func test_project_library_rename_duplicate_and_delete_contract() -> void:
 		ERR_ALREADY_EXISTS,
 		"collision must report already exists",
 	)
-	check_true(
-		FileAccess.file_exists(renamed_path), "failed rename must leave source untouched"
-	)
+	check_true(FileAccess.file_exists(renamed_path), "failed rename must leave source untouched")
 
 	check_eq(
 		library.delete_project(renamed_path, UUID_A),
@@ -186,9 +172,7 @@ func _write_pxo(path: String, project_uuid: String) -> bool:
 		packer.close()
 		return false
 	var gallery := Library.build_gallery_metadata(project_uuid, Vector2i(16, 16))
-	if not _write_entry(
-		packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()
-	):
+	if not _write_entry(packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()):
 		packer.close()
 		return false
 	if not _write_entry(packer, "mimetype", "application/x-pixelorama".to_utf8_buffer()):

@@ -12,9 +12,7 @@ signal export_projects_requested(paths: PackedStringArray)
 
 const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
-const GestureResolverScript := preload(
-	"res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd"
-)
+const GestureResolverScript := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
 const CARD_SCENE := preload("res://src/UI/ProjectGallery/ProjectGalleryCard.tscn")
 
 const LANDSCAPE_COLUMNS := 6
@@ -414,8 +412,7 @@ func _on_rename_confirmed() -> void:
 		Global.popup_error(tr("Project names cannot be empty or contain unsupported characters."))
 	else:
 		Global.popup_error(
-			tr("Could not rename this project. Error code %s (%s)")
-			% [error, error_string(error)]
+			tr("Could not rename this project. Error code %s (%s)") % [error, error_string(error)]
 		)
 
 
