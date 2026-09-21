@@ -64,6 +64,7 @@ func import_pxo(source_path: String) -> Project:
 		return null
 
 	var source_name := source_path.uri_decode().get_file().get_basename()
+	var reserved_uuids := _managed_uuid_set()
 	var target_path := ProjectFactoryScript.make_unique_project_path(source_name, projects_directory)
 	var copy_error := DirAccess.copy_absolute(source_path, target_path)
 	if copy_error != OK:
@@ -79,7 +80,7 @@ func import_pxo(source_path: String) -> Project:
 		last_error = "Copied PXO could not be opened."
 		return null
 
-	_avoid_managed_uuid_collision(project, target_path)
+	_avoid_managed_uuid_collision(project, reserved_uuids)
 	project.name = target_path.get_file().get_basename()
 	project.file_name = project.name
 	project.has_changed = true
@@ -195,14 +196,15 @@ func _capture_imported_project(previous_count: int) -> Project:
 	return Global.projects[Global.projects.size() - 1]
 
 
-func _avoid_managed_uuid_collision(project: Project, imported_path: String) -> void:
-	var existing := ProjectLibraryScript.new(projects_directory).scan(false)
+func _managed_uuid_set() -> Dictionary:
 	var reserved: Dictionary = {}
-	for entry: ProjectLibraryEntry in existing:
-		if _normalized_path(entry.path) == _normalized_path(imported_path):
-			continue
+	for entry: ProjectLibraryEntry in ProjectLibraryScript.new(projects_directory).scan(false):
 		if not entry.uuid.is_empty():
 			reserved[entry.uuid] = true
+	return reserved
+
+
+func _avoid_managed_uuid_collision(project: Project, reserved: Dictionary) -> void:
 	if not reserved.has(project.project_uuid):
 		return
 	for _attempt in 16:
@@ -222,7 +224,3 @@ func _rollback_import(project: Project, target_path: String, previous_index: int
 	project.remove()
 	if FileAccess.file_exists(target_path):
 		DirAccess.remove_absolute(target_path)
-
-
-func _normalized_path(path: String) -> String:
-	return ProjectSettings.globalize_path(path).replace("\\", "/").simplify_path()
