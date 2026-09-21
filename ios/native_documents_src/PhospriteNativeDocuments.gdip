@@ -1,0 +1,17 @@
+[config]
+name="PhospriteNativeDocuments"
+binary="PhospriteNativeDocuments.xcframework"
+
+initialization="register_phosprite_native_documents_types"
+deinitialization="unregister_phosprite_native_documents_types"
+
+[dependencies]
+linked=[]
+embedded=[]
+system=["UIKit.framework", "PhotosUI.framework", "Photos.framework", "UniformTypeIdentifiers.framework"]
+
+capabilities=[]
+
+files=[]
+
+[plist]
