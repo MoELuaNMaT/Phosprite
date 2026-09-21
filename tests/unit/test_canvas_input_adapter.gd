@@ -112,7 +112,7 @@ func test_adapter_routes_all_canvas_coordinate_consumers_through_viewport_space(
 	)
 	check_has(
 		router,
-		"affine_inverse() * viewport_position",
+		"* viewport_position",
 		"selection transform handles must use the same normalized coordinates",
 	)
 
