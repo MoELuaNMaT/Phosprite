@@ -97,6 +97,14 @@ func test_image_reference_import_preserves_source_pixels_and_centers_transform()
 	if project.reference_images.is_empty():
 		return
 	var reference: ReferenceImage = project.reference_images[0]
+	check_true(
+		reference.is_inside_tree(),
+		"reference import must be mounted immediately instead of appearing only after reload",
+	)
+	check_true(
+		reference.get_parent() == Global.canvas.reference_image_container,
+		"reference import must reuse the existing canvas ReferenceImage container lifecycle",
+	)
 	var expected_scale := Resolver.reference_scale(source.get_size(), canvas_size)
 	check_eq(
 		reference.scale,
