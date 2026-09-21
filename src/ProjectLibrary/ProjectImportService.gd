@@ -10,19 +10,17 @@ const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.g
 const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
 const CanvasSizeResolverScript := preload("res://src/ProjectLibrary/CanvasSizeResolver.gd")
 
-const IMAGE_EXTENSIONS := PackedStringArray(
-	[
-		"png",
-		"bmp",
-		"hdr",
-		"jpg",
-		"jpeg",
-		"svg",
-		"tga",
-		"webp",
-		"exr",
-	]
-)
+const IMAGE_EXTENSIONS: PackedStringArray = [
+	"png",
+	"bmp",
+	"hdr",
+	"jpg",
+	"jpeg",
+	"svg",
+	"tga",
+	"webp",
+	"exr",
+]
 
 var save_coordinator: ProjectSaveCoordinator
 var projects_directory := StoragePolicy.PROJECTS_DIRECTORY
