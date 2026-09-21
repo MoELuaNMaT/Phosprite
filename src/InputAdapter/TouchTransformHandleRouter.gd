@@ -29,7 +29,8 @@ static func handle_event(canvas, viewport_position: Vector2, event: InputEvent) 
 		return false
 
 	var local_position: Vector2 = (
-		transformation_handles.get_global_transform_with_canvas().affine_inverse() * viewport_position
+		transformation_handles.get_global_transform_with_canvas().affine_inverse()
+		* viewport_position
 	)
 	if Global.mirror_view:
 		local_position.x = project.size.x - local_position.x
