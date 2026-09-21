@@ -59,15 +59,18 @@ func test_p3_e_exact_presets_and_default_size() -> void:
 
 func test_p3_e_timestamp_name_and_collision_suffixes_are_stable() -> void:
 	_reset_root()
-	var name := Factory.make_untitled_name(
-		{
-			"year": 2026,
-			"month": 9,
-			"day": 21,
-			"hour": 15,
-			"minute": 6,
-			"second": 7,
-		}
+	var name := (
+		Factory
+		. make_untitled_name(
+			{
+				"year": 2026,
+				"month": 9,
+				"day": 21,
+				"hour": 15,
+				"minute": 6,
+				"second": 7,
+			}
+		)
 	)
 	check_eq(
 		name,
@@ -105,9 +108,7 @@ func test_p3_e_source_contract_is_ipad_specific_and_save_before_editor() -> void
 	var ipad_dialog := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/NewProjectDialog.gd"
 	)
-	var desktop_dialog := FileAccess.get_file_as_string(
-		"res://src/UI/Dialogs/CreateNewImage.gd"
-	)
+	var desktop_dialog := FileAccess.get_file_as_string("res://src/UI/Dialogs/CreateNewImage.gd")
 
 	check_has(
 		gallery_src,
@@ -140,7 +141,9 @@ func test_p3_e_source_contract_is_ipad_specific_and_save_before_editor() -> void
 		"desktop CreateNewImage must retain its existing fill-color workflow",
 	)
 
-	var save_call := shell_src.find('save_coordinator.flush_project(project, "new_project", target_path)')
+	var save_call := shell_src.find(
+		'save_coordinator.flush_project(project, "new_project", target_path)'
+	)
 	var editor_call := shell_src.find("show_editor()", save_call)
 	check_true(save_call >= 0, "P3-E must force the initial managed PXO save")
 	check_true(
