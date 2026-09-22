@@ -210,6 +210,11 @@ func test_p3_h_gallery_source_uses_explicit_multiselect_and_long_press_menus() -
 		'[node name="ProjectGalleryCard" type="PanelContainer"]',
 		"project cards must not inherit native Button pressed/hover draw states",
 	)
+	check_has(
+		card_scene,
+		"mouse_filter = 1",
+		"project cards must pass drag events to the enclosing ScrollContainer",
+	)
 	check_true(
 		not card_scene.contains("theme_override_styles/pressed"),
 		"project cards must not have a native pressed highlight that can latch after popups",
