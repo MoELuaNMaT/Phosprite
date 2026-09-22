@@ -31,7 +31,9 @@ func _ready() -> void:
 	mode_switch_button.toggled.connect(_on_mode_switch_toggled)
 	if (
 		is_instance_valid(Global.animation_timeline)
-		and not Global.animation_timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
+		and not Global.animation_timeline.timeline_mode_changed.is_connected(
+			_on_timeline_mode_changed
+		)
 	):
 		Global.animation_timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
 	_managed_items = [global_tool_options, undo_button, redo_button, frame_group]
@@ -192,16 +194,13 @@ func _sync_mode_switch() -> void:
 		mode_switch_button.set_pressed_no_signal(false)
 		mode_switch_button.text = "Animation"
 		return
-	var single_frame := (
-		Global.animation_timeline.get_timeline_mode()
-		== AnimationTimeline.TimelineMode.SINGLE_FRAME
+	var single_frame: bool = (
+		Global.animation_timeline.get_timeline_mode() == AnimationTimeline.TimelineMode.SINGLE_FRAME
 	)
 	mode_switch_button.set_pressed_no_signal(single_frame)
 	mode_switch_button.text = "Single frame" if single_frame else "Animation"
 	mode_switch_button.tooltip_text = (
-		"Switch to animation timeline"
-		if single_frame
-		else "Switch to single-frame layer view"
+		"Switch to animation timeline" if single_frame else "Switch to single-frame layer view"
 	)
 
 
