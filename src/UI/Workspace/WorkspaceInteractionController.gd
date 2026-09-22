@@ -5,8 +5,8 @@ const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 ## Live P2-G interaction bridge for Workspace chrome.
 ##
-## Mouse users drag headers immediately. Touch users start dragging as soon as
-## movement clears a tiny tap threshold; no long-press delay is required.
+## Mouse and touch users drag normal Workspace headers immediately. Touch capture
+## starts on press at the Workspace level, before child controls can swallow motion.
 ## Collapse and resize targets live only inside Workspace chrome and never cover
 ## the central Canvas input surface.
 
@@ -74,7 +74,12 @@ func _input(event: InputEvent) -> void:
 	if not _has_captured_interaction() and event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
-			_try_capture_timeline_header_resize(touch)
+			if _try_capture_workspace_resize(touch):
+				return
+			if _try_capture_timeline_header_resize(touch):
+				return
+			if _try_capture_workspace_header_drag(touch):
+				return
 	if not _has_captured_interaction():
 		return
 	if event is InputEventMouseMotion:
@@ -136,6 +141,90 @@ static func timeline_header_resize_intent(delta: Vector2) -> bool:
 		vertical >= TIMELINE_DIRECT_RESIZE_DISTANCE
 		and vertical >= horizontal * TIMELINE_VERTICAL_INTENT_RATIO
 	)
+
+
+func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
+	var hit := _top_workspace_module_at(event.position)
+	if hit.is_empty():
+		return false
+	var module_id := hit.get("module_id", &"") as StringName
+	var module := hit.get("module") as WorkspaceModule
+	var local_point := hit.get("local_point", Vector2.ZERO) as Vector2
+	if module == null:
+		return false
+	var resize_edges := module.get_resize_edges(local_point)
+	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
+		resize_edges = surface.get_docked_resize_edges(module_id, local_point)
+	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
+		return false
+	_raise_floating_module(module_id, module)
+	if not _begin_resize(
+		module_id,
+		_viewport_point_to_host(event.position),
+		event.index,
+		resize_edges,
+	):
+		return false
+	get_viewport().set_input_as_handled()
+	return true
+
+
+func _try_capture_workspace_header_drag(event: InputEventScreenTouch) -> bool:
+	var hit := _top_workspace_module_at(event.position)
+	if hit.is_empty():
+		return false
+	var module_id := hit.get("module_id", &"") as StringName
+	var module := hit.get("module") as WorkspaceModule
+	var local_point := hit.get("local_point", Vector2.ZERO) as Vector2
+	if module == null or not module.is_header_drag_point(local_point):
+		return false
+	_raise_floating_module(module_id, module)
+	if not _begin_drag(module_id, _viewport_point_to_host(event.position), event.index):
+		return false
+	get_viewport().set_input_as_handled()
+	return true
+
+
+func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
+	if manager == null or surface == null:
+		return {}
+	var best: Dictionary = {}
+	var best_layer := -1
+	var best_index := -1
+	for module_id in manager.get_registered_ids():
+		var module := manager.get_instance(module_id)
+		if module == null or not module.is_visible_in_tree():
+			continue
+		var placement := surface.get_module_placement(module_id)
+		if placement == WorkspaceSurface.Placement.NONE:
+			continue
+		var local_point := (
+			module.get_global_transform_with_canvas().affine_inverse() * viewport_point
+		)
+		if not module.get_visual_rect().has_point(local_point):
+			continue
+		var layer_priority := 1
+		if (
+			placement == WorkspaceSurface.Placement.FLOATING
+			or (
+				placement == WorkspaceSurface.Placement.COLLAPSED
+				and module.get_parent() == surface.get_floating_layer()
+			)
+		):
+			layer_priority = 2
+		var tree_index := module.get_index()
+		if layer_priority < best_layer:
+			continue
+		if layer_priority == best_layer and tree_index <= best_index:
+			continue
+		best_layer = layer_priority
+		best_index = tree_index
+		best = {
+			"module_id": module_id,
+			"module": module,
+			"local_point": local_point,
+		}
+	return best
 
 
 func _try_capture_timeline_header_resize(event: InputEventScreenTouch) -> bool:
@@ -310,11 +399,8 @@ func _handle_screen_touch(
 			module.accept_event()
 		return
 	if module.is_header_drag_point(event.position):
-		_pending_touch_module_id = module_id
-		_pending_touch_index = event.index
-		_pending_touch_start_pointer = pointer
-		_pending_touch_can_drag = true
-		module.accept_event()
+		if _begin_drag(module_id, pointer, event.index):
+			module.accept_event()
 
 
 func _begin_drag(module_id: StringName, pointer: Vector2, touch_index: int) -> bool:
