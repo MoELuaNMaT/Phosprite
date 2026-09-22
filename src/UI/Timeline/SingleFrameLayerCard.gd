@@ -59,7 +59,6 @@ func _on_pressed() -> void:
 	var project := Global.current_project
 	if project == null or layer_index < 0 or layer_index >= project.layers.size():
 		return
-	Global.transform_content_confirmed.emit()
 	project.selected_cels.clear()
 	project.selected_cels.append([project.current_frame, layer_index])
 	project.change_cel(-1, layer_index)
