@@ -13,7 +13,9 @@ signal panel_visibility_changed(module_id: StringName, visible: bool)
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
-const GLOBAL_TOOL_OPTIONS_SCENE := preload("res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn")
+const TIMELINE_HEADER_CONTROLS_SCENE := preload(
+	"res://src/UI/Workspace/TimelineHeaderControls.tscn"
+)
 
 const WORKSPACE_SIDE_MARGIN := 8.0
 
@@ -450,14 +452,14 @@ func _attach_timeline_header_options() -> bool:
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
 	if timeline == null:
 		return false
-	var options := GLOBAL_TOOL_OPTIONS_SCENE.instantiate()
-	if not options is Control:
-		if options != null:
-			options.free()
+	var controls := TIMELINE_HEADER_CONTROLS_SCENE.instantiate()
+	if not controls is Control:
+		if controls != null:
+			controls.free()
 		return false
-	var options_control := options as Control
-	if not timeline.set_header_accessory(options_control):
-		options_control.free()
+	var header_controls := controls as Control
+	if not timeline.set_header_accessory(header_controls):
+		header_controls.free()
 		return false
 	return true
 
