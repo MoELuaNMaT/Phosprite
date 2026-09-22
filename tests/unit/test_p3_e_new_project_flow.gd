@@ -83,9 +83,8 @@ func test_p3_e_dialog_source_uses_two_column_single_selector_layout() -> void:
 		"disabled = true",
 		"reserved Custom preset entry must not expose unfinished behavior",
 	)
-	check_not_has(
-		dialog_scene,
-		'name="CurrentSize"',
+	check_true(
+		not dialog_scene.contains('name="CurrentSize"'),
 		"duplicate top size preview must be removed",
 	)
 	check_has(
