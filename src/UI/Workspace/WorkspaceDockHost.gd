@@ -262,8 +262,7 @@ func get_content_rect() -> Rect2:
 	return Rect2(
 		Vector2(inset + left_w, top_h),
 		Vector2(
-			maxf(0.0, size.x - inset * 2.0 - left_w - right_w),
-			maxf(0.0, size.y - top_h - bottom_h)
+			maxf(0.0, size.x - inset * 2.0 - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h)
 		)
 	)
 
