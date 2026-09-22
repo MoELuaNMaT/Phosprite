@@ -22,9 +22,9 @@ const WORKSPACE_SIDE_MARGIN := 8.0
 const DEFAULT_LAYOUT := [
 	{
 		"id": Builtins.PALETTE_ID,
-		"zone": WorkspaceDockLayout.DockZone.TOP,
-		"index": 0,
-		"size": Vector2(280.0, 140.0),
+		"zone": WorkspaceDockLayout.DockZone.RIGHT,
+		"index": 1,
+		"size": Vector2(300.0, 360.0),
 	},
 	{
 		"id": Builtins.TOOLS_ID,
@@ -37,12 +37,6 @@ const DEFAULT_LAYOUT := [
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 0,
 		"size": Vector2(280.0, 110.0),
-	},
-	{
-		"id": Builtins.COLOR_PICKER_ID,
-		"zone": WorkspaceDockLayout.DockZone.RIGHT,
-		"index": 1,
-		"size": Vector2(280.0, 200.0),
 	},
 	{
 		"id": Builtins.RIGHT_TOOL_OPTIONS_ID,
@@ -80,6 +74,9 @@ var _merged_tools_content: VBoxContainer
 var _merged_tools_separator: HSeparator
 var _left_tool_options_state: Dictionary = {}
 var _tools_palette_state: Dictionary = {}
+var _palette_color_root: VBoxContainer
+var _palette_color_separator: HSeparator
+var _palette_color_states: Dictionary = {}
 var _tools_root_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
@@ -239,18 +236,31 @@ func merge_left_tool_options_after_startup() -> bool:
 func _migrate_live_editor() -> bool:
 	main_canvas = legacy_container.get_node_or_null(^"Main Canvas") as Control
 	_left_tool_options = legacy_container.get_node_or_null(^"Left Tool Options") as ScrollContainer
-	if main_canvas == null or _left_tool_options == null:
+	var legacy_palette := legacy_container.get_node_or_null(^"Palettes") as Control
+	var legacy_color_picker := legacy_container.get_node_or_null(^"Color Picker") as Control
+	if (
+		main_canvas == null
+		or _left_tool_options == null
+		or legacy_palette == null
+		or legacy_color_picker == null
+	):
 		_clear_setup()
 		return false
 
 	var resolved: Dictionary = {}
 	for module_id in get_panel_ids():
+		if module_id == Builtins.PALETTE_ID:
+			continue
 		var node_name := Builtins.get_live_panel_node_name(module_id)
 		var panel := legacy_container.get_node_or_null(NodePath(node_name)) as Control
 		if panel == null:
 			_clear_setup()
 			return false
 		resolved[module_id] = panel
+	if not _merge_palette_and_color_picker(legacy_palette, legacy_color_picker):
+		_clear_setup()
+		return false
+	resolved[Builtins.PALETTE_ID] = _palette_color_root
 
 	_capture_original_state(resolved)
 	_previous_autosave_enabled = layout_store.autosave_enabled
@@ -262,6 +272,7 @@ func _migrate_live_editor() -> bool:
 		var panel := resolved[module_id] as Control
 		if manager.adopt_module(module_id, panel, {"live_editor": true}) == null:
 			_rollback_adoption(adopted)
+			_restore_palette_color_merge()
 			layout_store.autosave_enabled = _previous_autosave_enabled
 			_restore_legacy_shell()
 			_clear_setup()
@@ -270,6 +281,7 @@ func _migrate_live_editor() -> bool:
 
 	if not _attach_timeline_header_options():
 		_rollback_adoption(adopted)
+		_restore_palette_color_merge()
 		layout_store.autosave_enabled = _previous_autosave_enabled
 		_restore_legacy_shell()
 		_clear_setup()
@@ -322,6 +334,116 @@ func _migrate_live_editor() -> bool:
 		return false
 	migration_completed.emit()
 	return true
+
+
+func _merge_palette_and_color_picker(palette: Control, color_picker: Control) -> bool:
+	if is_instance_valid(_palette_color_root):
+		return true
+	if palette == null or color_picker == null:
+		return false
+	var palette_parent := palette.get_parent()
+	var picker_parent := color_picker.get_parent()
+	if palette_parent == null or picker_parent != palette_parent:
+		return false
+
+	_palette_color_states = {
+		"palette":
+		{
+			"node": palette,
+			"parent": palette_parent,
+			"index": palette.get_index(),
+			"visible": palette.visible,
+			"size_flags_horizontal": palette.size_flags_horizontal,
+			"size_flags_vertical": palette.size_flags_vertical,
+			"stretch_ratio": palette.size_flags_stretch_ratio,
+		},
+		"picker":
+		{
+			"node": color_picker,
+			"parent": picker_parent,
+			"index": color_picker.get_index(),
+			"visible": color_picker.visible,
+			"size_flags_horizontal": color_picker.size_flags_horizontal,
+			"size_flags_vertical": color_picker.size_flags_vertical,
+			"stretch_ratio": color_picker.size_flags_stretch_ratio,
+		},
+	}
+	var insert_index := mini(palette.get_index(), color_picker.get_index())
+	palette_parent.remove_child(palette)
+	picker_parent.remove_child(color_picker)
+
+	_palette_color_root = VBoxContainer.new()
+	_palette_color_root.name = Builtins.get_live_panel_node_name(Builtins.PALETTE_ID)
+	_palette_color_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_palette_color_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_palette_color_root.add_theme_constant_override(&"separation", 0)
+	palette_parent.add_child(_palette_color_root)
+	palette_parent.move_child(
+		_palette_color_root, mini(insert_index, palette_parent.get_child_count() - 1)
+	)
+
+	palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette.size_flags_stretch_ratio = 0.9
+	_palette_color_root.add_child(palette)
+
+	_palette_color_separator = HSeparator.new()
+	_palette_color_separator.name = &"PaletteColorSeparator"
+	_palette_color_root.add_child(_palette_color_separator)
+
+	color_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	color_picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	color_picker.size_flags_stretch_ratio = 1.1
+	_palette_color_root.add_child(color_picker)
+	return true
+
+
+func _restore_palette_color_merge() -> void:
+	if not is_instance_valid(_palette_color_root) or _palette_color_states.is_empty():
+		return
+	var entries: Array[Dictionary] = []
+	for key in ["palette", "picker"]:
+		var state := _palette_color_states.get(key, {}) as Dictionary
+		if state.is_empty():
+			continue
+		var node := state.get("node") as Control
+		if node != null and node.get_parent() != null:
+			node.get_parent().remove_child(node)
+		entries.append(state)
+	if _palette_color_root.get_parent() != null:
+		_palette_color_root.get_parent().remove_child(_palette_color_root)
+	_palette_color_root.free()
+	_palette_color_root = null
+	_palette_color_separator = null
+
+	entries.sort_custom(func(a: Dictionary, b: Dictionary): return int(a["index"]) < int(b["index"]))
+	for state in entries:
+		var node := state.get("node") as Control
+		var parent := state.get("parent") as Node
+		if node == null or parent == null:
+			continue
+		parent.add_child(node)
+		parent.move_child(node, mini(int(state.get("index", 0)), parent.get_child_count() - 1))
+		node.visible = bool(state.get("visible", true))
+		node.size_flags_horizontal = int(
+			state.get("size_flags_horizontal", Control.SIZE_FILL)
+		)
+		node.size_flags_vertical = int(state.get("size_flags_vertical", Control.SIZE_FILL))
+		node.size_flags_stretch_ratio = float(state.get("stretch_ratio", 1.0))
+	_palette_color_states.clear()
+
+
+func _update_top_edge_snap_band() -> void:
+	if dock_host == null or ui_root == null:
+		return
+	var shell := ui_root.get_parent()
+	var top_menu := (
+		shell.get_node_or_null(^"TopMenuContainer") as Control if shell != null else null
+	)
+	if top_menu == null:
+		return
+	var menu_height := maxf(0.0, top_menu.size.y)
+	dock_host.set_top_edge_snap_band(-(_project_tabs_height + menu_height), menu_height)
 
 
 func _merge_left_tool_options_into_tools() -> bool:
@@ -498,6 +620,7 @@ func _rollback_live_migration() -> void:
 	var adopted := get_panel_ids()
 	_restore_merged_tools()
 	_rollback_adoption(adopted)
+	_restore_palette_color_merge()
 	_restore_canvas_chrome()
 	_restore_main_canvas()
 	_restore_legacy_shell()
@@ -709,6 +832,7 @@ func _update_main_canvas_rect() -> void:
 		project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
 	if dock_host != null:
 		dock_host.offset_top = _project_tabs_height
+		_update_top_edge_snap_band()
 	_update_canvas_chrome_geometry.call_deferred()
 
 
@@ -939,6 +1063,9 @@ func _clear_setup() -> void:
 	_left_tool_options = null
 	_merged_tools_content = null
 	_merged_tools_separator = null
+	_palette_color_root = null
+	_palette_color_separator = null
+	_palette_color_states.clear()
 	_left_tool_options_state.clear()
 	_tools_palette_state.clear()
 	_project_tabs_height = 0.0
