@@ -5,20 +5,37 @@ signal create_requested(canvas_size: Vector2i)
 
 const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 
-var selected_size := ProjectFactoryScript.DEFAULT_SIZE
+enum PresetRatio {
+	SQUARE,
+	FOUR_THREE,
+	SIXTEEN_NINE,
+	CUSTOM,
+}
 
-@onready var current_size_label := %CurrentSize as Label
-@onready var square_presets := %SquarePresets as HFlowContainer
-@onready var four_three_presets := %FourThreePresets as HFlowContainer
-@onready var sixteen_nine_presets := %SixteenNinePresets as HFlowContainer
+var selected_size := ProjectFactoryScript.DEFAULT_SIZE
+var active_ratio := PresetRatio.SQUARE
+var _ratio_group := ButtonGroup.new()
+
+@onready var preset_selector := %PresetSelector as OptionButton
+@onready var square_ratio := %SquareRatio as Button
+@onready var four_three_ratio := %FourThreeRatio as Button
+@onready var sixteen_nine_ratio := %SixteenNineRatio as Button
+@onready var custom_ratio := %CustomRatio as Button
 @onready var width_value := %WidthValue as SpinBox
 @onready var height_value := %HeightValue as SpinBox
 
 
 func _ready() -> void:
-	_build_preset_buttons(square_presets, ProjectFactoryScript.SQUARE_PRESETS)
-	_build_preset_buttons(four_three_presets, ProjectFactoryScript.FOUR_THREE_PRESETS)
-	_build_preset_buttons(sixteen_nine_presets, ProjectFactoryScript.SIXTEEN_NINE_PRESETS)
+	_ratio_group.allow_unpress = false
+	for button: Button in [square_ratio, four_three_ratio, sixteen_nine_ratio]:
+		button.button_group = _ratio_group
+	square_ratio.set_pressed_no_signal(true)
+
+	square_ratio.pressed.connect(_on_ratio_pressed.bind(PresetRatio.SQUARE))
+	four_three_ratio.pressed.connect(_on_ratio_pressed.bind(PresetRatio.FOUR_THREE))
+	sixteen_nine_ratio.pressed.connect(_on_ratio_pressed.bind(PresetRatio.SIXTEEN_NINE))
+
+	_rebuild_preset_selector()
 	_apply_size(ProjectFactoryScript.DEFAULT_SIZE)
 
 
@@ -27,19 +44,53 @@ func popup_for_new_project() -> void:
 
 
 func popup_with_size(initial_size: Vector2i) -> void:
+	var matching_ratio := ratio_for_preset_size(initial_size)
+	_set_active_ratio(PresetRatio.SQUARE if matching_ratio < 0 else matching_ratio)
 	_apply_size(initial_size)
 	popup_centered_clamped()
 
 
-func _build_preset_buttons(container: HFlowContainer, presets: Array[Vector2i]) -> void:
-	for preset: Vector2i in presets:
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(76, 38)
-		button.focus_mode = Control.FOCUS_NONE
-		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		button.text = "%d×%d" % [preset.x, preset.y]
-		button.pressed.connect(_on_preset_pressed.bind(preset))
-		container.add_child(button)
+static func ratio_for_preset_size(canvas_size: Vector2i) -> int:
+	for ratio in [PresetRatio.SQUARE, PresetRatio.FOUR_THREE, PresetRatio.SIXTEEN_NINE]:
+		if presets_for_ratio(ratio).has(canvas_size):
+			return ratio
+	return -1
+
+
+static func presets_for_ratio(ratio: int) -> Array[Vector2i]:
+	match ratio:
+		PresetRatio.SQUARE:
+			return ProjectFactoryScript.SQUARE_PRESETS
+		PresetRatio.FOUR_THREE:
+			return ProjectFactoryScript.FOUR_THREE_PRESETS
+		PresetRatio.SIXTEEN_NINE:
+			return ProjectFactoryScript.SIXTEEN_NINE_PRESETS
+		_:
+			return []
+
+
+func _set_active_ratio(ratio: int) -> void:
+	active_ratio = ratio
+	square_ratio.set_pressed_no_signal(ratio == PresetRatio.SQUARE)
+	four_three_ratio.set_pressed_no_signal(ratio == PresetRatio.FOUR_THREE)
+	sixteen_nine_ratio.set_pressed_no_signal(ratio == PresetRatio.SIXTEEN_NINE)
+	_rebuild_preset_selector()
+
+
+func _rebuild_preset_selector() -> void:
+	preset_selector.clear()
+	for preset: Vector2i in presets_for_ratio(active_ratio):
+		preset_selector.add_item("%d × %d" % [preset.x, preset.y])
+	_sync_preset_selection()
+
+
+func _sync_preset_selection() -> void:
+	var presets := presets_for_ratio(active_ratio)
+	for index in presets.size():
+		if presets[index] == selected_size:
+			preset_selector.select(index)
+			return
+	preset_selector.select(-1)
 
 
 func _apply_size(canvas_size: Vector2i, update_inputs := true) -> void:
@@ -50,11 +101,18 @@ func _apply_size(canvas_size: Vector2i, update_inputs := true) -> void:
 	if update_inputs:
 		width_value.set_value_no_signal(selected_size.x)
 		height_value.set_value_no_signal(selected_size.y)
-	current_size_label.text = "%d × %d px" % [selected_size.x, selected_size.y]
+	_sync_preset_selection()
 
 
-func _on_preset_pressed(preset: Vector2i) -> void:
-	_apply_size(preset)
+func _on_ratio_pressed(ratio: int) -> void:
+	_set_active_ratio(ratio)
+
+
+func _on_preset_item_selected(index: int) -> void:
+	var presets := presets_for_ratio(active_ratio)
+	if index < 0 or index >= presets.size():
+		return
+	_apply_size(presets[index])
 
 
 func _on_width_value_changed(value: float) -> void:
