@@ -5,6 +5,7 @@ const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 
 const DEFAULT_SIZE := Vector2i(64, 64)
 const MAX_CANVAS_SIDE := 16384
+const MAX_CANVAS_PIXELS := 4096 * 4096
 
 const SQUARE_PRESETS: Array[Vector2i] = [
 	Vector2i(16, 16),
@@ -32,6 +33,24 @@ const SIXTEEN_NINE_PRESETS: Array[Vector2i] = [
 ]
 
 
+static func is_canvas_size_supported(canvas_size: Vector2i) -> bool:
+	if canvas_size.x < 1 or canvas_size.y < 1:
+		return false
+	if canvas_size.x > MAX_CANVAS_SIDE or canvas_size.y > MAX_CANVAS_SIDE:
+		return false
+	return int(canvas_size.x) * int(canvas_size.y) <= MAX_CANVAS_PIXELS
+
+
+static func canvas_size_limit_message(canvas_size: Vector2i) -> String:
+	if canvas_size.x > MAX_CANVAS_SIDE or canvas_size.y > MAX_CANVAS_SIDE:
+		return tr("Width and height must each be %d px or less.") % MAX_CANVAS_SIDE
+	if int(canvas_size.x) * int(canvas_size.y) > MAX_CANVAS_PIXELS:
+		return tr(
+			"Canvas is too large. Maximum total area is %d pixels (for example 4096 × 4096)."
+		) % MAX_CANVAS_PIXELS
+	return ""
+
+
 static func all_presets() -> Array[Vector2i]:
 	var presets: Array[Vector2i] = []
 	presets.append_array(SQUARE_PRESETS)
@@ -41,10 +60,9 @@ static func all_presets() -> Array[Vector2i]:
 
 
 static func create_blank_project(project_name: String, canvas_size: Vector2i) -> Project:
-	var safe_size := Vector2i(
-		clampi(canvas_size.x, 1, MAX_CANVAS_SIDE), clampi(canvas_size.y, 1, MAX_CANVAS_SIDE)
-	)
-	var project := Project.new([], project_name, safe_size)
+	if not is_canvas_size_supported(canvas_size):
+		return null
+	var project := Project.new([], project_name, canvas_size)
 	project.layers.append(PixelLayer.new(project))
 	project.frames.append(project.new_empty_frame())
 	return project
