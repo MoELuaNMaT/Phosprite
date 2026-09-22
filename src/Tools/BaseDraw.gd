@@ -124,8 +124,6 @@ func _on_BrushSize_value_changed(value: float) -> void:
 	_brush_size = int(value)
 	_brush_size_dynamics = _brush_size
 	_cache_limit = (_brush_size * _brush_size) * 3  # This equation seems the best match
-	if _brush.type in DEFAULT_GEOMETRIC_BRUSHES:
-		_refresh_default_brush_preview()
 	update_config()
 	save_config()
 
@@ -231,14 +229,12 @@ func update_brush() -> void:
 
 func _refresh_default_brush_preview() -> void:
 	var shape := _default_brush_shape(_brush.type)
-	if shape < 0:
-		return
-	var preview := BrushShapes.create_preview_image(shape as BrushShapes.Shape, _brush_size)
+	var preview := BrushShapes.create_preview_image(shape, _brush_size)
 	_brush_texture = ImageTexture.create_from_image(preview)
 	$Brush/Type/Texture.texture = _brush_texture
 
 
-func _default_brush_shape(brush_type: int) -> int:
+func _default_brush_shape(brush_type: int) -> BrushShapes.Shape:
 	match brush_type:
 		Brushes.PIXEL:
 			return BrushShapes.Shape.FILLED_SQUARE
@@ -248,7 +244,7 @@ func _default_brush_shape(brush_type: int) -> int:
 			return BrushShapes.Shape.FILLED_CIRCLE
 		Brushes.CIRCLE:
 			return BrushShapes.Shape.HOLLOW_CIRCLE
-	return -1
+	return BrushShapes.Shape.FILLED_SQUARE
 
 
 func update_random_image() -> void:
