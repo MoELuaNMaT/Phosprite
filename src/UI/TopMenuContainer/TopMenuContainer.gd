@@ -13,7 +13,6 @@ const EXTERNAL_LINK_ICON := preload("res://assets/graphics/misc/external_link.sv
 const PIXELORAMA_ICON := preload("res://assets/graphics/icons/icon_16x16.png")
 const HEART_ICON := preload("res://assets/graphics/misc/heart.svg")
 
-var text_server := TextServerManager.get_primary_interface()
 var recent_projects := []
 var selected_layout := 0
 var zen_mode := false
@@ -238,13 +237,6 @@ func _update_file_menu_buttons(project: Project) -> void:
 			file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export") + f_name)
 	else:
 		file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export"))
-
-
-func _update_current_frame_mark() -> void:
-	var project := Global.current_project
-	var current_frame := text_server.format_number(str(project.current_frame + 1))
-	var n_of_frames := text_server.format_number(str(project.frames.size()))
-	current_frame_mark.text = "%s/%s" % [current_frame, n_of_frames]
 
 
 func _setup_file_menu() -> void:
