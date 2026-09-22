@@ -249,28 +249,34 @@ func test_top_dock_requires_pointer_inside_explicit_toolbar_band() -> void:
 		DockLayout.DockZone.TOP: Rect2(0.0, -32.0, 1200.0, 32.0),
 	}
 
-	var near_top_canvas := DockResolver.resolve(
-		Builtins.PREVIEW_ID,
-		Vector2(600.0, 24.0),
-		zone_rects,
-		{},
-		layout,
-		edge_rects,
-		workspace_rect,
+	var near_top_canvas := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(600.0, 24.0),
+			zone_rects,
+			{},
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
 	)
 	check_true(
 		not bool(near_top_canvas.get("valid", true)),
 		"being near the top inside Canvas must not trigger Top Dock"
 	)
 
-	var toolbar_target := DockResolver.resolve(
-		Builtins.PREVIEW_ID,
-		Vector2(600.0, -16.0),
-		zone_rects,
-		{},
-		layout,
-		edge_rects,
-		workspace_rect,
+	var toolbar_target := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(600.0, -16.0),
+			zone_rects,
+			{},
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
 	)
 	check_true(bool(toolbar_target.get("valid", false)), "pointer inside top toolbar must snap")
 	check_eq(
