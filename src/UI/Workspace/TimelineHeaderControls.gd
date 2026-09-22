@@ -66,7 +66,8 @@ func _apply_overflow_layout() -> void:
 	if overflow_panel.visible:
 		overflow_panel.hide()
 
-	var all_items: Array[Control] = _managed_items.duplicate()
+	var all_items: Array[Control] = []
+	all_items.assign(_managed_items)
 	var all_width := _inline_width(all_items)
 	var keep_inline: Array[Control] = []
 	var needs_overflow := all_width > _available_width
@@ -80,7 +81,8 @@ func _apply_overflow_layout() -> void:
 		# The large Global Tool Options group overflows first on narrow windows.
 		var priority: Array[Control] = [undo_button, redo_button, frame_group, global_tool_options]
 		for item in priority:
-			var candidate := keep_inline.duplicate()
+			var candidate: Array[Control] = []
+			candidate.assign(keep_inline)
 			candidate.append(item)
 			if _inline_width(candidate) <= budget:
 				keep_inline.append(item)
