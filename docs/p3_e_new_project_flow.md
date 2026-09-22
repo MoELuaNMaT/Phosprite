@@ -61,7 +61,12 @@ immediately and clears the dropdown selection when the resulting size no longer 
 A fourth Custom preset tab is visible but disabled as a reserved extension point for future
 user-defined preset lists. There is currently no configuration entry for those presets.
 
-The user can enter custom width and height values from 1 through 16384 px.
+The user can enter custom width and height values from 1 through 16384 px per side.
+The New Project path also enforces a total-area safety budget of 16,777,216 pixels
+(4096×4096 equivalent). Long, narrow canvases such as 16384×1024 remain valid,
+while combinations such as 16384×16384 are rejected before any Project/Image
+allocation occurs. The dialog keeps the requested values visible, shows an inline
+warning, and disables Create until the dimensions return within budget.
 
 P3-E does not add fill-color, background, color-mode, clipboard-content, recent
 template, aspect-lock, or project-name inputs to the iPad panel.
