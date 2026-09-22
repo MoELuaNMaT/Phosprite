@@ -113,6 +113,36 @@ func test_adapter_does_not_subtract_editor_origin_from_ios_input() -> void:
 	)
 
 
+func test_two_finger_tap_thresholds_keep_undo_distinct_from_navigation() -> void:
+	check_true(
+		ADAPTER.two_finger_tap_within_duration(1000, 1250),
+		"a quick two-finger chord should remain eligible for undo",
+	)
+	check_true(
+		not ADAPTER.two_finger_tap_within_duration(1000, 1301),
+		"a held two-finger gesture must leave tap recognition",
+	)
+	check_true(
+		ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(6, 6)),
+		"minor finger jitter must still count as a tap",
+	)
+	check_true(
+		not ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(11, 0)),
+		"a moving pair must become pan or pinch instead of firing undo",
+	)
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	check_has(
+		src,
+		"Global.current_project.commit_undo()",
+		"recognized two-finger taps must reuse the existing project undo boundary",
+	)
+	check_has(
+		src,
+		"_two_finger_tap_pair_within_slop()",
+		"pan and pinch must be deferred only while the pair still qualifies as a tap",
+	)
+
+
 func test_navigation_pair_geometry_uses_centroid_and_distance() -> void:
 	var geometry := ADAPTER.navigation_pair_geometry(Vector2.ZERO, Vector2(6, 8))
 	check_eq(geometry["centroid"], Vector2(3, 4), "pair centroid must be the two-touch midpoint")
