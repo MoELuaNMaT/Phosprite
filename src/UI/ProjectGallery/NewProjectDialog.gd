@@ -3,14 +3,14 @@ extends ConfirmationDialog
 
 signal create_requested(canvas_size: Vector2i)
 
-const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
-
 enum PresetRatio {
 	SQUARE,
 	FOUR_THREE,
 	SIXTEEN_NINE,
 	CUSTOM,
 }
+
+const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 
 var selected_size := ProjectFactoryScript.DEFAULT_SIZE
 var active_ratio := PresetRatio.SQUARE
