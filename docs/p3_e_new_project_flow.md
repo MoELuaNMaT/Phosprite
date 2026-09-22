@@ -20,13 +20,12 @@ The iPad panel is implemented independently under
 
 New Project opens at 64×64.
 
-P3-E exposes exactly 21 presets.
+The managed New Project dialog exposes 18 built-in presets through a single ratio-aware dropdown.
 
 ### 1:1
 
 - 16×16
 - 32×32
-- 50×50
 - 64×64
 - 128×128
 - 256×256
@@ -36,7 +35,6 @@ P3-E exposes exactly 21 presets.
 
 - 21×16
 - 43×32
-- 67×50
 - 85×64
 - 171×128
 - 341×256
@@ -46,13 +44,24 @@ P3-E exposes exactly 21 presets.
 
 - 28×16
 - 57×32
-- 89×50
 - 114×64
 - 228×128
 - 455×256
 - 910×512
 
-The user can also enter custom width and height values from 1 through 16384 px.
+The dialog uses a two-column layout:
+
+- left: one preset dropdown plus 1:1 / 4:3 / 16:9 ratio tabs;
+- right: authoritative Width and Height inputs under the Custom size heading.
+
+Switching ratio tabs changes only the dropdown dataset. Selecting a dropdown item writes its exact
+size into the Width and Height inputs. Manually editing Width or Height updates the project size
+immediately and clears the dropdown selection when the resulting size no longer matches a preset.
+
+A fourth Custom preset tab is visible but disabled as a reserved extension point for future
+user-defined preset lists. There is currently no configuration entry for those presets.
+
+The user can enter custom width and height values from 1 through 16384 px.
 
 P3-E does not add fill-color, background, color-mode, clipboard-content, recent
 template, aspect-lock, or project-name inputs to the iPad panel.
@@ -145,7 +154,7 @@ Cancel closes the new-project flow without modifying projects or storage.
 P3-E is complete when automated validation proves:
 
 1. iPad New Project defaults to 64×64;
-2. all 21 approved presets are exact;
+2. all 18 built-in presets are exact;
 3. arbitrary custom width/height values are accepted within the supported range;
 4. the iPad panel is independent from desktop `CreateNewImage`;
 5. desktop Create New retains its existing content/fill workflow;
