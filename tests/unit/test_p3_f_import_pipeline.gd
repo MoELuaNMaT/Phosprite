@@ -66,6 +66,42 @@ func test_p3_f_layer_and_reference_fit_contract() -> void:
 	)
 
 
+func test_aseprite_signed_short_coordinates_preserve_negative_offsets() -> void:
+	check_eq(
+		AsepriteParserScript.signed_16(0xFFFF),
+		-1,
+		"Aseprite SHORT value 0xFFFF must decode to -1 instead of 65535",
+	)
+	check_eq(
+		AsepriteParserScript.signed_16(0x8000),
+		-32768,
+		"Aseprite SHORT minimum must retain its signed value",
+	)
+	check_eq(
+		AsepriteParserScript.signed_16(0x7FFF),
+		32767,
+		"positive Aseprite SHORT values must remain unchanged",
+	)
+	var parser_src := FileAccess.get_file_as_string(
+		"res://src/Classes/SoftwareParsers/AsepriteParser.gd"
+	)
+	check_has(
+		parser_src,
+		"var x_pos := signed_16(ase_file.get_16())",
+		"cel X must use signed SHORT decoding so negative offsets remain on-canvas",
+	)
+	check_has(
+		parser_src,
+		"var y_pos := signed_16(ase_file.get_16())",
+		"cel Y must use signed SHORT decoding so negative offsets remain on-canvas",
+	)
+	check_has(
+		parser_src,
+		"cel.z_index = signed_16(ase_file.get_16())",
+		"cel z-index must preserve the signed Aseprite field",
+	)
+
+
 func test_aseprite_zlib_fallback_recovers_missing_adler32_only() -> void:
 	var raw := PackedByteArray()
 	for index in 4096:
