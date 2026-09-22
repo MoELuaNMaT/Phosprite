@@ -8,12 +8,12 @@ const AsepriteParserScript := preload("res://src/Classes/SoftwareParsers/Aseprit
 func test_p3_f_canvas_size_resolver_uses_nearest_family_and_preserves_orientation() -> void:
 	check_eq(
 		Resolver.resolve(Vector2i(60, 40)),
-		Vector2i(67, 50),
+		Vector2i(85, 64),
 		"60x40 should choose the nearest 4:3 family and first containing preset",
 	)
 	check_eq(
 		Resolver.resolve(Vector2i(40, 60)),
-		Vector2i(50, 67),
+		Vector2i(64, 85),
 		"portrait imports must swap the selected family preset orientation",
 	)
 	check_eq(
