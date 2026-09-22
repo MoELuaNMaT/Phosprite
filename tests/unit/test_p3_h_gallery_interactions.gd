@@ -51,6 +51,27 @@ func test_tap_is_immediate_and_long_press_is_exclusive() -> void:
 	)
 
 
+func test_gallery_card_suppresses_synthetic_mouse_after_touch() -> void:
+	check_true(
+		ProjectGalleryCard.should_suppress_mouse_after_touch(
+			1200, 1000, Vector2(42, 48), Vector2(40, 46)
+		),
+		"mouse event near a recent touch must be treated as synthetic",
+	)
+	check_true(
+		not ProjectGalleryCard.should_suppress_mouse_after_touch(
+			1700, 1000, Vector2(42, 48), Vector2(40, 46)
+		),
+		"mouse input outside the suppression window must remain available",
+	)
+	check_true(
+		not ProjectGalleryCard.should_suppress_mouse_after_touch(
+			1200, 1000, Vector2(200, 200), Vector2(40, 46)
+		),
+		"a spatially independent mouse event must not be suppressed",
+	)
+
+
 func test_project_library_rename_duplicate_and_delete_contract() -> void:
 	_reset_test_root()
 	var foo_path := TEST_ROOT.path_join("foo.pxo")
@@ -120,6 +141,9 @@ func test_p3_h_gallery_source_uses_explicit_multiselect_and_long_press_menus() -
 	var card_scene := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/ProjectGalleryCard.tscn"
 	)
+	var card_src := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/ProjectGalleryCard.gd"
+	)
 	var gallery_scene := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/ProjectGallery.tscn"
 	)
@@ -180,6 +204,29 @@ func test_p3_h_gallery_source_uses_explicit_multiselect_and_long_press_menus() -
 		resolver_src,
 		"actions.append(_action(ActionKind.SINGLE_TAP, path, position))",
 		"single tap must resolve directly from pointer_up",
+	)
+	check_has(
+		card_scene,
+		'[node name="ProjectGalleryCard" type="PanelContainer"]',
+		"project cards must not inherit native Button pressed/hover draw states",
+	)
+	check_true(
+		not card_scene.contains("theme_override_styles/pressed"),
+		"project cards must not have a native pressed highlight that can latch after popups",
+	)
+	check_true(
+		not card_scene.contains("theme_override_styles/hover"),
+		"project cards must not expose hover as a false selection state",
+	)
+	check_has(
+		card_src,
+		"should_suppress_mouse_after_touch(",
+		"card input must deduplicate touch-generated mouse events on iPad",
+	)
+	check_has(
+		card_src,
+		"const DRAG_CANCEL_DISTANCE := 24.0",
+		"touch slop must tolerate normal iPad finger jitter before canceling a tap",
 	)
 	check_has(
 		card_scene,
