@@ -192,12 +192,12 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 				_update_resize(pointer)
 			get_viewport().set_input_as_handled()
 			return
-		if (
-			not _pending_touch_can_drag
-			and absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE
-			and absf(delta.x) > absf(delta.y)
-		):
-			_clear_pending_touch()
+		if not _pending_touch_can_drag:
+			if (
+				absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE
+				and absf(delta.x) > absf(delta.y)
+			):
+				_clear_pending_touch()
 			return
 	if not touch_direct_drag_intent(delta):
 		get_viewport().set_input_as_handled()
