@@ -64,8 +64,13 @@ func test_gallery_source_contract_matches_p3_d_layout() -> void:
 	)
 	check_has(
 		gallery_scene,
-		'text = "Exit Multi-Select"',
-		"Gallery Top Bar must expose an exit control when multiselect mode is active",
+		'text = "Multi-Select"',
+		"Gallery Top Bar must expose an explicit multiselect control",
+	)
+	check_has(
+		gallery_src,
+		'tr("Exit Multi-Select") if enabled else tr("Multi-Select")',
+		"multiselect control must become an exit control while selection mode is active",
 	)
 	check_has(
 		card_scene,
