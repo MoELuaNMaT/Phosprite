@@ -1244,7 +1244,9 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 	)
 	check_true(accessory.undo_button != null, "Timeline header must expose Undo")
 	check_true(accessory.redo_button != null, "Timeline header must expose Redo")
-	check_true(accessory.frame_mark != null, "Timeline header must expose the current/total frame display")
+	check_true(
+		accessory.frame_mark != null, "Timeline header must expose the current/total frame display"
+	)
 	check_true(
 		accessory.get_parent() is Node2D,
 		"header controls must live in the Workspace header overlay, not Timeline content"
