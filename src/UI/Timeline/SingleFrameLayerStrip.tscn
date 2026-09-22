@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/UI/Timeline/SingleFrameLayerStrip.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/graphics/layers/new.png" id="2_new"]
 
 [node name="SingleFrameLayerStrip" type="PanelContainer"]
 size_flags_horizontal = 3
