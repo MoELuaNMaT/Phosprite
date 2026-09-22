@@ -105,7 +105,9 @@ func import_aseprite(source_path: String) -> Project:
 
 	var previous_index := Global.current_project_index
 	var project_count := Global.projects.size()
-	AsepriteParser.open_aseprite_file(source_path)
+	if not AsepriteParser.open_aseprite_file(source_path):
+		last_error = "Aseprite file could not be parsed."
+		return null
 	var project := _capture_imported_project(project_count)
 	if project == null:
 		last_error = "Aseprite file could not be parsed."
