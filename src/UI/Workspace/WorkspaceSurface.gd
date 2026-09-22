@@ -334,7 +334,9 @@ func resize_floating_rect(
 		requested_size.x = start_rect.size.x - delta.x
 	elif resize_edges & WorkspaceModule.ResizeEdge.RIGHT:
 		requested_size.x = start_rect.size.x + delta.x
-	if resize_edges & WorkspaceModule.ResizeEdge.BOTTOM:
+	if resize_edges & WorkspaceModule.ResizeEdge.TOP:
+		requested_size.y = start_rect.size.y - delta.y
+	elif resize_edges & WorkspaceModule.ResizeEdge.BOTTOM:
 		requested_size.y = start_rect.size.y + delta.y
 
 	var target_size := definition.get_constrained_size(requested_size)
@@ -347,6 +349,8 @@ func resize_floating_rect(
 	var target_position := start_rect.position
 	if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
 		target_position.x = start_rect.end.x - target_size.x
+	if resize_edges & WorkspaceModule.ResizeEdge.TOP:
+		target_position.y = start_rect.end.y - target_size.y
 	var rect := Rect2(target_position, target_size)
 	return set_floating_rect(module_id, rect)
 
