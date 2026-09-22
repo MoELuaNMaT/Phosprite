@@ -7,7 +7,12 @@
 [node name="PaletteColorPanel" type="VSplitContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
+touch_dragger_enabled = true
+theme_override_colors/touch_dragger_color = Color(1, 1, 1, 0)
+theme_override_colors/touch_dragger_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/touch_dragger_pressed_color = Color(1, 1, 1, 0)
 theme_override_constants/separation = 6
+theme_override_constants/minimum_grab_thickness = 12
 script = ExtResource("3_script")
 
 [node name="Palettes" parent="." instance=ExtResource("1_palette")]
