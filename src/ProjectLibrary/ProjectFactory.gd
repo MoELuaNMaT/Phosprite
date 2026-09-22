@@ -42,6 +42,8 @@ static func is_canvas_size_supported(canvas_size: Vector2i) -> bool:
 
 
 static func canvas_size_limit_message(canvas_size: Vector2i) -> String:
+	if canvas_size.x < 1 or canvas_size.y < 1:
+		return "Width and height must each be at least 1 px."
 	if canvas_size.x > MAX_CANVAS_SIDE or canvas_size.y > MAX_CANVAS_SIDE:
 		return "Width and height must each be %d px or less." % MAX_CANVAS_SIDE
 	if int(canvas_size.x) * int(canvas_size.y) > MAX_CANVAS_PIXELS:
