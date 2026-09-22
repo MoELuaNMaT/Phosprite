@@ -23,7 +23,14 @@ func _ready() -> void:
 		color_picker_panel.connect(&"color_options_toggled", _on_color_options_toggled)
 	if not Palettes.palette_selected.is_connected(_on_palette_selected):
 		Palettes.palette_selected.connect(_on_palette_selected)
-	call_deferred("_capture_normal_palette_height")
+	if color_picker_panel.has_method(&"is_color_options_expanded"):
+		_color_options_expanded = bool(color_picker_panel.call(&"is_color_options_expanded"))
+	_normal_palette_height = palettes.size.y
+	if _color_options_expanded:
+		call_deferred("_apply_compact_palette_split")
+	else:
+		call_deferred("_capture_normal_palette_height")
+	queue_redraw()
 
 
 func _exit_tree() -> void:
@@ -61,6 +68,7 @@ func _on_palette_selected(_palette_name: String) -> void:
 
 
 func _on_panel_resized() -> void:
+	queue_redraw()
 	if _applying_auto_split:
 		return
 	if _color_options_expanded and not _expanded_manual_override:
@@ -68,6 +76,7 @@ func _on_panel_resized() -> void:
 
 
 func _on_split_dragged(_offset: int) -> void:
+	queue_redraw()
 	if _applying_auto_split:
 		return
 	if _color_options_expanded:
@@ -118,6 +127,7 @@ func _handle_split_drag(event: InputEventScreenDrag) -> void:
 		return
 	var delta_y := event.position.y - _touch_drag_origin_y
 	split_offset = _touch_drag_start_offset + roundi(delta_y)
+	queue_redraw()
 	if _color_options_expanded:
 		_expanded_manual_override = true
 	else:
@@ -131,3 +141,12 @@ func _splitter_hit_test(viewport_position: Vector2) -> bool:
 		return false
 	var splitter_y := palettes.get_global_rect().end.y
 	return absf(viewport_position.y - splitter_y) <= TOUCH_SPLITTER_SLOP
+
+
+func _draw() -> void:
+	if not is_instance_valid(palettes):
+		return
+	var y := palettes.size.y
+	var line_color := get_theme_color(&"font_color", &"Label")
+	line_color.a = 0.22
+	draw_line(Vector2(0.0, y), Vector2(size.x, y), line_color, 1.0)
