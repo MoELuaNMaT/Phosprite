@@ -269,11 +269,14 @@ func test_side_dock_edges_directly_resize_width_and_height() -> void:
 	var host: WorkspaceDockHost = workspace["host"]
 	var surface: WorkspaceSurface = workspace["surface"]
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.LEFT,
-			0,
-			Vector2(260.0, 180.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.LEFT,
+				0,
+				Vector2(260.0, 180.0),
+			)
 		),
 		"Preview should dock on the left before direct edge resize",
 	)
@@ -302,11 +305,14 @@ func test_side_dock_edges_directly_resize_width_and_height() -> void:
 
 	var start_size := host.layout.get_module_size(Builtins.PREVIEW_ID)
 	check_true(
-		surface.resize_docked_module(
-			Builtins.PREVIEW_ID,
-			start_size,
-			Vector2(70.0, 50.0),
-			WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
+		(
+			surface
+			. resize_docked_module(
+				Builtins.PREVIEW_ID,
+				start_size,
+				Vector2(70.0, 50.0),
+				WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
 		),
 		"direct side dock corner resize should commit both dimensions",
 	)
@@ -322,11 +328,14 @@ func test_docked_drag_preserves_exact_touch_grab_offset() -> void:
 	var host: WorkspaceDockHost = workspace["host"]
 	var surface: WorkspaceSurface = workspace["surface"]
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.LEFT,
-			0,
-			Vector2(260.0, 180.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.LEFT,
+				0,
+				Vector2(260.0, 180.0),
+			)
 		),
 		"Preview should dock before grab-offset validation",
 	)
