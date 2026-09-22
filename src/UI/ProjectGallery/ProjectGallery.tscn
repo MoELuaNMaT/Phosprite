@@ -77,14 +77,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="ExitMultiSelect" type="Button" parent="Shell/TopBar/Margin/Row"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-focus_mode = 0
-mouse_default_cursor_shape = 2
-text = "Exit Multi-Select"
-
 [node name="Import" type="Button" parent="Shell/TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -98,6 +90,13 @@ layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 text = "New"
+
+[node name="MultiSelect" type="Button" parent="Shell/TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+text = "Multi-Select"
 
 [node name="ProjectScroll" type="ScrollContainer" parent="Shell"]
 unique_name_in_owner = true
@@ -191,6 +190,6 @@ initial_position = 2
 title = "Delete Project"
 dialog_text = "Permanently delete this project? This cannot be undone."
 
-[connection signal="pressed" from="Shell/TopBar/Margin/Row/ExitMultiSelect" to="." method="_on_exit_multiselect_pressed"]
+[connection signal="pressed" from="Shell/TopBar/Margin/Row/MultiSelect" to="." method="_on_multiselect_pressed"]
 [connection signal="pressed" from="Shell/TopBar/Margin/Row/Import" to="." method="_on_import_pressed"]
 [connection signal="pressed" from="Shell/TopBar/Margin/Row/New" to="." method="_on_new_project_pressed"]
