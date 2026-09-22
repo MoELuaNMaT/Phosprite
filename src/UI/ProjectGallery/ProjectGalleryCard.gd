@@ -1,12 +1,14 @@
 class_name ProjectGalleryCard
-extends Button
+extends PanelContainer
 
 signal pointer_down(path: String, position: Vector2, timestamp_msec: int)
 signal pointer_up(path: String, position: Vector2, timestamp_msec: int)
 signal pointer_cancel(path: String)
 
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
-const DRAG_CANCEL_DISTANCE := 12.0
+const DRAG_CANCEL_DISTANCE := 24.0
+const SYNTHETIC_MOUSE_SUPPRESSION_MSEC := 500
+const SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE := 32.0
 const STATUS_NORMAL_COLOR := Color(0.721569, 0.733333, 0.756863, 1.0)
 const STATUS_ERROR_COLOR := Color(1.0, 0.45, 0.42, 1.0)
 
@@ -16,6 +18,8 @@ var selected := false
 var interaction_enabled := true
 var _pointer_active := false
 var _pointer_origin := Vector2.ZERO
+var _last_touch_msec := -1
+var _last_touch_position := Vector2.ZERO
 
 @onready var visual_root := %VisualRoot as Control
 @onready var thumbnail_frame := %ThumbnailFrame as Control
@@ -97,8 +101,21 @@ func reset_visual_transform() -> void:
 
 func clear_transient_press_state() -> void:
 	_pointer_active = false
-	set_pressed_no_signal(false)
 	release_focus()
+
+
+static func should_suppress_mouse_after_touch(
+	now_msec: int,
+	last_touch_msec: int,
+	mouse_position: Vector2,
+	last_touch_position: Vector2
+) -> bool:
+	if last_touch_msec < 0:
+		return false
+	var elapsed := now_msec - last_touch_msec
+	if elapsed < 0 or elapsed > SYNTHETIC_MOUSE_SUPPRESSION_MSEC:
+		return false
+	return mouse_position.distance_to(last_touch_position) <= SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE
 
 
 func set_selected(value: bool) -> void:
@@ -114,6 +131,7 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
+		_remember_touch(touch.position)
 		if touch.pressed:
 			_begin_pointer(touch.position)
 		else:
@@ -121,11 +139,20 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
+		_remember_touch(drag.position)
 		_maybe_cancel_pointer(drag.position)
 		return
 	if event is InputEventMouseButton:
 		var mouse_button := event as InputEventMouseButton
 		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if should_suppress_mouse_after_touch(
+			Time.get_ticks_msec(),
+			_last_touch_msec,
+			mouse_button.position,
+			_last_touch_position
+		):
+			accept_event()
 			return
 		if mouse_button.pressed:
 			_begin_pointer(mouse_button.position)
@@ -136,6 +163,11 @@ func _gui_input(event: InputEvent) -> void:
 		var mouse_motion := event as InputEventMouseMotion
 		if (mouse_motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			_maybe_cancel_pointer(mouse_motion.position)
+
+
+func _remember_touch(local_position: Vector2) -> void:
+	_last_touch_msec = Time.get_ticks_msec()
+	_last_touch_position = local_position
 
 
 func _begin_pointer(local_position: Vector2) -> void:
