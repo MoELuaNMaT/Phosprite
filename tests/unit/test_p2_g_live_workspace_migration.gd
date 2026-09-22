@@ -945,7 +945,9 @@ func test_palette_and_color_picker_share_one_workspace_panel_in_vertical_order()
 	var content := module.get_content() as VBoxContainer
 	check_true(content != null, "Palette Workspace module must own a combined vertical container")
 	check_eq(content.name, &"Palette & Color", "combined runtime panel must expose one identity")
-	check_eq(content.get_child_count(), 3, "combined panel should contain two sections and separator")
+	check_eq(
+		content.get_child_count(), 3, "combined panel should contain two sections and separator"
+	)
 	check_eq(
 		content.get_child(0),
 		legacy_palette,
