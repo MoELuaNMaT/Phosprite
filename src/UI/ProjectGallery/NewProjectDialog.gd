@@ -23,6 +23,7 @@ var _ratio_group := ButtonGroup.new()
 @onready var custom_ratio := %CustomRatio as Button
 @onready var width_value := %WidthValue as SpinBox
 @onready var height_value := %HeightValue as SpinBox
+@onready var size_warning := %SizeWarning as Label
 
 
 func _ready() -> void:
@@ -102,6 +103,14 @@ func _apply_size(canvas_size: Vector2i, update_inputs := true) -> void:
 		width_value.set_value_no_signal(selected_size.x)
 		height_value.set_value_no_signal(selected_size.y)
 	_sync_preset_selection()
+	_update_size_validation()
+
+
+func _update_size_validation() -> void:
+	var message := ProjectFactoryScript.canvas_size_limit_message(selected_size)
+	size_warning.text = message
+	size_warning.visible = not message.is_empty()
+	get_ok_button().disabled = not ProjectFactoryScript.is_canvas_size_supported(selected_size)
 
 
 func _on_ratio_pressed(ratio: int) -> void:
@@ -124,4 +133,6 @@ func _on_height_value_changed(value: float) -> void:
 
 
 func _on_confirmed() -> void:
+	if not ProjectFactoryScript.is_canvas_size_supported(selected_size):
+		return
 	create_requested.emit(selected_size)
