@@ -1036,8 +1036,12 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 	)
 
 	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var surface := fixture["surface"] as WorkspaceSurface
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
 	var accessory := timeline.get_header_accessory()
 	check_true(accessory != null, "Timeline must own a live header accessory")
@@ -1078,6 +1082,7 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 		timeline.get_header_accessory() == accessory and accessory.visible,
 		"Timeline command row must remain visible while Timeline body is collapsed"
 	)
+	tree.root.remove_child(root)
 	_free_fixture(fixture)
 
 	var options_scene := FileAccess.get_file_as_string(
