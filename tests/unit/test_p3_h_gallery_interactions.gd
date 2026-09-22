@@ -12,37 +12,34 @@ func teardown() -> void:
 	_remove_tree(TEST_ROOT)
 
 
-func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
+func test_tap_is_immediate_and_long_press_is_exclusive() -> void:
 	var resolver := Resolver.new()
 	var path := TEST_ROOT.path_join("gesture.pxo")
 
 	check_eq(resolver.pointer_down(path, Vector2(10, 10), 0).size(), 0, "down must not open")
-	check_eq(resolver.pointer_up(path, Vector2(10, 10), 50).size(), 0, "first up is delayed")
-	check_eq(resolver.poll(349).size(), 0, "single tap must wait the full 300 ms window")
-	var single := resolver.poll(350)
-	check_eq(single.size(), 1, "single tap must resolve after 300 ms")
+	var single := resolver.pointer_up(path, Vector2(10, 10), 50)
+	check_eq(single.size(), 1, "single tap must resolve immediately on release")
 	if single.size() == 1:
 		check_eq(
 			single[0]["kind"], Resolver.ActionKind.SINGLE_TAP, "resolved action must be single"
 		)
+	check_eq(resolver.poll(350).size(), 0, "single tap must not leave a delayed action queued")
 
 	resolver.reset()
 	resolver.pointer_down(path, Vector2(20, 20), 1000)
-	resolver.pointer_up(path, Vector2(20, 20), 1050)
-	var second_down := resolver.pointer_down(path, Vector2(22, 22), 1350)
-	check_eq(
-		second_down.size(),
-		0,
-		"second down at the 300 ms boundary must wait for release before opening a popup",
-	)
-	var double := resolver.pointer_up(path, Vector2(22, 22), 1380)
-	check_eq(double.size(), 1, "second release must resolve exactly one double tap")
-	if double.size() == 1:
-		check_eq(double[0]["kind"], Resolver.ActionKind.DOUBLE_TAP, "action must be double tap")
-	check_eq(resolver.poll(2000).size(), 0, "double tap must not leak a delayed single")
+	var first := resolver.pointer_up(path, Vector2(20, 20), 1050)
+	resolver.pointer_down(path, Vector2(22, 22), 1100)
+	var second := resolver.pointer_up(path, Vector2(22, 22), 1150)
+	check_eq(first.size(), 1, "first quick tap must resolve independently")
+	check_eq(second.size(), 1, "second quick tap must also resolve independently")
+	if first.size() == 1:
+		check_eq(first[0]["kind"], Resolver.ActionKind.SINGLE_TAP, "first quick tap stays single")
+	if second.size() == 1:
+		check_eq(second[0]["kind"], Resolver.ActionKind.SINGLE_TAP, "no double-tap mode may remain")
 
 	resolver.reset()
 	resolver.pointer_down(path, Vector2(30, 30), 3000)
+	check_eq(resolver.poll(3999).size(), 0, "long press must wait the full threshold")
 	var long_press := resolver.poll(4000)
 	check_eq(long_press.size(), 1, "one second hold must resolve long press")
 	if long_press.size() == 1:
@@ -50,9 +47,8 @@ func test_tap_double_tap_and_long_press_are_mutually_exclusive() -> void:
 	check_eq(
 		resolver.pointer_up(path, Vector2(30, 30), 4050).size(),
 		0,
-		"long release must not click",
+		"long release must not open the project after the context gesture",
 	)
-	check_eq(resolver.poll(4500).size(), 0, "long press must not schedule a delayed single")
 
 
 func test_project_library_rename_duplicate_and_delete_contract() -> void:
@@ -117,21 +113,46 @@ func test_project_library_rename_duplicate_and_delete_contract() -> void:
 	)
 
 
-func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> void:
+func test_p3_h_gallery_source_uses_explicit_multiselect_and_long_press_menus() -> void:
 	var gallery_src := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/ProjectGallery.gd"
 	)
 	var card_scene := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/ProjectGalleryCard.tscn"
 	)
+	var gallery_scene := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/ProjectGallery.tscn"
+	)
+	var resolver_src := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd"
+	)
 	var main_src := FileAccess.get_file_as_string("res://src/Main.gd")
 	var top_menu_src := FileAccess.get_file_as_string(
 		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
 	)
+	check_true(
+		not gallery_src.contains("ActionKind.DOUBLE_TAP"),
+		"Gallery must not retain a double-tap action path",
+	)
 	check_has(
 		gallery_src,
-		"var selected := get_selected_paths()",
-		"multiselect double tap must operate on the existing selected set",
+		'project_open_requested.emit(path)',
+		"ordinary single tap must open the project directly",
+	)
+	check_has(
+		gallery_src,
+		"func _on_resolved_long_press(path: String, position: Vector2) -> void:",
+		"long press must own the context-menu gesture",
+	)
+	check_has(
+		gallery_src,
+		'call_deferred("_show_project_action_menu", path, position)',
+		"normal-mode long press must open the single-project action menu",
+	)
+	check_has(
+		gallery_src,
+		'call_deferred("_show_batch_action_menu", position, path)',
+		"multiselect long press must keep access to batch actions",
 	)
 	check_has(
 		gallery_src,
@@ -142,14 +163,23 @@ func test_p3_h_gallery_source_keeps_multiselect_double_tap_non_mutating() -> voi
 		"successful batch duplicate must finish the multi-select task and clear selection mode",
 	)
 	check_has(
-		gallery_src,
-		'call_deferred("_show_project_action_menu", path, position)',
-		"single-project action menu must open only after the second release event unwinds",
+		gallery_scene,
+		'text = "Multi-Select"',
+		"Gallery top bar must expose the explicit multiselect entry at rest",
 	)
 	check_has(
 		gallery_src,
-		'call_deferred("_show_batch_action_menu", position, path)',
-		"batch action menu must also avoid stealing the originating Button release",
+		'multiselect_button.text = tr("Exit Multi-Select") if enabled else tr("Multi-Select")',
+		"the same top-right control must switch between enter and exit labels",
+	)
+	check_true(
+		not resolver_src.contains("DOUBLE_TAP_WINDOW_MSEC"),
+		"gesture resolver must not delay single taps for a double-tap window",
+	)
+	check_has(
+		resolver_src,
+		"actions.append(_action(ActionKind.SINGLE_TAP, path, position))",
+		"single tap must resolve directly from pointer_up",
 	)
 	check_has(
 		card_scene,
