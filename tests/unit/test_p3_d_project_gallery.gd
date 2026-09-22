@@ -115,6 +115,34 @@ func test_gallery_source_contract_matches_p3_d_layout() -> void:
 	)
 
 
+func test_gallery_scroll_fraction_survives_orientation_range_changes() -> void:
+	check_eq(
+		GalleryScript.normalized_scroll_fraction(700.0, 0.0, 1000.0, 300.0),
+		1.0,
+		"old layout bottom must normalize to one",
+	)
+	check_eq(
+		GalleryScript.scroll_value_for_fraction(1.0, 0.0, 1600.0, 400.0),
+		1200.0,
+		"bottom fraction must map to the new layout bottom",
+	)
+	check_eq(
+		GalleryScript.normalized_scroll_fraction(350.0, 0.0, 1000.0, 300.0),
+		0.5,
+		"old layout midpoint must normalize to one half",
+	)
+	check_eq(
+		GalleryScript.scroll_value_for_fraction(0.5, 0.0, 1600.0, 400.0),
+		600.0,
+		"midpoint fraction must map to the new layout midpoint",
+	)
+	check_eq(
+		GalleryScript.normalized_scroll_fraction(0.0, 0.0, 500.0, 500.0),
+		0.0,
+		"non-scrollable ranges must normalize safely",
+	)
+
+
 func test_gallery_orientation_and_thumbnail_hit_target_regressions() -> void:
 	check_eq(
 		GalleryScript.columns_for_viewport_size(Vector2(1366, 1024)),
@@ -154,6 +182,21 @@ func test_gallery_orientation_and_thumbnail_hit_target_regressions() -> void:
 		"get_window().size_changed.connect(_on_mobile_window_size_changed)",
 		"sensor rotation must re-resolve the mobile safe area",
 	)
+	check_has(
+		gallery_src,
+		"_pending_scroll_fraction = _current_scroll_fraction()",
+		"orientation reflow must capture scroll position before changing grid geometry",
+	)
+	check_has(
+		gallery_src,
+		'call_deferred("_restore_scroll_fraction_after_layout", scroll_generation)',
+		"orientation reflow must restore the preserved scroll fraction after layout",
+	)
+	check_has(
+		gallery_src,
+		"await get_tree().process_frame\n\tawait get_tree().process_frame",
+		"scroll restoration must wait for the rotated safe-area and grid geometry to settle",
+	)
 
 	var card := CardScene.instantiate() as ProjectGalleryCard
 	check_true(card != null, "Gallery card scene must instantiate for hit-target regression")
@@ -161,9 +204,14 @@ func test_gallery_orientation_and_thumbnail_hit_target_regressions() -> void:
 		return
 	tree.root.add_child(card)
 	check_eq(
+		card.mouse_filter,
+		Control.MOUSE_FILTER_PASS,
+		"card-origin touch drags must continue to the parent ScrollContainer",
+	)
+	check_eq(
 		card.thumbnail_frame.mouse_filter,
 		Control.MOUSE_FILTER_IGNORE,
-		"thumbnail frame must pass tap/double-tap/long-press input through to the whole card",
+		"thumbnail frame must pass tap/long-press input through to the whole card",
 	)
 	card.get_parent().remove_child(card)
 	card.free()
