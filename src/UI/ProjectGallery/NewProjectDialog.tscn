@@ -157,6 +157,13 @@ max_value = 16384.0
 value = 64.0
 suffix = "px"
 
+[node name="SizeWarning" type="Label" parent="Margin/Content/CustomPanel/CustomMargin/CustomContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+text = "Canvas is too large."
+
 [connection signal="confirmed" from="." to="." method="_on_confirmed"]
 [connection signal="item_selected" from="Margin/Content/PresetPanel/PresetMargin/PresetContent/PresetSelector" to="." method="_on_preset_item_selected"]
 [connection signal="value_changed" from="Margin/Content/CustomPanel/CustomMargin/CustomContent/WidthRow/WidthValue" to="." method="_on_width_value_changed"]
