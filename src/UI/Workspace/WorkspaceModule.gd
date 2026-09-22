@@ -324,6 +324,11 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		add_theme_constant_override(&"margin_top", int(get_header_height()))
 		add_theme_constant_override(&"margin_right", 0)
 		add_theme_constant_override(&"margin_bottom", 0)
+	elif state == &"bottom_bar":
+		add_theme_constant_override(&"margin_left", 0)
+		add_theme_constant_override(&"margin_top", int(get_header_height()))
+		add_theme_constant_override(&"margin_right", 0)
+		add_theme_constant_override(&"margin_bottom", 0)
 	else:
 		var bottom_margin := padding
 		if state == &"floating":
