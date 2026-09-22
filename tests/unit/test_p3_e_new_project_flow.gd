@@ -51,7 +51,9 @@ func test_p3_e_exact_presets_and_default_size() -> void:
 		],
 		"New Project must expose the six approved 16:9 tiers",
 	)
-	check_eq(Factory.all_presets().size(), 18, "New Project must expose exactly 18 built-in presets")
+	check_eq(
+		Factory.all_presets().size(), 18, "New Project must expose exactly 18 built-in presets"
+	)
 
 
 func test_p3_e_dialog_source_uses_two_column_single_selector_layout() -> void:
