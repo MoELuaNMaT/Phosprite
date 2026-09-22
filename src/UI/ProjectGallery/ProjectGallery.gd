@@ -44,6 +44,8 @@ var _delete_was_multiselect := false
 var _current_columns := 0
 var _last_layout_width := -1.0
 var _layout_generation := 0
+var _scroll_layout_generation := 0
+var _pending_scroll_fraction := -1.0
 var _reflow_gate_tween: Tween
 var _interaction_locks: Dictionary = {}
 var _popover_anchor_path := ""
@@ -113,6 +115,22 @@ static func columns_for_viewport_size(viewport_size: Vector2) -> int:
 	return LANDSCAPE_COLUMNS if viewport_size.x >= viewport_size.y else PORTRAIT_COLUMNS
 
 
+static func normalized_scroll_fraction(
+	value: float, min_value: float, max_value: float, page: float
+) -> float:
+	var scroll_span := maxf(max_value - page - min_value, 0.0)
+	if scroll_span <= 0.0:
+		return 0.0
+	return clampf((value - min_value) / scroll_span, 0.0, 1.0)
+
+
+static func scroll_value_for_fraction(
+	fraction: float, min_value: float, max_value: float, page: float
+) -> float:
+	var scroll_span := maxf(max_value - page - min_value, 0.0)
+	return min_value + scroll_span * clampf(fraction, 0.0, 1.0)
+
+
 func _current_orientation_size() -> Vector2:
 	# The Gallery is laid out inside Main's mobile safe-area shell. Window.size is
 	# not an authoritative layout size on iPad after a sensor rotation: it may
@@ -157,6 +175,8 @@ func refresh() -> Array[ProjectLibraryEntry]:
 
 
 func reset_scroll_position() -> void:
+	_pending_scroll_fraction = -1.0
+	_scroll_layout_generation += 1
 	scroll_container.scroll_horizontal = 0
 	scroll_container.scroll_vertical = 0
 	scroll_reset_count += 1
@@ -290,6 +310,10 @@ func _update_layout() -> void:
 		return
 	var columns := columns_for_viewport_size(_current_orientation_size())
 	var should_reflow := visible and _current_columns > 0 and columns != _current_columns
+	if should_reflow:
+		_pending_scroll_fraction = _current_scroll_fraction()
+	_scroll_layout_generation += 1
+	var scroll_generation := _scroll_layout_generation
 	var old_rects: Dictionary = {}
 	if should_reflow:
 		for card: ProjectGalleryCard in _cards:
@@ -323,6 +347,36 @@ func _update_layout() -> void:
 		set_interaction_locked(&"reflow", false)
 	elif not _interaction_locks.has(&"reflow"):
 		set_interaction_locked(&"reflow", false)
+	if _pending_scroll_fraction >= 0.0:
+		call_deferred("_restore_scroll_fraction_after_layout", scroll_generation)
+	call_deferred("_load_visible_thumbnails")
+
+
+func _current_scroll_fraction() -> float:
+	var vertical_scroll := scroll_container.get_v_scroll_bar()
+	return normalized_scroll_fraction(
+		vertical_scroll.value,
+		vertical_scroll.min_value,
+		vertical_scroll.max_value,
+		vertical_scroll.page
+	)
+
+
+func _restore_scroll_fraction_after_layout(generation: int) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if generation != _scroll_layout_generation or _pending_scroll_fraction < 0.0 or not visible:
+		return
+	var vertical_scroll := scroll_container.get_v_scroll_bar()
+	scroll_container.scroll_vertical = roundi(
+		scroll_value_for_fraction(
+			_pending_scroll_fraction,
+			vertical_scroll.min_value,
+			vertical_scroll.max_value,
+			vertical_scroll.page
+		)
+	)
+	_pending_scroll_fraction = -1.0
 	call_deferred("_load_visible_thumbnails")
 
 
