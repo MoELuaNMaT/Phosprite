@@ -107,7 +107,7 @@ func _set_palette_height(target_height: float) -> void:
 func _draw() -> void:
 	if not is_instance_valid(palettes):
 		return
-	var y := palettes.size.y
+	var y := palettes.size.y + float(get_theme_constant(&"separation")) * 0.5
 	var line_color := get_theme_color(&"font_color", &"Label")
 	line_color.a = 0.22
 	draw_line(Vector2(0.0, y), Vector2(size.x, y), line_color, 1.0)
