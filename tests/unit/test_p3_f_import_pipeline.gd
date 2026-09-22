@@ -2,6 +2,7 @@ extends "res://tests/test_base.gd"
 
 const Resolver := preload("res://src/ProjectLibrary/CanvasSizeResolver.gd")
 const ImportService := preload("res://src/ProjectLibrary/ProjectImportService.gd")
+const AsepriteParserScript := preload("res://src/Classes/SoftwareParsers/AsepriteParser.gd")
 
 
 func test_p3_f_canvas_size_resolver_uses_nearest_family_and_preserves_orientation() -> void:
@@ -62,6 +63,38 @@ func test_p3_f_layer_and_reference_fit_contract() -> void:
 		Resolver.reference_position(Vector2i(128, 64), Vector2i(64, 64), 0.5),
 		Vector2(0, 16),
 		"reference import transform must center the fitted source",
+	)
+
+
+func test_aseprite_zlib_fallback_recovers_missing_adler32_only() -> void:
+	var raw := PackedByteArray()
+	for index in 4096:
+		raw.append((index * 37 + 11) & 0xFF)
+
+	var complete := raw.compress(FileAccess.COMPRESSION_DEFLATE)
+	check_true(complete.size() > 8, "fixture must produce a zlib stream with a trailer")
+	var missing_checksum := complete.slice(0, complete.size() - 4)
+	check_ne(
+		missing_checksum.decompress(raw.size(), FileAccess.COMPRESSION_DEFLATE).size(),
+		raw.size(),
+		"Godot's strict decompressor must reject the checksum-less regression fixture",
+	)
+	check_eq(
+		AsepriteParserScript.decompress_aseprite_payload(missing_checksum, raw.size()),
+		raw,
+		"Aseprite fallback must recover the complete deflate body when only Adler-32 is missing",
+	)
+
+	var body_truncated := missing_checksum.slice(0, missing_checksum.size() - 8)
+	check_eq(
+		AsepriteParserScript.decompress_aseprite_payload(body_truncated, raw.size()).size(),
+		0,
+		"fallback must reject a genuinely truncated deflate body",
+	)
+	check_eq(
+		AsepriteParserScript.decompress_aseprite_payload(complete, raw.size()),
+		raw,
+		"standard complete zlib streams must retain their existing import path",
 	)
 
 
@@ -133,6 +166,11 @@ func test_p3_f_supported_import_types_and_stage_boundaries() -> void:
 		service_src,
 		"AsepriteParser.open_aseprite_file(source_path)",
 		"ASE/ASEPRITE import must reuse the existing high-quality parser",
+	)
+	check_has(
+		service_src,
+		"if not AsepriteParser.open_aseprite_file(source_path):",
+		"ASE import must fail instead of committing a project when cel decoding fails",
 	)
 	check_has(
 		service_src,
