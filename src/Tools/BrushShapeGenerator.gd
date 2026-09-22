@@ -32,12 +32,7 @@ static func create_preview_image(
 	var image := Image.create(preview_size, preview_size, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
 	for point in get_points(shape, preview_size):
-		if (
-			point.x >= 0
-			and point.y >= 0
-			and point.x < preview_size
-			and point.y < preview_size
-		):
+		if point.x >= 0 and point.y >= 0 and point.x < preview_size and point.y < preview_size:
 			image.set_pixelv(point, color)
 	return image
 
