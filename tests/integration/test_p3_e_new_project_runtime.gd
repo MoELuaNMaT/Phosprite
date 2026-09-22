@@ -110,6 +110,54 @@ func test_new_project_dialog_preset_selector_and_custom_inputs_stay_synchronized
 	dialog.hide()
 
 
+func test_new_project_dialog_blocks_oversized_canvas_without_allocating_project() -> void:
+	_prepare_main()
+	if _main == null:
+		return
+	var dialog := _main.new_project_dialog as NewProjectDialog
+	dialog.popup_for_new_project()
+	dialog.width_value.value = 16384
+	dialog.height_value.value = 16384
+
+	check_eq(
+		dialog.selected_size,
+		Vector2i(16384, 16384),
+		"custom inputs must keep the user's requested dimensions visible for correction",
+	)
+	check_true(dialog.size_warning.visible, "oversized canvas must show an inline warning")
+	check_true(dialog.get_ok_button().disabled, "Create must be disabled for an unsafe total area")
+
+	dialog.height_value.value = 1024
+	check_true(
+		not dialog.size_warning.visible,
+		"warning must clear immediately when the total pixel count returns within budget",
+	)
+	check_true(
+		not dialog.get_ok_button().disabled,
+		"Create must re-enable for a 16384x1024 canvas within the total-pixel budget",
+	)
+	dialog.hide()
+
+	_reset_root()
+	_configure_managed(TEST_ROOT)
+	var project_count_before := Global.projects.size()
+	var tab_count_before := Global.tabs.tab_count
+	check_true(
+		not _main.app_shell_controller.create_new_project(Vector2i(16384, 16384)),
+		"business entry must reject an unsafe canvas even when UI validation is bypassed",
+	)
+	check_eq(
+		Global.projects.size(),
+		project_count_before,
+		"rejected oversized creation must not append a transient Project",
+	)
+	check_eq(
+		Global.tabs.tab_count,
+		tab_count_before,
+		"rejected oversized creation must not append a transient tab",
+	)
+
+
 func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -> void:
 	_prepare_main()
 	if _main == null:
