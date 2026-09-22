@@ -281,9 +281,10 @@ func _migrate_live_editor() -> bool:
 	_prepare_canvas_chrome()
 
 	dock_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dock_host.offset_left = WORKSPACE_SIDE_MARGIN
+	dock_host.offset_left = 0.0
 	dock_host.offset_top = _project_tabs_height
-	dock_host.offset_right = -WORKSPACE_SIDE_MARGIN
+	dock_host.offset_right = 0.0
+	dock_host.set_side_inset(WORKSPACE_SIDE_MARGIN)
 	dock_host.visible = true
 	dock_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not dock_host.layout_geometry_changed.is_connected(_on_layout_geometry_changed):
