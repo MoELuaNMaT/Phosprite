@@ -662,6 +662,55 @@ func test_workspace_chrome_exposes_pop_out_and_multi_edge_resize_targets() -> vo
 	_free_fixture(fixture)
 
 
+func test_timeline_bottom_bar_is_full_width_without_moving_side_docks_to_screen_edge() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	check_almost_eq(host.position.x, 0.0, 0.01, "Workspace host should span the full editor width")
+	check_almost_eq(
+		host.size.x, root.size.x, 0.01, "Workspace host should span the full editor width"
+	)
+	check_almost_eq(host.get_side_inset(), 8.0, 0.01, "side docks should retain the 8px inset")
+	var left_rect: Rect2 = host.get_zone_rects()[WorkspaceDockLayout.DockZone.LEFT]
+	var bottom_rect: Rect2 = host.get_zone_rects()[WorkspaceDockLayout.DockZone.BOTTOM]
+	check_almost_eq(left_rect.position.x, 8.0, 0.01, "left dock should keep its visual inset")
+	check_almost_eq(bottom_rect.position.x, 0.0, 0.01, "bottom bar must touch the left edge")
+	check_almost_eq(
+		bottom_rect.size.x, root.size.x, 0.01, "bottom bar must touch both screen edges"
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_timeline_toolbar_has_direct_vertical_resize_intent_on_ipad() -> void:
+	check_true(
+		Interaction.timeline_header_resize_intent(Vector2(1.0, -8.0)),
+		"a short vertical toolbar drag should resize without a long press",
+	)
+	check_true(
+		not Interaction.timeline_header_resize_intent(Vector2(10.0, -2.0)),
+		"horizontal toolbar movement must not be stolen as vertical resize",
+	)
+	var interaction_src := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceInteractionController.gd"
+	)
+	check_has(
+		interaction_src,
+		"_try_capture_timeline_header_resize",
+		"Timeline resize must be recognized across the full Workspace header",
+	)
+	check_has(
+		interaction_src,
+		"WorkspaceModule.ResizeEdge.TOP",
+		"Bottom Timeline drag must reuse the existing top-edge resize path",
+	)
+
+
 func test_timeline_region_dock_overlays_full_background_canvas() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -764,6 +813,43 @@ func test_timeline_region_dock_overlays_full_background_canvas() -> void:
 	)
 
 	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_timeline_bottom_region_uses_integrated_bar_visual_state() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var theme_controller := ThemeController.new()
+	root.add_child(theme_controller)
+	check_true(
+		theme_controller.setup(manager, surface),
+		"theme controller should initialize for Timeline visual-state validation",
+	)
+	var source_theme := Theme.new()
+	source_theme.default_font = ThemeDB.fallback_font
+	source_theme.default_font_size = ThemeDB.fallback_font_size
+	check_true(
+		theme_controller.refresh(source_theme, Color("2b2b2b"), Color("8aa0df")),
+		"theme refresh should apply Workspace visual states",
+	)
+	var timeline := manager.get_instance(Builtins.TIMELINE_ID) as WorkspaceModule
+	check_eq(
+		timeline.get_visual_state(),
+		&"bottom_bar",
+		"docked Bottom Region Timeline should use the integrated bottom-bar visual state",
+	)
+	check_eq(
+		timeline.get_theme_constant(&"margin_left"),
+		0,
+		"integrated Timeline should not retain card-like left padding",
+	)
+	check_eq(
+		timeline.get_theme_constant(&"margin_right"),
+		0,
+		"integrated Timeline should not retain card-like right padding",
+	)
 	_free_fixture(fixture)
 
 
