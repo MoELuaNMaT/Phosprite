@@ -136,7 +136,7 @@ func test_p3_h_gallery_source_uses_explicit_multiselect_and_long_press_menus() -
 	)
 	check_has(
 		gallery_src,
-		'project_open_requested.emit(path)',
+		"project_open_requested.emit(path)",
 		"ordinary single tap must open the project directly",
 	)
 	check_has(
