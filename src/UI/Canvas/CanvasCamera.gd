@@ -52,7 +52,9 @@ func _ready() -> void:
 	if not DisplayServer.is_touchscreen_available():
 		set_process_input(false)
 	if index == Cameras.MAIN:
-		rotation_slider = Global.top_menu_container.get_node_or_null("%RotationSlider") as ValueSlider
+		rotation_slider = (
+			Global.top_menu_container.get_node_or_null("%RotationSlider") as ValueSlider
+		)
 		if is_instance_valid(rotation_slider):
 			rotation_slider.value_changed.connect(_rotation_slider_value_changed)
 		zoom_slider = Global.top_menu_container.get_node_or_null("%ZoomSlider") as ValueSlider
