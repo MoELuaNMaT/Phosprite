@@ -416,7 +416,9 @@ func _restore_palette_color_merge() -> void:
 	_palette_color_root = null
 	_palette_color_separator = null
 
-	entries.sort_custom(func(a: Dictionary, b: Dictionary): return int(a["index"]) < int(b["index"]))
+	entries.sort_custom(
+		func(a: Dictionary, b: Dictionary): return int(a["index"]) < int(b["index"])
+	)
 	for state in entries:
 		var node := state.get("node") as Control
 		var parent := state.get("parent") as Node
@@ -425,9 +427,7 @@ func _restore_palette_color_merge() -> void:
 		parent.add_child(node)
 		parent.move_child(node, mini(int(state.get("index", 0)), parent.get_child_count() - 1))
 		node.visible = bool(state.get("visible", true))
-		node.size_flags_horizontal = int(
-			state.get("size_flags_horizontal", Control.SIZE_FILL)
-		)
+		node.size_flags_horizontal = int(state.get("size_flags_horizontal", Control.SIZE_FILL))
 		node.size_flags_vertical = int(state.get("size_flags_vertical", Control.SIZE_FILL))
 		node.size_flags_stretch_ratio = float(state.get("stretch_ratio", 1.0))
 	_palette_color_states.clear()
