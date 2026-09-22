@@ -18,6 +18,8 @@ const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const TWO_FINGER_EPSILON := 0.01
 const FINGER_LONG_PRESS_SECONDS := 0.45
 const FINGER_LONG_PRESS_SLOP_PX := 12.0
+const TWO_FINGER_TAP_MAX_MS := 300
+const TWO_FINGER_TAP_SLOP_PX := 10.0
 
 # P1-C2 uses small acquisition-only dead zones. Once a degree of freedom activates,
 # navigation is direct from the fixed pair baseline: no inertia, no smoothing tween
@@ -43,6 +45,10 @@ var _navigation_anchor_canvas := Vector2.ZERO
 var _navigation_camera_baseline_valid := false
 var _navigation_pan_active := false
 var _navigation_pinch_active := false
+var _two_finger_tap_ids := PackedInt32Array()
+var _two_finger_tap_released_ids := PackedInt32Array()
+var _two_finger_tap_started_ms := 0
+var _two_finger_tap_valid := false
 # Kept as pair-begin snapshots for P1-C1 compatibility/debugging. C2 never accumulates from them.
 var _last_navigation_centroid := Vector2.ZERO
 var _last_navigation_distance := 0.0
@@ -141,6 +147,7 @@ func reset(canvas: Node2D) -> void:
 	_touch_color_sampler_requested = false
 	_touches.clear()
 	_clear_navigation()
+	_clear_two_finger_tap_candidate()
 	_clear_pointer_identity_pending()
 	if is_instance_valid(canvas):
 		canvas.set_adapter_tool_preview_active(false)
@@ -179,6 +186,14 @@ static func should_defer_finger_content_for_long_press(primary_tool_name: String
 
 static func long_press_motion_exceeds_slop(origin: Vector2, current: Vector2) -> bool:
 	return origin.distance_to(current) >= FINGER_LONG_PRESS_SLOP_PX
+
+
+static func two_finger_tap_motion_within_slop(origin: Vector2, current: Vector2) -> bool:
+	return origin.distance_to(current) <= TWO_FINGER_TAP_SLOP_PX
+
+
+static func two_finger_tap_within_duration(started_ms: int, ended_ms: int) -> bool:
+	return ended_ms >= started_ms and ended_ms - started_ms <= TWO_FINGER_TAP_MAX_MS
 
 
 static func navigation_pair_geometry(
@@ -326,6 +341,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 		"color_pick_mode": COLOR_SAMPLING.TOP_COLOR,
 		"one_shot_color_pick": false,
 		"content_origin": event.position,
+		"touch_started_ms": Time.get_ticks_msec(),
 		"generation": _touch_generation,
 	}
 	_touches[event.index] = state
@@ -354,6 +370,7 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	# Once a navigation pair owns the canvas, additional fingers stay unowned. They may
 	# become a replacement member only after one of the active pair members is released.
 	if _navigation_ids.size() == 2:
+		_two_finger_tap_valid = false
 		return
 
 	if _content_touch_id != -1:
@@ -395,6 +412,7 @@ func _end_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	if state.is_empty():
 		return
 
+	_finish_two_finger_tap_release(event.index, event.position)
 	if _content_touch_id == event.index:
 		_end_content(canvas, event.index, event.position)
 	if _pencil_touch_id == event.index:
@@ -446,6 +464,7 @@ func _handle_drag(canvas: Node2D, event: InputEventScreenDrag) -> void:
 
 func _begin_pencil_ownership(canvas: Node2D, touch_id: int) -> void:
 	_pencil_touch_id = touch_id
+	_clear_two_finger_tap_candidate()
 
 	# A finger content stroke is never retroactively converted to navigation. Pencil
 	# explicitly preempts it; cancel through the existing Tool boundary, then owns content.
@@ -694,6 +713,78 @@ func _begin_navigation_pair(pair_ids: PackedInt32Array) -> void:
 	var geometry := _navigation_geometry()
 	_set_navigation_geometry_baseline(geometry)
 	_capture_navigation_camera_baseline()
+	_begin_two_finger_tap_candidate(pair_ids)
+
+
+func _begin_two_finger_tap_candidate(pair_ids: PackedInt32Array) -> void:
+	_clear_two_finger_tap_candidate()
+	if pair_ids.size() != 2:
+		return
+	var first_state: Dictionary = _touches.get(pair_ids[0], {})
+	var second_state: Dictionary = _touches.get(pair_ids[1], {})
+	if first_state.is_empty() or second_state.is_empty():
+		return
+	if (
+		int(first_state.get("kind", PointerKind.UNKNOWN)) != PointerKind.DIRECT
+		or int(second_state.get("kind", PointerKind.UNKNOWN)) != PointerKind.DIRECT
+		or bool(first_state.get("suppressed", false))
+		or bool(second_state.get("suppressed", false))
+	):
+		return
+	var first_started := int(first_state.get("touch_started_ms", -1))
+	var second_started := int(second_state.get("touch_started_ms", -1))
+	if first_started < 0 or second_started < 0:
+		return
+	var started_ms := mini(first_started, second_started)
+	var paired_ms := maxi(first_started, second_started)
+	if not two_finger_tap_within_duration(started_ms, paired_ms):
+		return
+	_two_finger_tap_ids = PackedInt32Array([pair_ids[0], pair_ids[1]])
+	_two_finger_tap_started_ms = started_ms
+	_two_finger_tap_valid = true
+
+
+func _two_finger_tap_pair_within_slop() -> bool:
+	if not _two_finger_tap_valid or _two_finger_tap_ids.size() != 2:
+		return false
+	for touch_id: int in _two_finger_tap_ids:
+		var state: Dictionary = _touches.get(touch_id, {})
+		if state.is_empty():
+			continue
+		var position := Vector2(state.get("position", Vector2.ZERO))
+		var origin := Vector2(state.get("content_origin", position))
+		if not two_finger_tap_motion_within_slop(origin, position):
+			return false
+	return true
+
+
+func _finish_two_finger_tap_release(touch_id: int, release_position: Vector2) -> void:
+	if not _two_finger_tap_valid or touch_id not in _two_finger_tap_ids:
+		return
+	var now_ms := Time.get_ticks_msec()
+	if not two_finger_tap_within_duration(_two_finger_tap_started_ms, now_ms):
+		_two_finger_tap_valid = false
+		return
+	var state: Dictionary = _touches.get(touch_id, {})
+	var origin := Vector2(state.get("content_origin", release_position))
+	if not two_finger_tap_motion_within_slop(origin, release_position):
+		_two_finger_tap_valid = false
+		return
+	if touch_id not in _two_finger_tap_released_ids:
+		_two_finger_tap_released_ids.append(touch_id)
+	if _two_finger_tap_released_ids.size() < 2:
+		return
+	var should_undo := _two_finger_tap_valid
+	_clear_two_finger_tap_candidate()
+	if should_undo and Global.current_project != null:
+		Global.current_project.commit_undo()
+
+
+func _clear_two_finger_tap_candidate() -> void:
+	_two_finger_tap_ids.clear()
+	_two_finger_tap_released_ids.clear()
+	_two_finger_tap_started_ms = 0
+	_two_finger_tap_valid = false
 
 
 func _set_navigation_geometry_baseline(geometry: Dictionary) -> void:
@@ -759,6 +850,14 @@ func _update_navigation() -> void:
 
 	var centroid: Vector2 = geometry["centroid"]
 	var distance: float = geometry["distance"]
+	if _two_finger_tap_valid:
+		var now_ms := Time.get_ticks_msec()
+		if (
+			two_finger_tap_within_duration(_two_finger_tap_started_ms, now_ms)
+			and _two_finger_tap_pair_within_slop()
+		):
+			return
+		_two_finger_tap_valid = false
 	if not _navigation_pan_active:
 		_navigation_pan_active = navigation_pan_exceeds_dead_zone(
 			_navigation_baseline_centroid, centroid
