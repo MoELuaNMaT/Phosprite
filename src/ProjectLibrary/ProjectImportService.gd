@@ -135,12 +135,18 @@ func import_image(
 	if not is_instance_valid(image) or image.is_empty():
 		last_error = "Image is empty."
 		return null
+	if not ProjectFactoryScript.is_canvas_size_supported(canvas_size):
+		last_error = ProjectFactoryScript.canvas_size_limit_message(canvas_size)
+		return null
 
 	var project_name := source_path.uri_decode().get_file().get_basename()
 	var target_path := ProjectFactoryScript.make_unique_project_path(
 		project_name, projects_directory
 	)
 	var project := ProjectFactoryScript.create_blank_project(project_name, canvas_size)
+	if project == null:
+		last_error = ProjectFactoryScript.canvas_size_limit_message(canvas_size)
+		return null
 	if image_mode == ImageMode.LAYER:
 		_apply_image_layer(project, image, project_name)
 	else:
