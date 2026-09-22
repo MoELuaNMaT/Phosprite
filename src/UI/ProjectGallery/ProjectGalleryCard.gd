@@ -95,6 +95,12 @@ func reset_visual_transform() -> void:
 	visual_root.scale = Vector2.ONE
 
 
+func clear_transient_press_state() -> void:
+	_pointer_active = false
+	set_pressed_no_signal(false)
+	release_focus()
+
+
 func set_selected(value: bool) -> void:
 	selected = value
 	if is_instance_valid(selection_outline):
