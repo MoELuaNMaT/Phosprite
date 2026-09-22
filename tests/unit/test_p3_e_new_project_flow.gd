@@ -56,6 +56,30 @@ func test_p3_e_exact_presets_and_default_size() -> void:
 	)
 
 
+func test_p3_e_canvas_budget_blocks_oom_sizes_before_project_allocation() -> void:
+	check_true(
+		Factory.is_canvas_size_supported(Vector2i(4096, 4096)),
+		"4096x4096 must remain within the safe total-pixel budget",
+	)
+	check_true(
+		Factory.is_canvas_size_supported(Vector2i(16384, 1024)),
+		"a 16384px side is allowed when the total pixel count remains within budget",
+	)
+	check_true(
+		not Factory.is_canvas_size_supported(Vector2i(16384, 16384)),
+		"16384x16384 must be rejected before allocating multi-gigabyte project buffers",
+	)
+	check_true(
+		Factory.create_blank_project("unsafe", Vector2i(16384, 16384)) == null,
+		"ProjectFactory must not allocate an unsupported blank project",
+	)
+	check_has(
+		Factory.canvas_size_limit_message(Vector2i(16384, 16384)),
+		"16777216",
+		"oversized-canvas message must expose the total-pixel budget",
+	)
+
+
 func test_p3_e_dialog_source_uses_two_column_single_selector_layout() -> void:
 	var dialog_scene := FileAccess.get_file_as_string(
 		"res://src/UI/ProjectGallery/NewProjectDialog.tscn"
