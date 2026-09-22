@@ -95,8 +95,10 @@ func _visual_state_for(module_id: StringName) -> StringName:
 			if (
 				module_id == Builtins.TIMELINE_ID
 				and surface.dock_host != null
-				and surface.dock_host.layout.get_module_zone(module_id)
-				== WorkspaceDockLayout.DockZone.BOTTOM
+				and (
+					surface.dock_host.layout.get_module_zone(module_id)
+					== WorkspaceDockLayout.DockZone.BOTTOM
+				)
 				and surface.dock_host.layout.is_module_region_fill(module_id)
 			):
 				return &"bottom_bar"
