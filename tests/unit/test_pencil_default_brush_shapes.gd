@@ -70,8 +70,12 @@ func test_preview_source_tracks_brush_size_but_is_safely_bounded() -> void:
 
 func test_pencil_preview_uses_fixed_visual_bounds_and_nearest_neighbor_scaling() -> void:
 	var scene := FileAccess.get_file_as_string(BASE_DRAW_SCENE)
-	check_has(scene, "offset_left = 4.0", "preview must keep a fixed inset inside the 32px brush button")
-	check_has(scene, "offset_top = 4.0", "preview must keep a fixed inset inside the 32px brush button")
+	check_has(
+		scene, "offset_left = 4.0", "preview must keep a fixed inset inside the 32px brush button"
+	)
+	check_has(
+		scene, "offset_top = 4.0", "preview must keep a fixed inset inside the 32px brush button"
+	)
 	check_has(scene, "offset_right = 28.0", "preview must keep a fixed 24px visual width")
 	check_has(scene, "offset_bottom = 28.0", "preview must keep a fixed 24px visual height")
 	check_has(scene, "texture_filter = 1", "preview scaling must remain nearest-neighbor")
