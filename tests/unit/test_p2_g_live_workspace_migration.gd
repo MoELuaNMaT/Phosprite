@@ -708,15 +708,7 @@ func test_timeline_bottom_bar_is_full_width_without_moving_side_docks_to_screen_
 	_free_fixture(fixture)
 
 
-func test_touch_workspace_drag_starts_on_movement_without_long_press() -> void:
-	check_true(
-		not Interaction.touch_direct_drag_intent(Vector2(2.0, 1.0)),
-		"tiny touch jitter must remain a tap candidate",
-	)
-	check_true(
-		Interaction.touch_direct_drag_intent(Vector2(4.0, 0.0)),
-		"four-pixel movement should immediately become a Workspace drag",
-	)
+func test_touch_workspace_drag_and_resize_capture_on_press_before_child_gui() -> void:
 	var interaction_src := FileAccess.get_file_as_string(
 		"res://src/UI/Workspace/WorkspaceInteractionController.gd"
 	)
@@ -725,9 +717,55 @@ func test_touch_workspace_drag_starts_on_movement_without_long_press() -> void:
 		"Workspace touch dragging must not depend on a long-press timer",
 	)
 	check_true(
-		interaction_src.contains("touch_direct_drag_intent(delta)"),
-		"captured touch movement must route directly into drag intent",
+		interaction_src.contains("_try_capture_workspace_resize(touch)"),
+		"global input must attempt edge resize before child GUI can swallow the press",
 	)
+	check_true(
+		interaction_src.contains("_try_capture_workspace_header_drag(touch)"),
+		"global input must capture normal header drag on the initial touch press",
+	)
+	check_true(
+		interaction_src.contains(
+			"_begin_drag(module_id, _viewport_point_to_host(event.position), event.index)"
+		),
+		"header capture must open the drag transaction immediately on press",
+	)
+	check_true(
+		interaction_src.contains(
+			"_begin_resize(\n\t\tmodule_id,\n\t\t_viewport_point_to_host(event.position)"
+		),
+		"edge capture must open the resize transaction immediately on press",
+	)
+
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var interaction := Interaction.new()
+	root.add_child(interaction)
+	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	preview.apply_visual_theme(VisualTheme.new(), &"docked")
+	var local_header_point := Vector2(20.0, preview.get_header_height() * 0.5)
+	var viewport_point := preview.get_global_transform_with_canvas() * local_header_point
+	var hit := interaction._top_workspace_module_at(viewport_point)
+	check_eq(
+		hit.get("module_id", &"") as StringName,
+		Builtins.PREVIEW_ID,
+		"global press hit-test must resolve the Workspace module without child GUI propagation",
+	)
+	check_eq(
+		hit.get("module") as WorkspaceModule,
+		preview,
+		"global press hit-test must preserve the exact managed module identity",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
 
 
 func test_timeline_toolbar_has_direct_vertical_resize_intent_on_ipad() -> void:
