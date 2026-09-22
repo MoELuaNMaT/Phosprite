@@ -85,6 +85,7 @@ func _rebuild_styles() -> void:
 
 	_module_styles[&"none"] = _make_module_style(surface_color, border_color, BORDER_WIDTH)
 	_module_styles[&"docked"] = _make_module_style(surface_color, border_color, BORDER_WIDTH)
+	_module_styles[&"bottom_bar"] = _make_bottom_bar_style(surface_color, border_color)
 	_module_styles[&"floating"] = _make_module_style(
 		elevated_color, accent_color.lerp(border_color, 0.25), FLOATING_BORDER_WIDTH
 	)
@@ -95,6 +96,7 @@ func _rebuild_styles() -> void:
 
 	_header_styles[&"none"] = _make_header_style(header_color)
 	_header_styles[&"docked"] = _make_header_style(header_color)
+	_header_styles[&"bottom_bar"] = _make_bottom_bar_header_style(header_color)
 	_header_styles[&"floating"] = _make_header_style(header_color.lerp(accent_color, 0.12))
 	_header_styles[&"peek"] = _make_header_style(header_color.lerp(accent_color, 0.2))
 	_header_styles[&"collapsed"] = _make_header_style(header_color)
@@ -122,6 +124,24 @@ func _make_header_style(background: Color) -> StyleBoxFlat:
 	style.bg_color = background
 	style.corner_radius_top_left = CORNER_RADIUS
 	style.corner_radius_top_right = CORNER_RADIUS
+	style.content_margin_left = CONTENT_PADDING
+	style.content_margin_right = CONTENT_PADDING
+	return style
+
+
+func _make_bottom_bar_style(background: Color, border: Color) -> StyleBoxFlat:
+	var style := _make_module_style(background, border, BORDER_WIDTH)
+	style.corner_radius_top_left = 0
+	style.corner_radius_top_right = 0
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
+	style.shadow_size = 0
+	return style
+
+
+func _make_bottom_bar_header_style(background: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
 	style.content_margin_left = CONTENT_PADDING
 	style.content_margin_right = CONTENT_PADDING
 	return style
