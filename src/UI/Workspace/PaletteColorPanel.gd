@@ -1,6 +1,7 @@
 class_name PaletteColorPanel
 extends VSplitContainer
 
+# The VSplitContainer owns pointer/touch dragging; this script only adjusts its saved offsets.
 const COMPACT_PALETTE_BOTTOM_PADDING := 4.0
 
 var _color_options_expanded := false
