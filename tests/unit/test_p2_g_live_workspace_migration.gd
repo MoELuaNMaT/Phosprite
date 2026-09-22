@@ -1177,12 +1177,12 @@ func test_narrow_floating_timeline_overflows_controls_and_keeps_drag_space() -> 
 	check_true(accessory != null, "floating Timeline should retain its header controls")
 	check_true(accessory.has_overflow(), "narrow Timeline must expose the ellipsis overflow")
 	check_true(
-		accessory.get_node("%OverflowButton").visible,
+		accessory.overflow_button.visible,
 		"ellipsis button must become visible when commands do not fit",
 	)
 	check_eq(
-		accessory.get_node("%GlobalToolOptions").get_parent(),
-		accessory.get_node("%OverflowContent"),
+		accessory.global_tool_options.get_parent(),
+		accessory.overflow_content,
 		"large Global Tool Options group should fold into overflow before Undo/Redo",
 	)
 	var accessory_rect := timeline.get_header_accessory_rect()
@@ -1230,7 +1230,7 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 	await tree.process_frame
 	await tree.process_frame
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
-	var accessory := timeline.get_header_accessory()
+	var accessory := timeline.get_header_accessory() as TimelineHeaderControls
 	check_true(accessory != null, "Timeline must own a live header accessory")
 	timeline.apply_visual_theme(VisualTheme.new(), &"docked")
 	check_eq(
@@ -1239,15 +1239,12 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 		"Timeline header accessory must be the combined iPad command row"
 	)
 	check_true(
-		accessory.get_node_or_null(^"GlobalToolOptions") != null,
-		"existing Global Tool Options must remain inside the combined row"
+		accessory.global_tool_options != null,
+		"existing Global Tool Options must remain managed by the combined row",
 	)
-	check_true(accessory.get_node_or_null(^"Undo") != null, "Timeline header must expose Undo")
-	check_true(accessory.get_node_or_null(^"Redo") != null, "Timeline header must expose Redo")
-	check_true(
-		accessory.get_node_or_null(^"CurrentFrameMark") != null,
-		"Timeline header must expose the current/total frame display"
-	)
+	check_true(accessory.undo_button != null, "Timeline header must expose Undo")
+	check_true(accessory.redo_button != null, "Timeline header must expose Redo")
+	check_true(accessory.frame_mark != null, "Timeline header must expose the current/total frame display")
 	check_true(
 		accessory.get_parent() is Node2D,
 		"header controls must live in the Workspace header overlay, not Timeline content"
