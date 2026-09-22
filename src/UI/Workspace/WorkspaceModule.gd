@@ -28,6 +28,7 @@ enum ResizeEdge {
 const INTERACTION_TARGET_SIZE := 28.0
 const RESIZE_EDGE_HIT_SIZE := 18.0
 const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
+const MIN_HEADER_DRAG_WIDTH := 96.0
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -416,12 +417,17 @@ func _get_header_actions_width() -> float:
 func _layout_header_accessory() -> void:
 	if not is_instance_valid(_header_accessory):
 		return
-	var accessory_size := _header_accessory.get_combined_minimum_size()
 	var padding := _visual_theme.CONTENT_PADDING if _visual_theme != null else 4.0
 	var right_edge := maxf(0.0, size.x - _get_header_actions_width() - padding)
+	var drag_reserve := minf(MIN_HEADER_DRAG_WIDTH, maxf(48.0, right_edge * 0.4))
+	var available_width := maxf(0.0, right_edge - drag_reserve - padding)
+	if _header_accessory.has_method(&"set_available_width"):
+		_header_accessory.call(&"set_available_width", available_width)
+	var accessory_size := _header_accessory.get_combined_minimum_size()
+	accessory_size.x = minf(accessory_size.x, available_width)
 	_header_accessory.size = accessory_size
 	_header_accessory.position = Vector2(
-		maxf(0.0, right_edge - accessory_size.x),
+		maxf(drag_reserve, right_edge - accessory_size.x),
 		maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
 	)
 
