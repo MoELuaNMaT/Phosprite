@@ -42,8 +42,21 @@ func _make_live_fixture(
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_tool_options.add_child(left_panel)
 
+	var legacy_palette := Control.new()
+	legacy_palette.name = &"Palettes"
+	legacy_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	legacy_palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	legacy.add_child(legacy_palette)
+	var legacy_color_picker := Control.new()
+	legacy_color_picker.name = &"Color Picker"
+	legacy_color_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	legacy_color_picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	legacy.add_child(legacy_color_picker)
+
 	var live_controls: Dictionary = {}
 	for module_id in Builtins.get_live_panel_ids():
+		if module_id == Builtins.PALETTE_ID:
+			continue
 		var panel: Control
 		if module_id == Builtins.TOOLS_ID:
 			var tools := ScrollContainer.new()
@@ -96,6 +109,7 @@ func _make_live_fixture(
 		migration.setup(root, legacy, manager, surface, store),
 		"live editor migration should complete transactionally"
 	)
+	live_controls[Builtins.PALETTE_ID] = manager.get_instance(Builtins.PALETTE_ID).get_content()
 	if merge_tool_options_after_startup:
 		check_true(
 			migration.merge_left_tool_options_after_startup(),
@@ -108,6 +122,8 @@ func _make_live_fixture(
 		"controls": live_controls,
 		"left_tool_options": left_tool_options,
 		"left_panel": left_panel,
+		"legacy_palette": legacy_palette,
+		"legacy_color_picker": legacy_color_picker,
 		"manager": manager,
 		"host": host,
 		"surface": surface,
@@ -912,6 +928,67 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	_free_fixture(fixture)
 
 
+func test_palette_and_color_picker_share_one_workspace_panel_in_vertical_order() -> void:
+	var ids := Builtins.get_live_panel_ids()
+	check_true(ids.has(Builtins.PALETTE_ID), "combined Palette panel must remain a live module")
+	check_true(
+		not ids.has(Builtins.COLOR_PICKER_ID),
+		"Color Picker must not remain an independent live Workspace module"
+	)
+
+	var fixture := _make_live_fixture()
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var legacy_palette := fixture["legacy_palette"] as Control
+	var legacy_color_picker := fixture["legacy_color_picker"] as Control
+	var module := manager.get_instance(Builtins.PALETTE_ID)
+	var content := module.get_content() as VBoxContainer
+	check_true(content != null, "Palette Workspace module must own a combined vertical container")
+	check_eq(content.name, &"Palette & Color", "combined runtime panel must expose one identity")
+	check_eq(content.get_child_count(), 3, "combined panel should contain two sections and separator")
+	check_eq(
+		content.get_child(0),
+		legacy_palette,
+		"existing Palette control must be preserved as the upper section"
+	)
+	check_true(content.get_child(1) is HSeparator, "merged sections must have a visual separator")
+	check_eq(
+		content.get_child(2),
+		legacy_color_picker,
+		"existing Color Picker control must be preserved as the lower section"
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PALETTE_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"combined panel should participate in the default Workspace layout"
+	)
+	check_eq(
+		fixture["host"].layout.get_module_zone(Builtins.PALETTE_ID),
+		WorkspaceDockLayout.DockZone.RIGHT,
+		"fresh layouts should place the vertical combined panel in the right dock"
+	)
+	check_true(
+		manager.get_definition(Builtins.COLOR_PICKER_ID) == null,
+		"legacy Color Picker ID must not create a second Workspace shell"
+	)
+	_free_fixture(fixture)
+
+	var scene_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/PaletteColorPanel.tscn"
+	)
+	check_true(
+		scene_source.find('name="Palettes"') < scene_source.find('name="Color Picker"'),
+		"scene-backed combined module must also keep Palette above Color Picker"
+	)
+	var migration_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+	)
+	check_true(
+		migration_source.contains("_restore_palette_color_merge()"),
+		"runtime merge must remain transactionally reversible"
+	)
+
+
 func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(ids.has(Builtins.TOOLS_ID), "Tools must remain a live Workspace module")
@@ -1152,6 +1229,10 @@ func test_live_module_catalog_keeps_main_canvas_outside_workspace_modules() -> v
 	var ids := Builtins.get_live_panel_ids()
 	check_true(ids.has(Builtins.PREVIEW_ID), "Preview should be a live Workspace module")
 	check_true(ids.has(Builtins.PALETTE_ID), "Palette should be a live Workspace module")
+	check_true(
+		not ids.has(Builtins.COLOR_PICKER_ID),
+		"Color Picker should be represented by the merged Palette module"
+	)
 	check_true(ids.has(Builtins.TIMELINE_ID), "Timeline should be a live Workspace module")
 	check_true(ids.has(Builtins.TOOLS_ID), "Tools should be a live Workspace module")
 	for module_id in ids:
