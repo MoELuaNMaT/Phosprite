@@ -27,6 +27,7 @@ enum ResizeEdge {
 
 const INTERACTION_TARGET_SIZE := 28.0
 const RESIZE_EDGE_HIT_SIZE := 18.0
+const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -302,7 +303,7 @@ func get_resize_edges(local_point: Vector2) -> int:
 		edges |= ResizeEdge.LEFT
 	elif local_point.x >= size.x - RESIZE_EDGE_HIT_SIZE:
 		edges |= ResizeEdge.RIGHT
-	if local_point.y <= RESIZE_EDGE_HIT_SIZE:
+	if local_point.y <= TOP_RESIZE_EDGE_HIT_SIZE:
 		edges |= ResizeEdge.TOP
 	elif local_point.y >= size.y - RESIZE_EDGE_HIT_SIZE:
 		edges |= ResizeEdge.BOTTOM
