@@ -1,3 +1,4 @@
+class_name AnimationTimeline
 extends Panel
 
 ## Emitted when the animation starts playing.
