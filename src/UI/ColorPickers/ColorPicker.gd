@@ -97,8 +97,13 @@ func _ready() -> void:
 	var shape_menu_button := sampler_cont.get_child(2, true) as MenuButton
 	var shape_popup_menu := shape_menu_button.get_popup()
 	shape_popup_menu.id_pressed.connect(_on_shape_popup_menu_id_pressed)
-	sampler_cont.alignment = BoxContainer.ALIGNMENT_END
 	color_buttons.visible = false
+	# Reuse the sampler row itself: Color options lives on the left, while the
+	# picker-shape mode button remains the only control on the far right.
+	expand_button.get_parent().remove_child(expand_button)
+	sampler_cont.add_child(expand_button)
+	sampler_cont.move_child(expand_button, 0)
+	expand_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	color_slider_types_hbox = picker_vbox_container.get_child(2, true) as HBoxContainer
 	color_slider_types_hbox.visible = false
@@ -114,11 +119,6 @@ func _ready() -> void:
 		picker_vbox_container.get_child(5, true).get_child(2, true) as GridContainer
 	)
 	presets_container.add_theme_constant_override("h_separation", 5)
-	# Move the expand button above the RGB, HSV etc buttons
-	expand_button.get_parent().remove_child(expand_button)
-	picker_vbox_container.add_child(expand_button)
-	picker_vbox_container.move_child(expand_button, 2)
-
 	expand_button.button_pressed = Global.config_cache.get_value(
 		"color_picker", "is_expanded", false
 	)
