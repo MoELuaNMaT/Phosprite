@@ -5,13 +5,13 @@ const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 ## Live P2-G interaction bridge for Workspace chrome.
 ##
-## Mouse users drag headers immediately. Touch users must hold a header briefly
-## before the panel starts moving so a normal tap does not relocate the layout.
+## Mouse users drag headers immediately. Touch users start dragging as soon as
+## movement clears a tiny tap threshold; no long-press delay is required.
 ## Collapse and resize targets live only inside Workspace chrome and never cover
 ## the central Canvas input surface.
 
-const TOUCH_LONG_PRESS_MS := 350
-const TOUCH_CANCEL_DISTANCE := 12.0
+const TOUCH_DIRECT_DRAG_DISTANCE := 4.0
+const TIMELINE_HORIZONTAL_CANCEL_DISTANCE := 12.0
 const TIMELINE_DIRECT_RESIZE_DISTANCE := 6.0
 const TIMELINE_VERTICAL_INTENT_RATIO := 1.15
 const TRAY_MARGIN := 8.0
@@ -37,9 +37,8 @@ var _resize_is_docked := false
 
 var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
-var _pending_touch_started_ms := 0
 var _pending_touch_start_pointer := Vector2.ZERO
-var _pending_touch_travel := 0.0
+var _pending_touch_can_drag := false
 
 
 func setup(module_manager: WorkspaceModuleManager, workspace_surface: WorkspaceSurface) -> bool:
@@ -126,6 +125,10 @@ func _has_captured_interaction() -> bool:
 	return _drag_module_id != &"" or _resize_module_id != &"" or _pending_touch_module_id != &""
 
 
+static func touch_direct_drag_intent(delta: Vector2) -> bool:
+	return delta.length() >= TOUCH_DIRECT_DRAG_DISTANCE
+
+
 static func timeline_header_resize_intent(delta: Vector2) -> bool:
 	var vertical := absf(delta.y)
 	var horizontal := absf(delta.x)
@@ -160,9 +163,8 @@ func _try_capture_timeline_header_resize(event: InputEventScreenTouch) -> bool:
 		return false
 	_pending_touch_module_id = Builtins.TIMELINE_ID
 	_pending_touch_index = event.index
-	_pending_touch_started_ms = Time.get_ticks_msec()
 	_pending_touch_start_pointer = _viewport_point_to_host(event.position)
-	_pending_touch_travel = 0.0
+	_pending_touch_can_drag = module.is_header_drag_point(local_point)
 	return true
 
 
@@ -179,8 +181,8 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 	if _pending_touch_module_id == &"" or _pending_touch_index != event.index:
 		return
 
+	var delta := pointer - _pending_touch_start_pointer
 	if _pending_touch_module_id == Builtins.TIMELINE_ID:
-		var delta := pointer - _pending_touch_start_pointer
 		if timeline_header_resize_intent(delta):
 			var module_id := _pending_touch_module_id
 			var start_pointer := _pending_touch_start_pointer
@@ -190,22 +192,23 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 				_update_resize(pointer)
 			get_viewport().set_input_as_handled()
 			return
-		if absf(delta.x) > TOUCH_CANCEL_DISTANCE and absf(delta.x) > absf(delta.y):
+		if (
+			not _pending_touch_can_drag
+			and absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE
+			and absf(delta.x) > absf(delta.y)
+		):
 			_clear_pending_touch()
 			return
-
-	var elapsed := Time.get_ticks_msec() - _pending_touch_started_ms
-	if elapsed < TOUCH_LONG_PRESS_MS:
-		_pending_touch_travel += event.relative.length()
-		if _pending_touch_travel > TOUCH_CANCEL_DISTANCE:
-			_clear_pending_touch()
+	if not touch_direct_drag_intent(delta):
 		get_viewport().set_input_as_handled()
 		return
+
 	var module_id := _pending_touch_module_id
 	var start_pointer := _pending_touch_start_pointer
 	var touch_index := _pending_touch_index
+	var can_drag := _pending_touch_can_drag
 	_clear_pending_touch()
-	if _begin_drag(module_id, start_pointer, touch_index):
+	if can_drag and _begin_drag(module_id, start_pointer, touch_index):
 		surface.update_module_drag(pointer)
 	get_viewport().set_input_as_handled()
 
@@ -309,9 +312,8 @@ func _handle_screen_touch(
 	if module.is_header_drag_point(event.position):
 		_pending_touch_module_id = module_id
 		_pending_touch_index = event.index
-		_pending_touch_started_ms = Time.get_ticks_msec()
 		_pending_touch_start_pointer = pointer
-		_pending_touch_travel = 0.0
+		_pending_touch_can_drag = true
 		module.accept_event()
 
 
@@ -382,9 +384,8 @@ func _finish_resize() -> void:
 func _clear_pending_touch() -> void:
 	_pending_touch_module_id = &""
 	_pending_touch_index = -1
-	_pending_touch_started_ms = 0
 	_pending_touch_start_pointer = Vector2.ZERO
-	_pending_touch_travel = 0.0
+	_pending_touch_can_drag = false
 
 
 func _module_point_to_host(module: WorkspaceModule, local_point: Vector2) -> Vector2:
