@@ -52,10 +52,12 @@ func _ready() -> void:
 	if not DisplayServer.is_touchscreen_available():
 		set_process_input(false)
 	if index == Cameras.MAIN:
-		rotation_slider = Global.top_menu_container.get_node("%RotationSlider")
-		rotation_slider.value_changed.connect(_rotation_slider_value_changed)
-		zoom_slider = Global.top_menu_container.get_node("%ZoomSlider")
-		zoom_slider.value_changed.connect(_zoom_slider_value_changed)
+		rotation_slider = Global.top_menu_container.get_node_or_null("%RotationSlider") as ValueSlider
+		if is_instance_valid(rotation_slider):
+			rotation_slider.value_changed.connect(_rotation_slider_value_changed)
+		zoom_slider = Global.top_menu_container.get_node_or_null("%ZoomSlider") as ValueSlider
+		if is_instance_valid(zoom_slider):
+			zoom_slider.value_changed.connect(_zoom_slider_value_changed)
 	zoom_changed.connect(_zoom_changed)
 	rotation_changed.connect(_rotation_changed)
 	viewport_container = get_viewport().get_parent()
@@ -215,15 +217,16 @@ func _zoom_changed() -> void:
 	update_transparent_checker_offset()
 	if index == Cameras.MAIN:
 		should_tween = false
-		zoom_slider.set_value_no_signal_update_display(zoom.x * 100.0)
+		if is_instance_valid(zoom_slider):
+			zoom_slider.set_value_no_signal_update_display(zoom.x * 100.0)
 		should_tween = true
 		for guide in Global.current_project.guides:
 			guide.width = 1.0 / zoom.x * 2
 
 
 func _rotation_changed() -> void:
-	if index == Cameras.MAIN:
-		# Negative to make going up in value clockwise, and match the spinbox which does the same
+	if index == Cameras.MAIN and is_instance_valid(rotation_slider):
+		# Negative to make going up in value clockwise, and match the legacy spinbox.
 		rotation_slider.value = -camera_angle_degrees
 
 
