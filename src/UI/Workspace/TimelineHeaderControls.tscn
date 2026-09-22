@@ -10,13 +10,20 @@ custom_minimum_size = Vector2(0, 36)
 theme_override_constants/separation = 4
 script = ExtResource("1_script")
 
-[node name="GlobalToolOptions" parent="." instance=ExtResource("2_options")]
+[node name="InlineRow" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GlobalToolOptions" parent="InlineRow" instance=ExtResource("2_options")]
+unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Separator" type="VSeparator" parent="."]
+[node name="Separator" type="VSeparator" parent="InlineRow"]
+unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Undo" type="Button" parent="." groups=["UIButtons"]]
+[node name="Undo" type="Button" parent="InlineRow" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
@@ -27,7 +34,7 @@ mouse_default_cursor_shape = 2
 icon = ExtResource("3_undo")
 expand_icon = true
 
-[node name="Redo" type="Button" parent="." groups=["UIButtons"]]
+[node name="Redo" type="Button" parent="InlineRow" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
@@ -38,13 +45,47 @@ mouse_default_cursor_shape = 2
 icon = ExtResource("4_redo")
 expand_icon = true
 
-[node name="FrameLabel" type="Label" parent="."]
+[node name="FrameGroup" type="HBoxContainer" parent="InlineRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+
+[node name="FrameLabel" type="Label" parent="InlineRow/FrameGroup"]
 layout_mode = 2
 size_flags_vertical = 4
 text = "Current frame:"
 
-[node name="CurrentFrameMark" type="Label" parent="."]
+[node name="CurrentFrameMark" type="Label" parent="InlineRow/FrameGroup"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 text = "1/1"
+
+[node name="OverflowButton" type="Button" parent="." groups=["UIButtons"]]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "More timeline controls"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+text = "…"
+
+[node name="OverflowPanel" type="PopupPanel" parent="."]
+unique_name_in_owner = true
+size = Vector2i(280, 160)
+
+[node name="MarginContainer" type="MarginContainer" parent="OverflowPanel"]
+offset_right = 280.0
+offset_bottom = 160.0
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="OverflowContent" type="VBoxContainer" parent="OverflowPanel/MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
