@@ -698,9 +698,7 @@ func _stabilize_region_candidate(pointer: Vector2, candidate: Dictionary) -> Dic
 		return candidate
 	var sticky_rect: Rect2 = dock_host.get_edge_snap_rects().get(previous_zone, Rect2())
 	var hysteresis := (
-		0.0
-		if previous_zone == WorkspaceDockLayout.DockZone.TOP
-		else REGION_TARGET_HYSTERESIS
+		0.0 if previous_zone == WorkspaceDockLayout.DockZone.TOP else REGION_TARGET_HYSTERESIS
 	)
 	sticky_rect = sticky_rect.grow(hysteresis)
 	if not sticky_rect.has_point(pointer):
