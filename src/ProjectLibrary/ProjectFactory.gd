@@ -9,7 +9,6 @@ const MAX_CANVAS_SIDE := 16384
 const SQUARE_PRESETS: Array[Vector2i] = [
 	Vector2i(16, 16),
 	Vector2i(32, 32),
-	Vector2i(50, 50),
 	Vector2i(64, 64),
 	Vector2i(128, 128),
 	Vector2i(256, 256),
@@ -18,7 +17,6 @@ const SQUARE_PRESETS: Array[Vector2i] = [
 const FOUR_THREE_PRESETS: Array[Vector2i] = [
 	Vector2i(21, 16),
 	Vector2i(43, 32),
-	Vector2i(67, 50),
 	Vector2i(85, 64),
 	Vector2i(171, 128),
 	Vector2i(341, 256),
@@ -27,7 +25,6 @@ const FOUR_THREE_PRESETS: Array[Vector2i] = [
 const SIXTEEN_NINE_PRESETS: Array[Vector2i] = [
 	Vector2i(28, 16),
 	Vector2i(57, 32),
-	Vector2i(89, 50),
 	Vector2i(114, 64),
 	Vector2i(228, 128),
 	Vector2i(455, 256),
