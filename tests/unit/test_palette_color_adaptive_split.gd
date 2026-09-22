@@ -93,19 +93,19 @@ func test_palette_color_panel_uses_real_draggable_split_container() -> void:
 		"mouse/pointer splitter dragging must persist the chosen boundary",
 	)
 	check_has(
-		source,
-		"event is InputEventScreenTouch",
-		"iPad must get an explicit splitter touch acquisition path",
+		scene,
+		"touch_dragger_enabled = true",
+		"iPad must use Godot 4.6's native touch-friendly split dragger",
 	)
 	check_has(
-		source,
-		"event is InputEventScreenDrag",
-		"iPad splitter movement must track ScreenDrag directly",
-	)
-	check_has(
-		source,
-		"TOUCH_SPLITTER_SLOP := 14.0",
+		scene,
+		"theme_override_constants/minimum_grab_thickness = 12",
 		"the visual separator must have a larger invisible touch hit target",
+	)
+	check_has(
+		source,
+		"split_offsets = offsets",
+		"automatic and manual split state must use the current Godot 4.6 split-offset API",
 	)
 
 
