@@ -131,7 +131,11 @@ func _restore_item_order(parent: Node) -> void:
 		parent.move_child(item, index)
 		index += 1
 	if parent == inline_row and separator.get_parent() == inline_row:
-		var global_index := global_tool_options.get_index() if global_tool_options.get_parent() == inline_row else -1
+		var global_index := (
+			global_tool_options.get_index()
+			if global_tool_options.get_parent() == inline_row
+			else -1
+		)
 		if global_index >= 0:
 			inline_row.move_child(separator, global_index + 1)
 
@@ -149,9 +153,7 @@ func _on_overflow_pressed() -> void:
 		overflow_button.global_position
 		+ Vector2(overflow_button.size.x - popup_width, overflow_button.size.y)
 	)
-	overflow_panel.popup_on_parent(
-		Rect2i(Vector2i(popup_position.round()), overflow_panel.size)
-	)
+	overflow_panel.popup_on_parent(Rect2i(Vector2i(popup_position.round()), overflow_panel.size))
 
 
 func _on_undo_pressed() -> void:
