@@ -210,7 +210,6 @@ func _on_project_switched() -> void:
 	_check_color_mode_submenu_item(project)
 
 
-
 func _on_project_selection_changed() -> void:
 	var project := Global.current_project
 	var has_selection := project.has_selection
@@ -219,7 +218,6 @@ func _on_project_selection_changed() -> void:
 	select_menu.set_item_disabled(Global.SelectMenu.CLEAR, not has_selection)
 	select_menu.set_item_disabled(Global.SelectMenu.RESELECT, can_reselect)
 	project_menu.set_item_disabled(Global.ProjectMenu.CROP_TO_SELECTION, not has_selection)
-
 
 
 func _update_file_menu_buttons(project: Project) -> void:
