@@ -354,46 +354,41 @@ func resize_floating_rect(
 func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int:
 	if get_module_placement(module_id) != Placement.DOCKED or dock_host == null:
 		return WorkspaceModule.ResizeEdge.NONE
-	if not dock_host.layout.is_module_region_fill(module_id):
-		return WorkspaceModule.ResizeEdge.NONE
 	var module := manager.get_instance(module_id)
 	if module == null or module.is_content_collapsed():
 		return WorkspaceModule.ResizeEdge.NONE
 	var hit := WorkspaceModule.RESIZE_EDGE_HIT_SIZE
-	match dock_host.layout.get_module_zone(module_id):
+	var zone := dock_host.layout.get_module_zone(module_id)
+	var region_fill := dock_host.layout.is_module_region_fill(module_id)
+	var edges := WorkspaceModule.ResizeEdge.NONE
+	match zone:
 		WorkspaceDockLayout.DockZone.BOTTOM:
-			return (
-				WorkspaceModule.ResizeEdge.TOP
-				if local_point.y <= hit
-				else WorkspaceModule.ResizeEdge.NONE
-			)
+			if local_point.y <= hit:
+				edges |= WorkspaceModule.ResizeEdge.TOP
+			if not region_fill and local_point.x >= module.size.x - hit:
+				edges |= WorkspaceModule.ResizeEdge.RIGHT
 		WorkspaceDockLayout.DockZone.TOP:
-			return (
-				WorkspaceModule.ResizeEdge.BOTTOM
-				if local_point.y >= module.size.y - hit
-				else WorkspaceModule.ResizeEdge.NONE
-			)
+			if local_point.y >= module.size.y - hit:
+				edges |= WorkspaceModule.ResizeEdge.BOTTOM
+			if not region_fill and local_point.x >= module.size.x - hit:
+				edges |= WorkspaceModule.ResizeEdge.RIGHT
 		WorkspaceDockLayout.DockZone.LEFT:
-			return (
-				WorkspaceModule.ResizeEdge.RIGHT
-				if local_point.x >= module.size.x - hit
-				else WorkspaceModule.ResizeEdge.NONE
-			)
+			if local_point.x >= module.size.x - hit:
+				edges |= WorkspaceModule.ResizeEdge.RIGHT
+			if not region_fill and local_point.y >= module.size.y - hit:
+				edges |= WorkspaceModule.ResizeEdge.BOTTOM
 		WorkspaceDockLayout.DockZone.RIGHT:
-			return (
-				WorkspaceModule.ResizeEdge.LEFT
-				if local_point.x <= hit
-				else WorkspaceModule.ResizeEdge.NONE
-			)
-	return WorkspaceModule.ResizeEdge.NONE
+			if local_point.x <= hit:
+				edges |= WorkspaceModule.ResizeEdge.LEFT
+			if not region_fill and local_point.y >= module.size.y - hit:
+				edges |= WorkspaceModule.ResizeEdge.BOTTOM
+	return edges
 
 
 func resize_docked_module(
 	module_id: StringName, start_size: Vector2, delta: Vector2, resize_edges: int
 ) -> bool:
 	if get_module_placement(module_id) != Placement.DOCKED or dock_host == null:
-		return false
-	if not dock_host.layout.is_module_region_fill(module_id):
 		return false
 	var requested := start_size
 	if resize_edges & WorkspaceModule.ResizeEdge.TOP:
@@ -488,7 +483,17 @@ func begin_module_drag(module_id: StringName, pointer: Vector2 = Vector2.ZERO) -
 		if not dock_host.begin_module_drag(module_id):
 			_clear_drag_state()
 			return false
-		_drag_pointer_offset = dock_host.layout.get_module_size(module_id) * 0.5
+		var module := manager.get_instance(module_id)
+		var parent := module.get_parent() as Control if module != null else null
+		if module != null and parent != null:
+			var module_origin := parent.position + module.position
+			var local_offset := pointer - module_origin
+			_drag_pointer_offset = Vector2(
+				clampf(local_offset.x, 0.0, module.size.x),
+				clampf(local_offset.y, 0.0, module.size.y)
+			)
+		else:
+			_drag_pointer_offset = dock_host.layout.get_module_size(module_id) * 0.5
 	else:
 		var rect := get_floating_rect(module_id)
 		if rect.has_point(pointer):
