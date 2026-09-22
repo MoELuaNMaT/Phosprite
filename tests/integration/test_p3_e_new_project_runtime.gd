@@ -57,6 +57,59 @@ func test_new_project_dialog_reopens_with_synced_64_by_64_default() -> void:
 	dialog.hide()
 
 
+func test_new_project_dialog_preset_selector_and_custom_inputs_stay_synchronized() -> void:
+	_prepare_main()
+	if _main == null:
+		return
+	var dialog := _main.new_project_dialog as NewProjectDialog
+	dialog.popup_for_new_project()
+
+	check_eq(dialog.active_ratio, NewProjectDialog.PresetRatio.SQUARE, "default ratio must be 1:1")
+	check_eq(dialog.preset_selector.item_count, 6, "1:1 dropdown must contain six size tiers")
+	check_eq(
+		dialog.preset_selector.get_item_text(dialog.preset_selector.selected),
+		"64 × 64",
+		"default 64x64 must be selected in the 1:1 dropdown",
+	)
+
+	dialog.four_three_ratio.pressed.emit()
+	check_eq(
+		dialog.active_ratio,
+		NewProjectDialog.PresetRatio.FOUR_THREE,
+		"4:3 tab must switch the dropdown dataset",
+	)
+	check_eq(dialog.preset_selector.item_count, 6, "4:3 dropdown must contain six size tiers")
+	check_eq(
+		dialog.selected_size,
+		Vector2i(64, 64),
+		"changing ratio tabs alone must not overwrite the authoritative custom dimensions",
+	)
+	check_eq(
+		dialog.preset_selector.selected,
+		-1,
+		"ratio switch must leave the dropdown unselected when the current size has no exact match",
+	)
+
+	dialog.preset_selector.item_selected.emit(2)
+	check_eq(
+		dialog.selected_size,
+		Vector2i(85, 64),
+		"choosing the 64-tier 4:3 preset must update the authoritative size",
+	)
+	check_eq(int(dialog.width_value.value), 85, "preset selection must update Width")
+	check_eq(int(dialog.height_value.value), 64, "preset selection must update Height")
+
+	dialog.width_value.value = 90
+	check_eq(dialog.selected_size, Vector2i(90, 64), "manual Width must update selected size")
+	check_eq(
+		dialog.preset_selector.selected,
+		-1,
+		"manual non-preset dimensions must clear the stale dropdown selection",
+	)
+	check_true(dialog.custom_ratio.disabled, "reserved Custom preset tab must stay disabled")
+	dialog.hide()
+
+
 func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -> void:
 	_prepare_main()
 	if _main == null:
