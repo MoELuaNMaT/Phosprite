@@ -81,8 +81,6 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var delete_layout_confirmation := $DeleteLayoutConfirmation as ConfirmationDialog
 @onready var layout_name_line_edit := %LayoutName as LineEdit
 @onready var layout_from_option_button := %LayoutFrom as OptionButton
-@onready var cursor_position_label := %CursorPosition as Label
-@onready var current_frame_mark := %CurrentFrameMark as Label
 @onready var return_home_button := %ReturnHome as Button
 
 @onready var greyscale_vision: ColorRect = main_ui.find_child("GreyscaleVision")
@@ -120,8 +118,6 @@ func _ready() -> void:
 	Global.collapse_main_menu_changed.connect(handle_main_menu_collapse)
 	Global.project_about_to_switch.connect(_on_project_about_to_switch)
 	Global.project_switched.connect(_on_project_switched)
-	Global.cel_switched.connect(_update_current_frame_mark)
-	Global.on_cursor_position_text_changed.connect(_on_cursor_position_text_changed)
 	OpenSave.shader_copied.connect(_load_shader_file)
 	_setup_file_menu()
 	_setup_edit_menu()
@@ -200,31 +196,20 @@ func handle_main_menu_collapse() -> void:
 
 func _on_project_about_to_switch() -> void:
 	var project := Global.current_project
-	project.resized.disconnect(_on_project_resized)
 	project.selection_changed.disconnect(_on_project_selection_changed)
 
 
 func _on_project_switched() -> void:
 	var project := Global.current_project
-	if not project.resized.is_connected(_on_project_resized):
-		project.resized.connect(_on_project_resized)
 	if not project.selection_changed.is_connected(_on_project_selection_changed):
 		project.selection_changed.connect(_on_project_selection_changed)
 	_on_project_selection_changed()
-	var project_size_text := "[%s×%s]" % [project.size.x, project.size.y]
-	_on_cursor_position_text_changed(project_size_text)
 	edit_menu.set_item_disabled(Global.EditMenu.NEW_BRUSH, not project.has_selection)
 	_update_file_menu_buttons(project)
 	for j in Tiles.MODE.values():
 		tile_mode_submenu.set_item_checked(j, j == project.tiles.mode)
 	_check_color_mode_submenu_item(project)
-	_update_current_frame_mark()
 
-
-func _on_project_resized() -> void:
-	var project := Global.current_project
-	var project_size_text := "[%s×%s]" % [project.size.x, project.size.y]
-	_on_cursor_position_text_changed(project_size_text)
 
 
 func _on_project_selection_changed() -> void:
@@ -236,9 +221,6 @@ func _on_project_selection_changed() -> void:
 	select_menu.set_item_disabled(Global.SelectMenu.RESELECT, can_reselect)
 	project_menu.set_item_disabled(Global.ProjectMenu.CROP_TO_SELECTION, not has_selection)
 
-
-func _on_cursor_position_text_changed(text: String) -> void:
-	cursor_position_label.text = text_server.format_number(text)
 
 
 func _update_file_menu_buttons(project: Project) -> void:
