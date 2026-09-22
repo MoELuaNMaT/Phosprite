@@ -282,11 +282,17 @@ func _connect_import_dialogs() -> void:
 func create_new_project(canvas_size: Vector2i) -> bool:
 	if not managed_mode or not is_instance_valid(save_coordinator):
 		return false
+	if not ProjectFactoryScript.is_canvas_size_supported(canvas_size):
+		Global.popup_error(ProjectFactoryScript.canvas_size_limit_message(canvas_size))
+		return false
 	var project_name := ProjectFactoryScript.make_untitled_name()
 	var target_path := ProjectFactoryScript.make_unique_project_path(
 		project_name, save_coordinator.projects_directory
 	)
 	var project := ProjectFactoryScript.create_blank_project(project_name, canvas_size)
+	if project == null:
+		Global.popup_error(ProjectFactoryScript.canvas_size_limit_message(canvas_size))
+		return false
 	Global.projects.append(project)
 	project.has_changed = true
 
