@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://src/Palette/PalettePanel.tscn" id="1_palette"]
+[ext_resource type="PackedScene" path="res://src/UI/ColorPickers/ColorPicker.tscn" id="2_picker"]
+
+[node name="PaletteColorPanel" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="Palettes" parent="." instance=ExtResource("1_palette")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+
+[node name="SectionSeparator" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="Color Picker" parent="." instance=ExtResource("2_picker")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.1
