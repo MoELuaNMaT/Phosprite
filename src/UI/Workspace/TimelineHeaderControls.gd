@@ -1,6 +1,8 @@
 class_name TimelineHeaderControls
 extends HBoxContainer
 
+var text_server := TextServerManager.get_primary_interface()
+
 @onready var frame_mark := %CurrentFrameMark as Label
 
 
@@ -36,4 +38,6 @@ func _update_frame_mark() -> void:
 	if project == null:
 		frame_mark.text = "-/-"
 		return
-	frame_mark.text = "%d/%d" % [project.current_frame + 1, project.frames.size()]
+	var current_frame := text_server.format_number(str(project.current_frame + 1))
+	var frame_count := text_server.format_number(str(project.frames.size()))
+	frame_mark.text = "%s/%s" % [current_frame, frame_count]
