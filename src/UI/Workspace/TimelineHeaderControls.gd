@@ -19,6 +19,7 @@ var _item_widths: Dictionary = {}
 @onready var frame_group := %FrameGroup as HBoxContainer
 @onready var frame_mark := %CurrentFrameMark as Label
 @onready var overflow_button := %OverflowButton as Button
+@onready var mode_switch_button := %ModeSwitch as Button
 @onready var overflow_panel := %OverflowPanel as PopupPanel
 @onready var overflow_content := %OverflowContent as VBoxContainer
 
@@ -27,6 +28,12 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_pressed)
 	redo_button.pressed.connect(_on_redo_pressed)
 	overflow_button.pressed.connect(_on_overflow_pressed)
+	mode_switch_button.toggled.connect(_on_mode_switch_toggled)
+	if (
+		is_instance_valid(Global.animation_timeline)
+		and not Global.animation_timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
+	):
+		Global.animation_timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
 	_managed_items = [global_tool_options, undo_button, redo_button, frame_group]
 	for item in _managed_items:
 		_item_widths[item] = item.get_combined_minimum_size().x
@@ -35,6 +42,7 @@ func _ready() -> void:
 	if not Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.connect(_update_frame_mark)
 	_update_frame_mark()
+	_sync_mode_switch()
 	_apply_overflow_layout()
 
 
@@ -43,6 +51,11 @@ func _exit_tree() -> void:
 		Global.project_switched.disconnect(_update_frame_mark)
 	if Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.disconnect(_update_frame_mark)
+	if (
+		is_instance_valid(Global.animation_timeline)
+		and Global.animation_timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
+	):
+		Global.animation_timeline.timeline_mode_changed.disconnect(_on_timeline_mode_changed)
 
 
 func set_available_width(width: float) -> void:
@@ -70,13 +83,15 @@ func _apply_overflow_layout() -> void:
 	all_items.assign(_managed_items)
 	var all_width := _inline_width(all_items)
 	var keep_inline: Array[Control] = []
-	var needs_overflow := all_width > _available_width
+	var fixed_right_width := mode_switch_button.get_combined_minimum_size().x + ITEM_SEPARATION
+	var content_width := maxf(0.0, _available_width - fixed_right_width)
+	var needs_overflow := all_width > content_width
 
 	if not needs_overflow:
 		keep_inline = all_items
 	else:
 		var overflow_width := overflow_button.get_combined_minimum_size().x
-		var budget := maxf(0.0, _available_width - overflow_width - ITEM_SEPARATION)
+		var budget := maxf(0.0, content_width - overflow_width - ITEM_SEPARATION)
 		# Preserve the commands that are most useful during animation work.
 		# The large Global Tool Options group overflows first on narrow windows.
 		var priority: Array[Control] = [undo_button, redo_button, frame_group, global_tool_options]
@@ -154,6 +169,40 @@ func _on_overflow_pressed() -> void:
 		+ Vector2(overflow_button.size.x - popup_width, overflow_button.size.y)
 	)
 	overflow_panel.popup_on_parent(Rect2i(Vector2i(popup_position.round()), overflow_panel.size))
+
+
+func _on_mode_switch_toggled(single_frame: bool) -> void:
+	if not is_instance_valid(Global.animation_timeline):
+		return
+	var mode := (
+		AnimationTimeline.TimelineMode.SINGLE_FRAME
+		if single_frame
+		else AnimationTimeline.TimelineMode.ANIMATION
+	)
+	Global.animation_timeline.set_timeline_mode(mode)
+
+
+func _on_timeline_mode_changed(_mode: int) -> void:
+	_sync_mode_switch()
+	_apply_overflow_layout()
+
+
+func _sync_mode_switch() -> void:
+	if not is_instance_valid(Global.animation_timeline):
+		mode_switch_button.set_pressed_no_signal(false)
+		mode_switch_button.text = "Animation"
+		return
+	var single_frame := (
+		Global.animation_timeline.get_timeline_mode()
+		== AnimationTimeline.TimelineMode.SINGLE_FRAME
+	)
+	mode_switch_button.set_pressed_no_signal(single_frame)
+	mode_switch_button.text = "Single frame" if single_frame else "Animation"
+	mode_switch_button.tooltip_text = (
+		"Switch to animation timeline"
+		if single_frame
+		else "Switch to single-frame layer view"
+	)
 
 
 func _on_undo_pressed() -> void:
