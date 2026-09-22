@@ -72,6 +72,13 @@ func test_new_project_dialog_preset_selector_and_custom_inputs_stay_synchronized
 		"default 64x64 must be selected in the 1:1 dropdown",
 	)
 
+	dialog.preset_selector.item_selected.emit(3)
+	check_eq(
+		dialog.selected_size,
+		Vector2i(128, 128),
+		"choosing the fourth 1:1 tier must update the authoritative size",
+	)
+
 	dialog.four_three_ratio.pressed.emit()
 	check_eq(
 		dialog.active_ratio,
@@ -81,30 +88,38 @@ func test_new_project_dialog_preset_selector_and_custom_inputs_stay_synchronized
 	check_eq(dialog.preset_selector.item_count, 6, "4:3 dropdown must contain six size tiers")
 	check_eq(
 		dialog.selected_size,
-		Vector2i(64, 64),
-		"changing ratio tabs alone must not overwrite the authoritative custom dimensions",
+		Vector2i(171, 128),
+		"ratio switch must preserve the selected preset tier",
 	)
-	check_eq(
-		dialog.preset_selector.selected,
-		-1,
-		"ratio switch must leave the dropdown unselected when the current size has no exact match",
-	)
+	check_eq(dialog.preset_selector.selected, 3, "4:3 switch must keep the fourth preset selected")
+	check_eq(int(dialog.width_value.value), 171, "ratio switch must update Width")
+	check_eq(int(dialog.height_value.value), 128, "ratio switch must update Height")
 
-	dialog.preset_selector.item_selected.emit(2)
+	dialog.sixteen_nine_ratio.pressed.emit()
 	check_eq(
 		dialog.selected_size,
-		Vector2i(85, 64),
-		"choosing the 64-tier 4:3 preset must update the authoritative size",
+		Vector2i(228, 128),
+		"16:9 switch must map the fourth tier to 228x128",
 	)
-	check_eq(int(dialog.width_value.value), 85, "preset selection must update Width")
-	check_eq(int(dialog.height_value.value), 64, "preset selection must update Height")
+	check_eq(dialog.preset_selector.selected, 3, "16:9 switch must keep the fourth preset selected")
 
-	dialog.width_value.value = 90
-	check_eq(dialog.selected_size, Vector2i(90, 64), "manual Width must update selected size")
+	dialog.width_value.value = 230
+	check_eq(dialog.selected_size, Vector2i(230, 128), "manual Width must update selected size")
 	check_eq(
 		dialog.preset_selector.selected,
 		-1,
 		"manual non-preset dimensions must clear the stale dropdown selection",
+	)
+	dialog.square_ratio.pressed.emit()
+	check_eq(
+		dialog.selected_size,
+		Vector2i(230, 128),
+		"ratio switch must preserve manual custom dimensions when no preset tier is selected",
+	)
+	check_eq(
+		dialog.preset_selector.selected,
+		-1,
+		"manual custom dimensions must remain unselected after changing ratio tabs",
 	)
 	check_true(dialog.custom_ratio.disabled, "reserved Custom preset tab must stay disabled")
 	dialog.hide()

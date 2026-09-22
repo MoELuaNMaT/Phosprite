@@ -54,9 +54,13 @@ The dialog uses a two-column layout:
 - left: one preset dropdown plus 1:1 / 4:3 / 16:9 ratio tabs;
 - right: authoritative Width and Height inputs under the Custom size heading.
 
-Switching ratio tabs changes only the dropdown dataset. Selecting a dropdown item writes its exact
-size into the Width and Height inputs. Manually editing Width or Height updates the project size
-immediately and clears the dropdown selection when the resulting size no longer matches a preset.
+Switching ratio tabs preserves the currently selected preset tier: for example, the fourth 1:1
+preset maps to the fourth 4:3 or 16:9 preset, and the Width/Height inputs update to that target
+preset. If the user has manually entered custom dimensions and no preset is selected, switching
+ratio tabs changes only the dropdown dataset and preserves those custom dimensions. Selecting a
+dropdown item writes its exact size into the Width and Height inputs. Manually editing Width or
+Height updates the project size immediately and clears the dropdown selection when the resulting
+size no longer matches a preset.
 
 A fourth Custom preset tab is visible but disabled as a reserved extension point for future
 user-defined preset lists. There is currently no configuration entry for those presets.

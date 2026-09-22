@@ -114,7 +114,14 @@ func _update_size_validation() -> void:
 
 
 func _on_ratio_pressed(ratio: int) -> void:
+	var preset_tier := preset_selector.selected
 	_set_active_ratio(ratio)
+	if preset_tier < 0:
+		return
+	var presets := presets_for_ratio(ratio)
+	if preset_tier >= presets.size():
+		return
+	_apply_size(presets[preset_tier])
 
 
 func _on_preset_item_selected(index: int) -> void:
