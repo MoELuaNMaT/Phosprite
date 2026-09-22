@@ -1012,30 +1012,27 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 
 
-func test_global_tool_options_live_in_timeline_workspace_header_and_survive_collapse() -> void:
+func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(
 		not ids.has(Builtins.GLOBAL_TOOL_OPTIONS_ID),
 		"Global Tool Options must no longer exist as an independent Workspace module"
 	)
-	var timeline_scene := FileAccess.get_file_as_string(
-		"res://src/UI/Timeline/AnimationTimeline.tscn"
-	)
-	check_true(
-		not timeline_scene.contains("GlobalToolOptions"),
-		"Animation Timeline content scene must not embed Global Tool Options"
-	)
 	var migration_source := FileAccess.get_file_as_string(
 		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 	)
 	check_true(
-		migration_source.contains("timeline.set_header_accessory(options_control)"),
-		"live migration must attach Global Tool Options to the Timeline Workspace header"
+		migration_source.contains("TIMELINE_HEADER_CONTROLS_SCENE.instantiate()"),
+		"live migration must instantiate the combined Timeline header controls"
+	)
+	check_true(
+		migration_source.contains("timeline.set_header_accessory(header_controls)"),
+		"combined Timeline controls must attach through the Workspace header accessory contract"
 	)
 	var module_source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceModule.gd")
 	check_true(
 		module_source.contains("get_header_accessory_rect().has_point(local_point)"),
-		"header accessory controls must be excluded from the module drag target"
+		"header accessory controls must be excluded from normal module drag"
 	)
 
 	var fixture := _make_live_fixture()
@@ -1047,47 +1044,42 @@ func test_global_tool_options_live_in_timeline_workspace_header_and_survive_coll
 	timeline.apply_visual_theme(VisualTheme.new(), &"docked")
 	check_eq(
 		accessory.name,
-		&"Global Tool Options",
-		"Timeline header accessory must be the original Global Tool Options control"
+		&"TimelineHeaderControls",
+		"Timeline header accessory must be the combined iPad command row"
+	)
+	check_true(
+		accessory.get_node_or_null(^"GlobalToolOptions") != null,
+		"existing Global Tool Options must remain inside the combined row"
+	)
+	check_true(accessory.get_node_or_null(^"Undo") != null, "Timeline header must expose Undo")
+	check_true(accessory.get_node_or_null(^"Redo") != null, "Timeline header must expose Redo")
+	check_true(
+		accessory.get_node_or_null(^"CurrentFrameMark") != null,
+		"Timeline header must expose the current/total frame display"
 	)
 	check_true(
 		accessory.get_parent() is Node2D,
-		"header tools must live in the Workspace header overlay, not inside Timeline content"
+		"header controls must live in the Workspace header overlay, not Timeline content"
 	)
-	check_true(
-		timeline.get_header_height() >= 36.0,
-		"Timeline header must expand enough to contain the Global Tool Options controls"
-	)
+	check_true(timeline.get_header_height() >= 36.0, "Timeline header must fit the command row")
 	var accessory_rect := timeline.get_header_accessory_rect()
 	check_true(
 		accessory_rect.end.x <= timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE * 2.0,
-		"expanded docked Timeline must right-align tools before Float and Collapse actions"
+		"expanded Timeline must right-align controls before Float and Collapse actions"
 	)
 	check_true(
 		not timeline.is_header_drag_point(accessory_rect.get_center()),
-		"touching Global Tool Options must never begin a Timeline header drag"
+		"touching a Timeline command must never begin the normal module drag path"
 	)
 	check_true(surface.collapse_module(Builtins.TIMELINE_ID), "Timeline should collapse")
 	timeline.apply_visual_theme(VisualTheme.new(), &"collapsed")
 	check_true(timeline.is_content_collapsed(), "Timeline body should collapse")
 	check_true(
 		timeline.get_header_accessory() == accessory and accessory.visible,
-		"Global Tool Options must remain in the header while Timeline body is collapsed"
-	)
-	check_true(
-		(
-			timeline.get_header_accessory_rect().end.x
-			<= timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE
-		),
-		"collapsed Timeline must keep tools right-aligned before the Collapse action"
+		"Timeline command row must remain visible while Timeline body is collapsed"
 	)
 	_free_fixture(fixture)
 
-	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
-	check_true(
-		not ui_scene.contains('name="Global Tool Options" parent="DockableContainer"'),
-		"legacy UI must not keep a duplicate standalone Global Tool Options panel"
-	)
 	var options_scene := FileAccess.get_file_as_string(
 		"res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn"
 	)
@@ -1096,11 +1088,56 @@ func test_global_tool_options_live_in_timeline_workspace_header_and_survive_coll
 	)
 	check_true(
 		options_scene.contains("custom_minimum_size = Vector2(256, 36)"),
-		"header Global Tool Options should reserve one compact single-row width"
+		"Global Tool Options should keep its compact single-row width inside the combined row"
 	)
 	check_true(
 		options_script.contains("grid_container.columns = 8"),
 		"all eight Global Tool Options controls must remain on one header row"
+	)
+
+
+func test_top_bar_keeps_only_menu_and_projects_commands() -> void:
+	var scene_source := FileAccess.get_file_as_string(
+		"res://src/UI/TopMenuContainer/TopMenuContainer.tscn"
+	)
+	check_true(scene_source.contains('name="MainMenuButton"'), "Main Menu must remain in the top bar")
+	check_true(scene_source.contains('name="ReturnHome"'), "Projects must remain in the top bar")
+	for removed_name in [
+		"TopLabels",
+		"RotationSlider",
+		"ZoomSlider",
+		"CursorPosition",
+		"QuickAccessButtons",
+		"Save",
+		"Copy",
+		"Cut",
+		"Paste",
+		"Delete",
+		"Shift",
+		"Ctrl",
+		"Alt",
+		"CurrentFrame",
+		"CurrentFrameMark",
+	]:
+		check_true(
+			not scene_source.contains('name="%s"' % removed_name),
+			"%s must no longer occupy the editor top bar" % removed_name,
+		)
+	var camera_source := FileAccess.get_file_as_string("res://src/UI/Canvas/CanvasCamera.gd")
+	check_true(
+		camera_source.contains('get_node_or_null("%RotationSlider")'),
+		"Canvas rotation must tolerate the removed legacy slider"
+	)
+	check_true(
+		camera_source.contains('get_node_or_null("%ZoomSlider")'),
+		"Canvas zoom must tolerate the removed legacy slider"
+	)
+	var interaction_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceInteractionController.gd"
+	)
+	check_true(
+		interaction_source.contains("was_timeline_resize_candidate"),
+		"a light tap on Timeline Undo/Redo must be allowed to reach GUI release"
 	)
 
 
