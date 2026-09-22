@@ -20,41 +20,77 @@ func test_p3_e_exact_presets_and_default_size() -> void:
 		[
 			Vector2i(16, 16),
 			Vector2i(32, 32),
-			Vector2i(50, 50),
 			Vector2i(64, 64),
 			Vector2i(128, 128),
 			Vector2i(256, 256),
 			Vector2i(512, 512),
 		],
-		"P3-E must expose the seven approved 1:1 presets",
+		"New Project must expose the six approved 1:1 tiers",
 	)
 	check_eq(
 		Factory.FOUR_THREE_PRESETS,
 		[
 			Vector2i(21, 16),
 			Vector2i(43, 32),
-			Vector2i(67, 50),
 			Vector2i(85, 64),
 			Vector2i(171, 128),
 			Vector2i(341, 256),
 			Vector2i(683, 512),
 		],
-		"P3-E must expose the seven approved 4:3 presets",
+		"New Project must expose the six approved 4:3 tiers",
 	)
 	check_eq(
 		Factory.SIXTEEN_NINE_PRESETS,
 		[
 			Vector2i(28, 16),
 			Vector2i(57, 32),
-			Vector2i(89, 50),
 			Vector2i(114, 64),
 			Vector2i(228, 128),
 			Vector2i(455, 256),
 			Vector2i(910, 512),
 		],
-		"P3-E must expose the seven approved 16:9 presets",
+		"New Project must expose the six approved 16:9 tiers",
 	)
-	check_eq(Factory.all_presets().size(), 21, "P3-E must expose exactly 21 presets")
+	check_eq(Factory.all_presets().size(), 18, "New Project must expose exactly 18 built-in presets")
+
+
+func test_p3_e_dialog_source_uses_two_column_single_selector_layout() -> void:
+	var dialog_scene := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/NewProjectDialog.tscn"
+	)
+	var dialog_src := FileAccess.get_file_as_string(
+		"res://src/UI/ProjectGallery/NewProjectDialog.gd"
+	)
+	check_has(
+		dialog_scene,
+		'[node name="Content" type="HBoxContainer" parent="Margin"]',
+		"New Project content must use a left/right layout",
+	)
+	check_has(
+		dialog_scene,
+		'[node name="PresetSelector" type="OptionButton"',
+		"left column must expose a single preset dropdown",
+	)
+	check_has(
+		dialog_scene,
+		'[node name="CustomRatio" type="Button"',
+		"ratio tabs must reserve the fourth Custom preset entry",
+	)
+	check_has(
+		dialog_scene,
+		"disabled = true",
+		"reserved Custom preset entry must not expose unfinished behavior",
+	)
+	check_not_has(
+		dialog_scene,
+		'name="CurrentSize"',
+		"duplicate top size preview must be removed",
+	)
+	check_has(
+		dialog_src,
+		"preset_selector.select(-1)",
+		"manual custom dimensions must clear a stale preset selection",
+	)
 
 
 func test_p3_e_timestamp_name_and_collision_suffixes_are_stable() -> void:
