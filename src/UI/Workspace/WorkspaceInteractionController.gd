@@ -224,8 +224,10 @@ func _handle_captured_screen_release(event: InputEventScreenTouch) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if _pending_touch_module_id != &"" and _pending_touch_index == event.index:
+		var was_timeline_resize_candidate := _pending_touch_module_id == Builtins.TIMELINE_ID
 		_clear_pending_touch()
-		get_viewport().set_input_as_handled()
+		if not was_timeline_resize_candidate:
+			get_viewport().set_input_as_handled()
 
 
 func _on_module_created(module_id: StringName, module: WorkspaceModule) -> void:
