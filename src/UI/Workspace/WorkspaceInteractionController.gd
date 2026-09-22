@@ -145,8 +145,10 @@ func _try_capture_timeline_header_resize(event: InputEventScreenTouch) -> bool:
 		return false
 	if (
 		surface.get_module_placement(Builtins.TIMELINE_ID) != WorkspaceSurface.Placement.DOCKED
-		or dock_host.layout.get_module_zone(Builtins.TIMELINE_ID)
-		!= WorkspaceDockLayout.DockZone.BOTTOM
+		or (
+			dock_host.layout.get_module_zone(Builtins.TIMELINE_ID)
+			!= WorkspaceDockLayout.DockZone.BOTTOM
+		)
 		or not dock_host.layout.is_module_region_fill(Builtins.TIMELINE_ID)
 	):
 		return false
