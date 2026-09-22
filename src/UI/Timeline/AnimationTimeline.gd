@@ -9,8 +9,10 @@ signal animation_finished
 ## Emitted when the animation loops, meaning when it reaches the final frame
 ## and the animation keeps playing.
 signal animation_looped
+signal timeline_mode_changed(mode: int)
 
 enum LoopType { NO, CYCLE, PINGPONG }
+enum TimelineMode { ANIMATION, SINGLE_FRAME }
 
 const FRAME_BUTTON_TSCN := preload("res://src/UI/Timeline/FrameButton.tscn")
 const ANIMATION_TAG_TSCN := preload("res://src/UI/Timeline/AnimationTagUI.tscn")
@@ -46,8 +48,11 @@ var layer_effect_settings: AcceptDialog:
 var global_layer_visibility := true
 var global_layer_lock := false
 var global_layer_expand := true
+var timeline_mode := TimelineMode.ANIMATION
 
 @onready var animation_timer := $AnimationTimer as Timer
+@onready var timeline_container := $TimelineContainer as VBoxContainer
+@onready var single_frame_layer_strip := %SingleFrameLayerStrip as SingleFrameLayerStrip
 @onready var tag_spacer := %TagSpacer as Control
 @onready var layer_settings_container := %LayerSettingsContainer as VBoxContainer
 @onready var layer_container := %LayerContainer as VBoxContainer
@@ -137,6 +142,10 @@ func _ready() -> void:
 	# Makes sure that the frame and tag scroll bars are in the right place:
 	layer_vbox.emit_signal.call_deferred("resized")
 	drag_highlight.visibility_changed.connect(clear_highlight)
+	var loaded_timeline_mode: int = Global.config_cache.get_value(
+		"timeline", "display_mode", TimelineMode.ANIMATION
+	)
+	set_timeline_mode(loaded_timeline_mode, false)
 
 
 func _notification(what: int) -> void:
@@ -257,6 +266,32 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
+func set_timeline_mode(mode: int, save_config := true) -> void:
+	var next_mode := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+	if next_mode == TimelineMode.SINGLE_FRAME and is_animation_running:
+		if animation_forward:
+			play_forward.button_pressed = false
+		else:
+			play_backwards.button_pressed = false
+	timeline_mode = next_mode
+	timeline_container.visible = timeline_mode == TimelineMode.ANIMATION
+	single_frame_layer_strip.visible = timeline_mode == TimelineMode.SINGLE_FRAME
+	if timeline_mode == TimelineMode.SINGLE_FRAME:
+		single_frame_layer_strip.refresh()
+	if save_config:
+		Global.config_cache.set_value("timeline", "display_mode", timeline_mode)
+	update_minimum_size()
+	timeline_mode_changed.emit(timeline_mode)
+
+
+func get_timeline_mode() -> int:
+	return timeline_mode
+
+
+func add_default_pixel_layer() -> void:
+	_on_add_layer_pressed()
+
+
 func reset_settings() -> void:
 	cel_size = 36
 	%OnionSkinningOpacity.value = 60.0
@@ -273,6 +308,8 @@ func reset_settings() -> void:
 
 
 func _get_minimum_size() -> Vector2:
+	if timeline_mode == TimelineMode.SINGLE_FRAME:
+		return Vector2(220, 142)
 	# X targets enough to see layers, 1 frame, vertical scrollbar, and padding
 	# Y targets enough to see 1 layer
 	if not is_instance_valid(layer_vbox) or not cel_vbox.is_visible_in_tree():
