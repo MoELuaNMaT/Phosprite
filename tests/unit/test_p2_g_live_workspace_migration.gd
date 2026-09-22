@@ -661,6 +661,11 @@ func test_workspace_chrome_exposes_pop_out_and_multi_edge_resize_targets() -> vo
 		"floating panel should expose a right-edge resize target",
 	)
 	check_eq(
+		preview.get_resize_edges(Vector2(preview.size.x * 0.5, 2.0)),
+		WorkspaceModule.ResizeEdge.TOP,
+		"floating panel should expose a top-edge resize target",
+	)
+	check_eq(
 		preview.get_resize_edges(Vector2(preview.size.x * 0.5, preview.size.y - 2.0)),
 		WorkspaceModule.ResizeEdge.BOTTOM,
 		"floating panel should expose a bottom-edge resize target",
@@ -701,6 +706,28 @@ func test_timeline_bottom_bar_is_full_width_without_moving_side_docks_to_screen_
 
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
+
+
+func test_touch_workspace_drag_starts_on_movement_without_long_press() -> void:
+	check_true(
+		not Interaction.touch_direct_drag_intent(Vector2(2.0, 1.0)),
+		"tiny touch jitter must remain a tap candidate",
+	)
+	check_true(
+		Interaction.touch_direct_drag_intent(Vector2(4.0, 0.0)),
+		"four-pixel movement should immediately become a Workspace drag",
+	)
+	var interaction_src := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceInteractionController.gd"
+	)
+	check_true(
+		not interaction_src.contains("TOUCH_LONG_PRESS_MS"),
+		"Workspace touch dragging must not depend on a long-press timer",
+	)
+	check_true(
+		interaction_src.contains("touch_direct_drag_intent(delta)"),
+		"captured touch movement must route directly into drag intent",
+	)
 
 
 func test_timeline_toolbar_has_direct_vertical_resize_intent_on_ipad() -> void:
