@@ -1100,7 +1100,9 @@ func test_top_bar_keeps_only_menu_and_projects_commands() -> void:
 	var scene_source := FileAccess.get_file_as_string(
 		"res://src/UI/TopMenuContainer/TopMenuContainer.tscn"
 	)
-	check_true(scene_source.contains('name="MainMenuButton"'), "Main Menu must remain in the top bar")
+	check_true(
+		scene_source.contains('name="MainMenuButton"'), "Main Menu must remain in the top bar"
+	)
 	check_true(scene_source.contains('name="ReturnHome"'), "Projects must remain in the top bar")
 	for removed_name in [
 		"TopLabels",
