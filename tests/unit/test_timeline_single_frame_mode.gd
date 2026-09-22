@@ -75,10 +75,11 @@ func test_mode_switch_is_fixed_on_timeline_header_right_side() -> void:
 		"fixed_right_width := mode_switch_button.get_combined_minimum_size().x",
 		"responsive overflow must reserve width for the mode switch instead of hiding it",
 	)
+	var mode_managed := (
+		"_managed_items = [global_tool_options, undo_button, redo_button, frame_group, mode_switch_button]"
+	)
 	check_true(
-		not source.contains(
-			"_managed_items = [global_tool_options, undo_button, redo_button, frame_group, mode_switch_button]"
-		),
+		not source.contains(mode_managed),
 		"mode switch must not become an overflow-managed command",
 	)
 
