@@ -1156,6 +1156,49 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 
 
+func test_narrow_floating_timeline_overflows_controls_and_keeps_drag_space() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	check_true(
+		surface.float_module(Builtins.TIMELINE_ID, Rect2(120.0, 180.0, 360.0, 180.0)),
+		"Timeline should float at its minimum supported width",
+	)
+	await tree.process_frame
+	await tree.process_frame
+	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
+	timeline.apply_visual_theme(VisualTheme.new(), &"floating")
+	var accessory := timeline.get_header_accessory() as TimelineHeaderControls
+	check_true(accessory != null, "floating Timeline should retain its header controls")
+	check_true(accessory.has_overflow(), "narrow Timeline must expose the ellipsis overflow")
+	check_true(
+		accessory.get_node("%OverflowButton").visible,
+		"ellipsis button must become visible when commands do not fit",
+	)
+	check_eq(
+		accessory.get_node("%GlobalToolOptions").get_parent(),
+		accessory.get_node("%OverflowContent"),
+		"large Global Tool Options group should fold into overflow before Undo/Redo",
+	)
+	var accessory_rect := timeline.get_header_accessory_rect()
+	check_true(
+		accessory_rect.position.x >= WorkspaceModule.MIN_HEADER_DRAG_WIDTH,
+		"responsive header controls must reserve a draggable strip on the left",
+	)
+	check_true(
+		timeline.is_header_drag_point(Vector2(32.0, timeline.get_header_height() * 0.5)),
+		"reserved left header strip must remain directly draggable",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
 func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> void:
 	var ids := Builtins.get_live_panel_ids()
 	check_true(
