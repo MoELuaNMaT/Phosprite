@@ -125,6 +125,10 @@ func _ready() -> void:
 	_on_shape_popup_menu_id_pressed(color_picker.picker_shape)
 
 
+func is_color_options_expanded() -> bool:
+	return expand_button.button_pressed
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_instance_valid(left_color_rect):
 		_average(left_color_rect.color, right_color_rect.color)
