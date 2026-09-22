@@ -57,7 +57,7 @@ var _feedback_generation := 0
 @onready var feedback_banner := %FeedbackBanner as Label
 @onready var import_button := %Import as Button
 @onready var new_button := %New as Button
-@onready var exit_multiselect_button := %ExitMultiSelect as Button
+@onready var multiselect_button := %MultiSelect as Button
 @onready var project_action_menu := %ProjectActionMenu as PopupMenu
 @onready var batch_action_menu := %BatchActionMenu as PopupMenu
 @onready var rename_dialog := %RenameProjectDialog as ConfirmationDialog
@@ -201,7 +201,7 @@ func request_open(path: String) -> void:
 
 func set_multiselect_mode(enabled: bool) -> void:
 	multiselect_mode = enabled
-	exit_multiselect_button.visible = enabled
+	multiselect_button.text = tr("Exit Multi-Select") if enabled else tr("Multi-Select")
 	_gesture_resolver.reset()
 	_hide_popovers()
 	if not enabled:
@@ -348,10 +348,8 @@ func _consume_gesture_actions(actions: Array[Dictionary]) -> void:
 		match kind:
 			GestureResolverScript.ActionKind.SINGLE_TAP:
 				_on_resolved_single_tap(path)
-			GestureResolverScript.ActionKind.DOUBLE_TAP:
-				_on_resolved_double_tap(path, position)
 			GestureResolverScript.ActionKind.LONG_PRESS:
-				_on_resolved_long_press(path)
+				_on_resolved_long_press(path, position)
 
 
 func _on_resolved_single_tap(path: String) -> void:
@@ -361,22 +359,22 @@ func _on_resolved_single_tap(path: String) -> void:
 	project_open_requested.emit(path)
 
 
-func _on_resolved_double_tap(path: String, position: Vector2) -> void:
-	# DOUBLE_TAP resolves from the second release. Defer popup creation until that
-	# GUI input has fully unwound so BaseButton can leave its native pressed state.
+func _on_resolved_long_press(path: String, position: Vector2) -> void:
+	# Long press owns the context-menu gesture. Cancel the originating card's
+	# transient Button press before showing a PopupMenu so no pressed outline can
+	# remain latched if the popup consumes the eventual finger release.
+	_gesture_resolver.pointer_cancel(path)
+	var card := _find_card(path)
+	if card != null:
+		card.clear_transient_press_state()
 	if multiselect_mode:
-		var selected := get_selected_paths()
-		if selected.is_empty():
+		if not _selected_paths.has(_normalized_path(path)):
+			_set_path_selected(path, true)
+		if get_selected_paths().is_empty():
 			return
 		call_deferred("_show_batch_action_menu", position, path)
 		return
 	call_deferred("_show_project_action_menu", path, position)
-
-
-func _on_resolved_long_press(path: String) -> void:
-	if not multiselect_mode:
-		set_multiselect_mode(true)
-	_set_path_selected(path, true)
 
 
 func _show_project_action_menu(path: String, position: Vector2) -> void:
@@ -628,9 +626,11 @@ func _on_import_pressed() -> void:
 	import_requested.emit()
 
 
-func _on_exit_multiselect_pressed() -> void:
-	set_multiselect_mode(false)
-	exit_multiselect_requested.emit()
+func _on_multiselect_pressed() -> void:
+	var was_multiselect := multiselect_mode
+	set_multiselect_mode(not multiselect_mode)
+	if was_multiselect:
+		exit_multiselect_requested.emit()
 
 
 func _start_reflow(old_rects: Dictionary, generation: int) -> void:
@@ -668,7 +668,7 @@ func _sync_interaction_state() -> void:
 		_gesture_resolver.reset()
 	import_button.disabled = not enabled
 	new_button.disabled = not enabled
-	exit_multiselect_button.disabled = not enabled
+	multiselect_button.disabled = not enabled
 	for card: ProjectGalleryCard in _cards:
 		card.set_interaction_enabled(enabled)
 
