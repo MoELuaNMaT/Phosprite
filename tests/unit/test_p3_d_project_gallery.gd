@@ -90,6 +90,15 @@ func test_gallery_source_contract_matches_p3_d_layout() -> void:
 		"project cards must not display a project name",
 	)
 	check_has(
+		card_scene,
+		'[node name="ProjectGalleryCard" type="PanelContainer"]',
+		"Gallery cards must use a neutral Control root rather than a Button root",
+	)
+	check_true(
+		not card_scene.contains("CardHover"),
+		"Gallery cards must not retain native hover/pressed highlight styling",
+	)
+	check_has(
 		card_src,
 		'size_label.text = "%d × %d px"',
 		"healthy cards must display canvas dimensions",
