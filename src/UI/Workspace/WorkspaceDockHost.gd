@@ -239,15 +239,13 @@ func get_zone_rects() -> Dictionary:
 
 
 func get_edge_snap_rects() -> Dictionary:
-	var inset := _resolved_side_inset()
-	var inner_width := maxf(0.0, size.x - inset * 2.0)
-	var extent_x := minf(EDGE_DOCK_TARGET_EXTENT, inner_width)
+	var extent_x := minf(EDGE_DOCK_TARGET_EXTENT, size.x)
 	var extent_y := minf(EDGE_DOCK_TARGET_EXTENT, size.y)
 	return {
-		WorkspaceDockLayout.DockZone.TOP: Rect2(inset, 0.0, inner_width, extent_y),
-		WorkspaceDockLayout.DockZone.LEFT: Rect2(inset, 0.0, extent_x, size.y),
+		WorkspaceDockLayout.DockZone.TOP: Rect2(0.0, 0.0, size.x, extent_y),
+		WorkspaceDockLayout.DockZone.LEFT: Rect2(0.0, 0.0, extent_x, size.y),
 		WorkspaceDockLayout.DockZone.RIGHT:
-		Rect2(maxf(inset, size.x - inset - extent_x), 0.0, extent_x, size.y),
+		Rect2(maxf(0.0, size.x - extent_x), 0.0, extent_x, size.y),
 		WorkspaceDockLayout.DockZone.BOTTOM:
 		Rect2(0.0, maxf(0.0, size.y - extent_y), size.x, extent_y),
 	}
