@@ -73,6 +73,17 @@ focus_mode = 0
 mouse_default_cursor_shape = 2
 text = "…"
 
+[node name="ModeSwitch" type="Button" parent="." groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 32)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Switch to single-frame layer view"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+toggle_mode = true
+text = "Animation"
+
 [node name="OverflowPanel" type="PopupPanel" parent="."]
 unique_name_in_owner = true
 size = Vector2i(280, 160)
