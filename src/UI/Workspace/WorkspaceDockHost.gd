@@ -22,6 +22,8 @@ var layout: WorkspaceDockLayout
 var _zone_hosts: Dictionary = {}
 var _preview: ColorRect
 var _side_inset := 0.0
+var _top_edge_snap_y := 0.0
+var _top_edge_snap_height := EDGE_DOCK_TARGET_EXTENT
 var _drag_module_id: StringName = &""
 var _drag_candidate: Dictionary = {}
 
@@ -152,6 +154,15 @@ func get_side_inset() -> float:
 	return _resolved_side_inset()
 
 
+func set_top_edge_snap_band(offset_y: float, height: float) -> void:
+	_top_edge_snap_y = offset_y
+	_top_edge_snap_height = maxf(0.0, height)
+
+
+func get_top_edge_snap_band() -> Rect2:
+	return Rect2(0.0, _top_edge_snap_y, size.x, _top_edge_snap_height)
+
+
 func begin_module_drag(module_id: StringName) -> bool:
 	if layout == null or layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
 		return false
@@ -242,7 +253,7 @@ func get_edge_snap_rects() -> Dictionary:
 	var extent_x := minf(EDGE_DOCK_TARGET_EXTENT, size.x)
 	var extent_y := minf(EDGE_DOCK_TARGET_EXTENT, size.y)
 	return {
-		WorkspaceDockLayout.DockZone.TOP: Rect2(0.0, 0.0, size.x, extent_y),
+		WorkspaceDockLayout.DockZone.TOP: get_top_edge_snap_band(),
 		WorkspaceDockLayout.DockZone.LEFT: Rect2(0.0, 0.0, extent_x, size.y),
 		WorkspaceDockLayout.DockZone.RIGHT:
 		Rect2(maxf(0.0, size.x - extent_x), 0.0, extent_x, size.y),
