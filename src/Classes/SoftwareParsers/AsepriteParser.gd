@@ -82,8 +82,8 @@ static func open_aseprite_file(path: String) -> bool:
 	var number_of_colors := ase_file.get_16()
 	var _pixel_width := ase_file.get_8()
 	var _pixel_height := ase_file.get_8()
-	var _grid_position_x := ase_file.get_16()
-	var _grid_position_y := ase_file.get_16()
+	var _grid_position_x := signed_16(ase_file.get_16())
+	var _grid_position_y := signed_16(ase_file.get_16())
 	var _grid_width := ase_file.get_16()
 	var _grid_height := ase_file.get_16()
 	ase_file.get_buffer(84)  # For future
@@ -157,11 +157,11 @@ static func open_aseprite_file(path: String) -> bool:
 					var layer_index := ase_file.get_16()
 					var layer := new_project.layers[layer_index]
 					var cel := layer.new_empty_cel()
-					var x_pos := ase_file.get_16()
-					var y_pos := ase_file.get_16()
+					var x_pos := signed_16(ase_file.get_16())
+					var y_pos := signed_16(ase_file.get_16())
 					cel.opacity = ase_file.get_8() / 255.0
 					var cel_type := ase_file.get_16()
-					cel.z_index = ase_file.get_16()
+					cel.z_index = signed_16(ase_file.get_16())
 					ase_file.get_buffer(5)  # For future
 					if cel_type == 0 or cel_type == 2:  # Raw uncompressed and compressed image
 						var width := ase_file.get_16()
@@ -282,8 +282,8 @@ static func open_aseprite_file(path: String) -> bool:
 						ase_file.get_buffer(7)  # Reserved
 						var _external_file_name := parse_aseprite_string(ase_file)
 				ChunkTypes.MASK:
-					var _position_x := ase_file.get_16()
-					var _position_y := ase_file.get_16()
+					var _position_x := signed_16(ase_file.get_16())
+					var _position_y := signed_16(ase_file.get_16())
 					var mask_width := ase_file.get_16()
 					var mask_height := ase_file.get_16()
 					ase_file.get_buffer(8)  # For future
@@ -470,6 +470,11 @@ static func open_aseprite_file(path: String) -> bool:
 	Global.projects.append(new_project)
 	Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
 	return true
+
+
+static func signed_16(value: int) -> int:
+	value &= 0xFFFF
+	return value - 0x10000 if value & 0x8000 else value
 
 
 static func decompress_aseprite_payload(
