@@ -70,9 +70,12 @@ theme_override_styles/disabled = SubResource("2")
 theme_override_styles/focus = SubResource("2")
 
 [node name="Texture" type="TextureRect" parent="Brush/Type" index="0" unique_id=1497597906]
+texture_filter = 1
 layout_mode = 0
-offset_right = 32.0
-offset_bottom = 32.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 28.0
+offset_bottom = 28.0
 expand_mode = 1
 stretch_mode = 5
 
