@@ -13,47 +13,49 @@ var _displayed_frame := -1
 
 func _ready() -> void:
 	add_layer_button.pressed.connect(_on_add_layer_pressed)
-	Global.project_about_to_switch.connect(_on_project_about_to_switch)
-	Global.project_switched.connect(_on_project_switched)
 	Global.cel_switched.connect(_on_cel_switched)
-	_bind_project(Global.current_project)
-	refresh()
+	set_project(Global.current_project)
 
 
 func _exit_tree() -> void:
 	_unbind_project()
-	if Global.project_about_to_switch.is_connected(_on_project_about_to_switch):
-		Global.project_about_to_switch.disconnect(_on_project_about_to_switch)
-	if Global.project_switched.is_connected(_on_project_switched):
-		Global.project_switched.disconnect(_on_project_switched)
 	if Global.cel_switched.is_connected(_on_cel_switched):
 		Global.cel_switched.disconnect(_on_cel_switched)
 
 
-func refresh() -> void:
-	var project := Global.current_project
-	if project == null or not is_instance_valid(layer_row):
+func set_project(project: Project) -> void:
+	if _bound_project == project:
+		refresh()
 		return
-	if _bound_project != project:
-		_bind_project(project)
+	_bind_project(project)
+	refresh()
+
+
+func refresh() -> void:
+	if not is_instance_valid(layer_row):
+		return
 	for child in layer_row.get_children():
 		if child == add_layer_button:
 			continue
 		layer_row.remove_child(child)
 		child.queue_free()
 
+	var project := _bound_project
+	if project == null:
+		_displayed_frame = -1
+		return
 	_displayed_frame = project.current_frame
 	for visual_index in project.layers.size():
 		var layer_index := project.layers.size() - 1 - visual_index
 		var card := LAYER_CARD_SCENE.instantiate() as SingleFrameLayerCard
 		layer_row.add_child(card)
 		layer_row.move_child(card, layer_row.get_child_count() - 2)
-		card.setup(layer_index, project.current_frame)
+		card.setup(project, layer_index, project.current_frame)
 	call_deferred("_ensure_current_layer_visible")
 
 
 func sync_selection() -> void:
-	var project := Global.current_project
+	var project := _bound_project
 	if project == null:
 		return
 	for child in layer_row.get_children():
@@ -84,15 +86,6 @@ func _unbind_project() -> void:
 	_bound_project = null
 
 
-func _on_project_about_to_switch() -> void:
-	_unbind_project()
-
-
-func _on_project_switched() -> void:
-	_bind_project(Global.current_project)
-	refresh()
-
-
 func _on_layers_updated() -> void:
 	refresh()
 
@@ -102,7 +95,10 @@ func _on_frames_updated() -> void:
 
 
 func _on_cel_switched() -> void:
-	var project := Global.current_project
+	if _bound_project != Global.current_project:
+		set_project(Global.current_project)
+		return
+	var project := _bound_project
 	if project == null:
 		return
 	if _displayed_frame != project.current_frame:
@@ -112,12 +108,14 @@ func _on_cel_switched() -> void:
 
 
 func _on_add_layer_pressed() -> void:
+	if _bound_project != Global.current_project:
+		return
 	if is_instance_valid(Global.animation_timeline):
 		Global.animation_timeline.add_default_pixel_layer()
 
 
 func _ensure_current_layer_visible() -> void:
-	var project := Global.current_project
+	var project := _bound_project
 	if project == null or not is_instance_valid(scroll_container):
 		return
 	for child in layer_row.get_children():
