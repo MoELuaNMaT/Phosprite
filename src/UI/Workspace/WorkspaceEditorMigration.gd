@@ -89,7 +89,6 @@ var _legacy_processing := true
 var _previous_autosave_enabled := true
 var _zen_mode := false
 var _single_project_editor := false
-var _timeline_height_transition := false
 
 
 func setup(
@@ -592,11 +591,15 @@ func _attach_timeline_header_options() -> bool:
 
 
 func _bind_timeline_workspace_state() -> bool:
-	var timeline := Global.animation_timeline as AnimationTimeline
 	var module := manager.get_instance(Builtins.TIMELINE_ID)
-	if timeline == null or module == null:
+	if module == null:
 		return false
 	module.set_position_adjustment_enabled(false)
+	var timeline := module.get_content() as AnimationTimeline
+	if timeline == null:
+		timeline = Global.animation_timeline as AnimationTimeline
+	if timeline == null:
+		return true
 	if not timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
 		timeline.timeline_mode_changing.connect(_on_timeline_mode_changing)
 	if not timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed):
@@ -610,7 +613,12 @@ func _bind_timeline_workspace_state() -> bool:
 
 
 func _unbind_timeline_workspace_state() -> void:
-	var timeline := Global.animation_timeline as AnimationTimeline
+	var module := manager.get_instance(Builtins.TIMELINE_ID) if manager != null else null
+	var timeline := (
+		module.get_content() as AnimationTimeline
+		if module != null and module.get_content() is AnimationTimeline
+		else Global.animation_timeline as AnimationTimeline
+	)
 	if timeline != null:
 		if timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
 			timeline.timeline_mode_changing.disconnect(_on_timeline_mode_changing)
@@ -620,11 +628,9 @@ func _unbind_timeline_workspace_state() -> void:
 		Global.project_about_to_switch.disconnect(_on_timeline_project_about_to_switch)
 	if Global.project_switched.is_connected(_on_timeline_project_switched):
 		Global.project_switched.disconnect(_on_timeline_project_switched)
-	_timeline_height_transition = false
 
 
 func _on_timeline_mode_changing(from_mode: int, _to_mode: int) -> void:
-	_timeline_height_transition = true
 	_store_current_timeline_height(from_mode)
 
 
@@ -634,7 +640,6 @@ func _on_timeline_mode_changed(mode: int) -> void:
 
 func _complete_timeline_height_transition(mode: int) -> void:
 	_restore_timeline_height(mode)
-	_timeline_height_transition = false
 
 
 func _on_timeline_project_about_to_switch() -> void:
