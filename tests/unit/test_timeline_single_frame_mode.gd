@@ -173,8 +173,13 @@ func test_mode_switch_and_manual_resize_have_height_persistence_bridges() -> voi
 	)
 	check_has(
 		migration_source,
-		"func _on_timeline_mode_changed(mode: int) -> void:\n\t_restore_timeline_height(mode)",
-		"Workspace must restore the incoming mode height synchronously after switching views",
+		"_schedule_timeline_height_reconcile(mode)",
+		"Workspace must reconcile the incoming mode height after the layout settles",
+	)
+	check_has(
+		migration_source,
+		"await get_tree().process_frame",
+		"final Timeline height reconciliation must wait for one real layout frame",
 	)
 	check_has(
 		migration_source,
@@ -188,8 +193,13 @@ func test_mode_switch_and_manual_resize_have_height_persistence_bridges() -> voi
 	)
 	check_has(
 		interaction_source,
-		"Global.animation_timeline.store_workspace_height(final_height)",
-		"manual Timeline resize must persist as soon as the gesture finishes",
+		"Global.animation_timeline.store_workspace_height(final_height, mode, project)",
+		"manual Timeline resize must persist to the mode/project captured by the resize transaction",
+	)
+	check_has(
+		interaction_source,
+		"_resize_timeline_mode = Global.animation_timeline.get_timeline_mode()",
+		"Timeline resize must pin the active mode before pointer release can race a mode toggle",
 	)
 
 
