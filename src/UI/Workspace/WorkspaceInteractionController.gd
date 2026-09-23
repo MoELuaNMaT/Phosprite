@@ -475,12 +475,12 @@ func _finish_resize() -> void:
 		else:
 			final_height = surface.get_floating_rect(_resize_module_id).size.y
 		if final_height > 0.0:
-			var mode := (
+			var mode: int = (
 				_resize_timeline_mode
 				if _resize_timeline_mode >= 0
 				else Global.animation_timeline.get_timeline_mode()
 			)
-			var project := (
+			var project: Project = (
 				_resize_timeline_project
 				if is_instance_valid(_resize_timeline_project)
 				else Global.current_project
