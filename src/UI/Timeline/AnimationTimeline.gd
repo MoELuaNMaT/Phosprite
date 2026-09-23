@@ -23,6 +23,7 @@ const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSet
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
 const TIMELINE_HEIGHT_SECTION := "timeline_project_heights"
+const TIMELINE_HEIGHT_META := &"phosprite_timeline_workspace_heights"
 const DEFAULT_ANIMATION_WORKSPACE_HEIGHT := 220.0
 const DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT := 180.0
 
@@ -307,29 +308,53 @@ func get_default_workspace_height(mode: int) -> float:
 
 func get_saved_workspace_height(mode: int, project := Global.current_project) -> float:
 	var default_height := get_default_workspace_height(mode)
-	if project == null or project.project_uuid.is_empty():
+	if project == null:
 		return default_height
-	var state := (
+	var key := _workspace_height_key(mode)
+	var project_state := project.get_meta(TIMELINE_HEIGHT_META, {}) as Dictionary
+	if project_state.has(key):
+		return maxf(float(project_state[key]), 1.0)
+	if project.project_uuid.is_empty():
+		return default_height
+	var cached_state := (
 		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, {})
 		as Dictionary
 	)
-	var key := "single_frame" if mode == TimelineMode.SINGLE_FRAME else "animation"
-	return maxf(float(state.get(key, default_height)), 1.0)
+	if cached_state.has(key):
+		var cached_height := maxf(float(cached_state[key]), 1.0)
+		project_state = project_state.duplicate(true)
+		project_state[key] = cached_height
+		project.set_meta(TIMELINE_HEIGHT_META, project_state)
+		return cached_height
+	return default_height
 
 
 func store_workspace_height(
 	height: float, mode := timeline_mode, project := Global.current_project
 ) -> void:
-	if project == null or project.project_uuid.is_empty() or height <= 0.0:
+	if project == null or height <= 0.0:
 		return
-	var state := (
+	var key := _workspace_height_key(mode)
+	var project_state := project.get_meta(TIMELINE_HEIGHT_META, {}) as Dictionary
+	project_state = project_state.duplicate(true)
+	project_state[key] = height
+	project.set_meta(TIMELINE_HEIGHT_META, project_state)
+	if project.project_uuid.is_empty():
+		return
+	var cached_state := (
 		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, {})
 		as Dictionary
 	)
-	state = state.duplicate(true)
-	var key := "single_frame" if mode == TimelineMode.SINGLE_FRAME else "animation"
-	state[key] = height
-	Global.config_cache.set_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, state)
+	cached_state = cached_state.duplicate(true)
+	cached_state[key] = height
+	Global.config_cache.set_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, cached_state)
+	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
+	if save_error != OK:
+		push_warning("Could not persist Timeline project height cache: %s" % error_string(save_error))
+
+
+func _workspace_height_key(mode: int) -> String:
+	return "single_frame" if mode == TimelineMode.SINGLE_FRAME else "animation"
 
 
 func add_default_pixel_layer() -> void:
