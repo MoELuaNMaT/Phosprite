@@ -10,6 +10,7 @@ signal animation_finished
 ## Emitted when the animation loops, meaning when it reaches the final frame
 ## and the animation keeps playing.
 signal animation_looped
+signal timeline_mode_changing(from_mode: int, to_mode: int)
 signal timeline_mode_changed(mode: int)
 
 enum LoopType { NO, CYCLE, PINGPONG }
@@ -21,6 +22,9 @@ const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSet
 ## Do not let [member min_cel_size] go below 22, as this is the size of the layer icons.
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
+const TIMELINE_HEIGHT_SECTION := "timeline_project_heights"
+const DEFAULT_ANIMATION_WORKSPACE_HEIGHT := 220.0
+const DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT := 180.0
 
 var is_animation_running := false
 var animation_loop := LoopType.CYCLE
@@ -269,6 +273,9 @@ func _input(event: InputEvent) -> void:
 
 func set_timeline_mode(mode: int, save_config := true) -> void:
 	var next_mode := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+	var changed := next_mode != timeline_mode
+	if changed:
+		timeline_mode_changing.emit(timeline_mode, next_mode)
 	if next_mode == TimelineMode.SINGLE_FRAME and is_animation_running:
 		if animation_forward:
 			play_forward.button_pressed = false
@@ -282,11 +289,45 @@ func set_timeline_mode(mode: int, save_config := true) -> void:
 	if save_config:
 		Global.config_cache.set_value("timeline", "display_mode", timeline_mode)
 	update_minimum_size()
-	timeline_mode_changed.emit(timeline_mode)
+	if changed:
+		timeline_mode_changed.emit(timeline_mode)
 
 
 func get_timeline_mode() -> int:
 	return timeline_mode
+
+
+func get_default_workspace_height(mode: int) -> float:
+	return (
+		DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT
+		if mode == TimelineMode.SINGLE_FRAME
+		else DEFAULT_ANIMATION_WORKSPACE_HEIGHT
+	)
+
+
+func get_saved_workspace_height(mode: int, project := Global.current_project) -> float:
+	var default_height := get_default_workspace_height(mode)
+	if project == null or project.project_uuid.is_empty():
+		return default_height
+	var state := Global.config_cache.get_value(
+		TIMELINE_HEIGHT_SECTION, project.project_uuid, {}
+	) as Dictionary
+	var key := "single_frame" if mode == TimelineMode.SINGLE_FRAME else "animation"
+	return maxf(float(state.get(key, default_height)), 1.0)
+
+
+func store_workspace_height(
+	height: float, mode := timeline_mode, project := Global.current_project
+) -> void:
+	if project == null or project.project_uuid.is_empty() or height <= 0.0:
+		return
+	var state := Global.config_cache.get_value(
+		TIMELINE_HEIGHT_SECTION, project.project_uuid, {}
+	) as Dictionary
+	state = state.duplicate(true)
+	var key := "single_frame" if mode == TimelineMode.SINGLE_FRAME else "animation"
+	state[key] = height
+	Global.config_cache.set_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, state)
 
 
 func add_default_pixel_layer() -> void:
