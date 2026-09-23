@@ -29,7 +29,7 @@ func test_timeline_exposes_two_persistent_display_modes() -> void:
 	)
 	check_has(
 		source,
-		"const TIMELINE_MODE_META := &\"phosprite_timeline_mode\"",
+		'const TIMELINE_MODE_META := &"phosprite_timeline_mode"',
 		"Timeline mode must be stored as project-scoped state",
 	)
 	check_has(
