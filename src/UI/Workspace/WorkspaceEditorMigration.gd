@@ -615,9 +615,12 @@ func _bind_timeline_workspace_state() -> bool:
 func _unbind_timeline_workspace_state() -> void:
 	var module := manager.get_instance(Builtins.TIMELINE_ID) if manager != null else null
 	var timeline := (
-		module.get_content() as AnimationTimeline
-		if module != null and module.get_content() is AnimationTimeline
-		else Global.animation_timeline as AnimationTimeline
+		(
+			module.get_content() as AnimationTimeline
+			if module != null and module.get_content() is AnimationTimeline
+			else Global.animation_timeline
+		)
+		as AnimationTimeline
 	)
 	if timeline != null:
 		if timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
