@@ -130,6 +130,22 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 	var original_index := Global.current_project_index
 	var had_a_mode := project_a.has_meta(AnimationTimeline.TIMELINE_MODE_META)
 	var original_a_mode: Variant = project_a.get_meta(AnimationTimeline.TIMELINE_MODE_META, 0)
+	var had_a_height_meta := project_a.has_meta(AnimationTimeline.TIMELINE_HEIGHT_META)
+	var original_a_height_meta: Variant = project_a.get_meta(
+		AnimationTimeline.TIMELINE_HEIGHT_META, {}
+	)
+	var had_a_mode_cache := Global.config_cache.has_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
+	)
+	var original_a_mode_cache: Variant = Global.config_cache.get_value(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid, -1
+	)
+	var had_a_height_cache := Global.config_cache.has_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
+	)
+	var original_a_height_cache: Variant = Global.config_cache.get_value(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid, {}
+	)
 
 	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a)
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, false)
@@ -140,6 +156,7 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 		project_a,
 		"Single-frame strip must start bound to project A",
 	)
+	timeline.store_workspace_height(287.0, AnimationTimeline.TimelineMode.ANIMATION, project_a)
 
 	var project_b := ProjectFactoryScript.create_blank_project(
 		"timeline_project_b", Vector2i(32, 32)
@@ -150,6 +167,8 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 	project_b.layers[0].name = "B layer"
 	Global.projects.append(project_b)
 	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	timeline.store_workspace_height(326.0, AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	timeline.store_workspace_height(377.0, AnimationTimeline.TimelineMode.SINGLE_FRAME, project_b)
 	var project_b_index := Global.projects.find(project_b)
 
 	Global.tabs.current_tab = project_b_index
@@ -165,6 +184,11 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 		strip.get("_bound_project"),
 		project_b,
 		"hidden Single-frame strip must already be rebound to project B",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_b),
+		377.0,
+		"switching A Single-frame -> B Animation must not copy A height into B Single-frame",
 	)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, false)
@@ -182,6 +206,10 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 				"every visible Single-frame card must belong to project B",
 			)
 
+	# Return B to its persisted Animation mode before switching projects so the switch
+	# exercises the opposite Animation -> Single-frame transition as well.
+	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, false)
+	await tree.process_frame
 	Global.tabs.current_tab = original_index
 	await tree.process_frame
 	await tree.process_frame
@@ -196,6 +224,11 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 		project_a,
 		"returning to project A must rebuild the strip against project A",
 	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project_a),
+		287.0,
+		"switching B Animation -> A Single-frame must not copy B height into A Animation",
+	)
 
 	var remove_index := Global.projects.find(project_b)
 	if remove_index >= 0 and remove_index < Global.tabs.tab_count:
@@ -205,4 +238,30 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 		project_a.set_meta(AnimationTimeline.TIMELINE_MODE_META, original_a_mode)
 	else:
 		project_a.remove_meta(AnimationTimeline.TIMELINE_MODE_META)
-	timeline.set_timeline_mode(original_mode, false)
+	if had_a_height_meta:
+		project_a.set_meta(AnimationTimeline.TIMELINE_HEIGHT_META, original_a_height_meta)
+	else:
+		project_a.remove_meta(AnimationTimeline.TIMELINE_HEIGHT_META)
+	if had_a_mode_cache:
+		Global.config_cache.set_value(
+			AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid, original_a_mode_cache
+		)
+	else:
+		Global.config_cache.erase_section_key(
+			AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
+		)
+	if had_a_height_cache:
+		Global.config_cache.set_value(
+			AnimationTimeline.TIMELINE_HEIGHT_SECTION,
+			project_a.project_uuid,
+			original_a_height_cache,
+		)
+	else:
+		Global.config_cache.erase_section_key(
+			AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
+		)
+	Global.config_cache.erase_section_key(AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_b.project_uuid
+	)
+	timeline.set_timeline_mode(original_mode, false, false)
