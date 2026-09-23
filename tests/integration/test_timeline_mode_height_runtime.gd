@@ -13,13 +13,24 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 
 	var manager := scene.find_child("WorkspaceManager", true, false) as WorkspaceModuleManager
 	var dock_host := scene.find_child("WorkspaceDockHost", true, false) as WorkspaceDockHost
+	var interaction := (
+		scene.find_child("WorkspaceInteractionController", true, false)
+		as WorkspaceInteractionController
+	)
 	var timeline := Global.animation_timeline as AnimationTimeline
 	var project := Global.current_project
 	check_true(manager != null, "real editor must expose WorkspaceManager")
 	check_true(dock_host != null, "real editor must expose WorkspaceDockHost")
+	check_true(interaction != null, "real editor must expose WorkspaceInteractionController")
 	check_true(timeline != null, "real editor must expose AnimationTimeline")
 	check_true(project != null, "real editor must expose a current Project")
-	if manager == null or dock_host == null or timeline == null or project == null:
+	if (
+		manager == null
+		or dock_host == null
+		or interaction == null
+		or timeline == null
+		or project == null
+	):
 		return
 
 	var original_mode := timeline.get_timeline_mode()
@@ -52,37 +63,87 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, false)
 	await tree.process_frame
 
-	var animation_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
-	animation_size.y = 318.0
+	var resize_origin := Vector2(400.0, 300.0)
+	var animation_start_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
 	check_true(
-		dock_host.set_module_size(Builtins.TIMELINE_ID, animation_size),
-		"test must be able to resize real Bottom Timeline",
+		interaction._begin_resize(
+			Builtins.TIMELINE_ID, resize_origin, -1, WorkspaceModule.ResizeEdge.TOP
+		),
+		"test must enter the real Timeline resize transaction in Animation mode",
+	)
+	interaction._update_resize(
+		resize_origin + Vector2(0.0, animation_start_size.y - 318.0)
+	)
+	interaction._finish_resize()
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project),
+		318.0,
+		"Animation drag release must persist against the Animation height slot",
 	)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME)
+	var stale_animation_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+	stale_animation_size.y = 318.0
+	dock_host.call_deferred(&"set_module_size", Builtins.TIMELINE_ID, stale_animation_size)
+	await tree.process_frame
 	await tree.process_frame
 	check_eq(
 		dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y,
 		AnimationTimeline.DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT,
-		"first switch to Single frame must use its own default height",
+		"post-layout reconciliation must defeat late Animation geometry after switching to Single frame",
+	)
+	var module := manager.get_instance(Builtins.TIMELINE_ID) as WorkspaceModule
+	check_almost_eq(
+		module.size.y,
+		AnimationTimeline.DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT,
+		0.01,
+		"visible Single-frame Timeline must end at its own restored height",
 	)
 
-	var single_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
-	single_size.y = 196.0
+	var single_start_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
 	check_true(
-		dock_host.set_module_size(Builtins.TIMELINE_ID, single_size),
-		"test must be able to resize Single-frame Bottom Timeline",
+		interaction._begin_resize(
+			Builtins.TIMELINE_ID, resize_origin, -1, WorkspaceModule.ResizeEdge.TOP
+		),
+		"test must enter the real Timeline resize transaction in Single-frame mode",
+	)
+	interaction._update_resize(
+		resize_origin + Vector2(0.0, single_start_size.y - 196.0)
+	)
+	interaction._finish_resize()
+	check_eq(
+		timeline.get_saved_workspace_height(
+			AnimationTimeline.TimelineMode.SINGLE_FRAME, project
+		),
+		196.0,
+		"Single-frame drag release must persist against the Single-frame height slot",
 	)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION)
+	var stale_single_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+	stale_single_size.y = 196.0
+	dock_host.call_deferred(&"set_module_size", Builtins.TIMELINE_ID, stale_single_size)
+	await tree.process_frame
 	await tree.process_frame
 	check_eq(
 		dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y,
 		318.0,
-		"returning to Animation must restore the height saved when leaving it",
+		"returning to Animation must restore its original independent height after final layout",
+	)
+	check_almost_eq(
+		module.size.y,
+		318.0,
+		0.01,
+		"visible Animation Timeline must end at its own restored height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project),
+		318.0,
+		"Single-frame resize and mode switching must not overwrite Animation's saved height",
 	)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME)
+	await tree.process_frame
 	await tree.process_frame
 	check_eq(
 		dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y,
