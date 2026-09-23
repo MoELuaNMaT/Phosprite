@@ -34,6 +34,8 @@ func refresh() -> void:
 	var project := Global.current_project
 	if project == null or not is_instance_valid(layer_row):
 		return
+	if _bound_project != project:
+		_bind_project(project)
 	for child in layer_row.get_children():
 		if child == add_layer_button:
 			continue
