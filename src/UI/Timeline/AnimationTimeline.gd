@@ -350,7 +350,9 @@ func store_workspace_height(
 	Global.config_cache.set_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, cached_state)
 	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
 	if save_error != OK:
-		push_warning("Could not persist Timeline project height cache: %s" % error_string(save_error))
+		push_warning(
+			"Could not persist Timeline project height cache: %s" % error_string(save_error)
+		)
 
 
 func _workspace_height_key(mode: int) -> String:
