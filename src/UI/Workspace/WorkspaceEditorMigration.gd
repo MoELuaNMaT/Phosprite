@@ -638,10 +638,6 @@ func _on_timeline_mode_changing(from_mode: int, _to_mode: int) -> void:
 
 
 func _on_timeline_mode_changed(mode: int) -> void:
-	call_deferred("_complete_timeline_height_transition", mode)
-
-
-func _complete_timeline_height_transition(mode: int) -> void:
 	_restore_timeline_height(mode)
 
 
@@ -652,9 +648,13 @@ func _on_timeline_project_about_to_switch() -> void:
 
 
 func _on_timeline_project_switched() -> void:
+	call_deferred("_restore_current_project_timeline_height")
+
+
+func _restore_current_project_timeline_height() -> void:
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if timeline != null:
-		_restore_timeline_height.call_deferred(timeline.get_timeline_mode())
+		_restore_timeline_height(timeline.get_timeline_mode())
 
 
 func _store_current_timeline_height(mode: int) -> void:
