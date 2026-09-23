@@ -71,9 +71,7 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 		),
 		"test must enter the real Timeline resize transaction in Animation mode",
 	)
-	interaction._update_resize(
-		resize_origin + Vector2(0.0, animation_start_size.y - 318.0)
-	)
+	interaction._update_resize(resize_origin + Vector2(0.0, animation_start_size.y - 318.0))
 	interaction._finish_resize()
 	check_eq(
 		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project),
@@ -107,14 +105,10 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 		),
 		"test must enter the real Timeline resize transaction in Single-frame mode",
 	)
-	interaction._update_resize(
-		resize_origin + Vector2(0.0, single_start_size.y - 196.0)
-	)
+	interaction._update_resize(resize_origin + Vector2(0.0, single_start_size.y - 196.0))
 	interaction._finish_resize()
 	check_eq(
-		timeline.get_saved_workspace_height(
-			AnimationTimeline.TimelineMode.SINGLE_FRAME, project
-		),
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME, project),
 		196.0,
 		"Single-frame drag release must persist against the Single-frame height slot",
 	)
