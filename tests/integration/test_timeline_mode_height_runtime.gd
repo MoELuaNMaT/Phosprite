@@ -12,7 +12,9 @@ func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
 
 	var manager := scene.find_child("WorkspaceManager", true, false) as WorkspaceModuleManager
 	var dock_host := scene.find_child("WorkspaceDockHost", true, false) as WorkspaceDockHost
-	var migration := scene.find_child("WorkspaceEditorMigration", true, false) as WorkspaceEditorMigration
+	var migration := (
+		scene.find_child("WorkspaceEditorMigration", true, false) as WorkspaceEditorMigration
+	)
 	var timeline := Global.animation_timeline as AnimationTimeline
 	var project := Global.current_project
 	check_true(manager != null, "real editor must expose WorkspaceManager")
@@ -20,7 +22,13 @@ func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
 	check_true(migration != null, "real editor must expose WorkspaceEditorMigration")
 	check_true(timeline != null, "real editor must expose AnimationTimeline")
 	check_true(project != null, "real editor must expose a current Project")
-	if manager == null or dock_host == null or migration == null or timeline == null or project == null:
+	if (
+		manager == null
+		or dock_host == null
+		or migration == null
+		or timeline == null
+		or project == null
+	):
 		return
 
 	var module := manager.get_instance(Builtins.TIMELINE_ID) as WorkspaceModule
