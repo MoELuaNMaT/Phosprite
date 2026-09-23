@@ -13,25 +13,27 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 
 	var manager := scene.find_child("WorkspaceManager", true, false) as WorkspaceModuleManager
 	var dock_host := scene.find_child("WorkspaceDockHost", true, false) as WorkspaceDockHost
-	var interaction := (
-		scene.find_child("WorkspaceInteractionController", true, false)
-		as WorkspaceInteractionController
-	)
+	var surface := scene.find_child("WorkspaceSurface", true, false) as WorkspaceSurface
 	var timeline := Global.animation_timeline as AnimationTimeline
 	var project := Global.current_project
 	check_true(manager != null, "real editor must expose WorkspaceManager")
 	check_true(dock_host != null, "real editor must expose WorkspaceDockHost")
-	check_true(interaction != null, "real editor must expose WorkspaceInteractionController")
+	check_true(surface != null, "real editor must expose WorkspaceSurface")
 	check_true(timeline != null, "real editor must expose AnimationTimeline")
 	check_true(project != null, "real editor must expose a current Project")
-	if (
-		manager == null
-		or dock_host == null
-		or interaction == null
-		or timeline == null
-		or project == null
-	):
+	if manager == null or dock_host == null or surface == null or timeline == null or project == null:
 		return
+
+	# Headless editor startup can stop before UI.gd creates its normal interaction controller.
+	# Attach one against the real Workspace objects so the test still exercises the actual
+	# begin/update/finish resize transaction instead of writing sizes directly.
+	var interaction := WorkspaceInteractionController.new()
+	interaction.name = "TimelineHeightTestInteraction"
+	scene.add_child(interaction)
+	check_true(
+		interaction.setup(manager, surface),
+		"test interaction controller must bind to the real Workspace",
+	)
 
 	var original_mode := timeline.get_timeline_mode()
 	var original_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
@@ -148,6 +150,7 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 	timeline.set_timeline_mode(original_mode, false)
 	await tree.process_frame
 	dock_host.set_module_size(Builtins.TIMELINE_ID, original_size)
+	interaction.queue_free()
 	project.project_uuid = original_uuid
 	if had_height_meta:
 		project.set_meta(AnimationTimeline.TIMELINE_HEIGHT_META, original_height_meta)
