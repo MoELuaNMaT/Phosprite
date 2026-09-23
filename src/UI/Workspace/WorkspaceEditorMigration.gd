@@ -48,7 +48,7 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.TIMELINE_ID,
 		"zone": WorkspaceDockLayout.DockZone.BOTTOM,
 		"index": 0,
-		"size": Vector2(760.0, 180.0),
+		"size": Vector2(760.0, 220.0),
 		"region_fill": true,
 	},
 ]
@@ -89,6 +89,7 @@ var _legacy_processing := true
 var _previous_autosave_enabled := true
 var _zen_mode := false
 var _single_project_editor := false
+var _timeline_height_transition := false
 
 
 func setup(
@@ -323,6 +324,9 @@ func _migrate_live_editor() -> bool:
 		layout_ready = _apply_default_entries(_default_ids())
 
 	if not layout_ready:
+		_rollback_live_migration()
+		return false
+	if not _bind_timeline_workspace_state():
 		_rollback_live_migration()
 		return false
 
@@ -583,7 +587,120 @@ func _attach_timeline_header_options() -> bool:
 	if not timeline.set_header_accessory(header_controls):
 		header_controls.free()
 		return false
+	timeline.set_position_adjustment_enabled(false)
 	return true
+
+
+func _bind_timeline_workspace_state() -> bool:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	var module := manager.get_instance(Builtins.TIMELINE_ID)
+	if timeline == null or module == null:
+		return false
+	module.set_position_adjustment_enabled(false)
+	if not timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
+		timeline.timeline_mode_changing.connect(_on_timeline_mode_changing)
+	if not timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed):
+		timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
+	if not Global.project_about_to_switch.is_connected(_on_timeline_project_about_to_switch):
+		Global.project_about_to_switch.connect(_on_timeline_project_about_to_switch)
+	if not Global.project_switched.is_connected(_on_timeline_project_switched):
+		Global.project_switched.connect(_on_timeline_project_switched)
+	_restore_timeline_height(timeline.get_timeline_mode())
+	return true
+
+
+func _unbind_timeline_workspace_state() -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline != null:
+		if timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
+			timeline.timeline_mode_changing.disconnect(_on_timeline_mode_changing)
+		if timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed):
+			timeline.timeline_mode_changed.disconnect(_on_timeline_mode_changed)
+	if Global.project_about_to_switch.is_connected(_on_timeline_project_about_to_switch):
+		Global.project_about_to_switch.disconnect(_on_timeline_project_about_to_switch)
+	if Global.project_switched.is_connected(_on_timeline_project_switched):
+		Global.project_switched.disconnect(_on_timeline_project_switched)
+	_timeline_height_transition = false
+
+
+func _on_timeline_mode_changing(from_mode: int, _to_mode: int) -> void:
+	_timeline_height_transition = true
+	_store_current_timeline_height(from_mode)
+
+
+func _on_timeline_mode_changed(mode: int) -> void:
+	call_deferred("_complete_timeline_height_transition", mode)
+
+
+func _complete_timeline_height_transition(mode: int) -> void:
+	_restore_timeline_height(mode)
+	_timeline_height_transition = false
+
+
+func _on_timeline_project_about_to_switch() -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline != null:
+		_store_current_timeline_height(timeline.get_timeline_mode())
+
+
+func _on_timeline_project_switched() -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline != null:
+		_restore_timeline_height.call_deferred(timeline.get_timeline_mode())
+
+
+func _store_current_timeline_height(mode: int) -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline == null:
+		return
+	var height := _get_timeline_workspace_height()
+	if height > 0.0:
+		timeline.store_workspace_height(height, mode)
+
+
+func _restore_timeline_height(mode: int) -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline == null:
+		return
+	_set_timeline_workspace_height(timeline.get_saved_workspace_height(mode))
+
+
+func _get_timeline_workspace_height() -> float:
+	if surface == null or dock_host == null or manager == null:
+		return 0.0
+	var placement := surface.get_module_placement(Builtins.TIMELINE_ID)
+	if placement == WorkspaceSurface.Placement.DOCKED:
+		var docked_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+		if docked_size.y > 0.0:
+			return docked_size.y
+	elif placement == WorkspaceSurface.Placement.FLOATING:
+		var floating_rect := surface.get_floating_rect(Builtins.TIMELINE_ID)
+		if floating_rect.size.y > 0.0:
+			return floating_rect.size.y
+	var module := manager.get_instance(Builtins.TIMELINE_ID)
+	return module.size.y if module != null else 0.0
+
+
+func _set_timeline_workspace_height(height: float) -> bool:
+	if height <= 0.0 or surface == null or dock_host == null or manager == null:
+		return false
+	var placement := surface.get_module_placement(Builtins.TIMELINE_ID)
+	if placement == WorkspaceSurface.Placement.DOCKED:
+		var current_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+		if current_size == Vector2.ZERO:
+			var module := manager.get_instance(Builtins.TIMELINE_ID)
+			if module == null:
+				return false
+			current_size = module.size
+		current_size.y = height
+		return dock_host.set_module_size(Builtins.TIMELINE_ID, current_size)
+	if placement == WorkspaceSurface.Placement.FLOATING:
+		var rect := surface.get_floating_rect(Builtins.TIMELINE_ID)
+		if not rect.has_area():
+			return false
+		rect.size.y = height
+		return surface.set_floating_rect(Builtins.TIMELINE_ID, rect)
+	return false
 
 
 func _capture_original_state(resolved: Dictionary) -> void:
@@ -613,6 +730,7 @@ func _capture_original_state(resolved: Dictionary) -> void:
 
 
 func _rollback_live_migration() -> void:
+	_unbind_timeline_workspace_state()
 	layout_store.autosave_enabled = false
 	for module_id in get_panel_ids():
 		if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.NONE:
