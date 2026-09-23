@@ -273,10 +273,12 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-func set_timeline_mode(mode: int, persist_project_state := true) -> void:
+func set_timeline_mode(
+	mode: int, persist_project_state := true, announce_mode_changing := true
+) -> void:
 	var next_mode := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
 	var changed := next_mode != timeline_mode
-	if changed:
+	if changed and announce_mode_changing:
 		timeline_mode_changing.emit(timeline_mode, next_mode)
 	if next_mode == TimelineMode.SINGLE_FRAME and is_animation_running:
 		if animation_forward:
@@ -1524,7 +1526,10 @@ func _on_project_about_to_switch() -> void:
 func _on_project_switched() -> void:
 	var project := Global.current_project
 	single_frame_layer_strip.set_project(project)
-	set_timeline_mode(get_project_timeline_mode(project), false)
+	# The old project's height was already stored by project_about_to_switch.
+	# Do not announce an outgoing mode transition after Global.current_project has changed,
+	# otherwise that old physical height can be written into the new project's other mode.
+	set_timeline_mode(get_project_timeline_mode(project), false, false)
 	project_changed()
 	if not project.layers_updated.is_connected(_update_layer_ui):
 		project.layers_updated.connect(_update_layer_ui)
