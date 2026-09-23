@@ -43,6 +43,7 @@ var _content_collapsed := false
 var _content_visible_before_collapse := true
 var _minimum_size_before_collapse := Vector2.ZERO
 var _vertical_size_flags_before_collapse := Control.SIZE_FILL
+var _position_adjustment_enabled := true
 var _header_accessory_layer: Node2D
 var _header_accessory: Control
 
@@ -250,6 +251,18 @@ func get_header_height() -> float:
 	return height
 
 
+func set_position_adjustment_enabled(enabled: bool) -> void:
+	if _position_adjustment_enabled == enabled:
+		return
+	_position_adjustment_enabled = enabled
+	_layout_header_accessory()
+	queue_redraw()
+
+
+func is_position_adjustment_enabled() -> bool:
+	return _position_adjustment_enabled
+
+
 func get_visual_rect() -> Rect2:
 	var visual_height := get_header_height() if _content_collapsed else size.y
 	return Rect2(Vector2.ZERO, Vector2(size.x, visual_height))
@@ -260,6 +273,8 @@ func _has_point(point: Vector2) -> bool:
 
 
 func is_header_drag_point(local_point: Vector2) -> bool:
+	if not _position_adjustment_enabled:
+		return false
 	if local_point.y < 0.0 or local_point.y > get_header_height():
 		return false
 	if get_header_accessory_rect().has_point(local_point):
@@ -281,7 +296,8 @@ func is_collapse_point(local_point: Vector2) -> bool:
 
 func is_float_point(local_point: Vector2) -> bool:
 	if (
-		definition == null
+		not _position_adjustment_enabled
+		or definition == null
 		or not definition.can_float
 		or _visual_state != &"docked"
 		or _content_collapsed
@@ -405,7 +421,8 @@ func _get_header_actions_width() -> float:
 	if definition != null and definition.can_collapse:
 		width += INTERACTION_TARGET_SIZE
 	if (
-		definition != null
+		_position_adjustment_enabled
+		and definition != null
 		and definition.can_float
 		and _visual_state == &"docked"
 		and not _content_collapsed
@@ -440,7 +457,8 @@ func _notification(what: int) -> void:
 
 func _draw_float_affordance() -> void:
 	if (
-		definition == null
+		not _position_adjustment_enabled
+		or definition == null
 		or not definition.can_float
 		or _visual_theme == null
 		or _visual_state != &"docked"
