@@ -2,6 +2,7 @@ class_name ProjectFactory
 extends RefCounted
 
 const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
+const TimelineProjectStateScript := preload("res://src/UI/Timeline/TimelineProjectState.gd")
 
 const DEFAULT_SIZE := Vector2i(64, 64)
 const MAX_CANVAS_SIDE := 16384
@@ -68,6 +69,7 @@ static func create_blank_project(project_name: String, canvas_size: Vector2i) ->
 	var project := Project.new([], project_name, canvas_size)
 	project.layers.append(PixelLayer.new(project))
 	project.frames.append(project.new_empty_frame())
+	TimelineProjectStateScript.initialize_new_project(project)
 	return project
 
 
