@@ -322,9 +322,10 @@ func store_workspace_height(
 ) -> void:
 	if project == null or project.project_uuid.is_empty() or height <= 0.0:
 		return
-	var state := Global.config_cache.get_value(
-		TIMELINE_HEIGHT_SECTION, project.project_uuid, {}
-	) as Dictionary
+	var state := (
+		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, {})
+		as Dictionary
+	)
 	state = state.duplicate(true)
 	var key := "single_frame" if mode == TimelineMode.SINGLE_FRAME else "animation"
 	state[key] = height
