@@ -141,7 +141,9 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 		"Single-frame strip must start bound to project A",
 	)
 
-	var project_b := ProjectFactoryScript.create_blank_project("timeline_project_b", Vector2i(32, 32))
+	var project_b := ProjectFactoryScript.create_blank_project(
+		"timeline_project_b", Vector2i(32, 32)
+	)
 	check_true(project_b != null, "integration test must create project B")
 	if project_b == null:
 		return
