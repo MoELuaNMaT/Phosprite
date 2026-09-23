@@ -29,10 +29,7 @@ static func store_mode(project: Object, mode: int, min_mode: int, max_mode: int)
 	if project == null:
 		return
 	var resolved := clampi(mode, min_mode, max_mode)
-	var previous: Variant = project.get_meta(MODE_META, null)
 	project.set_meta(MODE_META, resolved)
-	if previous == null or int(previous) != resolved:
-		_mark_project_dirty(project)
 	var project_uuid := _project_uuid(project)
 	if project_uuid.is_empty():
 		return
@@ -67,12 +64,9 @@ static func store_height(project: Object, mode: int, height: float) -> void:
 		return
 	var key := _height_key(mode)
 	var project_state := project.get_meta(HEIGHT_META, {}) as Dictionary
-	var previous_height := float(project_state.get(key, -1.0))
 	project_state = project_state.duplicate(true)
 	project_state[key] = height
 	project.set_meta(HEIGHT_META, project_state)
-	if not is_equal_approx(previous_height, height):
-		_mark_project_dirty(project)
 	var project_uuid := _project_uuid(project)
 	if project_uuid.is_empty():
 		return
@@ -108,8 +102,3 @@ static func initialize_new_project(project: Object) -> void:
 	if project == null:
 		return
 	project.set_meta(MODE_META, SINGLE_FRAME_MODE)
-
-
-static func _mark_project_dirty(project: Object) -> void:
-	if project is Project:
-		(project as Project).has_changed = true
