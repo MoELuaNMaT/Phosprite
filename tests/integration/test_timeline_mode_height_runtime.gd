@@ -21,7 +21,13 @@ func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_sto
 	check_true(surface != null, "real editor must expose WorkspaceSurface")
 	check_true(timeline != null, "real editor must expose AnimationTimeline")
 	check_true(project != null, "real editor must expose a current Project")
-	if manager == null or dock_host == null or surface == null or timeline == null or project == null:
+	if (
+		manager == null
+		or dock_host == null
+		or surface == null
+		or timeline == null
+		or project == null
+	):
 		return
 
 	# Headless editor startup can stop before UI.gd creates its normal interaction controller.
