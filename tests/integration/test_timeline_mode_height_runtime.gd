@@ -251,16 +251,22 @@ func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
 			AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
 		)
 	if had_a_height_cache:
-		Global.config_cache.set_value(
-			AnimationTimeline.TIMELINE_HEIGHT_SECTION,
-			project_a.project_uuid,
-			original_a_height_cache,
+		(
+			Global
+			. config_cache
+			. set_value(
+				AnimationTimeline.TIMELINE_HEIGHT_SECTION,
+				project_a.project_uuid,
+				original_a_height_cache,
+			)
 		)
 	else:
 		Global.config_cache.erase_section_key(
 			AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
 		)
-	Global.config_cache.erase_section_key(AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid
+	)
 	Global.config_cache.erase_section_key(
 		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_b.project_uuid
 	)
