@@ -792,6 +792,48 @@ func test_timeline_toolbar_has_direct_vertical_resize_intent_on_ipad() -> void:
 	)
 
 
+func test_timeline_position_is_locked_but_top_edge_height_resize_remains_available() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var host := fixture["host"] as WorkspaceDockHost
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var timeline := manager.get_instance(Builtins.TIMELINE_ID) as WorkspaceModule
+	check_true(
+		not timeline.is_position_adjustment_enabled(),
+		"Timeline migration must disable position adjustment",
+	)
+	check_true(
+		not timeline.is_header_drag_point(Vector2(24.0, timeline.get_header_height() * 0.5)),
+		"Timeline header must not start a Workspace move",
+	)
+	check_true(
+		not timeline.is_float_point(
+			Vector2(timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE * 1.5, 8.0)
+		),
+		"Timeline must hide and disable the pop-out position control",
+	)
+	check_eq(
+		surface.get_docked_resize_edges(
+			Builtins.TIMELINE_ID, Vector2(timeline.size.x * 0.5, 2.0)
+		),
+		WorkspaceModule.ResizeEdge.TOP,
+		"Bottom Timeline must keep its top-edge height resize target",
+	)
+	check_eq(
+		host.layout.get_module_size(Builtins.TIMELINE_ID).y,
+		220.0,
+		"Animation mode default Workspace height should be slightly taller",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
 func test_timeline_region_dock_overlays_full_background_canvas() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -1191,8 +1233,8 @@ func test_narrow_floating_timeline_overflows_controls_and_keeps_drag_space() -> 
 		"responsive header controls must reserve a draggable strip on the left",
 	)
 	check_true(
-		timeline.is_header_drag_point(Vector2(32.0, timeline.get_header_height() * 0.5)),
-		"reserved left header strip must remain directly draggable",
+		not timeline.is_header_drag_point(Vector2(32.0, timeline.get_header_height() * 0.5)),
+		"Timeline header must stay position-locked even while floating programmatically",
 	)
 
 	tree.root.remove_child(root)
@@ -1254,8 +1296,8 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 	check_true(timeline.get_header_height() >= 36.0, "Timeline header must fit the command row")
 	var accessory_rect := timeline.get_header_accessory_rect()
 	check_true(
-		accessory_rect.end.x <= timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE * 2.0,
-		"expanded Timeline must right-align controls before Float and Collapse actions"
+		accessory_rect.end.x <= timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE,
+		"position-locked Timeline must right-align controls before the Collapse action"
 	)
 	check_true(
 		not timeline.is_header_drag_point(accessory_rect.get_center()),
