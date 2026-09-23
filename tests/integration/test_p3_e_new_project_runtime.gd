@@ -202,6 +202,16 @@ func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -
 
 	var project := Global.current_project
 	check_eq(project.size, Vector2i(85, 64), "new Project must keep the selected preset size")
+	check_eq(
+		project.get_meta(AnimationTimeline.TIMELINE_MODE_META, -1),
+		AnimationTimeline.TimelineMode.SINGLE_FRAME,
+		"new managed projects must persist Single frame as their initial Timeline mode",
+	)
+	check_eq(
+		(Global.animation_timeline as AnimationTimeline).get_timeline_mode(),
+		AnimationTimeline.TimelineMode.SINGLE_FRAME,
+		"new projects must enter the Editor in Single-frame Timeline mode",
+	)
 	check_true(
 		project.name.begins_with("未命名_"),
 		"new Project must use the timestamped untitled display name",
