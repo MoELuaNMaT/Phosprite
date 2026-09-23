@@ -89,6 +89,7 @@ var _legacy_processing := true
 var _previous_autosave_enabled := true
 var _zen_mode := false
 var _single_project_editor := false
+var _timeline_height_restore_generation := 0
 
 
 func setup(
@@ -639,6 +640,7 @@ func _on_timeline_mode_changing(from_mode: int, _to_mode: int) -> void:
 
 func _on_timeline_mode_changed(mode: int) -> void:
 	_restore_timeline_height(mode)
+	_schedule_timeline_height_reconcile(mode)
 
 
 func _on_timeline_project_about_to_switch() -> void:
@@ -654,7 +656,26 @@ func _on_timeline_project_switched() -> void:
 func _restore_current_project_timeline_height() -> void:
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if timeline != null:
-		_restore_timeline_height(timeline.get_timeline_mode())
+		var mode := timeline.get_timeline_mode()
+		_restore_timeline_height(mode)
+		_schedule_timeline_height_reconcile(mode)
+
+
+func _schedule_timeline_height_reconcile(mode: int) -> void:
+	_timeline_height_restore_generation += 1
+	var generation := _timeline_height_restore_generation
+	var project := Global.current_project
+	_restore_timeline_height_after_layout.call_deferred(mode, project, generation)
+
+
+func _restore_timeline_height_after_layout(mode: int, project: Project, generation: int) -> void:
+	await get_tree().process_frame
+	if generation != _timeline_height_restore_generation or project != Global.current_project:
+		return
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline == null or timeline.get_timeline_mode() != mode:
+		return
+	_restore_timeline_height(mode)
 
 
 func _store_current_timeline_height(mode: int) -> void:
