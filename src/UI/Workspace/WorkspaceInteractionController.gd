@@ -406,6 +406,9 @@ func _handle_screen_touch(
 func _begin_drag(module_id: StringName, pointer: Vector2, touch_index: int) -> bool:
 	if _drag_module_id != &"" or _resize_module_id != &"":
 		return false
+	var module := manager.get_instance(module_id) if manager != null else null
+	if module != null and not module.is_position_adjustment_enabled():
+		return false
 	if not surface.begin_module_drag(module_id, pointer):
 		return false
 	_drag_module_id = module_id
@@ -458,6 +461,14 @@ func _update_resize(pointer: Vector2) -> void:
 
 
 func _finish_resize() -> void:
+	if _resize_module_id == Builtins.TIMELINE_ID and is_instance_valid(Global.animation_timeline):
+		var final_height := 0.0
+		if _resize_is_docked:
+			final_height = dock_host.layout.get_module_size(_resize_module_id).y
+		else:
+			final_height = surface.get_floating_rect(_resize_module_id).size.y
+		if final_height > 0.0:
+			Global.animation_timeline.store_workspace_height(final_height)
 	_resize_module_id = &""
 	_resize_touch_index = -1
 	_resize_start_pointer = Vector2.ZERO
