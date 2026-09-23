@@ -1,9 +1,10 @@
 extends "res://tests/test_base.gd"
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 
 
-func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
+func test_real_bottom_timeline_restores_distinct_mode_heights_without_manual_store() -> void:
 	check_true(tree != null, "integration suite should receive the SceneTree")
 	var scene := tree.current_scene
 	check_true(scene != null, "editor scene should be loaded")
@@ -12,48 +13,43 @@ func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
 
 	var manager := scene.find_child("WorkspaceManager", true, false) as WorkspaceModuleManager
 	var dock_host := scene.find_child("WorkspaceDockHost", true, false) as WorkspaceDockHost
-	var migration := (
-		scene.find_child("WorkspaceEditorMigration", true, false) as WorkspaceEditorMigration
-	)
 	var timeline := Global.animation_timeline as AnimationTimeline
 	var project := Global.current_project
 	check_true(manager != null, "real editor must expose WorkspaceManager")
 	check_true(dock_host != null, "real editor must expose WorkspaceDockHost")
-	check_true(migration != null, "real editor must expose WorkspaceEditorMigration")
 	check_true(timeline != null, "real editor must expose AnimationTimeline")
 	check_true(project != null, "real editor must expose a current Project")
-	if (
-		manager == null
-		or dock_host == null
-		or migration == null
-		or timeline == null
-		or project == null
-	):
-		return
-
-	var module := manager.get_instance(Builtins.TIMELINE_ID) as WorkspaceModule
-	check_true(module != null, "Timeline Workspace module must exist")
-	if module == null:
+	if manager == null or dock_host == null or timeline == null or project == null:
 		return
 
 	var original_mode := timeline.get_timeline_mode()
 	var original_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
-	var had_meta := project.has_meta(AnimationTimeline.TIMELINE_HEIGHT_META)
-	var original_meta: Variant = project.get_meta(AnimationTimeline.TIMELINE_HEIGHT_META, {})
 	var original_uuid := project.project_uuid
+	var had_height_meta := project.has_meta(AnimationTimeline.TIMELINE_HEIGHT_META)
+	var original_height_meta: Variant = project.get_meta(AnimationTimeline.TIMELINE_HEIGHT_META, {})
+	var had_mode_meta := project.has_meta(AnimationTimeline.TIMELINE_MODE_META)
+	var original_mode_meta: Variant = project.get_meta(AnimationTimeline.TIMELINE_MODE_META, 0)
 	var test_uuid := "timeline-runtime-height-integration"
-	var had_cache := Global.config_cache.has_section_key(
+	var had_height_cache := Global.config_cache.has_section_key(
 		AnimationTimeline.TIMELINE_HEIGHT_SECTION, test_uuid
 	)
-	var original_cache: Variant = Global.config_cache.get_value(
+	var original_height_cache: Variant = Global.config_cache.get_value(
 		AnimationTimeline.TIMELINE_HEIGHT_SECTION, test_uuid, {}
 	)
+	var had_mode_cache := Global.config_cache.has_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, test_uuid
+	)
+	var original_mode_cache: Variant = Global.config_cache.get_value(
+		AnimationTimeline.TIMELINE_MODE_SECTION, test_uuid, -1
+	)
+
 	project.project_uuid = test_uuid
 	project.remove_meta(AnimationTimeline.TIMELINE_HEIGHT_META)
+	project.remove_meta(AnimationTimeline.TIMELINE_MODE_META)
 	Global.config_cache.erase_section_key(AnimationTimeline.TIMELINE_HEIGHT_SECTION, test_uuid)
+	Global.config_cache.erase_section_key(AnimationTimeline.TIMELINE_MODE_SECTION, test_uuid)
 
-	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION)
-	await tree.process_frame
+	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, false)
 	await tree.process_frame
 
 	var animation_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
@@ -62,16 +58,13 @@ func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
 		dock_host.set_module_size(Builtins.TIMELINE_ID, animation_size),
 		"test must be able to resize real Bottom Timeline",
 	)
-	migration._store_current_timeline_height(AnimationTimeline.TimelineMode.ANIMATION)
-	timeline.store_workspace_height(184.0, AnimationTimeline.TimelineMode.SINGLE_FRAME, project)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME)
 	await tree.process_frame
-	await tree.process_frame
 	check_eq(
 		dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y,
-		184.0,
-		"switching to Single frame must restore that mode's project height",
+		AnimationTimeline.DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT,
+		"first switch to Single frame must use its own default height",
 	)
 
 	var single_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
@@ -80,19 +73,16 @@ func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
 		dock_host.set_module_size(Builtins.TIMELINE_ID, single_size),
 		"test must be able to resize Single-frame Bottom Timeline",
 	)
-	migration._store_current_timeline_height(AnimationTimeline.TimelineMode.SINGLE_FRAME)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION)
-	await tree.process_frame
 	await tree.process_frame
 	check_eq(
 		dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y,
 		318.0,
-		"returning to Animation must restore the height saved before leaving it",
+		"returning to Animation must restore the height saved when leaving it",
 	)
 
 	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME)
-	await tree.process_frame
 	await tree.process_frame
 	check_eq(
 		dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y,
@@ -100,17 +90,117 @@ func test_real_bottom_timeline_restores_distinct_mode_heights() -> void:
 		"returning to Single frame must restore its independently saved height",
 	)
 
-	timeline.set_timeline_mode(original_mode)
+	timeline.set_timeline_mode(original_mode, false)
 	await tree.process_frame
 	dock_host.set_module_size(Builtins.TIMELINE_ID, original_size)
 	project.project_uuid = original_uuid
-	if had_meta:
-		project.set_meta(AnimationTimeline.TIMELINE_HEIGHT_META, original_meta)
+	if had_height_meta:
+		project.set_meta(AnimationTimeline.TIMELINE_HEIGHT_META, original_height_meta)
 	else:
 		project.remove_meta(AnimationTimeline.TIMELINE_HEIGHT_META)
-	if had_cache:
+	if had_mode_meta:
+		project.set_meta(AnimationTimeline.TIMELINE_MODE_META, original_mode_meta)
+	else:
+		project.remove_meta(AnimationTimeline.TIMELINE_MODE_META)
+	if had_height_cache:
 		Global.config_cache.set_value(
-			AnimationTimeline.TIMELINE_HEIGHT_SECTION, test_uuid, original_cache
+			AnimationTimeline.TIMELINE_HEIGHT_SECTION, test_uuid, original_height_cache
 		)
 	else:
 		Global.config_cache.erase_section_key(AnimationTimeline.TIMELINE_HEIGHT_SECTION, test_uuid)
+	if had_mode_cache:
+		Global.config_cache.set_value(
+			AnimationTimeline.TIMELINE_MODE_SECTION, test_uuid, original_mode_cache
+		)
+	else:
+		Global.config_cache.erase_section_key(AnimationTimeline.TIMELINE_MODE_SECTION, test_uuid)
+
+
+func test_real_project_switch_updates_mode_and_single_frame_binding() -> void:
+	check_true(tree != null, "integration suite should receive the SceneTree")
+	var timeline := Global.animation_timeline as AnimationTimeline
+	var project_a := Global.current_project
+	check_true(timeline != null, "real editor must expose AnimationTimeline")
+	check_true(project_a != null, "real editor must expose project A")
+	if timeline == null or project_a == null:
+		return
+
+	var strip := timeline.single_frame_layer_strip
+	var original_mode := timeline.get_timeline_mode()
+	var original_index := Global.current_project_index
+	var had_a_mode := project_a.has_meta(AnimationTimeline.TIMELINE_MODE_META)
+	var original_a_mode: Variant = project_a.get_meta(AnimationTimeline.TIMELINE_MODE_META, 0)
+
+	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a)
+	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, false)
+	strip.set_project(project_a)
+	await tree.process_frame
+	check_eq(
+		strip.get("_bound_project"),
+		project_a,
+		"Single-frame strip must start bound to project A",
+	)
+
+	var project_b := ProjectFactoryScript.create_blank_project("timeline_project_b", Vector2i(32, 32))
+	check_true(project_b != null, "integration test must create project B")
+	if project_b == null:
+		return
+	project_b.layers[0].name = "B layer"
+	Global.projects.append(project_b)
+	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	var project_b_index := Global.projects.find(project_b)
+
+	Global.tabs.current_tab = project_b_index
+	await tree.process_frame
+	await tree.process_frame
+	check_eq(Global.current_project, project_b, "project B must become the active project")
+	check_eq(
+		timeline.get_timeline_mode(),
+		AnimationTimeline.TimelineMode.ANIMATION,
+		"Timeline mode must follow project B instead of retaining project A's Single-frame mode",
+	)
+	check_eq(
+		strip.get("_bound_project"),
+		project_b,
+		"hidden Single-frame strip must already be rebound to project B",
+	)
+
+	timeline.set_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, false)
+	await tree.process_frame
+	check_eq(
+		strip.get("_bound_project"),
+		project_b,
+		"opening Single frame after the switch must still show project B",
+	)
+	for child in strip.layer_row.get_children():
+		if child is SingleFrameLayerCard:
+			check_eq(
+				child.get("_project"),
+				project_b,
+				"every visible Single-frame card must belong to project B",
+			)
+
+	Global.tabs.current_tab = original_index
+	await tree.process_frame
+	await tree.process_frame
+	check_eq(Global.current_project, project_a, "cleanup must restore project A")
+	check_eq(
+		timeline.get_timeline_mode(),
+		AnimationTimeline.TimelineMode.SINGLE_FRAME,
+		"returning to project A must restore project A's own mode",
+	)
+	check_eq(
+		strip.get("_bound_project"),
+		project_a,
+		"returning to project A must rebuild the strip against project A",
+	)
+
+	var remove_index := Global.projects.find(project_b)
+	if remove_index >= 0 and remove_index < Global.tabs.tab_count:
+		Global.tabs.remove_tab(remove_index)
+	project_b.remove()
+	if had_a_mode:
+		project_a.set_meta(AnimationTimeline.TIMELINE_MODE_META, original_a_mode)
+	else:
+		project_a.remove_meta(AnimationTimeline.TIMELINE_MODE_META)
+	timeline.set_timeline_mode(original_mode, false)
