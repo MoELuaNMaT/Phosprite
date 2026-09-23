@@ -818,9 +818,7 @@ func test_timeline_position_is_locked_but_top_edge_height_resize_remains_availab
 		"Timeline must hide and disable the pop-out position control",
 	)
 	check_eq(
-		surface.get_docked_resize_edges(
-			Builtins.TIMELINE_ID, Vector2(timeline.size.x * 0.5, 2.0)
-		),
+		surface.get_docked_resize_edges(Builtins.TIMELINE_ID, Vector2(timeline.size.x * 0.5, 2.0)),
 		WorkspaceModule.ResizeEdge.TOP,
 		"Bottom Timeline must keep its top-edge height resize target",
 	)
