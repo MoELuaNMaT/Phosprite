@@ -3,12 +3,12 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ main, phosprite-main, codex/implement-p3-project-gallery, codex/fix-timeline-mode-height-v2 ]
+    branches: [ main, phosprite-main, codex/implement-p3-project-gallery ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
   pull_request:
-    branches: [ main, phosprite-main, codex/timeline-height-v2-ci-base ]
+    branches: [ main, phosprite-main ]
   workflow_dispatch:
 
 concurrency:
