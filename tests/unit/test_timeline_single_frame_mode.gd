@@ -10,6 +10,7 @@ const CARD_SOURCE := "res://src/UI/Timeline/SingleFrameLayerCard.gd"
 const CARD_SCENE := "res://src/UI/Timeline/SingleFrameLayerCard.tscn"
 const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
+const APP_SHELL_SOURCE := "res://src/AppShell/AppShellController.gd"
 
 
 class FakeHeightProject:
@@ -28,8 +29,13 @@ func test_timeline_exposes_two_persistent_display_modes() -> void:
 	)
 	check_has(
 		source,
-		'Global.config_cache.set_value("timeline", "display_mode", timeline_mode)',
-		"Timeline mode must persist independently of project data",
+		"const TIMELINE_MODE_META := &\"phosprite_timeline_mode\"",
+		"Timeline mode must be stored as project-scoped state",
+	)
+	check_has(
+		source,
+		"store_project_timeline_mode(timeline_mode)",
+		"user mode changes must persist against the current project",
 	)
 	check_has(
 		source,
@@ -46,6 +52,48 @@ func test_timeline_exposes_two_persistent_display_modes() -> void:
 		'[node name="SingleFrameLayerStrip" parent="." instance=ExtResource("32_single")]',
 		"single-frame view must live beside the existing TimelineContainer",
 	)
+
+
+func test_timeline_modes_are_project_scoped_and_new_projects_default_single_frame() -> void:
+	var timeline := AnimationTimeline.new()
+	var project_a := FakeHeightProject.new()
+	var project_b := FakeHeightProject.new()
+	project_a.project_uuid = "timeline-mode-test-a"
+	project_b.project_uuid = "timeline-mode-test-b"
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid
+	)
+
+	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a)
+	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	check_eq(
+		timeline.get_project_timeline_mode(project_a),
+		AnimationTimeline.TimelineMode.SINGLE_FRAME,
+		"Project A must retain its own Single-frame mode",
+	)
+	check_eq(
+		timeline.get_project_timeline_mode(project_b),
+		AnimationTimeline.TimelineMode.ANIMATION,
+		"Project B must retain its own Animation mode",
+	)
+
+	var app_shell := FileAccess.get_file_as_string(APP_SHELL_SOURCE)
+	check_has(
+		app_shell,
+		"AnimationTimeline.TIMELINE_MODE_META, AnimationTimeline.TimelineMode.SINGLE_FRAME",
+		"new managed projects must be created with Single-frame mode",
+	)
+
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid
+	)
+	timeline.free()
 
 
 func test_timeline_mode_heights_are_project_scoped_and_have_distinct_defaults() -> void:
@@ -123,8 +171,8 @@ func test_mode_switch_and_manual_resize_have_height_persistence_bridges() -> voi
 	)
 	check_has(
 		migration_source,
-		"_restore_timeline_height(mode)",
-		"Workspace must restore the incoming mode height after switching views",
+		"func _on_timeline_mode_changed(mode: int) -> void:\n\t_restore_timeline_height(mode)",
+		"Workspace must restore the incoming mode height synchronously after switching views",
 	)
 	check_has(
 		migration_source,
@@ -254,22 +302,22 @@ func test_single_frame_cards_show_fixed_square_checkerboard_thumbnails() -> void
 	)
 
 
-func test_single_frame_strip_self_heals_project_binding_before_rendering() -> void:
+func test_single_frame_strip_is_bound_to_explicit_project_before_rendering() -> void:
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	check_has(
 		source,
-		"if _bound_project != project:",
-		"refresh must detect when the strip missed the current-project switch",
+		"func set_project(project: Project) -> void:",
+		"Single-frame strip must expose one explicit project-binding entry point",
 	)
 	check_has(
 		source,
-		"_bind_project(project)",
-		"refresh must bind layers_updated before relying on live layer mutations",
+		"var project := _bound_project",
+		"rendering must use the bound Project instead of reading a stale global project",
 	)
 	check_has(
 		source,
-		"if not _bound_project.layers_updated.is_connected(_on_layers_updated):",
-		"single-frame view must subscribe to layer mutations",
+		"card.setup(project, layer_index, project.current_frame)",
+		"every layer card must receive the same explicit Project binding",
 	)
 	check_has(
 		source,
@@ -282,11 +330,16 @@ func test_single_frame_layer_selection_never_changes_the_current_frame() -> void
 	var source := FileAccess.get_file_as_string(CARD_SOURCE)
 	check_has(
 		source,
-		"project.selected_cels.append([project.current_frame, layer_index])",
-		"single-frame card selection must remain bound to the current frame",
+		"_project.selected_cels.append([_project.current_frame, layer_index])",
+		"single-frame card selection must remain bound to its explicit project's current frame",
 	)
 	check_has(
 		source,
-		"project.change_cel(-1, layer_index)",
+		"_project.change_cel(-1, layer_index)",
 		"layer cards must change only the layer and preserve the active frame",
+	)
+	check_has(
+		source,
+		"_project == Global.current_project",
+		"stale cards from another project must never accept selection input",
 	)
