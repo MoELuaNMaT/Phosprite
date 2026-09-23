@@ -18,8 +18,6 @@ class FakeHeightProject:
 	var project_uuid := ""
 
 
-
-
 func test_timeline_exposes_two_persistent_display_modes() -> void:
 	var source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
 	var scene := FileAccess.get_file_as_string(TIMELINE_SCENE)
