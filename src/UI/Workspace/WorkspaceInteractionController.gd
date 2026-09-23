@@ -34,6 +34,8 @@ var _resize_start_rect := Rect2()
 var _resize_start_size := Vector2.ZERO
 var _resize_edges := WorkspaceModule.ResizeEdge.NONE
 var _resize_is_docked := false
+var _resize_timeline_mode := -1
+var _resize_timeline_project: Project
 
 var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
@@ -439,6 +441,11 @@ func _begin_resize(
 	_resize_start_pointer = pointer
 	_resize_edges = resize_edges
 	_resize_is_docked = placement == WorkspaceSurface.Placement.DOCKED
+	_resize_timeline_mode = -1
+	_resize_timeline_project = null
+	if module_id == Builtins.TIMELINE_ID and is_instance_valid(Global.animation_timeline):
+		_resize_timeline_mode = Global.animation_timeline.get_timeline_mode()
+		_resize_timeline_project = Global.current_project
 	if _resize_is_docked:
 		_resize_start_size = dock_host.layout.get_module_size(module_id)
 		return _resize_start_size != Vector2.ZERO
@@ -468,7 +475,17 @@ func _finish_resize() -> void:
 		else:
 			final_height = surface.get_floating_rect(_resize_module_id).size.y
 		if final_height > 0.0:
-			Global.animation_timeline.store_workspace_height(final_height)
+			var mode := (
+				_resize_timeline_mode
+				if _resize_timeline_mode >= 0
+				else Global.animation_timeline.get_timeline_mode()
+			)
+			var project := (
+				_resize_timeline_project
+				if is_instance_valid(_resize_timeline_project)
+				else Global.current_project
+			)
+			Global.animation_timeline.store_workspace_height(final_height, mode, project)
 	_resize_module_id = &""
 	_resize_touch_index = -1
 	_resize_start_pointer = Vector2.ZERO
@@ -476,6 +493,8 @@ func _finish_resize() -> void:
 	_resize_start_size = Vector2.ZERO
 	_resize_edges = WorkspaceModule.ResizeEdge.NONE
 	_resize_is_docked = false
+	_resize_timeline_mode = -1
+	_resize_timeline_project = null
 
 
 func _clear_pending_touch() -> void:
