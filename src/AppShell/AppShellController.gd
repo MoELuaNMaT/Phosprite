@@ -293,6 +293,9 @@ func create_new_project(canvas_size: Vector2i) -> bool:
 	if project == null:
 		Global.popup_error(ProjectFactoryScript.canvas_size_limit_message(canvas_size))
 		return false
+	project.set_meta(
+		AnimationTimeline.TIMELINE_MODE_META, AnimationTimeline.TimelineMode.SINGLE_FRAME
+	)
 	Global.projects.append(project)
 	project.has_changed = true
 
