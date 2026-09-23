@@ -8,7 +8,7 @@ on:
       - 'docs/**'
       - '**/*.md'
   pull_request:
-    branches: [ main, phosprite-main ]
+    branches: [ main, phosprite-main, codex/timeline-height-v2-ci-base ]
   workflow_dispatch:
 
 concurrency:
