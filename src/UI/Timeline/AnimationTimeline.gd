@@ -308,9 +308,7 @@ func get_project_timeline_mode(
 
 
 func store_project_timeline_mode(mode: int, project: Object = Global.current_project) -> void:
-	PROJECT_STATE.store_mode(
-		project, mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME
-	)
+	PROJECT_STATE.store_mode(project, mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
 
 
 func get_default_workspace_height(mode: int) -> float:
