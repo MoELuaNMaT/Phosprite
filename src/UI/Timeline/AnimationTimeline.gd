@@ -304,21 +304,26 @@ func get_project_timeline_mode(
 	if project == null:
 		return fallback
 	if project.has_meta(TIMELINE_MODE_META):
-		return clampi(int(project.get_meta(TIMELINE_MODE_META)), TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+		return clampi(
+			int(project.get_meta(TIMELINE_MODE_META)),
+			TimelineMode.ANIMATION,
+			TimelineMode.SINGLE_FRAME
+		)
 	if not project.project_uuid.is_empty():
 		var cached_mode := Global.config_cache.get_value(
 			TIMELINE_MODE_SECTION, project.project_uuid, -1
 		)
-		if int(cached_mode) >= TimelineMode.ANIMATION and int(cached_mode) <= TimelineMode.SINGLE_FRAME:
+		if (
+			int(cached_mode) >= TimelineMode.ANIMATION
+			and int(cached_mode) <= TimelineMode.SINGLE_FRAME
+		):
 			var resolved := int(cached_mode)
 			project.set_meta(TIMELINE_MODE_META, resolved)
 			return resolved
 	return fallback
 
 
-func store_project_timeline_mode(
-	mode: int, project := Global.current_project
-) -> void:
+func store_project_timeline_mode(mode: int, project := Global.current_project) -> void:
 	if project == null:
 		return
 	var resolved := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
@@ -328,9 +333,7 @@ func store_project_timeline_mode(
 	Global.config_cache.set_value(TIMELINE_MODE_SECTION, project.project_uuid, resolved)
 	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
 	if save_error != OK:
-		push_warning(
-			"Could not persist Timeline project mode cache: %s" % error_string(save_error)
-		)
+		push_warning("Could not persist Timeline project mode cache: %s" % error_string(save_error))
 
 
 func get_default_workspace_height(mode: int) -> float:
