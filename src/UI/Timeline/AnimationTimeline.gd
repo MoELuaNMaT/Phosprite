@@ -299,7 +299,7 @@ func get_timeline_mode() -> int:
 
 
 func get_project_timeline_mode(
-	project := Global.current_project, fallback := TimelineMode.ANIMATION
+	project: Object = Global.current_project, fallback := TimelineMode.ANIMATION
 ) -> int:
 	if project == null:
 		return fallback
@@ -309,9 +309,10 @@ func get_project_timeline_mode(
 			TimelineMode.ANIMATION,
 			TimelineMode.SINGLE_FRAME
 		)
-	if not project.project_uuid.is_empty():
-		var cached_mode := Global.config_cache.get_value(
-			TIMELINE_MODE_SECTION, project.project_uuid, -1
+	var project_uuid := str(project.get("project_uuid"))
+	if not project_uuid.is_empty():
+		var cached_mode: Variant = Global.config_cache.get_value(
+			TIMELINE_MODE_SECTION, project_uuid, -1
 		)
 		if (
 			int(cached_mode) >= TimelineMode.ANIMATION
@@ -323,14 +324,17 @@ func get_project_timeline_mode(
 	return fallback
 
 
-func store_project_timeline_mode(mode: int, project := Global.current_project) -> void:
+func store_project_timeline_mode(
+	mode: int, project: Object = Global.current_project
+) -> void:
 	if project == null:
 		return
 	var resolved := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
 	project.set_meta(TIMELINE_MODE_META, resolved)
-	if project.project_uuid.is_empty():
+	var project_uuid := str(project.get("project_uuid"))
+	if project_uuid.is_empty():
 		return
-	Global.config_cache.set_value(TIMELINE_MODE_SECTION, project.project_uuid, resolved)
+	Global.config_cache.set_value(TIMELINE_MODE_SECTION, project_uuid, resolved)
 	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
 	if save_error != OK:
 		push_warning("Could not persist Timeline project mode cache: %s" % error_string(save_error))
@@ -344,7 +348,9 @@ func get_default_workspace_height(mode: int) -> float:
 	)
 
 
-func get_saved_workspace_height(mode: int, project := Global.current_project) -> float:
+func get_saved_workspace_height(
+	mode: int, project: Object = Global.current_project
+) -> float:
 	var default_height := get_default_workspace_height(mode)
 	if project == null:
 		return default_height
@@ -352,11 +358,11 @@ func get_saved_workspace_height(mode: int, project := Global.current_project) ->
 	var project_state := project.get_meta(TIMELINE_HEIGHT_META, {}) as Dictionary
 	if project_state.has(key):
 		return maxf(float(project_state[key]), 1.0)
-	if project.project_uuid.is_empty():
+	var project_uuid := str(project.get("project_uuid"))
+	if project_uuid.is_empty():
 		return default_height
 	var cached_state := (
-		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, {})
-		as Dictionary
+		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project_uuid, {}) as Dictionary
 	)
 	if cached_state.has(key):
 		var cached_height := maxf(float(cached_state[key]), 1.0)
@@ -368,7 +374,7 @@ func get_saved_workspace_height(mode: int, project := Global.current_project) ->
 
 
 func store_workspace_height(
-	height: float, mode := timeline_mode, project := Global.current_project
+	height: float, mode := timeline_mode, project: Object = Global.current_project
 ) -> void:
 	if project == null or height <= 0.0:
 		return
@@ -377,15 +383,15 @@ func store_workspace_height(
 	project_state = project_state.duplicate(true)
 	project_state[key] = height
 	project.set_meta(TIMELINE_HEIGHT_META, project_state)
-	if project.project_uuid.is_empty():
+	var project_uuid := str(project.get("project_uuid"))
+	if project_uuid.is_empty():
 		return
 	var cached_state := (
-		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, {})
-		as Dictionary
+		Global.config_cache.get_value(TIMELINE_HEIGHT_SECTION, project_uuid, {}) as Dictionary
 	)
 	cached_state = cached_state.duplicate(true)
 	cached_state[key] = height
-	Global.config_cache.set_value(TIMELINE_HEIGHT_SECTION, project.project_uuid, cached_state)
+	Global.config_cache.set_value(TIMELINE_HEIGHT_SECTION, project_uuid, cached_state)
 	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
 	if save_error != OK:
 		push_warning(
