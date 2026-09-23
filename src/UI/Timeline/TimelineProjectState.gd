@@ -7,9 +7,7 @@ const HEIGHT_META := &"phosprite_timeline_workspace_heights"
 const MODE_META := &"phosprite_timeline_mode"
 
 
-static func get_mode(
-	project: Object, fallback: int, min_mode: int, max_mode: int
-) -> int:
+static func get_mode(project: Object, fallback: int, min_mode: int, max_mode: int) -> int:
 	if project == null:
 		return fallback
 	if project.has_meta(MODE_META):
@@ -91,6 +89,8 @@ static func _save_config(state_kind: String) -> void:
 	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
 	if save_error != OK:
 		push_warning(
-			"Could not persist Timeline project %s cache: %s"
-			% [state_kind, error_string(save_error)]
+			(
+				"Could not persist Timeline project %s cache: %s"
+				% [state_kind, error_string(save_error)]
+			)
 		)
