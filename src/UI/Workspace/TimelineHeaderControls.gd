@@ -39,8 +39,8 @@ func _ready() -> void:
 	_managed_items = [global_tool_options, undo_button, redo_button, frame_group]
 	for item in _managed_items:
 		_item_widths[item] = item.get_combined_minimum_size().x
-	if not Global.project_switched.is_connected(_update_frame_mark):
-		Global.project_switched.connect(_update_frame_mark)
+	if not Global.project_switched.is_connected(_on_project_switched):
+		Global.project_switched.connect(_on_project_switched)
 	if not Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.connect(_update_frame_mark)
 	_update_frame_mark()
@@ -49,8 +49,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	if Global.project_switched.is_connected(_update_frame_mark):
-		Global.project_switched.disconnect(_update_frame_mark)
+	if Global.project_switched.is_connected(_on_project_switched):
+		Global.project_switched.disconnect(_on_project_switched)
 	if Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.disconnect(_update_frame_mark)
 	if (
@@ -171,6 +171,11 @@ func _on_overflow_pressed() -> void:
 		+ Vector2(overflow_button.size.x - popup_width, overflow_button.size.y)
 	)
 	overflow_panel.popup_on_parent(Rect2i(Vector2i(popup_position.round()), overflow_panel.size))
+
+
+func _on_project_switched() -> void:
+	_update_frame_mark()
+	call_deferred("_sync_mode_switch")
 
 
 func _on_mode_switch_toggled(single_frame: bool) -> void:
