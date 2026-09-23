@@ -11,6 +11,7 @@ const CARD_SCENE := "res://src/UI/Timeline/SingleFrameLayerCard.tscn"
 const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
 const APP_SHELL_SOURCE := "res://src/AppShell/AppShellController.gd"
+const PROJECT_STATE_SOURCE := "res://src/UI/Timeline/TimelineProjectState.gd"
 
 
 class FakeHeightProject:
@@ -22,14 +23,15 @@ class FakeHeightProject:
 func test_timeline_exposes_two_persistent_display_modes() -> void:
 	var source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
 	var scene := FileAccess.get_file_as_string(TIMELINE_SCENE)
+	var state_source := FileAccess.get_file_as_string(PROJECT_STATE_SOURCE)
 	check_has(
 		source,
 		"enum TimelineMode { ANIMATION, SINGLE_FRAME }",
 		"Timeline must expose explicit animation and single-frame modes",
 	)
 	check_has(
-		source,
-		'const TIMELINE_MODE_META := &"phosprite_timeline_mode"',
+		state_source,
+		'const MODE_META := &"phosprite_timeline_mode"',
 		"Timeline mode must be stored as project-scoped state",
 	)
 	check_has(
