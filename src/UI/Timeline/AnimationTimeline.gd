@@ -23,7 +23,9 @@ const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSet
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
 const TIMELINE_HEIGHT_SECTION := "timeline_project_heights"
+const TIMELINE_MODE_SECTION := "timeline_project_modes"
 const TIMELINE_HEIGHT_META := &"phosprite_timeline_workspace_heights"
+const TIMELINE_MODE_META := &"phosprite_timeline_mode"
 const DEFAULT_ANIMATION_WORKSPACE_HEIGHT := 220.0
 const DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT := 180.0
 
@@ -148,10 +150,8 @@ func _ready() -> void:
 	# Makes sure that the frame and tag scroll bars are in the right place:
 	layer_vbox.emit_signal.call_deferred("resized")
 	drag_highlight.visibility_changed.connect(clear_highlight)
-	var loaded_timeline_mode: int = Global.config_cache.get_value(
-		"timeline", "display_mode", TimelineMode.ANIMATION
-	)
-	set_timeline_mode(loaded_timeline_mode, false)
+	single_frame_layer_strip.set_project(Global.current_project)
+	set_timeline_mode(get_project_timeline_mode(Global.current_project), false)
 
 
 func _notification(what: int) -> void:
@@ -272,7 +272,7 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-func set_timeline_mode(mode: int, save_config := true) -> void:
+func set_timeline_mode(mode: int, persist_project_state := true) -> void:
 	var next_mode := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
 	var changed := next_mode != timeline_mode
 	if changed:
@@ -286,9 +286,9 @@ func set_timeline_mode(mode: int, save_config := true) -> void:
 	timeline_container.visible = timeline_mode == TimelineMode.ANIMATION
 	single_frame_layer_strip.visible = timeline_mode == TimelineMode.SINGLE_FRAME
 	if timeline_mode == TimelineMode.SINGLE_FRAME:
-		single_frame_layer_strip.refresh()
-	if save_config:
-		Global.config_cache.set_value("timeline", "display_mode", timeline_mode)
+		single_frame_layer_strip.set_project(Global.current_project)
+	if persist_project_state:
+		store_project_timeline_mode(timeline_mode)
 	update_minimum_size()
 	if changed:
 		timeline_mode_changed.emit(timeline_mode)
@@ -296,6 +296,41 @@ func set_timeline_mode(mode: int, save_config := true) -> void:
 
 func get_timeline_mode() -> int:
 	return timeline_mode
+
+
+func get_project_timeline_mode(
+	project := Global.current_project, fallback := TimelineMode.ANIMATION
+) -> int:
+	if project == null:
+		return fallback
+	if project.has_meta(TIMELINE_MODE_META):
+		return clampi(int(project.get_meta(TIMELINE_MODE_META)), TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+	if not project.project_uuid.is_empty():
+		var cached_mode := Global.config_cache.get_value(
+			TIMELINE_MODE_SECTION, project.project_uuid, -1
+		)
+		if int(cached_mode) >= TimelineMode.ANIMATION and int(cached_mode) <= TimelineMode.SINGLE_FRAME:
+			var resolved := int(cached_mode)
+			project.set_meta(TIMELINE_MODE_META, resolved)
+			return resolved
+	return fallback
+
+
+func store_project_timeline_mode(
+	mode: int, project := Global.current_project
+) -> void:
+	if project == null:
+		return
+	var resolved := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+	project.set_meta(TIMELINE_MODE_META, resolved)
+	if project.project_uuid.is_empty():
+		return
+	Global.config_cache.set_value(TIMELINE_MODE_SECTION, project.project_uuid, resolved)
+	var save_error := Global.config_cache.save(Global.CONFIG_PATH)
+	if save_error != OK:
+		push_warning(
+			"Could not persist Timeline project mode cache: %s" % error_string(save_error)
+		)
 
 
 func get_default_workspace_height(mode: int) -> float:
@@ -1541,13 +1576,20 @@ func _on_timeline_settings_visibility_changed() -> void:
 
 func _on_project_about_to_switch() -> void:
 	var project := Global.current_project
-	project.layers_updated.disconnect(_update_layer_ui)
-	project.frames_updated.disconnect(_update_frame_ui)
-	project.tags_changed.disconnect(_on_animation_tags_changed)
+	store_project_timeline_mode(timeline_mode, project)
+	single_frame_layer_strip.set_project(null)
+	if project.layers_updated.is_connected(_update_layer_ui):
+		project.layers_updated.disconnect(_update_layer_ui)
+	if project.frames_updated.is_connected(_update_frame_ui):
+		project.frames_updated.disconnect(_update_frame_ui)
+	if project.tags_changed.is_connected(_on_animation_tags_changed):
+		project.tags_changed.disconnect(_on_animation_tags_changed)
 
 
 func _on_project_switched() -> void:
 	var project := Global.current_project
+	single_frame_layer_strip.set_project(project)
+	set_timeline_mode(get_project_timeline_mode(project), false)
 	project_changed()
 	if not project.layers_updated.is_connected(_update_layer_ui):
 		project.layers_updated.connect(_update_layer_ui)
