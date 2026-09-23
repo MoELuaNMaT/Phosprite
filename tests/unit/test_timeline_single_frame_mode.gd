@@ -151,6 +151,30 @@ func test_single_frame_cards_show_fixed_square_checkerboard_thumbnails() -> void
 	)
 
 
+func test_single_frame_strip_self_heals_project_binding_before_rendering() -> void:
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(
+		source,
+		"if _bound_project != project:",
+		"refresh must detect when the strip missed the current-project switch",
+	)
+	check_has(
+		source,
+		"_bind_project(project)",
+		"refresh must bind layers_updated before relying on live layer mutations",
+	)
+	check_has(
+		source,
+		"if not _bound_project.layers_updated.is_connected(_on_layers_updated):",
+		"single-frame view must subscribe to layer mutations",
+	)
+	check_has(
+		source,
+		"func _on_layers_updated() -> void:\n\trefresh()",
+		"adding a layer must immediately rebuild the visible horizontal strip",
+	)
+
+
 func test_single_frame_layer_selection_never_changes_the_current_frame() -> void:
 	var source := FileAccess.get_file_as_string(CARD_SOURCE)
 	check_has(
