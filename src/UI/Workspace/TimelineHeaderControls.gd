@@ -29,13 +29,12 @@ func _ready() -> void:
 	redo_button.pressed.connect(_on_redo_pressed)
 	overflow_button.pressed.connect(_on_overflow_pressed)
 	mode_switch_button.toggled.connect(_on_mode_switch_toggled)
+	var timeline := Global.animation_timeline as AnimationTimeline
 	if (
-		is_instance_valid(Global.animation_timeline)
-		and not Global.animation_timeline.timeline_mode_changed.is_connected(
-			_on_timeline_mode_changed
-		)
+		is_instance_valid(timeline)
+		and not timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
 	):
-		Global.animation_timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
+		timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
 	_managed_items = [global_tool_options, undo_button, redo_button, frame_group]
 	for item in _managed_items:
 		_item_widths[item] = item.get_combined_minimum_size().x
@@ -53,11 +52,12 @@ func _exit_tree() -> void:
 		Global.project_switched.disconnect(_on_project_switched)
 	if Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.disconnect(_update_frame_mark)
+	var timeline := Global.animation_timeline as AnimationTimeline
 	if (
-		is_instance_valid(Global.animation_timeline)
-		and Global.animation_timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
+		is_instance_valid(timeline)
+		and timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
 	):
-		Global.animation_timeline.timeline_mode_changed.disconnect(_on_timeline_mode_changed)
+		timeline.timeline_mode_changed.disconnect(_on_timeline_mode_changed)
 
 
 func set_available_width(width: float) -> void:
@@ -179,14 +179,15 @@ func _on_project_switched() -> void:
 
 
 func _on_mode_switch_toggled(single_frame: bool) -> void:
-	if not is_instance_valid(Global.animation_timeline):
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if not is_instance_valid(timeline):
 		return
 	var mode := (
 		AnimationTimeline.TimelineMode.SINGLE_FRAME
 		if single_frame
 		else AnimationTimeline.TimelineMode.ANIMATION
 	)
-	Global.animation_timeline.set_timeline_mode(mode)
+	timeline.set_timeline_mode(mode)
 
 
 func _on_timeline_mode_changed(_mode: int) -> void:
@@ -195,12 +196,13 @@ func _on_timeline_mode_changed(_mode: int) -> void:
 
 
 func _sync_mode_switch() -> void:
-	if not is_instance_valid(Global.animation_timeline):
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if not is_instance_valid(timeline):
 		mode_switch_button.set_pressed_no_signal(false)
 		mode_switch_button.text = "Animation"
 		return
 	var single_frame: bool = (
-		Global.animation_timeline.get_timeline_mode() == AnimationTimeline.TimelineMode.SINGLE_FRAME
+		timeline.get_timeline_mode() == AnimationTimeline.TimelineMode.SINGLE_FRAME
 	)
 	mode_switch_button.set_pressed_no_signal(single_frame)
 	mode_switch_button.text = "Single frame" if single_frame else "Animation"
