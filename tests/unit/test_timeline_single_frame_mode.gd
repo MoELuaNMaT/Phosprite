@@ -8,6 +8,16 @@ const STRIP_SOURCE := "res://src/UI/Timeline/SingleFrameLayerStrip.gd"
 const STRIP_SCENE := "res://src/UI/Timeline/SingleFrameLayerStrip.tscn"
 const CARD_SOURCE := "res://src/UI/Timeline/SingleFrameLayerCard.gd"
 const CARD_SCENE := "res://src/UI/Timeline/SingleFrameLayerCard.tscn"
+const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
+
+
+class FakeHeightProject:
+	extends RefCounted
+
+	var project_uuid := ""
+
+
 
 
 func test_timeline_exposes_two_persistent_display_modes() -> void:
@@ -37,6 +47,101 @@ func test_timeline_exposes_two_persistent_display_modes() -> void:
 		scene,
 		'[node name="SingleFrameLayerStrip" parent="." instance=ExtResource("32_single")]',
 		"single-frame view must live beside the existing TimelineContainer",
+	)
+
+
+func test_timeline_mode_heights_are_project_scoped_and_have_distinct_defaults() -> void:
+	var timeline := AnimationTimeline.new()
+	var project_a := FakeHeightProject.new()
+	var project_b := FakeHeightProject.new()
+	project_a.project_uuid = "timeline-height-test-a"
+	project_b.project_uuid = "timeline-height-test-b"
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_b.project_uuid
+	)
+
+	check_eq(
+		timeline.get_default_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME),
+		180.0,
+		"Single-frame default height must fully fit the layer cards without excess space",
+	)
+	check_eq(
+		timeline.get_default_workspace_height(AnimationTimeline.TimelineMode.ANIMATION),
+		220.0,
+		"Animation default height must be slightly taller than single-frame mode",
+	)
+
+	timeline.store_workspace_height(248.0, AnimationTimeline.TimelineMode.ANIMATION, project_a)
+	timeline.store_workspace_height(186.0, AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a)
+	timeline.store_workspace_height(276.0, AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	timeline.store_workspace_height(194.0, AnimationTimeline.TimelineMode.SINGLE_FRAME, project_b)
+
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project_a),
+		248.0,
+		"Project A must retain its own Animation height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a),
+		186.0,
+		"Project A must retain its own Single-frame height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project_b),
+		276.0,
+		"Project B must not inherit Project A's Animation height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_b),
+		194.0,
+		"Project B must not inherit Project A's Single-frame height",
+	)
+
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_b.project_uuid
+	)
+	timeline.free()
+
+
+func test_mode_switch_and_manual_resize_have_height_persistence_bridges() -> void:
+	var timeline_source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
+	var migration_source := FileAccess.get_file_as_string(MIGRATION_SOURCE)
+	var interaction_source := FileAccess.get_file_as_string(INTERACTION_SOURCE)
+	check_has(
+		timeline_source,
+		"timeline_mode_changing.emit(timeline_mode, next_mode)",
+		"mode switch must announce the outgoing mode before replacing it",
+	)
+	check_has(
+		migration_source,
+		"_store_current_timeline_height(from_mode)",
+		"Workspace must save the outgoing mode height before switching views",
+	)
+	check_has(
+		migration_source,
+		"_restore_timeline_height(mode)",
+		"Workspace must restore the incoming mode height after switching views",
+	)
+	check_has(
+		migration_source,
+		"_on_timeline_project_about_to_switch",
+		"leaving a project must persist that project's current Timeline height",
+	)
+	check_has(
+		migration_source,
+		"_on_timeline_project_switched",
+		"opening another project must restore that project's own Timeline height",
+	)
+	check_has(
+		interaction_source,
+		"Global.animation_timeline.store_workspace_height(final_height)",
+		"manual Timeline resize must persist as soon as the gesture finishes",
 	)
 
 
