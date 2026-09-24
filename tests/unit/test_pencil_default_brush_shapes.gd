@@ -4,6 +4,9 @@ const BrushShapes := preload("res://src/Tools/BrushShapeGenerator.gd")
 const BASE_DRAW_SOURCE := "res://src/Tools/BaseDraw.gd"
 const BASE_DRAW_SCENE := "res://src/Tools/BaseDraw.tscn"
 const BRUSH_POPUP_SOURCE := "res://src/UI/Buttons/BrushesPopup.gd"
+const PENCIL_SOURCE := "res://src/Tools/DesignTools/Pencil.gd"
+const PENCIL_SCENE := "res://src/Tools/DesignTools/Pencil.tscn"
+const VALUE_SLIDER_SOURCE := "res://src/UI/Nodes/Sliders/ValueSlider.gd"
 
 
 func test_default_square_masks_cover_filled_and_one_pixel_hollow_variants() -> void:
@@ -111,7 +114,7 @@ func test_base_draw_uses_procedural_preview_and_real_hollow_square_stamp() -> vo
 	var source := FileAccess.get_file_as_string(BASE_DRAW_SOURCE)
 	check_has(
 		source,
-		"BrushShapes.create_preview_image(shape, _brush_size)",
+		"BrushShapes.create_preview_image(shape, _brush_size, Color.BLACK)",
 		"size changes must regenerate the selected default brush preview procedurally",
 	)
 	check_has(
@@ -123,4 +126,69 @@ func test_base_draw_uses_procedural_preview_and_real_hollow_square_stamp() -> vo
 		source,
 		"return _compute_draw_tool_hollow_square(pos)",
 		"hollow-square selection must affect the real Pencil stamp rather than only its icon",
+	)
+
+
+func test_pencil_options_are_reduced_to_brush_size_and_opacity() -> void:
+	var pencil_scene := FileAccess.get_file_as_string(PENCIL_SCENE)
+	var pencil_source := FileAccess.get_file_as_string(PENCIL_SOURCE)
+	check_has(pencil_scene, '[node name="Opacity"', "Pencil must expose an Opacity control")
+	check_has(pencil_scene, "max_value = 100.0", "Pencil opacity must use a 0-100 percent range")
+	for removed in ["Overwrite", "FillInside", "SpacingMode", 'name="Spacing"']:
+		check_true(
+			not pencil_scene.contains(removed),
+			"Pencil scene must remove legacy option: %s" % removed
+		)
+	check_has(
+		pencil_source,
+		"$DensityValueSlider.visible = false",
+		"Pencil must hide inherited Density even after BaseDraw refreshes brush state",
+	)
+	check_has(
+		pencil_source,
+		"_brush_density = 100",
+		"hidden Pencil density must be fixed at 100 so stale saved density cannot affect drawing",
+	)
+	check_has(
+		pencil_source,
+		'config["strength"] = _strength',
+		"Pencil opacity must persist through the existing strength channel",
+	)
+	for legacy_key in ["brush_density", "overwrite", "fill_inside", "spacing_mode", "spacing"]:
+		check_has(
+			pencil_source,
+			'config.erase("%s")' % legacy_key,
+			"Pencil must stop persisting removed option: %s" % legacy_key,
+		)
+
+
+func test_pencil_numeric_controls_use_drag_only_arrow_value_presentation() -> void:
+	var base_scene := FileAccess.get_file_as_string(BASE_DRAW_SCENE)
+	var pencil_scene := FileAccess.get_file_as_string(PENCIL_SCENE)
+	var slider_source := FileAccess.get_file_as_string(VALUE_SLIDER_SOURCE)
+	check_has(
+		base_scene,
+		'[node name="Brush" type="VBoxContainer"',
+		"Brush controls must stack vertically"
+	)
+	for scene_source in [base_scene, pencil_scene]:
+		check_has(
+			scene_source,
+			"allow_text_input = false",
+			"numeric Pencil controls must disable text entry"
+		)
+		check_has(
+			scene_source,
+			"show_drag_arrows = true",
+			"numeric Pencil controls must show < value > drag affordance"
+		)
+		check_has(
+			scene_source,
+			"show_arrows = false",
+			"numeric Pencil controls must remove old up/down arrow buttons"
+		)
+	check_has(
+		slider_source,
+		'return str(tr(prefix), " < ", display_value, " >").strip_edges()',
+		"drag-only values must render in the requested < value > form",
 	)

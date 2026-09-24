@@ -614,12 +614,12 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 		Control.SIZE_EXPAND_FILL,
 		"Tools panel should use all vertical space offered by the window"
 	)
-	var flow := tools.get_node("PanelContainer/ToolButtons") as HFlowContainer
-	check_true(flow != null, "Tools should keep HFlowContainer adaptive wrapping")
+	var column := tools.get_node("PanelContainer/ToolButtons") as VBoxContainer
+	check_true(column != null, "Tools should use one vertical ToolButtons column")
 	check_eq(
-		flow.size_flags_horizontal,
+		column.size_flags_horizontal,
 		Control.SIZE_EXPAND_FILL,
-		"Tool button flow should expand to the available window width before wrapping"
+		"Tool button column should use the available window width"
 	)
 	tools.free()
 
@@ -1174,8 +1174,13 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 	check_eq(
 		tools_root.vertical_scroll_mode,
+		ScrollContainer.SCROLL_MODE_AUTO,
+		"single-column Tools should scroll the complete tool-and-options stack"
+	)
+	check_eq(
+		left_options.vertical_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"merged Tools root should delegate scrolling to Left Tool Options"
+		"nested Left Tool Options must not compete with the outer single-column scroll"
 	)
 	_free_fixture(fixture)
 
