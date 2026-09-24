@@ -18,7 +18,9 @@ var _setup_complete := false
 
 
 func setup(
-	ui_menu: PopupMenu, editor_migration: WorkspaceEditorMigration, layout_store: WorkspaceLayoutStore
+	ui_menu: PopupMenu,
+	editor_migration: WorkspaceEditorMigration,
+	layout_store: WorkspaceLayoutStore
 ) -> bool:
 	if _setup_complete or ui_menu == null or editor_migration == null or layout_store == null:
 		return false
@@ -42,11 +44,7 @@ func setup(
 
 
 func switch_profile(profile_id: int) -> bool:
-	if (
-		not _setup_complete
-		or profile_id < 1
-		or profile_id > WorkspaceLayoutStore.LAYOUT_SLOT_COUNT
-	):
+	if not _setup_complete or profile_id < 1 or profile_id > WorkspaceLayoutStore.LAYOUT_SLOT_COUNT:
 		return false
 	var previous_profile := store.get_active_layout_slot()
 	if profile_id == previous_profile:
