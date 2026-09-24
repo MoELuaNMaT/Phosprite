@@ -260,7 +260,6 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 	_apply_floating_rect(module_id, rect)
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
-	_floating_anchors[module_id] = _detect_snap_edges(rect)
 	_last_floating_rects[module_id] = rect
 	_floating_anchors[module_id] = _detect_snap_edges(rect)
 	_collapsed_restore.erase(module_id)
@@ -385,6 +384,7 @@ func restore_module(module_id: StringName) -> bool:
 		_apply_floating_rect(module_id, rect)
 		_placements[module_id] = Placement.FLOATING
 		_floating_rects[module_id] = rect
+		_floating_anchors[module_id] = _detect_snap_edges(rect)
 	else:
 		return false
 
@@ -1042,6 +1042,7 @@ func _restore_floating_parent(module_id: StringName, rect: Rect2, context: Dicti
 	_apply_floating_rect(module_id, rect)
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
+	_floating_anchors[module_id] = _detect_snap_edges(rect)
 
 
 func _restore_dock_after_failed_float(
