@@ -34,7 +34,6 @@ enum FloatingSnapEdge {
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.14)
 const REGION_TARGET_HYSTERESIS := 48.0
 const FLOATING_SNAP_DISTANCE := 24.0
-const FLOATING_SNAP_MARGIN := 8.0
 
 var manager: WorkspaceModuleManager
 var dock_host: WorkspaceDockHost
@@ -86,22 +85,12 @@ func is_fixed_dock_module(module_id: StringName) -> bool:
 func get_floating_bounds() -> Rect2:
 	if dock_host == null:
 		return Rect2()
+	if not _floating_snap_policy_enabled:
+		return Rect2(Vector2.ZERO, dock_host.size)
 	var bounds := dock_host.get_content_rect()
 	if not bounds.has_area():
-		bounds = Rect2(Vector2.ZERO, dock_host.size)
-	var margin := 0.0
-	if _floating_snap_policy_enabled:
-		margin = minf(
-			FLOATING_SNAP_MARGIN,
-			minf(bounds.size.x, bounds.size.y) * 0.25,
-		)
-	return Rect2(
-		bounds.position + Vector2.ONE * margin,
-		Vector2(
-			maxf(0.0, bounds.size.x - margin * 2.0),
-			maxf(0.0, bounds.size.y - margin * 2.0),
-		),
-	)
+		return Rect2(Vector2.ZERO, dock_host.size)
+	return bounds
 
 
 func refresh_floating_bounds() -> void:
@@ -881,21 +870,23 @@ func _constrain_floating_rect(
 
 
 func _snap_floating_rect(rect: Rect2, bounds: Rect2) -> Rect2:
-	var snapped := rect
 	var left_gap := absf(rect.position.x - bounds.position.x)
 	var right_gap := absf(rect.end.x - bounds.end.x)
 	var top_gap := absf(rect.position.y - bounds.position.y)
 	var bottom_gap := absf(rect.end.y - bounds.end.y)
-	if minf(left_gap, right_gap) <= FLOATING_SNAP_DISTANCE:
-		if left_gap <= right_gap:
-			snapped.position.x = bounds.position.x
-		else:
-			snapped.position.x = bounds.end.x - snapped.size.x
-	if minf(top_gap, bottom_gap) <= FLOATING_SNAP_DISTANCE:
-		if top_gap <= bottom_gap:
-			snapped.position.y = bounds.position.y
-		else:
-			snapped.position.y = bounds.end.y - snapped.size.y
+	var nearest_edge_gap := minf(minf(left_gap, right_gap), minf(top_gap, bottom_gap))
+	if nearest_edge_gap > FLOATING_SNAP_DISTANCE:
+		return rect
+
+	var snapped := rect
+	if left_gap <= right_gap:
+		snapped.position.x = bounds.position.x
+	else:
+		snapped.position.x = bounds.end.x - snapped.size.x
+	if top_gap <= bottom_gap:
+		snapped.position.y = bounds.position.y
+	else:
+		snapped.position.y = bounds.end.y - snapped.size.y
 	return snapped
 
 
