@@ -18,6 +18,8 @@ const TIMELINE_HEADER_CONTROLS_SCENE := preload(
 )
 
 const WORKSPACE_SIDE_MARGIN := 8.0
+const TOOL_PALETTE_WIDTH := 40.0
+const TOOL_OPTIONS_WIDTH := 60.0
 
 const DEFAULT_LAYOUT := [
 	{
@@ -30,7 +32,7 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.TOOLS_ID,
 		"zone": WorkspaceDockLayout.DockZone.LEFT,
 		"index": 0,
-		"size": Vector2(144.0, 400.0),
+		"size": Vector2(108.0, 400.0),
 	},
 	{
 		"id": Builtins.PREVIEW_ID,
@@ -78,7 +80,9 @@ var _palette_color_root: VBoxContainer
 var _palette_color_separator: HSeparator
 var _palette_color_states: Dictionary = {}
 var _tools_root_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
+var _tools_root_horizontal_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
 var _left_tool_options_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
+var _left_tool_options_horizontal_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
@@ -483,6 +487,7 @@ func _merge_left_tool_options_into_tools() -> bool:
 		"size_flags_horizontal": palette.size_flags_horizontal,
 		"size_flags_vertical": palette.size_flags_vertical,
 		"stretch_ratio": palette.size_flags_stretch_ratio,
+		"custom_minimum_size": palette.custom_minimum_size,
 	}
 	_left_tool_options_state = {
 		"parent": left_parent,
@@ -491,9 +496,12 @@ func _merge_left_tool_options_into_tools() -> bool:
 		"size_flags_horizontal": _left_tool_options.size_flags_horizontal,
 		"size_flags_vertical": _left_tool_options.size_flags_vertical,
 		"stretch_ratio": _left_tool_options.size_flags_stretch_ratio,
+		"custom_minimum_size": _left_tool_options.custom_minimum_size,
 	}
 	_tools_root_vertical_scroll_mode = tools_root.vertical_scroll_mode
+	_tools_root_horizontal_scroll_mode = tools_root.horizontal_scroll_mode
 	_left_tool_options_vertical_scroll_mode = _left_tool_options.vertical_scroll_mode
+	_left_tool_options_horizontal_scroll_mode = _left_tool_options.horizontal_scroll_mode
 
 	tools_root.remove_child(palette)
 	_merged_tools_content = HBoxContainer.new()
@@ -503,22 +511,27 @@ func _merge_left_tool_options_into_tools() -> bool:
 	_merged_tools_content.add_theme_constant_override(&"separation", 0)
 	tools_root.add_child(_merged_tools_content)
 
-	palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	palette.custom_minimum_size.x = TOOL_PALETTE_WIDTH
+	palette.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	palette.size_flags_stretch_ratio = 1.0
+	palette.size_flags_stretch_ratio = 0.0
 	_merged_tools_content.add_child(palette)
 	_merged_tools_separator = VSeparator.new()
 	_merged_tools_separator.name = &"ToolOptionsSeparator"
 	_merged_tools_content.add_child(_merged_tools_separator)
 
 	left_parent.remove_child(_left_tool_options)
+	_left_tool_options.custom_minimum_size.x = TOOL_OPTIONS_WIDTH
 	_left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_left_tool_options.size_flags_stretch_ratio = 1.0
 	_left_tool_options.visible = true
 	_merged_tools_content.add_child(_left_tool_options)
+	_left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tools_root.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	tools_root.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_bind_tools_header_title(tools_module)
 	return true
 
 
@@ -560,6 +573,9 @@ func _restore_merged_tools() -> void:
 	_left_tool_options.size_flags_stretch_ratio = float(
 		_left_tool_options_state.get("stretch_ratio", 1.0)
 	)
+	_left_tool_options.custom_minimum_size = (
+		_left_tool_options_state.get("custom_minimum_size", Vector2(72.0, 72.0)) as Vector2
+	)
 
 	if palette != null:
 		_merged_tools_content.remove_child(palette)
@@ -579,7 +595,11 @@ func _restore_merged_tools() -> void:
 			_tools_palette_state.get("size_flags_vertical", Control.SIZE_EXPAND_FILL)
 		)
 		palette.size_flags_stretch_ratio = float(_tools_palette_state.get("stretch_ratio", 1.0))
+		palette.custom_minimum_size = (
+			_tools_palette_state.get("custom_minimum_size", Vector2.ZERO) as Vector2
+		)
 
+	_unbind_tools_header_title()
 	if is_instance_valid(_merged_tools_separator):
 		_merged_tools_separator.queue_free()
 	_merged_tools_separator = null
@@ -587,9 +607,55 @@ func _restore_merged_tools() -> void:
 		_merged_tools_content.queue_free()
 	_merged_tools_content = null
 	if tools_root != null:
+		tools_root.horizontal_scroll_mode = _tools_root_horizontal_scroll_mode
 		tools_root.vertical_scroll_mode = _tools_root_vertical_scroll_mode
 	if is_instance_valid(_left_tool_options):
+		_left_tool_options.horizontal_scroll_mode = _left_tool_options_horizontal_scroll_mode
 		_left_tool_options.vertical_scroll_mode = _left_tool_options_vertical_scroll_mode
+
+
+func _bind_tools_header_title(tools_module: WorkspaceModule) -> void:
+	if not Tools.tool_changed.is_connected(_on_tools_header_tool_changed):
+		Tools.tool_changed.connect(_on_tools_header_tool_changed)
+	_sync_tools_header_title(tools_module)
+
+
+func _unbind_tools_header_title() -> void:
+	if Tools.tool_changed.is_connected(_on_tools_header_tool_changed):
+		Tools.tool_changed.disconnect(_on_tools_header_tool_changed)
+	if manager == null:
+		return
+	var tools_module := manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module != null:
+		tools_module.clear_header_title_override()
+
+
+func _sync_tools_header_title(tools_module: WorkspaceModule = null) -> void:
+	if tools_module == null and manager != null:
+		tools_module = manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module == null or not Tools._slots.has(MOUSE_BUTTON_LEFT):
+		return
+	var slot: Tools.Slot = Tools._slots[MOUSE_BUTTON_LEFT]
+	if not is_instance_valid(slot.tool_node):
+		return
+	_set_tools_header_title(String(slot.tool_node.name), tools_module)
+
+
+func _on_tools_header_tool_changed(tool_name: String, button: int) -> void:
+	if button != MOUSE_BUTTON_LEFT:
+		return
+	_set_tools_header_title(tool_name)
+
+
+func _set_tools_header_title(tool_name: String, tools_module: WorkspaceModule = null) -> void:
+	if not Tools.tools.has(tool_name):
+		return
+	if tools_module == null and manager != null:
+		tools_module = manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module == null:
+		return
+	var tool: Tools.Tool = Tools.tools[tool_name]
+	tools_module.set_header_title_override(tr(tool.display_name))
 
 
 func _attach_timeline_header_options() -> bool:
@@ -1207,6 +1273,8 @@ func _restore_canvas_chrome() -> void:
 
 
 func _clear_setup() -> void:
+	if Tools.tool_changed.is_connected(_on_tools_header_tool_changed):
+		Tools.tool_changed.disconnect(_on_tools_header_tool_changed)
 	ui_root = null
 	legacy_container = null
 	manager = null

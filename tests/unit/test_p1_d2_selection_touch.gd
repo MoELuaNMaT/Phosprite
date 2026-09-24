@@ -13,6 +13,8 @@ const ELLIPSE_SOURCE := "res://src/Tools/SelectionTools/EllipseSelect.gd"
 const POLYGON_SOURCE := "res://src/Tools/SelectionTools/PolygonSelect.gd"
 const BASE_SHAPE_SOURCE := "res://src/Tools/BaseShapeDrawer.gd"
 const BASE_SELECTION_SOURCE := "res://src/Tools/BaseSelectionTool.gd"
+const BASE_SELECTION_SCENE := "res://src/Tools/BaseSelectionTool.tscn"
+const CANVAS_SOURCE := "res://src/UI/Canvas/Canvas.gd"
 const TRANSFORM_SOURCE := "res://src/UI/Canvas/TransformationHandles.gd"
 
 
@@ -272,52 +274,63 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 
 
-func test_ios_selection_options_use_color_selection_mode_buttons_and_tolerance() -> void:
+func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_tolerance() -> void:
 	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
+	var base_scene := FileAccess.get_file_as_string(BASE_SELECTION_SCENE)
 	check_has(
 		base_src, 'if OS.get_name() != "iOS":', "selection option compaction must remain iOS-only"
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel"]',
-		"selection options should start from the shared compact header controls"
-	)
-	check_has(
-		base_src,
-		'visible_controls.append(&"Modes")',
-		"ordinary selection tools should keep the existing mode selector"
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]',
+		"all iOS selection tools should expose the same compact four-mode button set",
 	)
 	check_has(
 		base_src,
 		'if name == &"MagicWand":',
-		"Color Selection must have an explicit compact-options exception"
-	)
-	check_has(
-		base_src,
-		'visible_controls.append(&"ModeButtons")',
-		"Color Selection must show the new vertical mode-button group"
+		"Magic Wand should only add its tolerance control to the shared selection options",
 	)
 	check_has(
 		base_src,
 		'visible_controls.append(&"ToleranceSlider")',
-		"Color Selection should retain Tolerance under the mode buttons"
+		"Magic Wand should retain Tolerance below the shared mode buttons",
 	)
 	check_has(
 		base_src,
 		"(child as Control).visible = StringName(child.name) in visible_controls",
-		"all Position/Size/Rotation/Shear/Algorithm/confirm controls should be hidden by allowlist"
+		"transform-only controls and the duplicate tool name should stay hidden on iOS",
 	)
 	check_has(
 		base_src,
 		'if OS.get_name() == "iOS":\n\t\t_apply_ios_compact_options()\n\t\treturn',
-		"active selection transforms must not re-show confirm/cancel or transform option rows on iOS"
+		"active selection transforms must not re-show hidden option rows on iOS",
+	)
+	check_has(
+		base_scene,
+		'[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]',
+		"selection mode buttons must share one exclusive ButtonGroup in the base scene",
+	)
+	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
+		check_has(
+			base_scene,
+			'[node name="%s" type="Button" parent="ModeButtons"' % button_name,
+			"all selection tools must inherit the %s mode button" % button_name,
+		)
+	check_eq(
+		base_scene.count('button_group = SubResource("ButtonGroup_modes")'),
+		4,
+		"the four selection mode buttons must be mutually exclusive",
 	)
 
 	var wand_scene := FileAccess.get_file_as_string("res://src/Tools/SelectionTools/MagicWand.tscn")
 	check_has(
 		wand_scene,
 		'[node name="ToleranceSlider"',
-		"Magic Wand must keep its existing tolerance control available to the iOS allowlist"
+		"Magic Wand must keep its tolerance-specific control",
+	)
+	check_true(
+		not wand_scene.contains('[node name="ModeButtons"'),
+		"Magic Wand must inherit shared mode buttons instead of owning a private copy",
 	)
 
 
@@ -355,18 +368,18 @@ func test_crop_options_are_hidden_and_drag_release_applies_crop() -> void:
 	)
 
 
-func test_ios_color_picker_hides_destination_but_keeps_pick_mode() -> void:
+func test_ios_color_picker_uses_expanded_source_buttons_and_layer_preview() -> void:
 	var src := FileAccess.get_file_as_string(COLOR_PICKER_SOURCE)
 	check_has(src, "$ColorPicker/Label.hide()", "iOS Color Picker should hide the Pick for label")
 	check_has(
 		src,
 		"$ColorPicker/Options.hide()",
-		"iOS Color Picker should hide the Left/Right color destination selector"
+		"iOS Color Picker should hide the Left/Right color destination selector",
 	)
 	check_has(
 		src,
 		'var color_slot := 0 if OS.get_name() == "iOS" else _color_slot',
-		"iOS Color Picker config must persist the primary color destination"
+		"iOS Color Picker config must persist the primary color destination",
 	)
 	check_has(
 		src, "MOUSE_BUTTON_LEFT", "iOS Color Picker must always write to the primary color slot"
@@ -375,22 +388,52 @@ func test_ios_color_picker_hides_destination_but_keeps_pick_mode() -> void:
 	check_has(
 		scene_src,
 		'[node name="ExtractFrom" type="OptionButton"',
-		"Color Picker must keep the sampling source selector"
+		"legacy source state should remain available behind the expanded controls",
 	)
 	check_has(
 		scene_src,
-		'popup/item_0/text = "Top Color"',
-		"sampling source should keep Top Color as the first/default option"
+		'[node name="TopColor" type="Button" parent="ColorPicker/ExtractModeButtons"',
+		"Top Color must be a direct option button",
 	)
 	check_has(
 		scene_src,
-		'popup/item_1/text = "Current Layer"',
-		"sampling source should keep Current Layer as the alternate option"
+		'[node name="CurrentLayer" type="Button" parent="ColorPicker/ExtractModeButtons"',
+		"Current Layer must be a direct option button",
+	)
+	check_eq(
+		scene_src.count('button_group = SubResource("ButtonGroup_extract")'),
+		2,
+		"Color Picker source buttons must be mutually exclusive",
 	)
 	check_has(
-		scene_src,
-		'[node name="Options" type="OptionButton"',
-		"desktop Color Picker must keep the original Left/Right destination selector"
+		src,
+		"Global.canvas.set_preview_only_layer(Global.current_project.current_layer, self)",
+		"Current Layer mode must filter the Canvas preview to the selected layer",
+	)
+	check_has(
+		src,
+		"Global.canvas.clear_preview_only_layer(self)",
+		"leaving Current Layer mode or Color Picker must restore the normal Canvas preview",
+	)
+	check_has(
+		src,
+		"Global.cel_switched.connect(_on_cel_switched)",
+		"Current Layer preview must follow layer selection changes",
+	)
+	var canvas_src := FileAccess.get_file_as_string(CANVAS_SOURCE)
+	check_has(
+		canvas_src,
+		"var _preview_only_layer_index := -1",
+		"Canvas should own a temporary preview filter instead of mutating project visibility",
+	)
+	check_has(
+		canvas_src,
+		"layer_metadata_image.set_pixel(ordered_index, 1, Color())",
+		"non-selected layers must be hidden only in render metadata",
+	)
+	check_true(
+		not src.contains(".visible = false"),
+		"Color Picker must not persistently rewrite layer visibility",
 	)
 
 

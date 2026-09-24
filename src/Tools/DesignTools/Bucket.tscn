@@ -50,7 +50,7 @@ popup/item_2/id = 2
 [node name="MergeAreaOptions" type="CheckBox" parent="." index="4" unique_id=218009629]
 layout_mode = 2
 mouse_default_cursor_shape = 2
-text = "Fill regions from the merging of all layers"
+text = "Across Layers"
 autowrap_mode = 3
 
 [node name="ToleranceSlider" type="TextureProgressBar" parent="." index="5" unique_id=1967537478]
