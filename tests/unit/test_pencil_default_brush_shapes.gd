@@ -132,10 +132,13 @@ func test_base_draw_uses_procedural_preview_and_real_hollow_square_stamp() -> vo
 func test_pencil_options_are_reduced_to_brush_size_and_opacity() -> void:
 	var pencil_scene := FileAccess.get_file_as_string(PENCIL_SCENE)
 	var pencil_source := FileAccess.get_file_as_string(PENCIL_SOURCE)
-	check_has(pencil_scene, "[node name=\"Opacity\"", "Pencil must expose an Opacity control")
+	check_has(pencil_scene, '[node name="Opacity"', "Pencil must expose an Opacity control")
 	check_has(pencil_scene, "max_value = 100.0", "Pencil opacity must use a 0-100 percent range")
-	for removed in ["Overwrite", "FillInside", "SpacingMode", "name=\"Spacing\""]:
-		check_true(not pencil_scene.contains(removed), "Pencil scene must remove legacy option: %s" % removed)
+	for removed in ["Overwrite", "FillInside", "SpacingMode", 'name="Spacing"']:
+		check_true(
+			not pencil_scene.contains(removed),
+			"Pencil scene must remove legacy option: %s" % removed
+		)
 	check_has(
 		pencil_source,
 		"$DensityValueSlider.visible = false",
@@ -163,11 +166,27 @@ func test_pencil_numeric_controls_use_drag_only_arrow_value_presentation() -> vo
 	var base_scene := FileAccess.get_file_as_string(BASE_DRAW_SCENE)
 	var pencil_scene := FileAccess.get_file_as_string(PENCIL_SCENE)
 	var slider_source := FileAccess.get_file_as_string(VALUE_SLIDER_SOURCE)
-	check_has(base_scene, '[node name="Brush" type="VBoxContainer"', "Brush controls must stack vertically")
+	check_has(
+		base_scene,
+		'[node name="Brush" type="VBoxContainer"',
+		"Brush controls must stack vertically"
+	)
 	for scene_source in [base_scene, pencil_scene]:
-		check_has(scene_source, "allow_text_input = false", "numeric Pencil controls must disable text entry")
-		check_has(scene_source, "show_drag_arrows = true", "numeric Pencil controls must show < value > drag affordance")
-		check_has(scene_source, "show_arrows = false", "numeric Pencil controls must remove old up/down arrow buttons")
+		check_has(
+			scene_source,
+			"allow_text_input = false",
+			"numeric Pencil controls must disable text entry"
+		)
+		check_has(
+			scene_source,
+			"show_drag_arrows = true",
+			"numeric Pencil controls must show < value > drag affordance"
+		)
+		check_has(
+			scene_source,
+			"show_arrows = false",
+			"numeric Pencil controls must remove old up/down arrow buttons"
+		)
 	check_has(
 		slider_source,
 		'return str(tr(prefix), " < ", display_value, " >").strip_edges()',
