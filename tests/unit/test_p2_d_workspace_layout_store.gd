@@ -324,3 +324,42 @@ func test_future_schema_is_rejected_without_mutating_current_layout() -> void:
 		"rejected snapshot must not mutate the current layout"
 	)
 	_free_workspace(workspace)
+
+
+func test_layout_slots_persist_independently_and_keep_slot_one_legacy_compatibility() -> void:
+	var workspace := _make_workspace()
+	var surface = workspace["surface"] as WorkspaceSurface
+	var store = workspace["store"] as WorkspaceLayoutStore
+	var slot_one_rect := Rect2(120.0, 140.0, 320.0, 220.0)
+	var slot_two_rect := Rect2(620.0, 260.0, 320.0, 220.0)
+
+	check_true(surface.float_module(Builtins.PREVIEW_ID, slot_one_rect), "slot 1 should float Preview")
+	check_true(store.set_active_layout_slot(1), "slot 1 should be active")
+	check_true(store.save_current_layout(false), "slot 1 should save")
+	check_true(store.has_layout_slot(1), "slot 1 snapshot should exist")
+	check_true(
+		store.config_cache.has_section_key(Store.CONFIG_SECTION, Store.CONFIG_STATE_KEY),
+		"slot 1 should keep the legacy current-layout key mirrored",
+	)
+
+	check_true(store.set_active_layout_slot(2), "slot 2 should become active")
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, slot_two_rect), "slot 2 should move Preview")
+	check_true(store.save_current_layout(false), "slot 2 should save independently")
+	check_true(store.has_layout_slot(2), "slot 2 snapshot should exist")
+
+	check_true(store.set_active_layout_slot(1), "slot 1 should reactivate")
+	check_true(store.restore_current_layout(), "slot 1 should restore")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		slot_one_rect,
+		"slot 1 should retain its own Preview rectangle",
+	)
+
+	check_true(store.set_active_layout_slot(2), "slot 2 should reactivate")
+	check_true(store.restore_current_layout(), "slot 2 should restore")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		slot_two_rect,
+		"slot 2 should retain its own Preview rectangle",
+	)
+	_free_workspace(workspace)
