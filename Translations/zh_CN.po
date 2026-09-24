@@ -4241,3 +4241,9 @@ msgstr ""
 
 msgid "Across Layers"
 msgstr "跨图层"
+
+msgid "Replace"
+msgstr "替换"
+
+msgid "Intersect"
+msgstr "交集"
