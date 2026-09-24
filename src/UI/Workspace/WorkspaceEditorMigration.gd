@@ -95,6 +95,7 @@ var _previous_autosave_enabled := true
 var _zen_mode := false
 var _single_project_editor := false
 var _timeline_height_restore_generation := 0
+var _active_ui_profile := 1
 
 
 func setup(
@@ -137,6 +138,27 @@ func get_panel_ids() -> Array[StringName]:
 func get_panel_name(module_id: StringName) -> String:
 	var definition := manager.get_definition(module_id) if manager != null else null
 	return definition.get_resolved_display_name() if definition != null else String(module_id)
+
+
+func get_ui_profile() -> int:
+	return _active_ui_profile
+
+
+func activate_ui_profile(profile_id: int) -> bool:
+	if profile_id < 1 or profile_id > WorkspaceLayoutStore.LAYOUT_SLOT_COUNT:
+		return false
+	# This is the stable implementation switch point for future UI variants.
+	# Profiles currently share the same live Workspace implementation; later
+	# profiles may recompose modules or route to profile-specific controls here.
+	_active_ui_profile = profile_id
+	return true
+
+
+func sync_workspace_content_visibility() -> void:
+	if not live:
+		return
+	_sync_content_visibility_from_placements()
+	_update_main_canvas_rect()
 
 
 func is_panel_visible(module_id: StringName) -> bool:
@@ -318,6 +340,7 @@ func _migrate_live_editor() -> bool:
 	legacy_container.visible = false
 	legacy_container.set_process(false)
 	live = true
+	_active_ui_profile = layout_store.get_active_layout_slot()
 
 	var saved_ids := _saved_layout_ids()
 	var restored := layout_store.restore_current_layout()
@@ -1022,18 +1045,10 @@ func _restore_state(module_id: StringName, state: Dictionary) -> bool:
 
 func _saved_layout_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []
-	if layout_store.config_cache == null:
+	var snapshot := layout_store.get_layout_slot_snapshot(layout_store.get_active_layout_slot())
+	if snapshot.is_empty():
 		return ids
-	if not layout_store.config_cache.has_section_key(
-		WorkspaceLayoutStore.CONFIG_SECTION, WorkspaceLayoutStore.CONFIG_STATE_KEY
-	):
-		return ids
-	var value: Variant = layout_store.config_cache.get_value(
-		WorkspaceLayoutStore.CONFIG_SECTION, WorkspaceLayoutStore.CONFIG_STATE_KEY, {}
-	)
-	if not value is Dictionary:
-		return ids
-	for raw_entry: Variant in (value as Dictionary).get("modules", []):
+	for raw_entry: Variant in snapshot.get("modules", []):
 		if raw_entry is Dictionary:
 			ids.append(StringName(str((raw_entry as Dictionary).get("id", ""))))
 	return ids
