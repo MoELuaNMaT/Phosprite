@@ -161,8 +161,13 @@ func test_live_migration_adopts_existing_controls_and_promotes_main_canvas() -> 
 
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"Tools should participate in the default live Workspace layout"
+		WorkspaceSurface.Placement.FLOATING,
+		"Tools should start as a snapped floating Workspace panel",
+	)
+	check_eq(
+		fixture["host"].layout.get_module_zone(Builtins.TOOLS_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"Tools must not reserve a real dock zone",
 	)
 	check_eq(
 		surface.get_module_placement(Builtins.TILES_ID),
@@ -200,9 +205,19 @@ func test_project_tabs_are_promoted_to_full_width_second_row_and_canvas_ignores_
 				true,
 			)
 		),
-		"Preview should enlarge the Right Dock overlay",
+		"legacy right-dock requests should migrate Preview to a right-snapped floating rect",
 	)
 	await tree.process_frame
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"legacy dock request must keep Preview floating",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"floating Preview must not reserve dock geometry",
+	)
 	check_eq(
 		Rect2(main_canvas.position, main_canvas.size),
 		canvas_rect,
@@ -229,8 +244,8 @@ func test_context_hidden_panels_keep_scene_tree_lifecycle_without_layout_geometr
 	var right_options := manager.get_instance(Builtins.RIGHT_TOOL_OPTIONS_ID)
 	check_eq(
 		surface.get_module_placement(Builtins.RIGHT_TOOL_OPTIONS_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"Right Tool Options starts in the default dock before single-tool hiding",
+		WorkspaceSurface.Placement.FLOATING,
+		"Right Tool Options starts as a floating panel before single-tool hiding",
 	)
 	check_true(
 		migration.set_context_panel_visible(Builtins.RIGHT_TOOL_OPTIONS_ID, false),
@@ -283,12 +298,12 @@ func test_context_hidden_panels_keep_scene_tree_lifecycle_without_layout_geometr
 
 	check_true(
 		migration.set_context_panel_visible(Builtins.RIGHT_TOOL_OPTIONS_ID, true),
-		"showing Right Tool Options should restore its previous dock placement",
+		"showing Right Tool Options should restore its previous floating placement",
 	)
 	check_eq(
 		surface.get_module_placement(Builtins.RIGHT_TOOL_OPTIONS_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"restoring a parked context panel should recover its dock placement",
+		WorkspaceSurface.Placement.FLOATING,
+		"restoring a parked context panel should recover its floating placement",
 	)
 	check_true(
 		not surface.is_module_parked(Builtins.RIGHT_TOOL_OPTIONS_ID),
@@ -332,7 +347,7 @@ func test_dock_host_empty_space_passes_input_and_only_occupied_docks_shrink_canv
 	manager.free()
 
 
-func test_docked_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
+func test_default_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var manager := fixture["manager"] as WorkspaceModuleManager
@@ -345,40 +360,35 @@ func test_docked_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	var interaction := Interaction.new()
 	root.add_child(interaction)
 	check_true(interaction.setup(manager, surface), "interaction controller should initialize")
-	check_true(
-		surface.collapse_module(Builtins.PREVIEW_ID), "docked Preview should collapse in place"
-	)
 	check_eq(
-		preview.get_parent(),
-		before_parent,
-		"docked collapse must keep the adopted module in its original dock host"
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"default Preview should already be floating",
 	)
+	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "floating Preview should collapse")
+	check_eq(preview.get_parent(), before_parent, "collapse must keep the floating parent")
 	check_eq(
-		preview.position,
-		before_position,
-		"docked collapse must leave the title bar at the original position"
+		preview.position, before_position, "collapsed title bar must stay at the snapped position"
 	)
-	check_true(not preview_content.visible, "docked collapse should hide panel content")
+	check_true(not preview_content.visible, "collapse should hide panel content")
 	check_true(
 		not interaction.get_tray().visible,
-		"docked collapse must not create the legacy bottom text-button tray"
+		"floating collapse must not create the legacy bottom text-button tray",
 	)
 
 	check_true(
-		surface.restore_module(Builtins.PREVIEW_ID), "docked Preview should restore in place"
+		surface.restore_module(Builtins.PREVIEW_ID), "floating Preview should restore in place"
 	)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"restore should return Preview to DOCKED placement"
+		WorkspaceSurface.Placement.FLOATING,
+		"restore should return Preview to FLOATING placement",
 	)
 	check_eq(
 		manager.get_instance(Builtins.PREVIEW_ID), preview, "restore must preserve module identity"
 	)
-	check_eq(preview.get_parent(), before_parent, "restore must not remount through another parent")
-	check_eq(
-		preview.position, before_position, "restore must not jump to the top-left before returning"
-	)
+	check_eq(preview.get_parent(), before_parent, "restore must preserve the floating-layer parent")
+	check_eq(preview.position, before_position, "restore must not jump through another placement")
 	check_eq(preview.get_content(), preview_content, "restore must preserve live panel identity")
 	check_true(preview_content.visible, "restore should reveal the original panel content")
 	_free_fixture(fixture)
@@ -438,89 +448,61 @@ func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
 
 	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	var collapse_point := Vector2(preview.size.x - 8.0, 8.0)
-
 	var touch := InputEventScreenTouch.new()
 	touch.device = 0
 	touch.index = 0
 	touch.pressed = true
 	touch.position = collapse_point
-	preview.gui_input.emit(touch)
-	check_eq(
-		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.COLLAPSED,
-		"physical touch should collapse the module once"
-	)
-
 	var emulated_mouse := InputEventMouseButton.new()
 	emulated_mouse.device = InputEvent.DEVICE_ID_EMULATION
 	emulated_mouse.button_index = MOUSE_BUTTON_LEFT
 	emulated_mouse.pressed = true
 	emulated_mouse.position = collapse_point
+
+	preview.gui_input.emit(touch)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.COLLAPSED,
+		"physical touch should collapse the floating module once",
+	)
 	preview.gui_input.emit(emulated_mouse)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		WorkspaceSurface.Placement.COLLAPSED,
-		"emulated mouse press from the same touch must not immediately restore the module"
+		"emulated mouse press from the same touch must not immediately restore it",
 	)
 
 	preview.gui_input.emit(touch)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"second physical touch should restore the module once"
+		WorkspaceSurface.Placement.FLOATING,
+		"second physical touch should restore the floating module once",
 	)
 	preview.gui_input.emit(emulated_mouse)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"emulated mouse press must not immediately collapse the restored module"
+		WorkspaceSurface.Placement.FLOATING,
+		"emulated mouse press must not immediately collapse the restored float",
 	)
 
+	var bounds := surface.get_floating_bounds()
 	check_true(
 		surface.dock_module(
 			Builtins.PREVIEW_ID, WorkspaceDockLayout.DockZone.BOTTOM, 1, Vector2(220.0, 140.0)
 		),
-		"Preview should move beside the expanded Timeline"
+		"legacy Bottom request should reposition Preview as a bottom-snapped float",
 	)
-	await tree.process_frame
-	await tree.process_frame
-	var timeline: WorkspaceModule = manager.get_instance(Builtins.TIMELINE_ID)
-	check_true(
-		not timeline.is_content_collapsed(),
-		"Timeline must remain expanded while its Bottom Dock sibling is tested"
-	)
-
-	collapse_point = Vector2(preview.size.x - 8.0, 8.0)
-	touch.position = collapse_point
-	emulated_mouse.position = collapse_point
-	preview.gui_input.emit(touch)
-	preview.gui_input.emit(emulated_mouse)
-	await tree.process_frame
-	await tree.process_frame
-	check_eq(
-		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.COLLAPSED,
-		"Bottom Dock sibling must collapse independently while Timeline is expanded"
-	)
+	var bottom_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_almost_eq(
-		preview.size.y,
-		preview.get_header_height(),
+		bottom_rect.end.y,
+		bounds.end.y,
 		0.01,
-		"Bottom Dock sibling must remain at header height while Timeline stays expanded"
+		"bottom snap must end at the editor area above Timeline",
 	)
-
-	preview.gui_input.emit(touch)
-	preview.gui_input.emit(emulated_mouse)
-	await tree.process_frame
-	await tree.process_frame
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"Bottom Dock sibling must restore independently while Timeline is expanded"
-	)
-	check_true(
-		not preview.is_content_collapsed(),
-		"Bottom Dock sibling content must stay restored after the emulated duplicate event"
+		WorkspaceSurface.Placement.FLOATING,
+		"bottom-snapped Preview must still be floating",
 	)
 
 	tree.root.remove_child(root)
@@ -666,32 +648,33 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	tools.free()
 
 
-func test_workspace_chrome_exposes_pop_out_and_multi_edge_resize_targets() -> void:
+func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() -> void:
 	var fixture := _make_live_fixture()
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var surface := fixture["surface"] as WorkspaceSurface
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
-	preview.apply_visual_theme(VisualTheme.new(), &"docked")
 	check_true(
-		preview.is_header_drag_point(Vector2(8.0, 8.0)), "header should expose a drag target"
+		surface.set_floating_rect(Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)),
+		"Preview should use a large floating rect for resize-target validation",
+	)
+	preview.apply_visual_theme(VisualTheme.new(), &"floating")
+	check_true(
+		preview.is_header_drag_point(Vector2(8.0, 8.0)),
+		"floating header should remain directly draggable",
 	)
 	check_true(
 		preview.is_collapse_point(Vector2(preview.size.x - 8.0, 8.0)),
-		"header trailing edge should expose collapse"
+		"header trailing edge should still expose collapse",
 	)
 	check_true(
-		preview.is_float_point(Vector2(preview.size.x - 42.0, 8.0)),
-		"docked header should expose a dedicated Pop-out target",
+		not preview.is_float_point(Vector2(preview.size.x - 42.0, 8.0)),
+		"live floating panels must not expose the obsolete Pop-out target",
 	)
-	check_true(
-		not preview.is_header_drag_point(Vector2(preview.size.x - 42.0, 8.0)),
-		"Pop-out target must not also start a header drag",
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"Preview must remain floating while resize handles are active",
 	)
-	check_true(
-		surface.float_module(Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)),
-		"Preview should float before resize validation"
-	)
-	preview.apply_visual_theme(VisualTheme.new(), &"floating")
 	check_eq(
 		preview.get_resize_edges(Vector2(2.0, 120.0)),
 		WorkspaceModule.ResizeEdge.LEFT,
@@ -791,7 +774,8 @@ func test_touch_workspace_drag_and_resize_capture_on_press_before_child_gui() ->
 	await tree.process_frame
 
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
-	preview.apply_visual_theme(VisualTheme.new(), &"docked")
+	preview.move_to_front()
+	preview.apply_visual_theme(VisualTheme.new(), &"floating")
 	var local_header_point := Vector2(20.0, preview.get_header_height() * 0.5)
 	var viewport_point := preview.get_global_transform_with_canvas() * local_header_point
 	var hit := interaction._top_workspace_module_at(viewport_point)
@@ -874,7 +858,7 @@ func test_timeline_position_is_locked_but_top_edge_height_resize_remains_availab
 	_free_fixture(fixture)
 
 
-func test_timeline_region_dock_overlays_full_background_canvas() -> void:
+func test_timeline_is_the_only_fixed_bottom_dock_and_cannot_float() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var main_canvas := fixture["main_canvas"] as Control
@@ -886,93 +870,110 @@ func test_timeline_region_dock_overlays_full_background_canvas() -> void:
 	await tree.process_frame
 
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
+	var canvas_rect := Rect2(main_canvas.position, main_canvas.size)
+	check_eq(
+		surface.get_module_placement(Builtins.TIMELINE_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"Timeline must remain the one fixed live Workspace panel",
+	)
 	check_eq(
 		host.layout.get_module_zone(Builtins.TIMELINE_ID),
 		WorkspaceDockLayout.DockZone.BOTTOM,
-		"Timeline should start integrated into the Bottom Dock",
+		"Timeline must occupy the real Bottom Dock",
+	)
+	check_true(
+		host.layout.is_module_region_fill(Builtins.TIMELINE_ID),
+		"Timeline Bottom Dock must remain full-width Region Fill",
 	)
 	check_true(
 		surface.float_module(Builtins.TIMELINE_ID, Rect2(180.0, 420.0, 760.0, 180.0)),
-		"Timeline should detach into a floating panel",
+		"legacy float requests should normalize back into the fixed Timeline dock",
 	)
 	await tree.process_frame
-	var canvas_height_while_floating := main_canvas.size.y
 	check_eq(
-		host.layout.get_module_zone(Builtins.TIMELINE_ID),
-		WorkspaceDockLayout.DockZone.NONE,
-		"floating Timeline must release the Bottom Dock slot",
-	)
-	check_eq(
-		timeline.get_parent(),
-		surface.get_floating_layer(),
-		"floating Timeline should live in the floating layer",
-	)
-
-	check_true(
-		surface.begin_module_drag(Builtins.TIMELINE_ID, Vector2(300.0, 440.0)),
-		"floating Timeline drag should begin",
-	)
-	var candidate := surface.update_module_drag(Vector2(host.size.x * 0.5, host.size.y - 4.0))
-	check_eq(
-		int(candidate.get("placement", WorkspaceSurface.Placement.NONE)),
+		surface.get_module_placement(Builtins.TIMELINE_ID),
 		WorkspaceSurface.Placement.DOCKED,
-		"outer bottom edge should resolve to a dock placement",
-	)
-	check_eq(
-		int(candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)),
-		WorkspaceDockLayout.DockZone.BOTTOM,
-		"outer bottom edge should target Bottom Dock",
-	)
-	check_eq(
-		StringName(candidate.get("target_kind", &"none")),
-		&"region",
-		"outer edge should use the whole Bottom Dock Region target",
-	)
-	candidate = surface.update_module_drag(Vector2(host.size.x * 0.5, host.size.y - 145.0))
-	check_eq(
-		StringName(candidate.get("target_kind", &"none")),
-		&"region",
-		"Bottom Region target should remain sticky through normal touch-drag jitter",
-	)
-	var preview_rect := surface.get_preview_rect()
-	check_almost_eq(preview_rect.position.x, 0.0, 0.01, "bottom region preview starts at left")
-	check_almost_eq(
-		preview_rect.size.x, host.size.x, 0.01, "bottom region preview spans full workspace width"
-	)
-	check_true(surface.commit_module_drag(), "Bottom Dock Region drop should commit")
-	await tree.process_frame
-	await tree.process_frame
-
-	check_eq(
-		host.layout.get_module_zone(Builtins.TIMELINE_ID),
-		WorkspaceDockLayout.DockZone.BOTTOM,
-		"Timeline must become part of the real Bottom Dock after drop",
+		"Timeline must still be DOCKED after a float request",
 	)
 	check_eq(
 		timeline.get_parent(),
 		host.get_zone_host(WorkspaceDockLayout.DockZone.BOTTOM),
-		"docked Timeline must be reparented into the Bottom Dock container",
+		"Timeline must remain parented by the Bottom Dock",
 	)
 	check_true(
-		host.layout.is_module_region_fill(Builtins.TIMELINE_ID),
-		"Bottom Region drop must persist Region Fill semantics",
+		not surface.begin_module_drag(Builtins.TIMELINE_ID, Vector2(300.0, 440.0)),
+		"fixed Timeline must not start a floating drag transaction",
 	)
 	check_eq(
-		timeline.size_flags_horizontal,
-		Control.SIZE_EXPAND_FILL,
-		"Bottom Region Timeline must expand horizontally with the workspace",
+		Rect2(main_canvas.position, main_canvas.size),
+		canvas_rect,
+		"fixed Bottom Timeline must continue overlaying the full-background Canvas",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_bottom_snapped_float_tracks_real_timeline_top_after_height_resize() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	var surface := fixture["surface"] as WorkspaceSurface
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var initial_bounds := surface.get_floating_bounds()
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				WorkspaceDockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(280.0, 140.0),
+			)
+		),
+		"bottom edge request should place Preview as a snapped float above Timeline",
+	)
+	var initial_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"bottom-snapped Preview must remain FLOATING",
 	)
 	check_almost_eq(
-		timeline.size.x,
-		host.get_zone_host(WorkspaceDockLayout.DockZone.BOTTOM).size.x,
+		initial_rect.end.y,
+		initial_bounds.end.y,
 		0.01,
-		"Bottom Region Timeline must adapt to the full Bottom Dock width",
+		"bottom snap must use the Timeline top edge instead of screen bottom",
+	)
+
+	var timeline_size := host.layout.get_module_size(Builtins.TIMELINE_ID)
+	timeline_size.y += 60.0
+	check_true(
+		host.set_module_size(Builtins.TIMELINE_ID, timeline_size),
+		"fixed Timeline height must remain resizable",
+	)
+	await tree.process_frame
+	await tree.process_frame
+
+	var changed_bounds := surface.get_floating_bounds()
+	var changed_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(
+		changed_bounds.end.y < initial_bounds.end.y,
+		"raising Timeline must raise the floating editor bottom boundary",
 	)
 	check_almost_eq(
-		main_canvas.size.y,
-		canvas_height_while_floating,
+		changed_rect.end.y,
+		changed_bounds.end.y,
 		0.01,
-		"Bottom Dock must overlay the Canvas instead of carving height out of it",
+		"bottom-snapped Preview must follow Timeline top after resize",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"following Timeline must never convert Preview into a real dock",
 	)
 
 	tree.root.remove_child(root)
@@ -1016,7 +1017,7 @@ func test_timeline_bottom_region_uses_integrated_bar_visual_state() -> void:
 	_free_fixture(fixture)
 
 
-func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> void:
+func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var manager := fixture["manager"] as WorkspaceModuleManager
@@ -1024,51 +1025,68 @@ func test_right_region_redock_restores_docked_chrome_and_pop_out_target() -> voi
 	var surface := fixture["surface"] as WorkspaceSurface
 	var theme_controller := ThemeController.new()
 	root.add_child(theme_controller)
-	check_true(
-		theme_controller.setup(manager, surface),
-		"theme controller should initialize for chrome sync"
-	)
+	check_true(theme_controller.setup(manager, surface), "theme controller should initialize")
 	check_true(
 		theme_controller.refresh(Theme.new(), Color("2b2b2b"), Color("8aa0df")),
-		"theme controller should resolve workspace chrome",
+		"theme controller should resolve Workspace chrome",
 	)
 	tree.root.add_child(root)
 	await tree.process_frame
 	await tree.process_frame
 
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	var start_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_true(
-		surface.float_module(Builtins.PREVIEW_ID, Rect2(360.0, 180.0, 320.0, 220.0)),
-		"Preview should float before right-region redock",
-	)
-	await tree.process_frame
-	check_true(
-		surface.begin_module_drag(Builtins.PREVIEW_ID, Vector2(420.0, 200.0)),
+		surface.begin_module_drag(Builtins.PREVIEW_ID, start_rect.position + Vector2(12.0, 12.0)),
 		"floating Preview drag should begin",
 	)
-	var candidate := surface.update_module_drag(Vector2(host.size.x - 4.0, host.size.y * 0.5))
-	check_eq(
-		StringName(candidate.get("target_kind", &"none")),
-		&"region",
-		"outer right edge should resolve the full Right Dock Region",
+	var bounds := surface.get_floating_bounds()
+	var candidate := surface.update_module_drag(
+		Vector2(bounds.end.x - 12.0, bounds.position.y + start_rect.size.y * 0.5)
 	)
-	check_true(surface.commit_module_drag(), "Right Dock Region drop should commit")
-	await tree.process_frame
+	check_eq(
+		int(candidate.get("placement", WorkspaceSurface.Placement.NONE)),
+		WorkspaceSurface.Placement.FLOATING,
+		"edge snap must remain a floating placement",
+	)
+	check_eq(
+		int(candidate.get("zone", WorkspaceDockLayout.DockZone.NONE)),
+		WorkspaceDockLayout.DockZone.NONE,
+		"edge snap must never claim a real dock zone",
+	)
+	check_true(surface.commit_module_drag(), "right-edge floating snap should commit")
 	await tree.process_frame
 
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "right edge should snap to editor bounds")
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"snapped Preview must remain outside DockLayout",
+	)
+	check_eq(preview.get_visual_state(), &"floating", "snapped Preview keeps floating chrome")
+	check_true(
+		not preview.is_float_point(Vector2(preview.size.x - 42.0, 8.0)),
+		"snapped floating panel must not expose a Pop-out button",
+	)
+
+	var resize_start := snapped
+	check_true(
+		(
+			surface
+			. resize_floating_rect(
+				Builtins.PREVIEW_ID,
+				resize_start,
+				Vector2(-40.0, 32.0),
+				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
+		),
+		"snapped floating panel must remain resizable",
+	)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"Surface placement must settle to DOCKED after region drop",
-	)
-	check_eq(
-		preview.get_visual_state(),
-		&"docked",
-		"theme refresh must observe the settled DOCKED state, not stale FLOATING state",
-	)
-	check_true(
-		preview.is_float_point(Vector2(preview.size.x - 42.0, 8.0)),
-		"region-docked module must expose the Pop-out target immediately",
+		WorkspaceSurface.Placement.FLOATING,
+		"resize must not convert a snapped float into a dock",
 	)
 
 	tree.root.remove_child(root)
@@ -1108,13 +1126,13 @@ func test_palette_and_color_picker_share_one_workspace_panel_in_vertical_order()
 	)
 	check_eq(
 		surface.get_module_placement(Builtins.PALETTE_ID),
-		WorkspaceSurface.Placement.DOCKED,
-		"combined panel should participate in the default Workspace layout"
+		WorkspaceSurface.Placement.FLOATING,
+		"combined panel should participate as a snapped floating Workspace panel"
 	)
 	check_eq(
 		fixture["host"].layout.get_module_zone(Builtins.PALETTE_ID),
-		WorkspaceDockLayout.DockZone.RIGHT,
-		"fresh layouts should place the vertical combined panel in the right dock"
+		WorkspaceDockLayout.DockZone.NONE,
+		"fresh layouts must not place Palette & Color in a real dock"
 	)
 	check_true(
 		manager.get_definition(Builtins.COLOR_PICKER_ID) == null,
@@ -1283,7 +1301,7 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 
 
-func test_narrow_floating_timeline_overflows_controls_and_keeps_drag_space() -> void:
+func test_timeline_header_controls_remain_attached_to_fixed_bottom_bar() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var manager := fixture["manager"] as WorkspaceModuleManager
@@ -1292,34 +1310,23 @@ func test_narrow_floating_timeline_overflows_controls_and_keeps_drag_space() -> 
 	await tree.process_frame
 	await tree.process_frame
 
-	check_true(
-		surface.float_module(Builtins.TIMELINE_ID, Rect2(120.0, 180.0, 360.0, 180.0)),
-		"Timeline should float at its minimum supported width",
-	)
-	await tree.process_frame
-	await tree.process_frame
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
-	timeline.apply_visual_theme(VisualTheme.new(), &"floating")
 	var accessory := timeline.get_header_accessory() as TimelineHeaderControls
-	check_true(accessory != null, "floating Timeline should retain its header controls")
-	check_true(accessory.has_overflow(), "narrow Timeline must expose the ellipsis overflow")
-	check_true(
-		accessory.overflow_button.visible,
-		"ellipsis button must become visible when commands do not fit",
-	)
+	check_true(accessory != null, "fixed Timeline should retain its combined header controls")
 	check_eq(
-		accessory.global_tool_options.get_parent(),
-		accessory.overflow_content,
-		"large Global Tool Options group should fold into overflow before Undo/Redo",
-	)
-	var accessory_rect := timeline.get_header_accessory_rect()
-	check_true(
-		accessory_rect.position.x >= WorkspaceModule.MIN_HEADER_DRAG_WIDTH,
-		"responsive header controls must reserve a draggable strip on the left",
+		surface.get_module_placement(Builtins.TIMELINE_ID),
+		WorkspaceSurface.Placement.DOCKED,
+		"Timeline header controls must belong to the fixed Bottom Dock",
 	)
 	check_true(
-		not timeline.is_header_drag_point(Vector2(32.0, timeline.get_header_height() * 0.5)),
-		"Timeline header must stay position-locked even while floating programmatically",
+		not timeline.is_position_adjustment_enabled(),
+		"fixed Timeline header must not expose panel movement",
+	)
+	check_true(
+		not timeline.is_float_point(
+			Vector2(timeline.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE * 1.5, 8.0)
+		),
+		"fixed Timeline must not expose a Pop-out target",
 	)
 
 	tree.root.remove_child(root)

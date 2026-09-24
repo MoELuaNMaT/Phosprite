@@ -23,10 +23,11 @@ const TOOL_OPTIONS_WIDTH := 60.0
 
 const DEFAULT_LAYOUT := [
 	{
-		"id": Builtins.PALETTE_ID,
-		"zone": WorkspaceDockLayout.DockZone.RIGHT,
-		"index": 1,
-		"size": Vector2(300.0, 360.0),
+		"id": Builtins.TIMELINE_ID,
+		"zone": WorkspaceDockLayout.DockZone.BOTTOM,
+		"index": 0,
+		"size": Vector2(760.0, 220.0),
+		"region_fill": true,
 	},
 	{
 		"id": Builtins.TOOLS_ID,
@@ -41,17 +42,16 @@ const DEFAULT_LAYOUT := [
 		"size": Vector2(280.0, 110.0),
 	},
 	{
+		"id": Builtins.PALETTE_ID,
+		"zone": WorkspaceDockLayout.DockZone.RIGHT,
+		"index": 1,
+		"size": Vector2(300.0, 360.0),
+	},
+	{
 		"id": Builtins.RIGHT_TOOL_OPTIONS_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 2,
 		"size": Vector2(280.0, 140.0),
-	},
-	{
-		"id": Builtins.TIMELINE_ID,
-		"zone": WorkspaceDockLayout.DockZone.BOTTOM,
-		"index": 0,
-		"size": Vector2(760.0, 220.0),
-		"region_fill": true,
 	},
 ]
 
@@ -124,6 +124,9 @@ func setup(
 	if dock_host == null:
 		_clear_setup()
 		return false
+	surface.configure_floating_snap_policy(
+		{Builtins.TIMELINE_ID: WorkspaceDockLayout.DockZone.BOTTOM}
+	)
 	return _migrate_live_editor()
 
 
@@ -1044,7 +1047,10 @@ func _default_ids() -> Array[StringName]:
 
 
 func _on_layout_geometry_changed(_content_rect: Rect2) -> void:
-	# Dock geometry only positions overlay panels. The Canvas always stays full-background.
+	# Timeline is the only true dock. Floating edge anchors follow its top edge
+	# whenever the fixed bottom bar changes height.
+	if surface != null:
+		surface.refresh_floating_bounds()
 	_update_canvas_chrome_geometry.call_deferred()
 
 

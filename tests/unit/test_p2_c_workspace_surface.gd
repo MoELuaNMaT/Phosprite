@@ -666,3 +666,65 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 		not surface.collapse_module(restricted.module_id), "can_collapse=false must reject collapse"
 	)
 	_free_workspace(workspace)
+
+
+func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy({})
+
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.RIGHT,
+				0,
+				Vector2(320.0, 200.0),
+			)
+		),
+		"legacy right-dock request should be accepted as a floating snap",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		Surface.Placement.FLOATING,
+		"nonfixed Preview must remain floating after edge snap",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.NONE,
+		"snapped Preview must not enter DockLayout",
+	)
+	var bounds := surface.get_floating_bounds()
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "Preview should snap to the right edge")
+	check_almost_eq(snapped.position.y, bounds.position.y, 0.01, "Preview should snap top-right")
+
+	var start := snapped
+	check_true(
+		(
+			surface
+			. resize_floating_rect(
+				Builtins.PREVIEW_ID,
+				start,
+				Vector2(40.0, 30.0),
+				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
+		),
+		"snapped Preview must retain normal floating resize",
+	)
+	var resized := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(resized.size != start.size, "resize should change the snapped floating rect")
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		Surface.Placement.FLOATING,
+		"resize must not convert the snapped panel into a dock",
+	)
+	check_almost_eq(
+		resized.end.x,
+		surface.get_floating_bounds().end.x,
+		0.01,
+		"right snap anchor should survive resize",
+	)
+	_free_workspace(workspace)
