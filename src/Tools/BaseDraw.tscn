@@ -96,7 +96,7 @@ allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
-[node name="TransformButtonsContainer" type="HFlowContainer" parent="." index="3" unique_id=811103715]
+[node name="TransformButtonsContainer" type="VBoxContainer" parent="." index="3" unique_id=811103715]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
