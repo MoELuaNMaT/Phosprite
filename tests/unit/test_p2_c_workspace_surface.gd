@@ -752,7 +752,7 @@ func test_floating_snap_policy_releases_horizontal_edge_independently_from_top()
 
 	var requested_x := bounds.position.x + 80.0
 	var candidate := surface.update_module_drag(
-		Vector2(requested_x + grab_offset.x, bounds.position.y + grab_offset.y)
+		Vector2(requested_x + grab_offset.x, bounds.position.y + grab_offset.y),
 	)
 	var rect := candidate.get("rect", Rect2()) as Rect2
 	check_almost_eq(
