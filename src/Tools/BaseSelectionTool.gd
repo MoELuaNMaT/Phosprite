@@ -48,9 +48,12 @@ func _ready() -> void:
 func _apply_ios_compact_options() -> void:
 	if OS.get_name() != "iOS":
 		return
-	var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel", &"Modes"]
+	var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel"]
 	if name == &"MagicWand":
+		visible_controls.append(&"ModeButtons")
 		visible_controls.append(&"ToleranceSlider")
+	else:
+		visible_controls.append(&"Modes")
 	for child in get_children():
 		if child is Control:
 			(child as Control).visible = StringName(child.name) in visible_controls
