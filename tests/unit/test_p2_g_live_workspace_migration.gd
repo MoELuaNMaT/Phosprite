@@ -676,12 +676,12 @@ func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() 
 		"Preview must remain floating while resize handles are active",
 	)
 	check_eq(
-		preview.get_resize_edges(Vector2(2.0, 120.0)),
+		preview.get_resize_edges(Vector2(2.0, preview.size.y * 0.5)),
 		WorkspaceModule.ResizeEdge.LEFT,
 		"floating panel should expose a left-edge resize target",
 	)
 	check_eq(
-		preview.get_resize_edges(Vector2(preview.size.x - 2.0, 120.0)),
+		preview.get_resize_edges(Vector2(preview.size.x - 2.0, preview.size.y * 0.5)),
 		WorkspaceModule.ResizeEdge.RIGHT,
 		"floating panel should expose a right-edge resize target",
 	)
@@ -1059,6 +1059,12 @@ func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 
 	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "right edge should snap to editor bounds")
+	check_almost_eq(
+		snapped.position.y,
+		bounds.position.y,
+		0.01,
+		"right-edge drop in the upper half should resolve to the top-right corner",
+	)
 	check_eq(
 		host.layout.get_module_zone(Builtins.PREVIEW_ID),
 		WorkspaceDockLayout.DockZone.NONE,
@@ -1087,6 +1093,61 @@ func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		WorkspaceSurface.Placement.FLOATING,
 		"resize must not convert a snapped float into a dock",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_bottom_corner_snap_stops_above_fixed_timeline() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	var surface := fixture["surface"] as WorkspaceSurface
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var bounds := surface.get_floating_bounds()
+	var timeline_host := host.get_zone_host(WorkspaceDockLayout.DockZone.BOTTOM)
+	check_almost_eq(
+		bounds.end.y,
+		timeline_host.position.y,
+		0.01,
+		"floating bottom boundary must be the Timeline top edge",
+	)
+
+	var preview_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(
+		surface.begin_module_drag(
+			Builtins.PREVIEW_ID,
+			preview_rect.position + Vector2(12.0, 12.0),
+		),
+		"Preview drag should begin before bottom-corner snap",
+	)
+	var candidate := surface.update_module_drag(
+		Vector2(bounds.end.x - 12.0, bounds.end.y - 12.0)
+	)
+	check_eq(
+		int(candidate.get("placement", WorkspaceSurface.Placement.NONE)),
+		WorkspaceSurface.Placement.FLOATING,
+		"bottom-corner snap must remain FLOATING",
+	)
+	check_true(surface.commit_module_drag(), "bottom-right floating snap should commit")
+	await tree.process_frame
+
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "bottom-right snap should align right")
+	check_almost_eq(
+		snapped.end.y,
+		timeline_host.position.y,
+		0.01,
+		"bottom-right snap must stop directly above Timeline",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"bottom-right snapped Preview must not enter DockLayout",
 	)
 
 	tree.root.remove_child(root)
