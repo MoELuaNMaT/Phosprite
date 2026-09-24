@@ -108,10 +108,14 @@ func has_layout_slot(slot: int) -> bool:
 func get_layout_slot_snapshot(slot: int) -> Dictionary:
 	if config_cache == null or not _is_valid_layout_slot(slot):
 		return {}
+	var value: Variant
 	var key := _slot_key(slot)
-	var value: Variant = config_cache.get_value(CONFIG_SECTION, key, null)
-	if not value is Dictionary and slot == 1:
-		value = config_cache.get_value(CONFIG_SECTION, CONFIG_STATE_KEY, null)
+	if config_cache.has_section_key(CONFIG_SECTION, key):
+		value = config_cache.get_value(CONFIG_SECTION, key)
+	elif slot == 1 and config_cache.has_section_key(CONFIG_SECTION, CONFIG_STATE_KEY):
+		value = config_cache.get_value(CONFIG_SECTION, CONFIG_STATE_KEY)
+	else:
+		return {}
 	if not value is Dictionary:
 		return {}
 	return (value as Dictionary).duplicate(true)
