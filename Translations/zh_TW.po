@@ -2828,7 +2828,7 @@ msgstr ""
 
 #. Found in the layer's section of the timeline, as a blend mode option. For more info refer to: https://en.wikipedia.org/wiki/Blend_modes
 msgid "Subtract"
-msgstr ""
+msgstr "減去"
 
 #. Found in the layer's section of the timeline, as a blend mode option. For more info refer to: https://en.wikipedia.org/wiki/Blend_modes
 msgid "Divide"
@@ -4166,3 +4166,9 @@ msgstr ""
 
 msgid "Across Layers"
 msgstr "跨圖層"
+
+msgid "Replace"
+msgstr "取代"
+
+msgid "Intersect"
+msgstr "交集"
