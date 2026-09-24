@@ -42,6 +42,8 @@ flat = true
 
 [node name="Project" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar" unique_id=1172244258]
 
+[node name="UI" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar"]
+
 [node name="Effects" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar" unique_id=77521974]
 
 [node name="View" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar" unique_id=1075900013]
