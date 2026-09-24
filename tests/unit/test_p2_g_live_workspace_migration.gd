@@ -9,6 +9,7 @@ const Migration := preload("res://src/UI/Workspace/WorkspaceEditorMigration.gd")
 const Interaction := preload("res://src/UI/Workspace/WorkspaceInteractionController.gd")
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
+const UIProfileController := preload("res://src/UI/Workspace/WorkspaceUIProfileController.gd")
 
 
 func _make_live_fixture(
@@ -1754,3 +1755,69 @@ func test_managed_editor_removes_project_tabs_and_their_canvas_dead_strip() -> v
 		"_project_tabs_height = 0.0",
 		"removing project tabs must also remove their reserved Canvas input strip",
 	)
+
+
+func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var surface := fixture["surface"] as WorkspaceSurface
+	var store := fixture["store"] as WorkspaceLayoutStore
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+	var menu := PopupMenu.new()
+	root.add_child(menu)
+	var controller := UIProfileController.new()
+	root.add_child(controller)
+
+	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
+	check_eq(menu.item_count, 4, "UI menu should expose exactly four profile slots")
+	for profile_id in range(1, 5):
+		var index := menu.get_item_index(profile_id)
+		check_true(index >= 0, "each UI profile should have its own menu item")
+		check_eq(menu.get_item_text(index), str(profile_id), "profile label should match its slot number")
+		check_eq(
+			menu.is_item_checked(index),
+			profile_id == 1,
+			"only UI profile 1 should be selected initially",
+		)
+
+	var slot_one_rect := Rect2(140.0, 120.0, 320.0, 220.0)
+	var slot_two_rect := Rect2(680.0, 280.0, 320.0, 220.0)
+	check_true(
+		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_one_rect),
+		"slot 1 should accept a Preview position",
+	)
+	check_true(store.save_current_layout(false), "slot 1 should persist before switching")
+
+	check_true(controller.switch_profile(2), "switching to UI profile 2 should succeed")
+	check_eq(store.get_active_layout_slot(), 2, "profile 2 should become the active storage slot")
+	check_eq(migration.get_ui_profile(), 2, "profile 2 should reach the implementation hook")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		slot_one_rect,
+		"a new profile should seed from the profile the user came from",
+	)
+	check_true(
+		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_two_rect),
+		"slot 2 should accept an independent Preview position",
+	)
+	check_true(store.save_current_layout(false), "slot 2 should persist independently")
+
+	check_true(controller.switch_profile(1), "switching back to profile 1 should succeed")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		slot_one_rect,
+		"profile 1 should restore its own Preview position",
+	)
+	check_true(controller.switch_profile(2), "profile 2 should remain switchable")
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		slot_two_rect,
+		"profile 2 should restore its independent Preview position",
+	)
+	for index in menu.item_count:
+		check_eq(
+			menu.is_item_checked(index),
+			menu.get_item_id(index) == 2,
+			"UI profile menu selection must remain mutually exclusive",
+		)
+	_free_fixture(fixture)
