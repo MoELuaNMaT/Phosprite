@@ -36,7 +36,10 @@ func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_n
 	)
 	check_has(
 		base_scene,
-		'[node name="Modes" type="OptionButton" parent="." index="4" unique_id=1993262786]\nvisible = false',
+		(
+			'[node name="Modes" type="OptionButton" parent="." index="4"'
+			+ " unique_id=1993262786]\nvisible = false"
+		),
 		"the inherited selection mode dropdown must be hidden",
 	)
 	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
