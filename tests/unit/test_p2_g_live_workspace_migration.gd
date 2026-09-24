@@ -347,7 +347,6 @@ func test_dock_host_empty_space_passes_input_and_only_occupied_docks_shrink_canv
 	manager.free()
 
 
-
 func test_default_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -368,25 +367,32 @@ func test_default_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> v
 	)
 	check_true(surface.collapse_module(Builtins.PREVIEW_ID), "floating Preview should collapse")
 	check_eq(preview.get_parent(), before_parent, "collapse must keep the floating parent")
-	check_eq(preview.position, before_position, "collapsed title bar must stay at the snapped position")
+	check_eq(
+		preview.position, before_position, "collapsed title bar must stay at the snapped position"
+	)
 	check_true(not preview_content.visible, "collapse should hide panel content")
 	check_true(
 		not interaction.get_tray().visible,
 		"floating collapse must not create the legacy bottom text-button tray",
 	)
 
-	check_true(surface.restore_module(Builtins.PREVIEW_ID), "floating Preview should restore in place")
+	check_true(
+		surface.restore_module(Builtins.PREVIEW_ID), "floating Preview should restore in place"
+	)
 	check_eq(
 		surface.get_module_placement(Builtins.PREVIEW_ID),
 		WorkspaceSurface.Placement.FLOATING,
 		"restore should return Preview to FLOATING placement",
 	)
-	check_eq(manager.get_instance(Builtins.PREVIEW_ID), preview, "restore must preserve module identity")
+	check_eq(
+		manager.get_instance(Builtins.PREVIEW_ID), preview, "restore must preserve module identity"
+	)
 	check_eq(preview.get_parent(), before_parent, "restore must preserve the floating-layer parent")
 	check_eq(preview.position, before_position, "restore must not jump through another placement")
 	check_eq(preview.get_content(), preview_content, "restore must preserve live panel identity")
 	check_true(preview_content.visible, "restore should reveal the original panel content")
 	_free_fixture(fixture)
+
 
 func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 	var fixture := _make_live_fixture()
@@ -426,7 +432,6 @@ func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 		"restore should recover the complete pre-collapse rectangle"
 	)
 	_free_fixture(fixture)
-
 
 
 func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
@@ -502,6 +507,7 @@ func test_touch_collapse_ignores_emulated_mouse_duplicate() -> void:
 
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
+
 
 func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparenting() -> void:
 	var config := ConfigFile.new()
@@ -642,7 +648,6 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	tools.free()
 
 
-
 func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() -> void:
 	var fixture := _make_live_fixture()
 	var manager := fixture["manager"] as WorkspaceModuleManager
@@ -697,6 +702,7 @@ func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() 
 		"lower-right corner should combine horizontal and vertical resize",
 	)
 	_free_fixture(fixture)
+
 
 func test_timeline_bottom_bar_is_full_width_without_moving_side_docks_to_screen_edge() -> void:
 	var fixture := _make_live_fixture()
@@ -847,7 +853,6 @@ func test_timeline_position_is_locked_but_top_edge_height_resize_remains_availab
 	_free_fixture(fixture)
 
 
-
 func test_timeline_is_the_only_fixed_bottom_dock_and_cannot_float() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -903,6 +908,7 @@ func test_timeline_is_the_only_fixed_bottom_dock_and_cannot_float() -> void:
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
 
+
 func test_timeline_bottom_region_uses_integrated_bar_visual_state() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -938,7 +944,6 @@ func test_timeline_bottom_region_uses_integrated_bar_visual_state() -> void:
 		"integrated Timeline should not retain card-like right padding",
 	)
 	_free_fixture(fixture)
-
 
 
 func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
@@ -996,11 +1001,14 @@ func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 
 	var resize_start := snapped
 	check_true(
-		surface.resize_floating_rect(
-			Builtins.PREVIEW_ID,
-			resize_start,
-			Vector2(-40.0, 32.0),
-			WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+		(
+			surface
+			. resize_floating_rect(
+				Builtins.PREVIEW_ID,
+				resize_start,
+				Vector2(-40.0, 32.0),
+				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
 		),
 		"snapped floating panel must remain resizable",
 	)
@@ -1012,6 +1020,7 @@ func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
+
 
 func test_palette_and_color_picker_share_one_workspace_panel_in_vertical_order() -> void:
 	var ids := Builtins.get_live_panel_ids()
@@ -1221,7 +1230,6 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 
 
-
 func test_timeline_header_controls_remain_attached_to_fixed_bottom_bar() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -1252,6 +1260,7 @@ func test_timeline_header_controls_remain_attached_to_fixed_bottom_bar() -> void
 
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
+
 
 func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> void:
 	var ids := Builtins.get_live_panel_ids()
