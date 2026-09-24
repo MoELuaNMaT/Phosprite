@@ -324,7 +324,9 @@ func test_sidebar_labels_and_nested_numeric_prefixes_are_centered_without_colons
 	var pair := ValueSliderV2.new()
 	tool.add_child(pair)
 	tool._apply_stacked_option_layout(tool)
-	check_eq(title.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER, "option labels must be centered")
+	check_eq(
+		title.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER, "option labels must be centered"
+	)
 	check_eq(title.text, "Mode", "option labels must drop trailing colons")
 	for slider in pair.get_sliders():
 		check_true(not slider.prefix.ends_with(":"), "nested X/Y numeric prefixes must drop colons")
