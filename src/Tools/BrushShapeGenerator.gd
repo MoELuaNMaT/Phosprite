@@ -9,6 +9,7 @@ enum Shape {
 }
 
 const PREVIEW_SOURCE_LIMIT := 64
+const PREVIEW_PADDING := 2
 
 
 static func get_points(shape: Shape, brush_size: int) -> Array[Vector2i]:
@@ -26,14 +27,19 @@ static func get_points(shape: Shape, brush_size: int) -> Array[Vector2i]:
 
 
 static func create_preview_image(
-	shape: Shape, brush_size: int, color := Color.WHITE, source_limit := PREVIEW_SOURCE_LIMIT
+	shape: Shape, brush_size: int, color := Color.BLACK, source_limit := PREVIEW_SOURCE_LIMIT
 ) -> Image:
-	var preview_size := mini(maxi(1, brush_size), maxi(1, source_limit))
+	var safe_limit := maxi(1, source_limit)
+	var padding := mini(PREVIEW_PADDING, maxi(0, int((safe_limit - 1) / 2.0)))
+	var stamp_limit := maxi(1, safe_limit - padding * 2)
+	var stamp_size := mini(maxi(1, brush_size), stamp_limit)
+	var preview_size := stamp_size + padding * 2
 	var image := Image.create(preview_size, preview_size, false, Image.FORMAT_RGBA8)
-	image.fill(Color.TRANSPARENT)
-	for point in get_points(shape, preview_size):
-		if point.x >= 0 and point.y >= 0 and point.x < preview_size and point.y < preview_size:
-			image.set_pixelv(point, color)
+	image.fill(Color.WHITE)
+	var offset := Vector2i.ONE * padding
+	for point in get_points(shape, stamp_size):
+		if point.x >= 0 and point.y >= 0 and point.x < stamp_size and point.y < stamp_size:
+			image.set_pixelv(point + offset, color)
 	return image
 
 

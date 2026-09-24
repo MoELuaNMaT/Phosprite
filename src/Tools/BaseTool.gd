@@ -33,7 +33,70 @@ func _ready() -> void:
 	else:
 		color_rect.color = Global.right_tool_color
 	$Label.text = Tools.tools[name].display_name
+	_apply_stacked_option_layout(self)
 	load_config()
+
+
+func _apply_stacked_option_layout(root: Node) -> void:
+	for child in root.get_children():
+		if child is ValueSlider:
+			_stack_value_slider(child)
+			continue
+		if child is CheckBox:
+			_stack_checkbox(child)
+			continue
+		if child is Container:
+			_apply_stacked_option_layout(child)
+
+
+func _stack_value_slider(slider: ValueSlider) -> void:
+	if slider.get_parent() is not VBoxContainer:
+		return
+	var label_text := slider.prefix.strip_edges()
+	if label_text.is_empty():
+		return
+	_insert_stacked_option_label(slider, label_text)
+	slider.prefix = ""
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.custom_minimum_size.x = maxf(slider.custom_minimum_size.x, 72.0)
+
+
+func _stack_checkbox(checkbox: CheckBox) -> void:
+	if checkbox.get_parent() is not VBoxContainer:
+		return
+	var label_text := checkbox.text.strip_edges()
+	if label_text.is_empty():
+		return
+	_insert_stacked_option_label(checkbox, label_text)
+	checkbox.text = ""
+	checkbox.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+
+func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
+	var parent := control.get_parent() as VBoxContainer
+	if parent == null:
+		return
+	var label := Label.new()
+	label.name = StringName("%sOptionLabel" % control.name)
+	label.text = _format_option_label(raw_text)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.visible = control.visible
+	parent.add_child(label)
+	parent.move_child(label, control.get_index())
+	control.visibility_changed.connect(
+		func():
+			if is_instance_valid(label):
+				label.visible = control.visible
+	)
+
+
+func _format_option_label(raw_text: String) -> String:
+	var label_text := raw_text.strip_edges()
+	if label_text.ends_with(":") or label_text.ends_with("："):
+		return label_text
+	return label_text + ":"
 
 
 func save_config() -> void:

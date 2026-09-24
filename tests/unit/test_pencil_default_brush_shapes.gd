@@ -54,20 +54,37 @@ func test_circle_masks_share_the_production_ellipse_rasterizer_and_stay_in_bound
 			)
 
 
-func test_preview_source_tracks_brush_size_but_is_safely_bounded() -> void:
+func test_preview_source_keeps_white_padding_around_black_brush_glyph() -> void:
 	var one := BrushShapes.create_preview_image(BrushShapes.Shape.FILLED_SQUARE, 1)
 	var sixteen := BrushShapes.create_preview_image(BrushShapes.Shape.FILLED_CIRCLE, 16)
-	var huge := BrushShapes.create_preview_image(BrushShapes.Shape.FILLED_CIRCLE, 4096)
-	check_eq(one.get_size(), Vector2i.ONE, "Size 1 preview must be generated from a one-pixel mask")
+	var huge := BrushShapes.create_preview_image(BrushShapes.Shape.FILLED_SQUARE, 4096)
+	var padding := BrushShapes.PREVIEW_PADDING
+	check_eq(
+		one.get_size(),
+		Vector2i.ONE * (1 + padding * 2),
+		"1px brush preview must reserve visible white padding around the glyph",
+	)
 	check_eq(
 		sixteen.get_size(),
-		Vector2i(16, 16),
-		"normal brush sizes must retain their native raster precision in the preview source",
+		Vector2i.ONE * (16 + padding * 2),
+		"normal brush previews must keep their native mask plus a white border",
 	)
 	check_eq(
 		huge.get_size(),
 		Vector2i.ONE * BrushShapes.PREVIEW_SOURCE_LIMIT,
-		"very large brushes must cap preview source precision instead of allocating huge images",
+		"very large brushes must remain bounded after padding is applied",
+	)
+	check_eq(one.get_pixel(0, 0), Color.WHITE, "preview corners must stay white")
+	check_eq(
+		one.get_pixel(padding, padding),
+		Color.BLACK,
+		"only the actual brush glyph pixels should be black",
+	)
+	check_eq(huge.get_pixel(0, 0), Color.WHITE, "large previews must also keep a white border")
+	check_eq(
+		huge.get_pixel(padding, padding),
+		Color.BLACK,
+		"large square glyphs must begin inside the white border rather than covering it",
 	)
 
 
@@ -171,6 +188,11 @@ func test_pencil_numeric_controls_use_drag_only_arrow_value_presentation() -> vo
 		'[node name="Brush" type="VBoxContainer"',
 		"Brush controls must stack vertically"
 	)
+	check_has(
+		base_scene,
+		'[node name="BrushLabel" type="Label" parent="Brush"',
+		"brush selector must have its name on a separate row above the button",
+	)
 	for scene_source in [base_scene, pencil_scene]:
 		check_has(
 			scene_source,
@@ -192,3 +214,43 @@ func test_pencil_numeric_controls_use_drag_only_arrow_value_presentation() -> vo
 		'return str(tr(prefix), " < ", display_value, " >").strip_edges()',
 		"drag-only values must render in the requested < value > form",
 	)
+
+
+func test_tool_option_fields_put_names_above_numeric_and_checkbox_controls() -> void:
+	var tool := BaseTool.new()
+	var slider := ValueSlider.new()
+	slider.name = &"Size"
+	slider.prefix = "Size:"
+	slider.show_drag_arrows = true
+	tool.add_child(slider)
+	var checkbox := CheckBox.new()
+	checkbox.name = &"Continuous"
+	checkbox.text = "Continuous"
+	tool.add_child(checkbox)
+
+	tool._apply_stacked_option_layout(tool)
+
+	check_eq(tool.get_child_count(), 4, "each control should gain one separate label row")
+	var size_label := tool.get_child(0) as Label
+	check_true(size_label != null, "numeric option name must become a separate Label")
+	check_eq(size_label.text, "Size:", "numeric option label must keep its name")
+	check_eq(slider.prefix, "", "numeric value row must no longer repeat the option name")
+	check_eq(
+		slider.size_flags_horizontal,
+		Control.SIZE_SHRINK_CENTER,
+		"numeric drag control should sit centered on the row below its name",
+	)
+	var checkbox_label := tool.get_child(2) as Label
+	check_true(checkbox_label != null, "checkbox option name must become a separate Label")
+	check_eq(
+		checkbox_label.text,
+		"Continuous:",
+		"checkbox labels should receive the same name-above-control presentation",
+	)
+	check_eq(checkbox.text, "", "checkbox row itself must contain only the checkbox control")
+	check_eq(
+		checkbox.size_flags_horizontal,
+		Control.SIZE_SHRINK_CENTER,
+		"checkbox control should sit centered on the row below its name",
+	)
+	tool.free()
