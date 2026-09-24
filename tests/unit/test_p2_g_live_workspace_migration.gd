@@ -37,7 +37,7 @@ func _make_live_fixture(
 	legacy.add_child(left_tool_options)
 	var left_panel := MarginContainer.new()
 	left_panel.name = &"LeftPanelContainer"
-	left_panel.custom_minimum_size = Vector2(130.0, 0.0)
+	left_panel.custom_minimum_size = Vector2(56.0, 0.0)
 	left_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_tool_options.add_child(left_panel)
@@ -593,18 +593,18 @@ func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
 	check_true(tools_definition != null, "Tools definition must exist")
 	check_eq(
 		tools_definition.minimum_size.x,
-		136.0,
-		"Tools sidebar should allow two usable compact columns",
+		104.0,
+		"Tools sidebar should shrink to the two compact tool/config columns",
 	)
 	check_eq(
 		tools_definition.preferred_size.x,
-		144.0,
-		"Tools sidebar should default near the requested two-column reference width",
+		108.0,
+		"Tools sidebar should default to the compact no-horizontal-scroll width",
 	)
 	check_eq(
 		tools_definition.maximum_size.x,
-		168.0,
-		"Tools sidebar should remain compact instead of becoming a wide panel",
+		120.0,
+		"Tools sidebar should remain narrow instead of regaining large side padding",
 	)
 	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
 	check_has(
@@ -1213,28 +1213,48 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	var tools_column := merged.get_node_or_null(^"PanelContainer") as PanelContainer
 	check_true(tools_column != null, "existing tool palette should become the left column")
 	check_eq(
-		tools_column.size_flags_stretch_ratio,
-		1.0,
-		"tool-button column should receive equal horizontal stretch",
+		tools_column.custom_minimum_size.x,
+		WorkspaceEditorMigration.TOOL_PALETTE_WIDTH,
+		"tool-button column should be only wide enough for the 32px tool buttons",
+	)
+	check_eq(
+		tools_column.size_flags_horizontal,
+		Control.SIZE_SHRINK_BEGIN,
+		"tool-button column must not consume spare horizontal width",
+	)
+	check_eq(
+		left_options.custom_minimum_size.x,
+		WorkspaceEditorMigration.TOOL_OPTIONS_WIDTH,
+		"tool-options column should keep the matching compact configuration width",
 	)
 	check_eq(
 		left_options.size_flags_stretch_ratio,
 		1.0,
-		"tool-options column should receive equal horizontal stretch",
+		"remaining few pixels should go to the configuration column",
 	)
 	check_true(
 		merged.get_node_or_null(^"ToolOptionsSeparator") is VSeparator,
 		"two-column Tools should use a vertical separator",
 	)
 	check_eq(
+		tools_root.horizontal_scroll_mode,
+		ScrollContainer.SCROLL_MODE_DISABLED,
+		"merged Tools must never require horizontal dragging",
+	)
+	check_eq(
+		left_options.horizontal_scroll_mode,
+		ScrollContainer.SCROLL_MODE_DISABLED,
+		"configuration options must fit without their own horizontal scrollbar",
+	)
+	check_eq(
 		tools_root.vertical_scroll_mode,
 		ScrollContainer.SCROLL_MODE_AUTO,
-		"single-column Tools should scroll the complete tool-and-options stack"
+		"outer Tools should retain vertical scrolling when tool content is tall",
 	)
 	check_eq(
 		left_options.vertical_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"nested Left Tool Options must not compete with the outer single-column scroll"
+		"nested Left Tool Options must not compete with the outer vertical scroll",
 	)
 	_free_fixture(fixture)
 
@@ -1248,6 +1268,14 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	check_true(
 		migration_source.contains("_restore_merged_tools()"),
 		"runtime merge must remain transactionally reversible"
+	)
+	check_true(
+		migration_source.contains("Tools.tool_changed.connect(_on_tools_header_tool_changed)"),
+		"Tools header must follow the active left tool in real time",
+	)
+	check_true(
+		migration_source.contains("tools_module.set_header_title_override(tr(tool.display_name))"),
+		"active tool name must move into the Workspace header",
 	)
 	check_true(
 		not migration_source.contains("Builtins.LEFT_TOOL_OPTIONS_ID"),
