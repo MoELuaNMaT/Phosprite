@@ -53,7 +53,7 @@ events = [SubResource("InputEventAction_18g3a")]
 [node name="ToolOptions" unique_id=1048755954 instance=ExtResource("2")]
 script = ExtResource("3")
 
-[node name="Brush" type="HBoxContainer" parent="." index="2" unique_id=634582773]
+[node name="Brush" type="VBoxContainer" parent="." index="2" unique_id=634582773]
 layout_mode = 2
 alignment = 1
 
@@ -91,6 +91,10 @@ suffix = "px"
 allow_global_input_events = true
 global_increment_action = "brush_size_increment"
 global_decrement_action = "brush_size_decrement"
+show_progress = false
+allow_text_input = false
+show_drag_arrows = true
+show_arrows = false
 
 [node name="TransformButtonsContainer" type="HFlowContainer" parent="." index="3" unique_id=811103715]
 unique_name_in_owner = true
