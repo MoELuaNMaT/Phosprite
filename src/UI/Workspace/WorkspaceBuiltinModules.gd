@@ -75,7 +75,9 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	palette.can_collapse = true
 	definitions.append(palette)
 
-	definitions.append(_external(TOOLS_ID, "Tools", Vector2(130.0, 220.0), Vector2(180.0, 520.0)))
+	var tools := _external(TOOLS_ID, "Tools", Vector2(88.0, 220.0), Vector2(96.0, 520.0))
+	tools.maximum_size = Vector2(120.0, 0.0)
+	definitions.append(tools)
 	definitions.append(
 		_external(SECOND_CANVAS_ID, "Second Canvas", Vector2(260.0, 180.0), Vector2(420.0, 300.0))
 	)
