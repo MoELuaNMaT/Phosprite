@@ -157,7 +157,6 @@ func _setup_workspace_window_menu() -> void:
 
 	var ui_menu := menu_root.get("ui_menu") as PopupMenu
 	if ui_menu == null:
-		push_error("Workspace UI profiles could not resolve the top-bar UI menu")
 		return
 	if not workspace_ui_profile_controller.setup(
 		ui_menu, workspace_migration, workspace_layout_store
