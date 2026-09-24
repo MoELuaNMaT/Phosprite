@@ -728,3 +728,120 @@ func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() ->
 		"right snap anchor should survive resize",
 	)
 	_free_workspace(workspace)
+
+
+func test_floating_snap_policy_releases_horizontal_edge_independently_from_top() -> void:
+	var workspace := _make_workspace()
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy({})
+
+	var bounds := surface.get_floating_bounds()
+	check_true(
+		surface.float_module(
+			Builtins.PREVIEW_ID,
+			Rect2(bounds.position, Vector2(320.0, 200.0)),
+		),
+		"Preview should start snapped at the upper-left corner",
+	)
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	var grab_offset := Vector2(12.0, 12.0)
+	check_true(
+		surface.begin_module_drag(Builtins.PREVIEW_ID, snapped.position + grab_offset),
+		"upper-left floating Preview drag should begin",
+	)
+
+	var requested_x := bounds.position.x + 80.0
+	var candidate := surface.update_module_drag(
+		Vector2(requested_x + grab_offset.x, bounds.position.y + grab_offset.y)
+	)
+	var rect := candidate.get("rect", Rect2()) as Rect2
+	check_almost_eq(
+		rect.position.x,
+		requested_x,
+		0.01,
+		"leaving the left snap range must immediately free horizontal movement",
+	)
+	check_almost_eq(
+		rect.position.y,
+		bounds.position.y,
+		0.01,
+		"top snap may remain active without forcing the horizontal axis back to the left",
+	)
+	surface.cancel_module_drag()
+	_free_workspace(workspace)
+
+
+func test_floating_side_snap_range_is_narrow_and_symmetric() -> void:
+	var workspace := _make_workspace()
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy({})
+
+	check_almost_eq(
+		Surface.FLOATING_SNAP_DISTANCE,
+		8.0,
+		0.01,
+		"floating edge snap should require the panel to be very close to the edge",
+	)
+	var bounds := surface.get_floating_bounds()
+	var size := Vector2(320.0, 200.0)
+	var y := bounds.position.y + 120.0
+	check_true(
+		surface.float_module(
+			Builtins.PREVIEW_ID,
+			Rect2(Vector2(bounds.position.x + 9.0, y), size),
+		),
+		"Preview should float just outside the left snap threshold",
+	)
+	var rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		rect.position.x,
+		bounds.position.x + 9.0,
+		0.01,
+		"left edge must not snap when the gap is greater than 8 pixels",
+	)
+
+	check_true(
+		surface.set_floating_rect(
+			Builtins.PREVIEW_ID,
+			Rect2(Vector2(bounds.position.x + 8.0, y), size),
+		),
+		"Preview should accept a left-threshold placement",
+	)
+	rect = surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		rect.position.x,
+		bounds.position.x,
+		0.01,
+		"left edge should snap at the 8-pixel threshold",
+	)
+
+	check_true(
+		surface.set_floating_rect(
+			Builtins.PREVIEW_ID,
+			Rect2(Vector2(bounds.end.x - size.x - 9.0, y), size),
+		),
+		"Preview should float just outside the right snap threshold",
+	)
+	rect = surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		rect.end.x,
+		bounds.end.x - 9.0,
+		0.01,
+		"right edge must not snap when the gap is greater than 8 pixels",
+	)
+
+	check_true(
+		surface.set_floating_rect(
+			Builtins.PREVIEW_ID,
+			Rect2(Vector2(bounds.end.x - size.x - 8.0, y), size),
+		),
+		"Preview should accept a right-threshold placement",
+	)
+	rect = surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		rect.end.x,
+		bounds.end.x,
+		0.01,
+		"right edge should snap at the 8-pixel threshold",
+	)
+	_free_workspace(workspace)
