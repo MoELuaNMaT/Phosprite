@@ -1,4 +1,4 @@
-extends FlowContainer
+extends VBoxContainer
 
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
@@ -231,7 +231,7 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 		return true
 
 	# Do not mutate the active Tool Options tree while the ScreenTouch event is still
-	# traversing the GUI. A responsive HFlow exposes many more direct touch targets than
+	# traversing the GUI. A single-column toolbar still exposes direct touch targets before
 	# the old narrow toolbar, which made re-entrant tool replacement much easier to hit.
 	# Commit the exact validated button after the current input dispatch finishes.
 	call_deferred(
