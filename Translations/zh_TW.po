@@ -4150,3 +4150,14 @@ msgstr ""
 msgid "Probability:"
 msgstr ""
 
+
+msgid "Color Selection"
+msgstr "顏色選擇"
+
+msgid ""
+"Color Selection\\n"
+"\\n"
+"%s for left mouse button\\n"
+"%s for right mouse button"
+msgstr ""
+"顏色選擇\\n\"\n\"\\n\"\n\"%s 用於滑鼠左鍵\\n\"\n\"%s 用於滑鼠右鍵"
