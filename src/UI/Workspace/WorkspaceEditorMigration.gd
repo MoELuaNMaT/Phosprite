@@ -30,7 +30,7 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.TOOLS_ID,
 		"zone": WorkspaceDockLayout.DockZone.LEFT,
 		"index": 0,
-		"size": Vector2(180.0, 400.0),
+		"size": Vector2(144.0, 400.0),
 	},
 	{
 		"id": Builtins.PREVIEW_ID,
@@ -70,8 +70,8 @@ var live := false
 var _ruler_overlay: Control
 var _ruler_project: Project
 var _left_tool_options: ScrollContainer
-var _merged_tools_content: VBoxContainer
-var _merged_tools_separator: HSeparator
+var _merged_tools_content: HBoxContainer
+var _merged_tools_separator: VSeparator
 var _left_tool_options_state: Dictionary = {}
 var _tools_palette_state: Dictionary = {}
 var _palette_color_root: VBoxContainer
@@ -493,22 +493,25 @@ func _merge_left_tool_options_into_tools() -> bool:
 	_left_tool_options_vertical_scroll_mode = _left_tool_options.vertical_scroll_mode
 
 	tools_root.remove_child(palette)
-	_merged_tools_content = VBoxContainer.new()
+	_merged_tools_content = HBoxContainer.new()
 	_merged_tools_content.name = &"MergedToolsContent"
 	_merged_tools_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_merged_tools_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_merged_tools_content.add_theme_constant_override(&"separation", 0)
 	tools_root.add_child(_merged_tools_content)
 
-	palette.size_flags_vertical = Control.SIZE_FILL
+	palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette.size_flags_stretch_ratio = 1.0
 	_merged_tools_content.add_child(palette)
-	_merged_tools_separator = HSeparator.new()
+	_merged_tools_separator = VSeparator.new()
 	_merged_tools_separator.name = &"ToolOptionsSeparator"
 	_merged_tools_content.add_child(_merged_tools_separator)
 
 	left_parent.remove_child(_left_tool_options)
 	_left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_left_tool_options.size_flags_stretch_ratio = 1.0
 	_left_tool_options.visible = true
 	_merged_tools_content.add_child(_left_tool_options)
 	_left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
