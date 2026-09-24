@@ -4238,3 +4238,6 @@ msgstr ""
 "\n"
 "%s 用于鼠标左键\n"
 "%s 用于鼠标右键"
+
+msgid "Across Layers"
+msgstr "跨图层"
