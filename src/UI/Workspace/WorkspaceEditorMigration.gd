@@ -78,6 +78,7 @@ var _palette_color_root: VBoxContainer
 var _palette_color_separator: HSeparator
 var _palette_color_states: Dictionary = {}
 var _tools_root_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
+var _left_tool_options_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
@@ -489,6 +490,7 @@ func _merge_left_tool_options_into_tools() -> bool:
 		"size_flags_vertical": _left_tool_options.size_flags_vertical,
 	}
 	_tools_root_vertical_scroll_mode = tools_root.vertical_scroll_mode
+	_left_tool_options_vertical_scroll_mode = _left_tool_options.vertical_scroll_mode
 
 	tools_root.remove_child(palette)
 	_merged_tools_content = VBoxContainer.new()
@@ -509,7 +511,8 @@ func _merge_left_tool_options_into_tools() -> bool:
 	_left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_left_tool_options.visible = true
 	_merged_tools_content.add_child(_left_tool_options)
-	tools_root.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tools_root.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	return true
 
 
@@ -572,6 +575,8 @@ func _restore_merged_tools() -> void:
 	_merged_tools_content = null
 	if tools_root != null:
 		tools_root.vertical_scroll_mode = _tools_root_vertical_scroll_mode
+	if is_instance_valid(_left_tool_options):
+		_left_tool_options.vertical_scroll_mode = _left_tool_options_vertical_scroll_mode
 
 
 func _attach_timeline_header_options() -> bool:
