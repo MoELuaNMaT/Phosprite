@@ -652,6 +652,17 @@ func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 		Control.SIZE_EXPAND_FILL,
 		"Tool button column should use the available window width"
 	)
+	var button_scene := FileAccess.get_file_as_string("res://src/UI/ToolsPanel/ToolButton.tscn")
+	check_has(
+		button_scene,
+		"custom_minimum_size = Vector2(32, 32)",
+		"left-column tool buttons should be enlarged to 32px",
+	)
+	check_has(
+		button_scene,
+		"offset_left = -14.0",
+		"tool icons should expand with the larger button while keeping a small inset",
+	)
 	tools.free()
 
 
