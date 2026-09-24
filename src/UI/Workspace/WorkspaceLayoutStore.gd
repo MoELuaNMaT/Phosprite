@@ -16,6 +16,9 @@ signal preset_deleted(preset_name: String)
 const SCHEMA_VERSION := 1
 const CONFIG_SECTION := "workspace"
 const CONFIG_STATE_KEY := "layout_state"
+const CONFIG_ACTIVE_SLOT_KEY := "active_layout_slot"
+const CONFIG_SLOT_KEY_PREFIX := "layout_state_"
+const LAYOUT_SLOT_COUNT := 4
 const PRESET_SECTION := "workspace_layout"
 const PRESET_STATE_KEY := "state"
 const PRESET_NAME_KEY := "display_name"
@@ -28,6 +31,7 @@ var config_cache: ConfigFile
 var config_path := ""
 var preset_directory := ""
 var autosave_enabled := true
+var active_layout_slot := 1
 
 var _applying_snapshot := false
 var _autosave_queued := false
@@ -50,6 +54,7 @@ func setup(
 	config_cache = config
 	config_path = current_config_path
 	preset_directory = presets_path
+	active_layout_slot = _read_active_layout_slot()
 	if not preset_directory.is_empty():
 		var error := DirAccess.make_dir_recursive_absolute(preset_directory)
 		if error != OK and error != ERR_ALREADY_EXISTS:
@@ -81,11 +86,47 @@ func apply_snapshot(snapshot: Dictionary) -> bool:
 	return applied
 
 
+func get_active_layout_slot() -> int:
+	return active_layout_slot
+
+
+func set_active_layout_slot(slot: int) -> bool:
+	if not _is_valid_layout_slot(slot):
+		return false
+	active_layout_slot = slot
+	return true
+
+
+func has_layout_slot(slot: int) -> bool:
+	if config_cache == null or not _is_valid_layout_slot(slot):
+		return false
+	if config_cache.has_section_key(CONFIG_SECTION, _slot_key(slot)):
+		return true
+	return slot == 1 and config_cache.has_section_key(CONFIG_SECTION, CONFIG_STATE_KEY)
+
+
+func get_layout_slot_snapshot(slot: int) -> Dictionary:
+	if config_cache == null or not _is_valid_layout_slot(slot):
+		return {}
+	var key := _slot_key(slot)
+	var value: Variant = config_cache.get_value(CONFIG_SECTION, key, null)
+	if not value is Dictionary and slot == 1:
+		value = config_cache.get_value(CONFIG_SECTION, CONFIG_STATE_KEY, null)
+	if not value is Dictionary:
+		return {}
+	return (value as Dictionary).duplicate(true)
+
+
 func save_current_layout(flush_to_disk := true) -> bool:
 	if config_cache == null:
 		return false
 	var snapshot := capture_snapshot()
-	config_cache.set_value(CONFIG_SECTION, CONFIG_STATE_KEY, snapshot)
+	config_cache.set_value(CONFIG_SECTION, _slot_key(active_layout_slot), snapshot)
+	config_cache.set_value(CONFIG_SECTION, CONFIG_ACTIVE_SLOT_KEY, active_layout_slot)
+	# Keep the legacy key as a slot-1 mirror so existing installs and older builds
+	# continue to see the user's original Workspace layout.
+	if active_layout_slot == 1:
+		config_cache.set_value(CONFIG_SECTION, CONFIG_STATE_KEY, snapshot)
 	if flush_to_disk and not config_path.is_empty():
 		var error := config_cache.save(config_path)
 		if error != OK:
@@ -95,14 +136,19 @@ func save_current_layout(flush_to_disk := true) -> bool:
 
 
 func restore_current_layout() -> bool:
-	if config_cache == null:
+	var snapshot := get_layout_slot_snapshot(active_layout_slot)
+	if snapshot.is_empty():
 		return false
-	if not config_cache.has_section_key(CONFIG_SECTION, CONFIG_STATE_KEY):
-		return false
-	var value: Variant = config_cache.get_value(CONFIG_SECTION, CONFIG_STATE_KEY)
-	if not value is Dictionary:
-		return false
-	return apply_snapshot(value as Dictionary)
+	return apply_snapshot(snapshot)
+
+
+func flush_pending_autosave() -> bool:
+	if not _autosave_queued:
+		return true
+	if not autosave_enabled or _applying_snapshot or _transient_update_depth > 0:
+		return true
+	_autosave_queued = false
+	return save_current_layout()
 
 
 func begin_transient_update() -> void:
@@ -426,6 +472,21 @@ func _flush_queued_autosave() -> void:
 		save_current_layout()
 
 
+func _read_active_layout_slot() -> int:
+	if config_cache == null:
+		return 1
+	var slot := int(config_cache.get_value(CONFIG_SECTION, CONFIG_ACTIVE_SLOT_KEY, 1))
+	return slot if _is_valid_layout_slot(slot) else 1
+
+
+func _slot_key(slot: int) -> String:
+	return CONFIG_SLOT_KEY_PREFIX + str(slot)
+
+
+func _is_valid_layout_slot(slot: int) -> bool:
+	return slot >= 1 and slot <= LAYOUT_SLOT_COUNT
+
+
 func _preset_path(preset_name: String) -> String:
 	return preset_directory.path_join(preset_name + PRESET_EXTENSION)
 
@@ -490,3 +551,4 @@ func _clear_setup_state() -> void:
 	config_cache = null
 	config_path = ""
 	preset_directory = ""
+	active_layout_slot = 1
