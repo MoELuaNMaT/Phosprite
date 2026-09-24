@@ -3,6 +3,7 @@ extends "res://tests/test_base.gd"
 const MAGIC_WAND_SCENE := "res://src/Tools/SelectionTools/MagicWand.tscn"
 const MAGIC_WAND_SOURCE := "res://src/Tools/SelectionTools/MagicWand.gd"
 const BASE_SELECTION_SOURCE := "res://src/Tools/BaseSelectionTool.gd"
+const BASE_SELECTION_SCENE := "res://src/Tools/BaseSelectionTool.tscn"
 const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const CROP_SOURCE := "res://src/Tools/UtilityTools/CropTool.gd"
@@ -10,52 +11,60 @@ const ERASER_SCENE := "res://src/Tools/DesignTools/Eraser.tscn"
 const ERASER_SOURCE := "res://src/Tools/DesignTools/Eraser.gd"
 
 
-func test_color_selection_replaces_mode_dropdown_with_four_exclusive_buttons() -> void:
+func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_name() -> void:
 	var tools_source := FileAccess.get_file_as_string(TOOLS_SOURCE)
-	var scene := FileAccess.get_file_as_string(MAGIC_WAND_SCENE)
-	var source := FileAccess.get_file_as_string(MAGIC_WAND_SOURCE)
+	var base_scene := FileAccess.get_file_as_string(BASE_SELECTION_SCENE)
 	var base_source := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
+	var wand_scene := FileAccess.get_file_as_string(MAGIC_WAND_SCENE)
+	var wand_source := FileAccess.get_file_as_string(MAGIC_WAND_SOURCE)
 
 	check_has(
 		tools_source,
-		'"Color Selection"',
-		"Magic Wand should be presented as Color Selection in the tool UI",
+		'"Magic Wand"',
+		"Magic Wand must keep its original tool name instead of Color Selection",
+	)
+	check_true(
+		not tools_source.contains('"Color Selection"'),
+		"Magic Wand registry entry must no longer use the temporary Color Selection name",
 	)
 	check_has(
-		scene,
+		base_scene,
 		'[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]',
-		"Color Selection modes must share a dedicated ButtonGroup",
+		"selection modes must share a dedicated ButtonGroup in the base scene",
 	)
 	check_has(
-		scene,
-		'[node name="Modes" parent="." index="4"]\nvisible = false',
-		"the inherited mode dropdown must be hidden for Color Selection",
+		base_scene,
+		'[node name="Modes" type="OptionButton" parent="." index="4" unique_id=1993262786]\nvisible = false',
+		"the inherited selection mode dropdown must be hidden",
 	)
 	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
 		check_has(
-			scene,
+			base_scene,
 			'[node name="%s" type="Button" parent="ModeButtons"' % button_name,
-			"Color Selection mode %s must be a dedicated button" % button_name,
+			"selection mode %s must be a shared base button" % button_name,
 		)
 	check_eq(
-		scene.count('button_group = SubResource("ButtonGroup_modes")'),
+		base_scene.count('button_group = SubResource("ButtonGroup_modes")'),
 		4,
-		"all four mode buttons must share one ButtonGroup for mutual exclusion",
-	)
-	check_has(
-		source,
-		"button.set_pressed_no_signal(index == _mode_selected)",
-		"persisted selection mode must restore the pressed button",
-	)
-	check_has(
-		source,
-		"_mode_selected = clampi(index, Mode.DEFAULT, Mode.INTERSECT)",
-		"mode buttons must write back through the existing selection mode state",
+		"all four shared selection buttons must remain mutually exclusive",
 	)
 	check_has(
 		base_source,
-		'visible_controls.append(&"ModeButtons")',
-		"iOS compact selection options must expose the new vertical mode buttons",
+		"button.set_pressed_no_signal(index == _mode_selected)",
+		"persisted selection mode must restore the pressed shared button",
+	)
+	check_has(
+		base_source,
+		"_mode_selected = clampi(index, Mode.DEFAULT, Mode.INTERSECT)",
+		"shared mode buttons must write through the existing selection mode state",
+	)
+	check_true(
+		not wand_scene.contains('[node name="ModeButtons"'),
+		"Magic Wand must not retain a tool-specific mode-button copy",
+	)
+	check_true(
+		not wand_source.contains("func _on_mode_button_pressed"),
+		"Magic Wand logic must delegate shared mode state to BaseSelectionTool",
 	)
 
 
