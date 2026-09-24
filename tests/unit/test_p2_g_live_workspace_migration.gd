@@ -1174,8 +1174,13 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 	)
 	check_eq(
 		tools_root.vertical_scroll_mode,
+		ScrollContainer.SCROLL_MODE_AUTO,
+		"single-column Tools should scroll the complete tool-and-options stack"
+	)
+	check_eq(
+		left_options.vertical_scroll_mode,
 		ScrollContainer.SCROLL_MODE_DISABLED,
-		"merged Tools root should delegate scrolling to Left Tool Options"
+		"nested Left Tool Options must not compete with the outer single-column scroll"
 	)
 	_free_fixture(fixture)
 
