@@ -51,6 +51,8 @@ const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
 @export var allow_text_input := true
 ## Draws the read-only value as "< value >" to advertise horizontal drag adjustment.
 @export var show_drag_arrows := false
+## Multiplier applied to pointer drag distance. Values below 1.0 make drag adjustment slower.
+@export_range(0.05, 2.0, 0.05) var drag_sensitivity := 1.0
 @export var show_arrows := true:
 	set(v):
 		show_arrows = v
@@ -194,10 +196,11 @@ func _gui_input(event: InputEvent) -> void:
 			# Slow down to allow for more precision
 			if event.shift_pressed:
 				x_delta *= 0.1
+			var drag_delta := x_delta * drag_sensitivity
 			if show_progress:
-				ratio = get_meta("start_ratio") + x_delta / size.x
+				ratio = get_meta("start_ratio") + drag_delta / size.x
 			else:
-				value = _start_value + x_delta * step
+				value = _start_value + drag_delta * step
 			# Snap when snap_by_default is true, do the opposite when Control is pressed
 			if snap_by_default:
 				if not event.ctrl_pressed:
