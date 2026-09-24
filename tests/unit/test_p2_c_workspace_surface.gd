@@ -668,7 +668,6 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	_free_workspace(workspace)
 
 
-
 func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() -> void:
 	var workspace := _make_workspace()
 	var host: WorkspaceDockHost = workspace["host"]
@@ -676,11 +675,14 @@ func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() ->
 	surface.configure_floating_snap_policy({})
 
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.RIGHT,
-			0,
-			Vector2(320.0, 200.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.RIGHT,
+				0,
+				Vector2(320.0, 200.0),
+			)
 		),
 		"legacy right-dock request should be accepted as a floating snap",
 	)
@@ -701,11 +703,14 @@ func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() ->
 
 	var start := snapped
 	check_true(
-		surface.resize_floating_rect(
-			Builtins.PREVIEW_ID,
-			start,
-			Vector2(40.0, 30.0),
-			WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+		(
+			surface
+			. resize_floating_rect(
+				Builtins.PREVIEW_ID,
+				start,
+				Vector2(40.0, 30.0),
+				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
 		),
 		"snapped Preview must retain normal floating resize",
 	)
@@ -723,4 +728,3 @@ func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() ->
 		"right snap anchor should survive resize",
 	)
 	_free_workspace(workspace)
-
