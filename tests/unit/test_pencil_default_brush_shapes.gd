@@ -254,3 +254,61 @@ func test_tool_option_fields_put_names_above_numeric_and_checkbox_controls() -> 
 		"checkbox control should sit centered on the row below its name",
 	)
 	tool.free()
+
+
+func test_all_tool_numeric_options_are_drag_only_and_precision_tools_are_slower() -> void:
+	var generic_tool := BaseTool.new()
+	generic_tool.name = &"Bucket"
+	var generic_slider := ValueSlider.new()
+	generic_slider.prefix = "Tolerance:"
+	generic_tool.add_child(generic_slider)
+	generic_tool._apply_stacked_option_layout(generic_tool)
+	check_true(not generic_slider.allow_text_input, "tool numeric controls must disable text input")
+	check_true(
+		generic_slider.show_drag_arrows, "tool numeric controls must advertise drag adjustment"
+	)
+	check_true(
+		not generic_slider.show_arrows, "tool numeric controls must hide legacy arrow buttons"
+	)
+	check_true(
+		not generic_slider.show_progress, "tool numeric controls should use pure drag presentation"
+	)
+	check_eq(
+		generic_slider.drag_sensitivity,
+		1.0,
+		"ordinary tools should keep the default numeric drag sensitivity",
+	)
+	generic_tool.free()
+
+	for tool_name in ["Pencil", "Eraser"]:
+		var precision_tool := BaseTool.new()
+		precision_tool.name = tool_name
+		var slider := ValueSlider.new()
+		slider.prefix = "Size:"
+		precision_tool.add_child(slider)
+		precision_tool._apply_stacked_option_layout(precision_tool)
+		check_eq(
+			slider.drag_sensitivity,
+			BaseTool.PRECISION_TOOL_DRAG_SENSITIVITY,
+			"%s numeric dragging must use the slower precision sensitivity" % tool_name,
+		)
+		check_eq(
+			slider.custom_minimum_size.x,
+			BaseTool.SIDEBAR_CONTROL_WIDTH,
+			"%s numeric control must fit the narrow sidebar" % tool_name,
+		)
+		precision_tool.free()
+
+
+func test_value_slider_drag_math_uses_configurable_sensitivity() -> void:
+	var slider_source := FileAccess.get_file_as_string(VALUE_SLIDER_SOURCE)
+	check_has(
+		slider_source,
+		"@export_range(0.05, 2.0, 0.05) var drag_sensitivity := 1.0",
+		"ValueSlider must expose a reusable drag-sensitivity multiplier",
+	)
+	check_has(
+		slider_source,
+		"var drag_delta := x_delta * drag_sensitivity",
+		"pointer delta must be scaled before numeric values are changed",
+	)
