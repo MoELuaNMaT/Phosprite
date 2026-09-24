@@ -71,6 +71,7 @@ func _apply_stacked_option_layout(root: Node) -> void:
 
 func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
 	slider.allow_text_input = false
+	slider.prefix = _strip_option_colon(slider.prefix)
 	slider.show_drag_arrows = true
 	slider.show_arrows = false
 	slider.show_progress = false
@@ -97,9 +98,7 @@ func _configure_sidebar_option_button(option: OptionButton) -> void:
 
 func _configure_sidebar_label(label: Label) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var text_value := label.text.strip_edges()
-	if text_value.length() > 1 and (text_value.ends_with(":") or text_value.ends_with("：")):
-		label.text = text_value.left(-1)
+	label.text = _strip_option_colon(label.text)
 
 
 func _configure_sidebar_button(button: Button) -> void:
@@ -159,8 +158,12 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 
 
 func _format_option_label(raw_text: String) -> String:
+	return _strip_option_colon(raw_text)
+
+
+func _strip_option_colon(raw_text: String) -> String:
 	var label_text := raw_text.strip_edges()
-	if label_text.ends_with(":") or label_text.ends_with("："):
+	if label_text.length() > 1 and (label_text.ends_with(":") or label_text.ends_with("：")):
 		return label_text.left(-1)
 	return label_text
 
