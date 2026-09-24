@@ -1054,6 +1054,7 @@ func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 		WorkspaceDockLayout.DockZone.NONE,
 		"edge snap must never claim a real dock zone",
 	)
+	var candidate_rect := candidate.get("rect", Rect2()) as Rect2
 	check_true(surface.commit_module_drag(), "right-edge floating snap should commit")
 	await tree.process_frame
 
@@ -1061,9 +1062,9 @@ func test_right_edge_snap_keeps_floating_chrome_resize_and_no_pop_out() -> void:
 	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "right edge should snap to editor bounds")
 	check_almost_eq(
 		snapped.position.y,
-		bounds.position.y,
+		candidate_rect.position.y,
 		0.01,
-		"right-edge drop in the upper half should resolve to the top-right corner",
+		"right-edge snap must preserve Y when the panel is outside the top/bottom snap range",
 	)
 	check_eq(
 		host.layout.get_module_zone(Builtins.PREVIEW_ID),
