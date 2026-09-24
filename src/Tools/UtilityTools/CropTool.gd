@@ -20,49 +20,6 @@ func _ready() -> void:
 	_hide_crop_options()
 
 
-func _configure_ios_margin_options() -> void:
-	$ModeLabel.hide()
-	$HBoxContainer.hide()
-	$"%RatioContainer".hide()
-	$"%PosSizeContainer".hide()
-	$"%DimensionsLabel".hide()
-	$Apply.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var margins := $"%MarginsContainer" as VBoxContainer
-	if margins.get_node_or_null(^"TopBottomRow") != null:
-		return
-	var top := $"%Top" as Control
-	var bottom := $"%Bottom" as Control
-	var left := $"%Left" as Control
-	var right := $"%Right" as Control
-	var top_bottom_row := HBoxContainer.new()
-	top_bottom_row.name = &"TopBottomRow"
-	top_bottom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var left_right_row := HBoxContainer.new()
-	left_right_row.name = &"LeftRightRow"
-	left_right_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	for control in [top, bottom, left, right]:
-		control.get_parent().remove_child(control)
-		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margins.add_child(top_bottom_row)
-	margins.add_child(left_right_row)
-	top_bottom_row.add_child(top)
-	top_bottom_row.add_child(bottom)
-	left_right_row.add_child(left)
-	left_right_row.add_child(right)
-
-
-func _apply_ios_crop_visibility() -> void:
-	if OS.get_name() != "iOS":
-		return
-	$ModeLabel.hide()
-	$HBoxContainer.hide()
-	$"%MarginsContainer".show()
-	$"%RatioContainer".hide()
-	$"%PosSizeContainer".hide()
-	$"%DimensionsLabel".hide()
-
 
 func _exit_tree() -> void:
 	super._exit_tree()
