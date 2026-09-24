@@ -23,11 +23,6 @@ enum Placement {
 	COLLAPSED,
 }
 
-const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.14)
-const REGION_TARGET_HYSTERESIS := 48.0
-const FLOATING_SNAP_DISTANCE := 24.0
-const FLOATING_SNAP_MARGIN := 8.0
-
 enum FloatingSnapEdge {
 	NONE = 0,
 	LEFT = 1,
@@ -35,6 +30,11 @@ enum FloatingSnapEdge {
 	TOP = 4,
 	BOTTOM = 8,
 }
+
+const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.14)
+const REGION_TARGET_HYSTERESIS := 48.0
+const FLOATING_SNAP_DISTANCE := 24.0
+const FLOATING_SNAP_MARGIN := 8.0
 
 var manager: WorkspaceModuleManager
 var dock_host: WorkspaceDockHost
