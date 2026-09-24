@@ -46,6 +46,7 @@ var _vertical_size_flags_before_collapse := Control.SIZE_FILL
 var _position_adjustment_enabled := true
 var _header_accessory_layer: Node2D
 var _header_accessory: Control
+var _header_title_override := ""
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -166,6 +167,17 @@ func get_module_id() -> StringName:
 
 func get_content() -> Control:
 	return content
+
+
+func set_header_title_override(title: String) -> void:
+	if _header_title_override == title:
+		return
+	_header_title_override = title
+	queue_redraw()
+
+
+func clear_header_title_override() -> void:
+	set_header_title_override("")
 
 
 func set_header_accessory(accessory: Control) -> bool:
@@ -381,11 +393,12 @@ func _draw() -> void:
 	draw_line(
 		Vector2(0.0, header_height), Vector2(size.x, header_height), _visual_theme.border_color, 1.0
 	)
-	var title: String
-	if definition != null:
-		title = definition.get_resolved_display_name()
-	else:
-		title = String(name)
+	var title := _header_title_override
+	if title.is_empty():
+		if definition != null:
+			title = definition.get_resolved_display_name()
+		else:
+			title = String(name)
 	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
 	var header_actions_width := _get_header_actions_width()
 	var header_accessory_width := (
