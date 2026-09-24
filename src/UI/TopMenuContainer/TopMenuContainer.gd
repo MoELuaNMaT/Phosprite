@@ -71,6 +71,7 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var edit_menu := $MarginContainer/HBoxContainer/MenuBar/Edit as PopupMenu
 @onready var select_menu := $MarginContainer/HBoxContainer/MenuBar/Select as PopupMenu
 @onready var project_menu := $MarginContainer/HBoxContainer/MenuBar/Project as PopupMenu
+@onready var ui_menu := $MarginContainer/HBoxContainer/MenuBar/UI as PopupMenu
 @onready var effects_menu := $MarginContainer/HBoxContainer/MenuBar/Effects as PopupMenu
 @onready var view_menu := $MarginContainer/HBoxContainer/MenuBar/View as PopupMenu
 @onready var window_menu := $MarginContainer/HBoxContainer/MenuBar/Window as PopupMenu
@@ -154,6 +155,7 @@ func _input(event: InputEvent) -> void:
 		edit_menu.activate_item_by_event(event)
 		select_menu.activate_item_by_event(event)
 		project_menu.activate_item_by_event(event)
+		ui_menu.activate_item_by_event(event)
 		effects_menu.activate_item_by_event(event)
 		view_menu.activate_item_by_event(event)
 		window_menu.activate_item_by_event(event)
