@@ -737,9 +737,12 @@ func test_floating_snap_policy_releases_horizontal_edge_independently_from_top()
 
 	var bounds := surface.get_floating_bounds()
 	check_true(
-		surface.float_module(
-			Builtins.PREVIEW_ID,
-			Rect2(bounds.position, Vector2(320.0, 200.0)),
+		(
+			surface
+			. float_module(
+				Builtins.PREVIEW_ID,
+				Rect2(bounds.position, Vector2(320.0, 200.0)),
+			)
 		),
 		"Preview should start snapped at the upper-left corner",
 	)
@@ -751,8 +754,11 @@ func test_floating_snap_policy_releases_horizontal_edge_independently_from_top()
 	)
 
 	var requested_x := bounds.position.x + 80.0
-	var candidate := surface.update_module_drag(
-		Vector2(requested_x + grab_offset.x, bounds.position.y + grab_offset.y),
+	var candidate := (
+		surface
+		. update_module_drag(
+			Vector2(requested_x + grab_offset.x, bounds.position.y + grab_offset.y),
+		)
 	)
 	var rect := candidate.get("rect", Rect2()) as Rect2
 	check_almost_eq(
@@ -786,9 +792,12 @@ func test_floating_side_snap_range_is_narrow_and_symmetric() -> void:
 	var size := Vector2(320.0, 200.0)
 	var y := bounds.position.y + 120.0
 	check_true(
-		surface.float_module(
-			Builtins.PREVIEW_ID,
-			Rect2(Vector2(bounds.position.x + 9.0, y), size),
+		(
+			surface
+			. float_module(
+				Builtins.PREVIEW_ID,
+				Rect2(Vector2(bounds.position.x + 9.0, y), size),
+			)
 		),
 		"Preview should float just outside the left snap threshold",
 	)
@@ -801,9 +810,12 @@ func test_floating_side_snap_range_is_narrow_and_symmetric() -> void:
 	)
 
 	check_true(
-		surface.set_floating_rect(
-			Builtins.PREVIEW_ID,
-			Rect2(Vector2(bounds.position.x + 8.0, y), size),
+		(
+			surface
+			. set_floating_rect(
+				Builtins.PREVIEW_ID,
+				Rect2(Vector2(bounds.position.x + 8.0, y), size),
+			)
 		),
 		"Preview should accept a left-threshold placement",
 	)
@@ -816,9 +828,12 @@ func test_floating_side_snap_range_is_narrow_and_symmetric() -> void:
 	)
 
 	check_true(
-		surface.set_floating_rect(
-			Builtins.PREVIEW_ID,
-			Rect2(Vector2(bounds.end.x - size.x - 9.0, y), size),
+		(
+			surface
+			. set_floating_rect(
+				Builtins.PREVIEW_ID,
+				Rect2(Vector2(bounds.end.x - size.x - 9.0, y), size),
+			)
 		),
 		"Preview should float just outside the right snap threshold",
 	)
@@ -831,9 +846,12 @@ func test_floating_side_snap_range_is_narrow_and_symmetric() -> void:
 	)
 
 	check_true(
-		surface.set_floating_rect(
-			Builtins.PREVIEW_ID,
-			Rect2(Vector2(bounds.end.x - size.x - 8.0, y), size),
+		(
+			surface
+			. set_floating_rect(
+				Builtins.PREVIEW_ID,
+				Rect2(Vector2(bounds.end.x - size.x - 8.0, y), size),
+			)
 		),
 		"Preview should accept a right-threshold placement",
 	)
