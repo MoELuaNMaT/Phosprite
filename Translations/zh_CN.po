@@ -4225,3 +4225,14 @@ msgstr "图块属性"
 msgid "Probability:"
 msgstr "可能性："
 
+
+msgid "Color Selection"
+msgstr "颜色选择"
+
+msgid ""
+"Color Selection\\n"
+"\\n"
+"%s for left mouse button\\n"
+"%s for right mouse button"
+msgstr ""
+"颜色选择\\n\"\n\"\\n\"\n\"%s 用于鼠标左键\\n\"\n\"%s 用于鼠标右键"
