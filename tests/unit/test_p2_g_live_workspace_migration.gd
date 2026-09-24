@@ -583,6 +583,37 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 	_free_fixture(second)
 
 
+func test_tools_workspace_contract_is_a_narrow_sidebar() -> void:
+	var definitions := Builtins.create_definitions()
+	var tools_definition: WorkspaceModuleDefinition
+	for definition in definitions:
+		if definition.module_id == Builtins.TOOLS_ID:
+			tools_definition = definition
+			break
+	check_true(tools_definition != null, "Tools definition must exist")
+	check_eq(
+		tools_definition.minimum_size.x,
+		88.0,
+		"Tools sidebar should allow a compact 88px minimum width",
+	)
+	check_eq(
+		tools_definition.preferred_size.x,
+		96.0,
+		"Tools sidebar should default to a narrow 96px width",
+	)
+	check_eq(
+		tools_definition.maximum_size.x,
+		120.0,
+		"Tools sidebar should remain constrained to one narrow column",
+	)
+	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
+	check_has(
+		ui_scene,
+		"custom_minimum_size = Vector2(80, 0)",
+		"legacy LeftPanelContainer must no longer force a 130px option width",
+	)
+
+
 func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	var packed := load("res://src/UI/ToolsPanel/Tools.tscn") as PackedScene
 	check_true(packed != null, "Tools scene should load")
