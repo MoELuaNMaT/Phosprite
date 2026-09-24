@@ -135,6 +135,7 @@ func test_shading_is_removed_from_ios_toolbar() -> void:
 		"Shading must be part of the iOS toolbar removal set",
 	)
 
+
 func test_tool_name_moves_out_of_options_and_bucket_label_is_compact() -> void:
 	var base_scene := FileAccess.get_file_as_string(BASE_TOOL_SCENE)
 	check_has(
