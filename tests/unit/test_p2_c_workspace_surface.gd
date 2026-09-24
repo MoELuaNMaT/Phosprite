@@ -667,31 +667,36 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	)
 	_free_workspace(workspace)
 
+
 func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() -> void:
 	var workspace := _make_workspace()
 	var manager: WorkspaceModuleManager = workspace["manager"]
 	var host: WorkspaceDockHost = workspace["host"]
 	var surface: WorkspaceSurface = workspace["surface"]
-	surface.configure_floating_snap_policy(
-		{Builtins.TIMELINE_ID: DockLayout.DockZone.BOTTOM}
-	)
+	surface.configure_floating_snap_policy({Builtins.TIMELINE_ID: DockLayout.DockZone.BOTTOM})
 	check_true(
-		surface.dock_module(
-			Builtins.TIMELINE_ID,
-			DockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(760.0, 180.0),
-			{},
-			true,
+		(
+			surface
+			. dock_module(
+				Builtins.TIMELINE_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(760.0, 180.0),
+				{},
+				true,
+			)
 		),
 		"Timeline should establish the fixed bottom boundary",
 	)
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.RIGHT,
-			0,
-			Vector2(320.0, 200.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.RIGHT,
+				0,
+				Vector2(320.0, 200.0),
+			)
 		),
 		"legacy right-dock request should be accepted as a floating snap",
 	)
@@ -712,11 +717,14 @@ func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() ->
 
 	var start := snapped
 	check_true(
-		surface.resize_floating_rect(
-			Builtins.PREVIEW_ID,
-			start,
-			Vector2(40.0, 30.0),
-			WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+		(
+			surface
+			. resize_floating_rect(
+				Builtins.PREVIEW_ID,
+				start,
+				Vector2(40.0, 30.0),
+				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
 		),
 		"snapped Preview must retain normal floating resize",
 	)
@@ -744,26 +752,30 @@ func test_bottom_snap_tracks_timeline_top_when_timeline_height_changes() -> void
 	var workspace := _make_workspace()
 	var host: WorkspaceDockHost = workspace["host"]
 	var surface: WorkspaceSurface = workspace["surface"]
-	surface.configure_floating_snap_policy(
-		{Builtins.TIMELINE_ID: DockLayout.DockZone.BOTTOM}
-	)
+	surface.configure_floating_snap_policy({Builtins.TIMELINE_ID: DockLayout.DockZone.BOTTOM})
 	check_true(
-		surface.dock_module(
-			Builtins.TIMELINE_ID,
-			DockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(760.0, 160.0),
-			{},
-			true,
+		(
+			surface
+			. dock_module(
+				Builtins.TIMELINE_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(760.0, 160.0),
+				{},
+				true,
+			)
 		),
 		"Timeline should establish the initial bottom boundary",
 	)
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			DockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(280.0, 140.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(280.0, 140.0),
+			)
 		),
 		"legacy bottom placement should become a bottom-snapped float",
 	)
