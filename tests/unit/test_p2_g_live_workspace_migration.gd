@@ -583,7 +583,7 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 	_free_fixture(second)
 
 
-func test_tools_workspace_contract_is_a_narrow_sidebar() -> void:
+func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
 	var definitions := Builtins.create_definitions()
 	var tools_definition: WorkspaceModuleDefinition
 	for definition in definitions:
@@ -593,24 +593,24 @@ func test_tools_workspace_contract_is_a_narrow_sidebar() -> void:
 	check_true(tools_definition != null, "Tools definition must exist")
 	check_eq(
 		tools_definition.minimum_size.x,
-		88.0,
-		"Tools sidebar should allow a compact 88px minimum width",
+		136.0,
+		"Tools sidebar should allow two usable compact columns",
 	)
 	check_eq(
 		tools_definition.preferred_size.x,
-		96.0,
-		"Tools sidebar should default to a narrow 96px width",
+		144.0,
+		"Tools sidebar should default near the requested two-column reference width",
 	)
 	check_eq(
 		tools_definition.maximum_size.x,
-		120.0,
-		"Tools sidebar should remain constrained to one narrow column",
+		168.0,
+		"Tools sidebar should remain compact instead of becoming a wide panel",
 	)
 	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
 	check_has(
 		ui_scene,
-		"custom_minimum_size = Vector2(80, 0)",
-		"legacy LeftPanelContainer must no longer force a 130px option width",
+		"custom_minimum_size = Vector2(56, 0)",
+		"legacy LeftPanelContainer must fit inside the compact right column",
 	)
 
 
@@ -1182,8 +1182,8 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		migration.merge_left_tool_options_after_startup(),
 		"post-startup migration should merge the already initialized controls"
 	)
-	var merged := tools_root.get_node_or_null(^"MergedToolsContent") as VBoxContainer
-	check_true(merged != null, "post-startup merge should create one Tools content stack")
+	var merged := tools_root.get_node_or_null(^"MergedToolsContent") as HBoxContainer
+	check_true(merged != null, "post-startup merge should create one two-column Tools row")
 	check_eq(
 		left_options.get_parent(),
 		merged,
@@ -1199,9 +1199,21 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		null,
 		"palette should leave the root only after migration"
 	)
+	var tools_column := merged.get_node_or_null(^"PanelContainer") as PanelContainer
+	check_true(tools_column != null, "existing tool palette should become the left column")
+	check_eq(
+		tools_column.size_flags_stretch_ratio,
+		1.0,
+		"tool-button column should receive equal horizontal stretch",
+	)
+	check_eq(
+		left_options.size_flags_stretch_ratio,
+		1.0,
+		"tool-options column should receive equal horizontal stretch",
+	)
 	check_true(
-		merged.get_node_or_null(^"PanelContainer") != null,
-		"existing palette should become the upper merged section"
+		merged.get_node_or_null(^"ToolOptionsSeparator") is VSeparator,
+		"two-column Tools should use a vertical separator",
 	)
 	check_eq(
 		tools_root.vertical_scroll_mode,
