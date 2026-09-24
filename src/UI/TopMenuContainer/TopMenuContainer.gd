@@ -71,7 +71,6 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var edit_menu := $MarginContainer/HBoxContainer/MenuBar/Edit as PopupMenu
 @onready var select_menu := $MarginContainer/HBoxContainer/MenuBar/Select as PopupMenu
 @onready var project_menu := $MarginContainer/HBoxContainer/MenuBar/Project as PopupMenu
-@onready var ui_menu := $MarginContainer/HBoxContainer/MenuBar/UI as PopupMenu
 @onready var effects_menu := $MarginContainer/HBoxContainer/MenuBar/Effects as PopupMenu
 @onready var view_menu := $MarginContainer/HBoxContainer/MenuBar/View as PopupMenu
 @onready var window_menu := $MarginContainer/HBoxContainer/MenuBar/Window as PopupMenu
@@ -82,6 +81,8 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var layout_name_line_edit := %LayoutName as LineEdit
 @onready var layout_from_option_button := %LayoutFrom as OptionButton
 @onready var return_home_button := %ReturnHome as Button
+@onready var ui_layout_button := %UILayoutButton as MenuButton
+@onready var ui_menu := ui_layout_button.get_popup()
 
 @onready var greyscale_vision: ColorRect = main_ui.find_child("GreyscaleVision")
 
@@ -134,14 +135,16 @@ func _ready() -> void:
 
 func set_return_home_visible(should_show: bool) -> void:
 	return_home_button.visible = should_show
+	ui_layout_button.visible = should_show
 	if not should_show:
 		return
 	var row := return_home_button.get_parent()
 	if row == null:
 		return
 	# iPadOS owns the center of the title bar for its multitasking ellipsis.
-	# Keep Projects immediately after the app menu so it stays in the left safe area.
+	# Keep Projects and UI immediately after the app menu in the left safe area.
 	row.move_child(return_home_button, mini(menu_bar.get_index() + 1, row.get_child_count() - 1))
+	row.move_child(ui_layout_button, mini(return_home_button.get_index() + 1, row.get_child_count() - 1))
 
 
 func _on_return_home_pressed() -> void:
