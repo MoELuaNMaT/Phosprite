@@ -89,7 +89,7 @@ func _input(event: InputEvent) -> void:
 	if Input.is_action_just_pressed(&"mm_change_brush_size", true):
 		_is_using_mm_action = true
 	if _is_using_mm_action:
-		var brush_size_value := _mm_action.get_action_distance_int(event, true)
+		var brush_size_value: int = _mm_action.get_action_distance_int(event, true)
 		$Brush/BrushSize.value += brush_size_value
 
 
@@ -1016,7 +1016,7 @@ func _update_mm_action(action_name: String) -> void:
 	if action_name != "mm_change_brush_size":
 		return
 	_mm_action = Keychain.actions[&"mm_change_brush_size"] as Keychain.MouseMovementInputAction
-	var new_mm_action := Keychain.MouseMovementInputAction.new()
+	var new_mm_action: Keychain.MouseMovementInputAction = Keychain.MouseMovementInputAction.new()
 	new_mm_action.action_name = &"mm_change_brush_size"
 	new_mm_action.mouse_dir = _mm_action.mouse_dir
 	new_mm_action.sensitivity = _mm_action.sensitivity
