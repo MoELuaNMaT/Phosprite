@@ -260,6 +260,7 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 	_apply_floating_rect(module_id, rect)
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
+	_floating_anchors[module_id] = _detect_snap_edges(rect)
 	_last_floating_rects[module_id] = rect
 	_floating_anchors[module_id] = _detect_snap_edges(rect)
 	_collapsed_restore.erase(module_id)
@@ -425,11 +426,11 @@ func resize_floating_rect(
 		requested_size.y = start_rect.size.y + delta.y
 
 	var target_size := definition.get_constrained_size(requested_size)
-	var bounds := dock_host.size if dock_host != null else Vector2.ZERO
-	if bounds.x > 0.0:
-		target_size.x = minf(target_size.x, bounds.x)
-	if bounds.y > 0.0:
-		target_size.y = minf(target_size.y, bounds.y)
+	var bounds := get_floating_bounds()
+	if bounds.size.x > 0.0:
+		target_size.x = minf(target_size.x, bounds.size.x)
+	if bounds.size.y > 0.0:
+		target_size.y = minf(target_size.y, bounds.size.y)
 
 	var target_position := start_rect.position
 	if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
@@ -518,6 +519,7 @@ func clear_module_placement(module_id: StringName) -> bool:
 	if placement == Placement.NONE:
 		_placements.erase(module_id)
 		_floating_rects.erase(module_id)
+		_floating_anchors.erase(module_id)
 		_collapsed_restore.erase(module_id)
 		_peeking.erase(module_id)
 		return true
@@ -549,6 +551,7 @@ func clear_module_placement(module_id: StringName) -> bool:
 
 	_placements.erase(module_id)
 	_floating_rects.erase(module_id)
+	_floating_anchors.erase(module_id)
 	_collapsed_restore.erase(module_id)
 	_peeking.erase(module_id)
 	module_cleared.emit(module_id)
@@ -596,11 +599,14 @@ func begin_module_drag(module_id: StringName, pointer: Vector2 = Vector2.ZERO) -
 func update_module_drag(pointer: Vector2) -> Dictionary:
 	if _drag_module_id == &"":
 		return _invalid_candidate()
-	var dock_candidate := _dock_candidate_for_pointer(pointer)
-	if bool(dock_candidate.get("valid", false)):
-		_drag_candidate = dock_candidate
-	else:
+	if _floating_snap_policy_enabled and not is_fixed_dock_module(_drag_module_id):
 		_drag_candidate = _floating_candidate_for_pointer(pointer)
+	else:
+		var dock_candidate := _dock_candidate_for_pointer(pointer)
+		if bool(dock_candidate.get("valid", false)):
+			_drag_candidate = dock_candidate
+		else:
+			_drag_candidate = _floating_candidate_for_pointer(pointer)
 	_show_surface_candidate(_drag_candidate)
 	surface_preview_changed.emit(_drag_candidate.duplicate(true))
 	return _drag_candidate.duplicate(true)
@@ -833,6 +839,7 @@ func _floating_candidate_for_pointer(pointer: Vector2) -> Dictionary:
 		"index": -1,
 		"rect": rect,
 		"preview_rect": rect,
+		"snap_edges": _detect_snap_edges(rect),
 	}
 
 
@@ -848,7 +855,9 @@ func _get_drag_size(module_id: StringName) -> Vector2:
 	return dock_host.layout.get_default_module_size(module_id)
 
 
-func _constrain_floating_rect(module_id: StringName, requested_rect: Rect2) -> Rect2:
+func _constrain_floating_rect(
+	module_id: StringName, requested_rect: Rect2, allow_snap: bool = true
+) -> Rect2:
 	var definition := manager.get_definition(module_id) if manager != null else null
 	if definition == null:
 		return requested_rect
@@ -856,15 +865,127 @@ func _constrain_floating_rect(module_id: StringName, requested_rect: Rect2) -> R
 	if requested_size == Vector2.ZERO:
 		requested_size = definition.get_constrained_preferred_size()
 	var target_size := definition.get_constrained_size(requested_size)
-	var bounds := dock_host.size if dock_host != null else Vector2.ZERO
+	var bounds := get_floating_bounds()
+	if not bounds.has_area():
+		return Rect2(requested_rect.position, target_size)
+	target_size.x = minf(target_size.x, bounds.size.x)
+	target_size.y = minf(target_size.y, bounds.size.y)
+	var rect := Rect2(requested_rect.position, target_size)
+	if allow_snap:
+		rect = _snap_floating_rect(rect, bounds)
+	return _clamp_rect_to_bounds(rect, bounds)
+
+
+func _snap_floating_rect(rect: Rect2, bounds: Rect2) -> Rect2:
+	var snapped := rect
+	var left_gap := absf(rect.position.x - bounds.position.x)
+	var right_gap := absf(rect.end.x - bounds.end.x)
+	var top_gap := absf(rect.position.y - bounds.position.y)
+	var bottom_gap := absf(rect.end.y - bounds.end.y)
+	if minf(left_gap, right_gap) <= FLOATING_SNAP_DISTANCE:
+		if left_gap <= right_gap:
+			snapped.position.x = bounds.position.x
+		else:
+			snapped.position.x = bounds.end.x - snapped.size.x
+	if minf(top_gap, bottom_gap) <= FLOATING_SNAP_DISTANCE:
+		if top_gap <= bottom_gap:
+			snapped.position.y = bounds.position.y
+		else:
+			snapped.position.y = bounds.end.y - snapped.size.y
+	return snapped
+
+
+func _clamp_rect_to_bounds(rect: Rect2, bounds: Rect2) -> Rect2:
 	var max_position := Vector2(
-		maxf(0.0, bounds.x - target_size.x), maxf(0.0, bounds.y - target_size.y)
+		maxf(bounds.position.x, bounds.end.x - rect.size.x),
+		maxf(bounds.position.y, bounds.end.y - rect.size.y),
 	)
-	var position := Vector2(
-		clampf(requested_rect.position.x, 0.0, max_position.x),
-		clampf(requested_rect.position.y, 0.0, max_position.y)
+	return Rect2(
+		Vector2(
+			clampf(rect.position.x, bounds.position.x, max_position.x),
+			clampf(rect.position.y, bounds.position.y, max_position.y),
+		),
+		rect.size,
 	)
-	return Rect2(position, target_size)
+
+
+func _detect_snap_edges(rect: Rect2) -> int:
+	var bounds := get_floating_bounds()
+	if not bounds.has_area() or not rect.has_area():
+		return FloatingSnapEdge.NONE
+	var edges := FloatingSnapEdge.NONE
+	if is_equal_approx(rect.position.x, bounds.position.x):
+		edges |= FloatingSnapEdge.LEFT
+	elif is_equal_approx(rect.end.x, bounds.end.x):
+		edges |= FloatingSnapEdge.RIGHT
+	if is_equal_approx(rect.position.y, bounds.position.y):
+		edges |= FloatingSnapEdge.TOP
+	elif is_equal_approx(rect.end.y, bounds.end.y):
+		edges |= FloatingSnapEdge.BOTTOM
+	return edges
+
+
+func _apply_saved_anchor(module_id: StringName, rect: Rect2) -> Rect2:
+	var bounds := get_floating_bounds()
+	if not bounds.has_area():
+		return rect
+	var edges := int(_floating_anchors.get(module_id, FloatingSnapEdge.NONE))
+	var anchored := rect
+	if edges & FloatingSnapEdge.LEFT:
+		anchored.position.x = bounds.position.x
+	elif edges & FloatingSnapEdge.RIGHT:
+		anchored.position.x = bounds.end.x - anchored.size.x
+	if edges & FloatingSnapEdge.TOP:
+		anchored.position.y = bounds.position.y
+	elif edges & FloatingSnapEdge.BOTTOM:
+		anchored.position.y = bounds.end.y - anchored.size.y
+	return anchored
+
+
+func _legacy_dock_to_floating_rect(
+	module_id: StringName, zone: int, index: int, requested_size: Vector2
+) -> Rect2:
+	var definition := manager.get_definition(module_id) if manager != null else null
+	if definition == null:
+		return Rect2()
+	var size := requested_size
+	if size == Vector2.ZERO:
+		size = definition.get_constrained_preferred_size()
+	size = definition.get_constrained_size(size)
+	var bounds := get_floating_bounds()
+	if bounds.has_area():
+		size.x = minf(size.x, bounds.size.x)
+		size.y = minf(size.y, bounds.size.y)
+	var position := bounds.position
+	match zone:
+		WorkspaceDockLayout.DockZone.LEFT:
+			position.x = bounds.position.x
+			position.y = _legacy_cross_axis_position(bounds, size, index, false)
+		WorkspaceDockLayout.DockZone.RIGHT:
+			position.x = bounds.end.x - size.x
+			position.y = _legacy_cross_axis_position(bounds, size, index, false)
+		WorkspaceDockLayout.DockZone.TOP:
+			position.y = bounds.position.y
+			position.x = _legacy_cross_axis_position(bounds, size, index, true)
+		WorkspaceDockLayout.DockZone.BOTTOM:
+			position.y = bounds.end.y - size.y
+			position.x = _legacy_cross_axis_position(bounds, size, index, true)
+		_:
+			position = bounds.position
+	return _clamp_rect_to_bounds(Rect2(position, size), bounds)
+
+
+func _legacy_cross_axis_position(
+	bounds: Rect2, size: Vector2, index: int, horizontal: bool
+) -> float:
+	var start := bounds.position.x if horizontal else bounds.position.y
+	var end := bounds.end.x if horizontal else bounds.end.y
+	var extent := size.x if horizontal else size.y
+	if index <= 0:
+		return start
+	if index == 1:
+		return end - extent
+	return start + maxf(0.0, (end - start - extent) * 0.5)
 
 
 func _apply_floating_rect(module_id: StringName, rect: Rect2) -> void:
@@ -976,7 +1097,7 @@ func _clear_drag_state() -> void:
 
 
 func _can_float(module_id: StringName) -> bool:
-	if manager == null:
+	if manager == null or is_fixed_dock_module(module_id):
 		return false
 	var definition := manager.get_definition(module_id)
 	return definition != null and definition.can_float
