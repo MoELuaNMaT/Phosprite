@@ -20,7 +20,6 @@ func _ready() -> void:
 	_hide_crop_options()
 
 
-
 func _exit_tree() -> void:
 	super._exit_tree()
 	_crop.tool_count -= 1
