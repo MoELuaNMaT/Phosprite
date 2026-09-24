@@ -1,25 +1,16 @@
 extends BaseDrawTool
 
-var _prev_mode := false
 var _last_position := Vector2i(Vector2.INF)
 var _changed := false
-var _overwrite := false
-var _fill_inside := false
-var _fill_inside_rect := Rect2i()  ## The bounding box that surrounds the area that gets filled.
-var _draw_points := PackedVector2Array()
-var _old_spacing_mode := false  ## Needed to reset spacing mode in case we change it
 
 
 class PencilOp:
 	extends Drawer.ColorOp
 	var changed := false
-	var overwrite := false
 
 	func process(src: Color, dst: Color) -> Color:
 		changed = true
 		src.a *= strength
-		if overwrite:
-			return src
 		return dst.blend(src)
 
 
@@ -27,88 +18,52 @@ func _init() -> void:
 	_drawer.color_op = PencilOp.new()
 
 
-func _on_Overwrite_toggled(button_pressed: bool) -> void:
-	_overwrite = button_pressed
+func _on_Opacity_value_changed(value: float) -> void:
+	_strength = clampf(value / 100.0, 0.0, 1.0)
 	update_config()
 	save_config()
-
-
-func _on_FillInside_toggled(button_pressed: bool) -> void:
-	_fill_inside = button_pressed
-	update_config()
-	save_config()
-
-
-func _on_SpacingMode_toggled(button_pressed: bool) -> void:
-	# This acts as an interface to access the intrinsic spacing_mode feature
-	# BaseTool holds the spacing system, but for a tool to access them it's recommended to do it in
-	# their own script
-	_spacing_mode = button_pressed
-	update_config()
-	save_config()
-
-
-func _on_Spacing_value_changed(value: Vector2) -> void:
-	_spacing = value
-	save_config()
-
-
-func _input(event: InputEvent) -> void:
-	super(event)
-	var overwrite_button: CheckBox = $Overwrite
-
-	if event.is_action_pressed("change_tool_mode"):
-		_prev_mode = overwrite_button.button_pressed
-	if event.is_action("change_tool_mode"):
-		overwrite_button.set_pressed_no_signal(!_prev_mode)
-		_overwrite = overwrite_button.button_pressed
-	if event.is_action_released("change_tool_mode"):
-		overwrite_button.set_pressed_no_signal(_prev_mode)
-		_overwrite = overwrite_button.button_pressed
 
 
 func get_config() -> Dictionary:
 	var config := super.get_config()
-	config["overwrite"] = _overwrite
-	config["fill_inside"] = _fill_inside
-	config["spacing_mode"] = _spacing_mode
-	config["spacing"] = _spacing
+	config.erase("brush_density")
+	config.erase("overwrite")
+	config.erase("fill_inside")
+	config.erase("spacing_mode")
+	config.erase("spacing")
+	config["strength"] = _strength
 	return config
 
 
 func set_config(config: Dictionary) -> void:
 	super.set_config(config)
-	_overwrite = config.get("overwrite", _overwrite)
-	_fill_inside = config.get("fill_inside", _fill_inside)
-	_spacing_mode = config.get("spacing_mode", _spacing_mode)
-	_spacing = config.get("spacing", _spacing)
+	_brush_density = 100
+	_spacing_mode = false
+	_spacing = Vector2i.ZERO
+	_strength = clampf(float(config.get("strength", _strength)), 0.0, 1.0)
 
 
 func update_config() -> void:
 	super.update_config()
-	$Overwrite.button_pressed = _overwrite
-	$FillInside.button_pressed = _fill_inside
-	$SpacingMode.button_pressed = _spacing_mode
-	$Spacing.visible = _spacing_mode
-	$Spacing.value = _spacing
+	$DensityValueSlider.visible = false
+	$Opacity.value = _strength * 100.0
+
+
+func update_brush() -> void:
+	super.update_brush()
+	$DensityValueSlider.visible = false
 
 
 func draw_start(pos: Vector2i) -> void:
-	_old_spacing_mode = _spacing_mode
+	_spacing_mode = false
 	pos = snap_position(pos)
 	super.draw_start(pos)
 
 	Global.transform_content_confirmed.emit()
 	prepare_undo()
-	var can_skip_mask := true
-	if tool_slot.color.a < 1 and !_overwrite:
-		can_skip_mask = false
-	update_mask(can_skip_mask)
+	update_mask(tool_slot.color.a >= 1.0 and is_equal_approx(_strength, 1.0))
 	_changed = false
 	_drawer.color_op.changed = false
-	_drawer.color_op.overwrite = _overwrite
-	_draw_points = []
-
 	_drawer.reset()
 
 	_draw_line = Input.is_action_pressed("draw_create_line")
@@ -120,17 +75,12 @@ func draw_start(pos: Vector2i) -> void:
 		if draw_pos == Vector2i(Vector2.INF):
 			return
 	if _draw_line:
-		_spacing_mode = false  # spacing mode is disabled during line mode
 		if Global.mirror_view:
-			# mirroring position is ONLY required by "Preview"
 			pos.x = (Global.current_project.size.x - 1) - pos.x
 		_line_start = pos
 		_line_end = pos
 		update_line_polylines(_line_start, _line_end)
 	else:
-		if _fill_inside:
-			_draw_points.append(pos)
-			_fill_inside_rect = Rect2i(pos, Vector2i.ZERO)
 		draw_tool(draw_pos)
 		_last_position = pos
 		Global.canvas.sprite_changed_this_frame = true
@@ -143,9 +93,7 @@ func draw_move(pos_i: Vector2i) -> void:
 	super.draw_move(pos)
 
 	if _draw_line:
-		_spacing_mode = false  # spacing mode is disabled during line mode
 		if Global.mirror_view:
-			# mirroring position is ONLY required by "Preview"
 			pos.x = (Global.current_project.size.x - 1) - pos.x
 		var d := _line_angle_constraint(_line_start, pos)
 		_line_end = d.position
@@ -158,64 +106,44 @@ func draw_move(pos_i: Vector2i) -> void:
 		_last_position = pos
 		cursor_text = ""
 		Global.canvas.sprite_changed_this_frame = true
-		if _fill_inside:
-			_draw_points.append(pos)
-			_fill_inside_rect = _fill_inside_rect.expand(pos)
 
 
 func draw_end(pos: Vector2i) -> void:
 	pos = snap_position(pos)
 
 	if _draw_line:
-		_spacing_mode = false  # spacing mode is disabled during line mode
 		if Global.mirror_view:
-			# now we revert back the coordinates from their mirror form so that line can be drawn
 			_line_start.x = (Global.current_project.size.x - 1) - _line_start.x
 			_line_end.x = (Global.current_project.size.x - 1) - _line_end.x
 		draw_tool(_line_start)
 		draw_fill_gap(_line_start, _line_end)
 		_draw_line = false
-	else:
-		if _fill_inside:
-			_draw_points.append(pos)
-			if _draw_points.size() > 3:
-				var v := Vector2i()
-				for x in _fill_inside_rect.size.x:
-					v.x = x + _fill_inside_rect.position.x
-					for y in _fill_inside_rect.size.y:
-						v.y = y + _fill_inside_rect.position.y
-						if Geometry2D.is_point_in_polygon(v, _draw_points):
-							if _spacing_mode:
-								# use of get_spacing_position() in Pencil.gd is a rare case
-								# (you would ONLY need _spacing_mode and _spacing in most cases)
-								v = get_spacing_position(v)
-							draw_tool(v)
 
-	_fill_inside_rect = Rect2i()
 	commit_undo()
 	super.draw_end(pos)
 	cursor_text = ""
 	update_random_image()
-	_spacing_mode = _old_spacing_mode
+	_spacing_mode = false
 
 
 func _draw_brush_image(brush_image: Image, src_rect: Rect2i, dst: Vector2i) -> void:
 	_changed = true
+	var effective_brush := brush_image
+	var opacity := clampf(_drawer.color_op.strength, 0.0, 1.0)
+	if not is_equal_approx(opacity, 1.0):
+		effective_brush = brush_image.duplicate()
+		for y in effective_brush.get_height():
+			for x in effective_brush.get_width():
+				var color := effective_brush.get_pixel(x, y)
+				color.a *= opacity
+				effective_brush.set_pixel(x, y, color)
+
 	var images := _get_selected_draw_images()
-	if _overwrite:
-		for draw_image in images:
-			if Tools.alpha_locked:
-				var mask := draw_image.get_region(Rect2i(dst, brush_image.get_size()))
-				draw_image.blit_rect_mask(brush_image, mask, src_rect, dst)
-			else:
-				draw_image.blit_rect(brush_image, src_rect, dst)
-			draw_image.convert_rgb_to_indexed()
-	else:
-		for draw_image in images:
-			if Tools.alpha_locked:
-				var mask := draw_image.get_region(Rect2i(dst, brush_image.get_size()))
-				draw_image.blend_rect_mask(brush_image, mask, src_rect, dst)
-			else:
-				draw_image.blend_rect(brush_image, src_rect, dst)
-			draw_image.convert_rgb_to_indexed()
+	for draw_image in images:
+		if Tools.alpha_locked:
+			var mask := draw_image.get_region(Rect2i(dst, effective_brush.get_size()))
+			draw_image.blend_rect_mask(effective_brush, mask, src_rect, dst)
+		else:
+			draw_image.blend_rect(effective_brush, src_rect, dst)
+		draw_image.convert_rgb_to_indexed()
 	update_materials(images)
