@@ -1773,7 +1773,9 @@ func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> 
 	for profile_id in range(1, 5):
 		var index := menu.get_item_index(profile_id)
 		check_true(index >= 0, "each UI profile should have its own menu item")
-		check_eq(menu.get_item_text(index), str(profile_id), "profile label should match its slot number")
+		check_eq(
+			menu.get_item_text(index), str(profile_id), "profile label should match its slot number"
+		)
 		check_eq(
 			menu.is_item_checked(index),
 			profile_id == 1,
