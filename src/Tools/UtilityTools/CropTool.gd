@@ -6,14 +6,18 @@ var _crop: CropRect
 var _start_pos: Vector2
 var _syncing := false
 var _locked_ratio := false
+var _drag_changed := false
 
 
 func _ready() -> void:
 	super._ready()
 	_crop = Global.canvas.crop_rect
+	_crop.mode = CropRect.Mode.MARGINS
+	_crop.locked_size = false
 	_crop.updated.connect(_sync_ui)
 	_crop.tool_count += 1
 	_sync_ui()
+	_hide_crop_options()
 
 
 func _exit_tree() -> void:
@@ -23,12 +27,14 @@ func _exit_tree() -> void:
 
 func draw_start(pos: Vector2i) -> void:
 	super.draw_start(pos)
+	_drag_changed = false
 	_offset = pos - _crop.rect.position
 	_start_pos = pos
 
 
 func draw_move(pos: Vector2i) -> void:
 	super.draw_move(pos)
+	_drag_changed = true
 	if _crop.locked_size:
 		_crop.rect.position = pos - _offset
 	else:
@@ -92,14 +98,33 @@ func _sync_ui() -> void:
 	$"%Size".value = _crop.rect.size
 
 	$"%DimensionsLabel".text = str(_crop.rect.size.x, " x ", _crop.rect.size.y)
+	_hide_crop_options()
 	_syncing = false
+
+
+func draw_end(pos: Vector2i) -> void:
+	super.draw_end(pos)
+	if not _drag_changed:
+		return
+	_drag_changed = false
+	_crop.apply()
+
+
+func _hide_crop_options() -> void:
+	for child in get_children():
+		if child is not Control:
+			continue
+		var control := child as Control
+		if control.name in [&"ColorRect", &"Label"]:
+			continue
+		control.hide()
 
 
 # UI Signals:
 
 
 func _on_CropMode_item_selected(index: CropRect.Mode) -> void:
-	if _syncing:
+	if _syncing or OS.get_name() == "iOS":
 		return
 	_crop.mode = index
 	_crop.updated.emit()

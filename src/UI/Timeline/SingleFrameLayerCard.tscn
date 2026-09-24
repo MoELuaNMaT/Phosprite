@@ -1,0 +1,56 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/UI/Timeline/SingleFrameLayerCard.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/UI/Nodes/TransparentChecker.tscn" id="2_checker"]
+
+[node name="SingleFrameLayerCard" type="Button"]
+custom_minimum_size = Vector2(104, 126)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+focus_mode = 0
+mouse_default_cursor_shape = 2
+toggle_mode = true
+script = ExtResource("1_script")
+
+[node name="Preview" type="Control" parent="."]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 98.0
+offset_bottom = 98.0
+mouse_filter = 2
+
+[node name="TransparentChecker" parent="Preview" instance=ExtResource("2_checker")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PreviewTexture" type="TextureRect" parent="Preview"]
+unique_name_in_owner = true
+texture_filter = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LayerName" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 6.0
+offset_top = 101.0
+offset_right = 98.0
+offset_bottom = 122.0
+mouse_filter = 2
+text = "Layer"
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3

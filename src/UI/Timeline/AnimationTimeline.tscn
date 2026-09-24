@@ -31,6 +31,7 @@
 [ext_resource type="PackedScene" uid="uid://hbgwxlin4jun" path="res://src/UI/Timeline/NewTileMapLayerDialog.tscn" id="29_t0mtf"]
 [ext_resource type="Texture2D" uid="uid://dinubfua8gqhw" path="res://assets/graphics/timeline/expandable.png" id="30"]
 [ext_resource type="Texture2D" uid="uid://fbwld5ofmocm" path="res://assets/graphics/timeline/loop.png" id="31"]
+[ext_resource type="PackedScene" path="res://src/UI/Timeline/SingleFrameLayerStrip.tscn" id="32_single"]
 
 [sub_resource type="InputEventAction" id="InputEventAction_r3l7p"]
 action = &"new_layer"
@@ -1005,6 +1006,16 @@ unique_name_in_owner = true
 z_index = 2
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="SingleFrameLayerStrip" parent="." instance=ExtResource("32_single")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="AnimationTimer" type="Timer" parent="." unique_id=334041151]
 

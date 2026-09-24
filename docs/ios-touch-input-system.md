@@ -60,3 +60,12 @@ The iOS build must be acceptance-tested for handle acquisition and Confirm/Cance
 ## Explicitly deferred
 
 P1-D2 does not redesign Center, Displace Origin, Snap Axis, Snap Grid, Quick Copy, Duplicate, two-finger rotation, Palette/Layer/Timeline touch UI, or Primary/Secondary switching.
+
+
+## Two-finger tap undo
+
+On iPad, a quick two-finger tap inside the Main Canvas invokes the existing project Undo command.
+The adapter briefly arbitrates the pair as a tap candidate before pan/zoom begins. If either finger
+moves beyond the tap slop, or the pair is held beyond the tap window, ownership falls through to the
+existing two-finger navigation path using the original pair baseline. This prevents one gesture from
+both navigating and undoing.

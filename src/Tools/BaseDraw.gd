@@ -2,6 +2,13 @@ class_name BaseDrawTool
 extends BaseTool
 
 const IMAGE_BRUSHES := [Brushes.FILE, Brushes.RANDOM_FILE, Brushes.CUSTOM]
+const BrushShapes := preload("res://src/Tools/BrushShapeGenerator.gd")
+const DEFAULT_GEOMETRIC_BRUSHES := [
+	Brushes.PIXEL,
+	Brushes.HOLLOW_SQUARE,
+	Brushes.CIRCLE,
+	Brushes.FILLED_CIRCLE,
+]
 
 var _brush := Brushes.get_default_brush()
 var _brush_size := 1
@@ -82,7 +89,7 @@ func _input(event: InputEvent) -> void:
 	if Input.is_action_just_pressed(&"mm_change_brush_size", true):
 		_is_using_mm_action = true
 	if _is_using_mm_action:
-		var brush_size_value := _mm_action.get_action_distance_int(event, true)
+		var brush_size_value: int = _mm_action.get_action_distance_int(event, true)
 		$Brush/BrushSize.value += brush_size_value
 
 
@@ -195,20 +202,8 @@ func update_brush() -> void:
 		_brush_texture = ImageTexture.create_from_image(_brush_image)
 	else:
 		match _brush.type:
-			Brushes.PIXEL:
-				_brush_texture = ImageTexture.create_from_image(
-					load("res://assets/graphics/pixel_image.png")
-				)
-				_stroke_dimensions = Vector2.ONE * _brush_size
-			Brushes.CIRCLE:
-				_brush_texture = ImageTexture.create_from_image(
-					load("res://assets/graphics/circle_9x9.png")
-				)
-				_stroke_dimensions = Vector2.ONE * _brush_size
-			Brushes.FILLED_CIRCLE:
-				_brush_texture = ImageTexture.create_from_image(
-					load("res://assets/graphics/circle_filled_9x9.png")
-				)
+			Brushes.PIXEL, Brushes.HOLLOW_SQUARE, Brushes.CIRCLE, Brushes.FILLED_CIRCLE:
+				_refresh_default_brush_preview()
 				_stroke_dimensions = Vector2.ONE * _brush_size
 			Brushes.FILE, Brushes.RANDOM_FILE, Brushes.CUSTOM:
 				$Brush/BrushSize.suffix = "00 %"  # Use a different size convention on images
@@ -230,6 +225,26 @@ func update_brush() -> void:
 	$ColorInterpolation.visible = _brush.type in IMAGE_BRUSHES
 	$TransformButtonsContainer.visible = _brush.type in IMAGE_BRUSHES
 	Global.canvas.indicators.queue_redraw()
+
+
+func _refresh_default_brush_preview() -> void:
+	var shape := _default_brush_shape(_brush.type)
+	var preview := BrushShapes.create_preview_image(shape, _brush_size, Color.BLACK)
+	_brush_texture = ImageTexture.create_from_image(preview)
+	$Brush/Type/Texture.texture = _brush_texture
+
+
+func _default_brush_shape(brush_type: int) -> BrushShapes.Shape:
+	match brush_type:
+		Brushes.PIXEL:
+			return BrushShapes.Shape.FILLED_SQUARE
+		Brushes.HOLLOW_SQUARE:
+			return BrushShapes.Shape.HOLLOW_SQUARE
+		Brushes.FILLED_CIRCLE:
+			return BrushShapes.Shape.FILLED_CIRCLE
+		Brushes.CIRCLE:
+			return BrushShapes.Shape.HOLLOW_CIRCLE
+	return BrushShapes.Shape.FILLED_SQUARE
 
 
 func update_random_image() -> void:
@@ -452,6 +467,8 @@ func _draw_tool(pos: Vector2, draw_brush := true) -> PackedVector2Array:
 	match _brush.type:
 		Brushes.PIXEL:
 			return _compute_draw_tool_pixel(pos)
+		Brushes.HOLLOW_SQUARE:
+			return _compute_draw_tool_hollow_square(pos)
 		Brushes.CIRCLE:
 			return _compute_draw_tool_circle(pos, false)
 		Brushes.FILLED_CIRCLE:
@@ -587,6 +604,15 @@ func _compute_draw_tool_pixel(pos: Vector2) -> PackedVector2Array:
 
 
 ## Compute the array of coordinates that should be drawn
+func _compute_draw_tool_hollow_square(pos: Vector2) -> PackedVector2Array:
+	var brush_size := _brush_size_dynamics
+	var start := Vector2i(pos) - Vector2i.ONE * (brush_size >> 1)
+	var result := PackedVector2Array()
+	for point in BrushShapes.get_points(BrushShapes.Shape.HOLLOW_SQUARE, brush_size):
+		result.append(start + point)
+	return result
+
+
 func _compute_draw_tool_circle(pos: Vector2i, fill := false) -> Array[Vector2i]:
 	var brush_size := Vector2i(_brush_size_dynamics, _brush_size_dynamics)
 	var offset_pos := pos - (brush_size / 2)
@@ -825,6 +851,8 @@ func _create_brush_indicator() -> BitMap:
 	match _brush.type:
 		Brushes.PIXEL:
 			return _create_pixel_indicator(_brush_size_dynamics)
+		Brushes.HOLLOW_SQUARE:
+			return _create_hollow_square_indicator(_brush_size_dynamics)
 		Brushes.CIRCLE:
 			return _create_circle_indicator(_brush_size_dynamics, false)
 		Brushes.FILLED_CIRCLE:
@@ -843,6 +871,14 @@ func _create_pixel_indicator(brush_size: int) -> BitMap:
 	var bitmap := BitMap.new()
 	bitmap.create(Vector2i.ONE * brush_size)
 	bitmap.set_bit_rect(Rect2i(Vector2i.ZERO, Vector2i.ONE * brush_size), true)
+	return bitmap
+
+
+func _create_hollow_square_indicator(brush_size: int) -> BitMap:
+	var bitmap := BitMap.new()
+	bitmap.create(Vector2i.ONE * brush_size)
+	for point in BrushShapes.get_points(BrushShapes.Shape.HOLLOW_SQUARE, brush_size):
+		bitmap.set_bitv(point, true)
 	return bitmap
 
 
@@ -980,7 +1016,7 @@ func _update_mm_action(action_name: String) -> void:
 	if action_name != "mm_change_brush_size":
 		return
 	_mm_action = Keychain.actions[&"mm_change_brush_size"] as Keychain.MouseMovementInputAction
-	var new_mm_action := Keychain.MouseMovementInputAction.new()
+	var new_mm_action: Keychain.MouseMovementInputAction = Keychain.MouseMovementInputAction.new()
 	new_mm_action.action_name = &"mm_change_brush_size"
 	new_mm_action.mouse_dir = _mm_action.mouse_dir
 	new_mm_action.sensitivity = _mm_action.sensitivity

@@ -11,6 +11,10 @@ const FONT_FILE_EXTENSIONS: PackedStringArray = [
 	"ttf", "otf", "woff", "woff2", "pfb", "pfm", "fnt", "font"
 ]
 const GifImporter := preload("uid://bml2q6e8rr82h")
+const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
+const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
+const ProjectRecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd")
+const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 
 var current_session_backup := ""
 var had_backups_on_startup := false
@@ -33,11 +37,11 @@ func _ready() -> void:
 	autosave_timer.timeout.connect(_on_Autosave_timeout)
 	add_child(autosave_timer)
 	update_autosave()
-	# Remove empty sessions
-	for session_folder in DirAccess.get_directories_at(BACKUPS_DIRECTORY):
+	# Remove empty legacy sessions. P3 project recovery is a separate single-slot store.
+	for session_folder in _legacy_backup_sessions():
 		if DirAccess.get_files_at(BACKUPS_DIRECTORY.path_join(session_folder)).size() == 0:
 			DirAccess.remove_absolute(BACKUPS_DIRECTORY.path_join(session_folder))
-	var backups := DirAccess.get_directories_at(OpenSave.BACKUPS_DIRECTORY)
+	var backups := _legacy_backup_sessions()
 	had_backups_on_startup = backups.size() > 0
 	# Make folder for current session
 	var date_time: Dictionary = Time.get_datetime_dict_from_system()
@@ -294,8 +298,10 @@ func handle_loading_video(file: String) -> bool:
 	return true
 
 
-func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> void:
-	var empty_project := Global.current_project.is_empty() and replace_empty
+func open_pxo_file(
+	path: String, is_backup := false, replace_empty := true, transient := false
+) -> Project:
+	var empty_project := Global.current_project.is_empty() and replace_empty and not transient
 	var new_project: Project
 	var zip_reader := ZIPReader.new()
 	var err := zip_reader.open(path)
@@ -303,10 +309,10 @@ func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> v
 		# Most likely uses the old pxo format, load that
 		new_project = open_v0_pxo_file(path, empty_project)
 		if not is_instance_valid(new_project):
-			return
+			return null
 	elif err != OK:
 		Global.popup_error(tr("File failed to open. Error code %s (%s)") % [err, error_string(err)])
-		return
+		return null
 	else:  # Parse the ZIP file
 		if empty_project:
 			new_project = Global.current_project
@@ -322,12 +328,12 @@ func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> v
 		if error != OK:
 			print("Error, corrupt pxo file. Error code %s (%s)" % [error, error_string(error)])
 			zip_reader.close()
-			return
+			return null
 		var result = test_json_conv.get_data()
 		if typeof(result) != TYPE_DICTIONARY:
 			print("Error, json parsed result is: %s" % typeof(result))
 			zip_reader.close()
-			return
+			return null
 
 		new_project.deserialize(result, zip_reader)
 		if result.has("brushes"):
@@ -394,27 +400,31 @@ func open_pxo_file(path: String, is_backup := false, replace_empty := true) -> v
 		Global.cel_switched.emit()
 	else:
 		Global.projects.append(new_project)
-		Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
+		if not transient:
+			Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
 
 	if is_backup:
 		new_project.backup_path = path
 	else:
-		# Loading a backup should not change window title and save path
+		# Loading a backup should not change window title and save path.
 		new_project.save_path = path
-		get_window().title = (
-			new_project.name + " - " + Global.PRODUCT_NAME + " " + Global.current_version
-		)
-		# Set last opened project path and save
-		Global.config_cache.set_value("data", "current_dir", path.get_base_dir())
-		Global.config_cache.set_value("data", "last_project_path", path)
-		Global.config_cache.save(Global.CONFIG_PATH)
 		new_project.was_exported = false
-		Global.top_menu_container.file_menu.set_item_text(
-			Global.FileMenu.SAVE, tr("Save") + " %s" % path.uri_decode().get_file()
-		)
-		Global.top_menu_container.file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export"))
+		if not transient:
+			get_window().title = (
+				new_project.name + " - " + Global.PRODUCT_NAME + " " + Global.current_version
+			)
+			# Set last opened project path and save.
+			Global.config_cache.set_value("data", "current_dir", path.get_base_dir())
+			Global.config_cache.set_value("data", "last_project_path", path)
+			Global.config_cache.save(Global.CONFIG_PATH)
+			Global.top_menu_container.file_menu.set_item_text(
+				Global.FileMenu.SAVE, tr("Save") + " %s" % path.uri_decode().get_file()
+			)
+			Global.top_menu_container.file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export"))
 
-	save_project_to_recent_list(path)
+	if not transient:
+		save_project_to_recent_list(path)
+	return new_project
 
 
 func open_v0_pxo_file(path: String, empty_project: bool) -> Project:
@@ -478,9 +488,15 @@ func open_v0_pxo_file(path: String, empty_project: bool) -> Project:
 
 
 func save_pxo_file(
-	path: String, autosave: bool, include_blended := false, project := Global.current_project
+	path: String,
+	autosave: bool,
+	include_blended := false,
+	project := Global.current_project,
+	quiet := false
 ) -> bool:
 	project.initialize_attribution_data()
+	if not ProjectIdentityScript.is_valid_uuid(project.project_uuid):
+		project.project_uuid = ProjectIdentityScript.generate_uuid()
 	if not autosave:
 		project.name = path.uri_decode().get_file().trim_suffix(".pxo")
 	var serialized_data := project.serialize()
@@ -512,6 +528,13 @@ func save_pxo_file(
 	zip_packer.write_file(to_save.to_utf8_buffer())
 	zip_packer.close_file()
 
+	var gallery_data := ProjectLibraryScript.build_gallery_metadata(
+		project.project_uuid, project.size
+	)
+	zip_packer.start_file(ProjectLibraryScript.GALLERY_ENTRY)
+	zip_packer.write_file(JSON.stringify(gallery_data).to_utf8_buffer())
+	zip_packer.close_file()
+
 	zip_packer.start_file("mimetype")
 	zip_packer.write_file("application/x-pixelorama".to_utf8_buffer())
 	zip_packer.close_file()
@@ -536,9 +559,6 @@ func save_pxo_file(
 	zip_packer.start_file("preview.png")
 	zip_packer.write_file(scaled_preview.save_png_to_buffer())
 	zip_packer.close_file()
-
-	if not autosave:
-		project.save_path = path
 
 	var frame_index := 1
 	for frame in project.frames:
@@ -637,30 +657,43 @@ func save_pxo_file(
 		DirAccess.remove_absolute(path)
 
 	if autosave:
-		Global.notification_label("Backup saved")
+		if not quiet:
+			Global.notification_label("Backup saved")
 	else:
-		# First remove backup then set current save path
-		if project.has_changed:
-			project.has_changed = false
+		finalize_project_save(path, project, not quiet, true)
+	return true
+
+
+func finalize_project_save(
+	path: String, project: Project, announce_save := true, clear_dirty := true
+) -> void:
+	var first_managed_path := project.save_path.is_empty()
+	project.save_path = path
+	if clear_dirty and project.has_changed:
+		project.has_changed = false
+	if announce_save:
 		Global.notification_label("File saved")
+	if project == Global.current_project:
 		get_window().title = (
 			project.name + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 		)
-
-		# Set last opened project path and save
-		Global.config_cache.set_value("data", "current_dir", path.get_base_dir())
-		Global.config_cache.set_value("data", "last_project_path", path)
-		Global.config_cache.save(Global.CONFIG_PATH)
-		if project.export_directory_path.is_empty():
-			project.export_directory_path = path.get_base_dir()
+	Global.config_cache.set_value("data", "current_dir", path.get_base_dir())
+	Global.config_cache.set_value("data", "last_project_path", path)
+	Global.config_cache.save(Global.CONFIG_PATH)
+	if project.export_directory_path.is_empty():
+		project.export_directory_path = path.get_base_dir()
+	if project == Global.current_project and is_instance_valid(Global.top_menu_container):
 		Global.top_menu_container.file_menu.set_item_text(
 			Global.FileMenu.SAVE, tr("Save") + " %s" % path.uri_decode().get_file()
 		)
+	ProjectRecoveryStore.discard(project.project_uuid)
+	persist_file_read_write_permissions(path)
+	if announce_save:
 		project_saved.emit()
 		SteamManager.set_achievement("ACH_SAVE")
 		save_project_to_recent_list(path)
-	persist_file_read_write_permissions(path)
-	return true
+	elif first_managed_path:
+		save_project_to_recent_list(path)
 
 
 func open_image_as_new_tab(path: String, image: Image) -> void:
@@ -1334,9 +1367,17 @@ func open_piskel_file(path: String) -> void:
 	Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
 
 
+func _legacy_backup_sessions() -> PackedStringArray:
+	var sessions := PackedStringArray()
+	for folder_name in DirAccess.get_directories_at(BACKUPS_DIRECTORY):
+		if folder_name != ProjectRecoveryStore.DIRECTORY_NAME:
+			sessions.append(folder_name)
+	return sessions
+
+
 func enforce_backed_sessions_limit() -> void:
-	# Enforce session limit
-	var old_folders = DirAccess.get_directories_at(BACKUPS_DIRECTORY)
+	# Enforce session limit without touching P3 per-project recovery.
+	var old_folders := _legacy_backup_sessions()
 	if old_folders.size() > Global.max_backed_sessions:
 		var excess = old_folders.size() - Global.max_backed_sessions
 		for i in excess:
@@ -1355,11 +1396,13 @@ func update_autosave() -> void:
 	autosave_timer.stop()
 	# Interval parameter is in minutes, wait_time is seconds
 	autosave_timer.wait_time = Global.autosave_interval * 60
-	if Global.enable_autosave:
+	if Global.enable_autosave and not StoragePolicy.uses_managed_project_storage():
 		autosave_timer.start()
 
 
 func _on_Autosave_timeout() -> void:
+	if StoragePolicy.uses_managed_project_storage():
+		return
 	for i in Global.projects.size():
 		var project := Global.projects[i]
 		var p_name: String = project.file_name

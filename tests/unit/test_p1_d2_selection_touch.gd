@@ -3,11 +3,18 @@ extends "res://tests/test_base.gd"
 const ADAPTER := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const TOOL_BUTTONS := preload("res://src/UI/ToolsPanel/ToolButtons.gd")
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
+const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
+const CROP_TOOL_SOURCE := "res://src/Tools/UtilityTools/CropTool.gd"
+const CROP_TOOL_SCENE := "res://src/Tools/UtilityTools/CropTool.tscn"
+const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
+const COLOR_PICKER_SCENE := "res://src/Tools/UtilityTools/ColorPicker.tscn"
 const RECT_SOURCE := "res://src/Tools/SelectionTools/RectSelect.gd"
 const ELLIPSE_SOURCE := "res://src/Tools/SelectionTools/EllipseSelect.gd"
 const POLYGON_SOURCE := "res://src/Tools/SelectionTools/PolygonSelect.gd"
 const BASE_SHAPE_SOURCE := "res://src/Tools/BaseShapeDrawer.gd"
 const BASE_SELECTION_SOURCE := "res://src/Tools/BaseSelectionTool.gd"
+const BASE_SELECTION_SCENE := "res://src/Tools/BaseSelectionTool.tscn"
+const CANVAS_SOURCE := "res://src/UI/Canvas/Canvas.gd"
 const TRANSFORM_SOURCE := "res://src/UI/Canvas/TransformationHandles.gd"
 
 
@@ -119,6 +126,314 @@ func test_selection_family_compaction_is_transactional_and_structural() -> void:
 		src,
 		"tool_name = String(_ios_selection_recent_tool)",
 		"native pointer activation of the proxy must select the represented recent child"
+	)
+
+
+func test_ios_shape_family_contains_exact_five_tools() -> void:
+	var expected := [
+		&"LineTool",
+		&"CurveTool",
+		&"RectangleTool",
+		&"EllipseTool",
+		&"IsometricBoxTool",
+	]
+	check_eq(
+		TOOL_BUTTONS.IOS_SHAPE_TOOLS,
+		expected,
+		"compact iOS Shapes entry must expose exactly the approved five tools"
+	)
+	check_eq(
+		TOOL_BUTTONS.normalize_ios_recent_shape_tool(&"EllipseTool"),
+		&"EllipseTool",
+		"a valid recent Shape subtool must survive normalization"
+	)
+	check_eq(
+		TOOL_BUTTONS.normalize_ios_recent_shape_tool(&"Pencil"),
+		&"LineTool",
+		"invalid recent Shape state must fall back to Line Tool"
+	)
+
+
+func test_shape_family_uses_long_press_proxy_and_persists_recent_child() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		"IOS_SHAPE_MENU_LONG_PRESS_SECONDS",
+		"Shapes entry needs an explicit long-press acquisition path"
+	)
+	check_has(src, "_try_open_ios_shape_menu", "long press must open the five-tool Shapes submenu")
+	check_has(
+		src,
+		"_activate_ios_shape_tool(_ios_shape_recent_tool)",
+		"a normal tap must activate the represented recent Shape child"
+	)
+	check_has(
+		src,
+		"_ios_shape_family_button = Tools.tools[String(IOS_SHAPE_DEFAULT)].button_node",
+		"Line Tool should remain the structural proxy for the compact Shapes entry"
+	)
+	check_has(
+		src,
+		"_ios_shape_hidden_buttons.add_child(button)",
+		"four non-proxy Shape buttons must leave the generic toolbar while staying alive"
+	)
+	check_has(
+		src,
+		'IOS_SHAPE_RECENT_KEY := "ios_recent_shape_tool"',
+		"the selected Shape child must have its own persistent preference"
+	)
+	check_has(
+		src,
+		"_sync_ios_shape_family_visual()",
+		"the proxy must mirror current Shape icon and left/right active state"
+	)
+	check_has(
+		src,
+		"tool_visible = _ios_shape_family_button.visible",
+		"hidden Shape children must retain keyboard shortcut participation"
+	)
+
+
+func test_ios_toolbar_removes_non_phosprite_tools_without_deleting_them() -> void:
+	var buttons_src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	var tools_src := FileAccess.get_file_as_string(TOOLS_SOURCE)
+	check_eq(
+		TOOL_BUTTONS.IOS_TOOLBAR_REMOVED_TOOLS,
+		[&"Text", &"Zoom", &"Pan", &"Shading"],
+		"iOS toolbar must remove Text, Zoom, Pan and Shading"
+	)
+	check_has(
+		buttons_src,
+		"_ios_toolbar_removed_buttons.add_child(button)",
+		"removed toolbar buttons must stay alive outside the visible ToolButtons container"
+	)
+	check_has(
+		buttons_src,
+		"tool_visible = _is_tool_available_on_current_layer(t)",
+		"toolbar removal must not disable valid keyboard shortcuts"
+	)
+	for tool_name in ["Text", "Zoom", "Pan", "Shading"]:
+		check_has(
+			tools_src,
+			'"%s"' % tool_name,
+			"%s must remain registered in Tools even when hidden from the iOS toolbar" % tool_name
+		)
+
+
+func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
+	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
+	check_has(
+		src,
+		'FAMILY_DISCLOSURE_INDICATOR_NAME := &"FamilyDisclosureIndicator"',
+		"compact family buttons need a dedicated disclosure overlay"
+	)
+	check_has(
+		src,
+		"_ensure_family_disclosure_indicator(_ios_selection_family_button)",
+		"Selection family must receive the disclosure triangle"
+	)
+	check_has(
+		src,
+		"_ensure_family_disclosure_indicator(_ios_shape_family_button)",
+		"Shapes family must receive the disclosure triangle"
+	)
+	check_has(
+		src,
+		"var indicator := Control.new()",
+		"the disclosure marker must live in the same Control UI layer as the tool button"
+	)
+	check_has(
+		src,
+		"indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE",
+		"the disclosure overlay must never steal tool taps or long presses"
+	)
+	check_has(
+		src,
+		"indicator.anchor_left = 1.0",
+		"the disclosure overlay must anchor to the button bottom-right corner"
+	)
+	check_has(
+		src,
+		"FAMILY_DISCLOSURE_INDICATOR_SIZE := 8.0",
+		"the disclosure triangle must be large enough to remain visible on 24 px buttons"
+	)
+	check_has(
+		src,
+		"indicator.z_index = 100",
+		"the disclosure triangle must render above the dynamic tool icon and active backgrounds"
+	)
+	check_has(
+		src,
+		"indicator.draw_colored_polygon(points, Color(1.0, 1.0, 1.0, 0.96))",
+		"the disclosure marker should use a high-contrast filled triangle"
+	)
+	check_has(
+		src,
+		"indicator.draw_polyline(outline, Color(0.0, 0.0, 0.0, 0.9), 1.0, false)",
+		"the disclosure triangle should keep a dark outline on light icons"
+	)
+
+
+func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_tolerance() -> void:
+	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
+	var base_scene := FileAccess.get_file_as_string(BASE_SELECTION_SCENE)
+	check_has(
+		base_src, 'if OS.get_name() != "iOS":', "selection option compaction must remain iOS-only"
+	)
+	check_has(
+		base_src,
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]',
+		"all iOS selection tools should expose the same compact four-mode button set",
+	)
+	check_has(
+		base_src,
+		'if name == &"MagicWand":',
+		"Magic Wand should only add its tolerance control to the shared selection options",
+	)
+	check_has(
+		base_src,
+		'visible_controls.append(&"ToleranceSlider")',
+		"Magic Wand should retain Tolerance below the shared mode buttons",
+	)
+	check_has(
+		base_src,
+		"(child as Control).visible = StringName(child.name) in visible_controls",
+		"transform-only controls and the duplicate tool name should stay hidden on iOS",
+	)
+	check_has(
+		base_src,
+		'if OS.get_name() == "iOS":\n\t\t_apply_ios_compact_options()\n\t\treturn',
+		"active selection transforms must not re-show hidden option rows on iOS",
+	)
+	check_has(
+		base_scene,
+		'[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]',
+		"selection mode buttons must share one exclusive ButtonGroup in the base scene",
+	)
+	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
+		check_has(
+			base_scene,
+			'[node name="%s" type="Button" parent="ModeButtons"' % button_name,
+			"all selection tools must inherit the %s mode button" % button_name,
+		)
+	check_eq(
+		base_scene.count('button_group = SubResource("ButtonGroup_modes")'),
+		4,
+		"the four selection mode buttons must be mutually exclusive",
+	)
+
+	var wand_scene := FileAccess.get_file_as_string("res://src/Tools/SelectionTools/MagicWand.tscn")
+	check_has(
+		wand_scene,
+		'[node name="ToleranceSlider"',
+		"Magic Wand must keep its tolerance-specific control",
+	)
+	check_true(
+		not wand_scene.contains('[node name="ModeButtons"'),
+		"Magic Wand must inherit shared mode buttons instead of owning a private copy",
+	)
+
+
+func test_crop_options_are_hidden_and_drag_release_applies_crop() -> void:
+	var src := FileAccess.get_file_as_string(CROP_TOOL_SOURCE)
+	check_has(
+		src,
+		"_crop.mode = CropRect.Mode.MARGINS",
+		"config-free Crop should use one stable rectangle interaction mode",
+	)
+	check_has(
+		src,
+		"_crop.locked_size = false",
+		"hidden Size Lock must never preserve a stale locked state",
+	)
+	check_has(
+		src,
+		'if control.name in [&"ColorRect", &"Label"]',
+		"Crop options column must retain only the base tool identity controls",
+	)
+	check_has(
+		src,
+		"control.hide()",
+		"all numeric, mode and Apply controls must stay hidden",
+	)
+	check_has(
+		src,
+		"if not _drag_changed:",
+		"a simple tap must not commit an old crop rectangle",
+	)
+	check_has(
+		src,
+		"_crop.apply()",
+		"drag release must replace the removed Apply button as the crop commit path",
+	)
+
+
+func test_ios_color_picker_uses_expanded_source_buttons_and_layer_preview() -> void:
+	var src := FileAccess.get_file_as_string(COLOR_PICKER_SOURCE)
+	check_has(src, "$ColorPicker/Label.hide()", "iOS Color Picker should hide the Pick for label")
+	check_has(
+		src,
+		"$ColorPicker/Options.hide()",
+		"iOS Color Picker should hide the Left/Right color destination selector",
+	)
+	check_has(
+		src,
+		'var color_slot := 0 if OS.get_name() == "iOS" else _color_slot',
+		"iOS Color Picker config must persist the primary color destination",
+	)
+	check_has(
+		src, "MOUSE_BUTTON_LEFT", "iOS Color Picker must always write to the primary color slot"
+	)
+	var scene_src := FileAccess.get_file_as_string(COLOR_PICKER_SCENE)
+	check_has(
+		scene_src,
+		'[node name="ExtractFrom" type="OptionButton"',
+		"legacy source state should remain available behind the expanded controls",
+	)
+	check_has(
+		scene_src,
+		'[node name="TopColor" type="Button" parent="ColorPicker/ExtractModeButtons"',
+		"Top Color must be a direct option button",
+	)
+	check_has(
+		scene_src,
+		'[node name="CurrentLayer" type="Button" parent="ColorPicker/ExtractModeButtons"',
+		"Current Layer must be a direct option button",
+	)
+	check_eq(
+		scene_src.count('button_group = SubResource("ButtonGroup_extract")'),
+		2,
+		"Color Picker source buttons must be mutually exclusive",
+	)
+	check_has(
+		src,
+		"Global.canvas.set_preview_only_layer(Global.current_project.current_layer, self)",
+		"Current Layer mode must filter the Canvas preview to the selected layer",
+	)
+	check_has(
+		src,
+		"Global.canvas.clear_preview_only_layer(self)",
+		"leaving Current Layer mode or Color Picker must restore the normal Canvas preview",
+	)
+	check_has(
+		src,
+		"Global.cel_switched.connect(_on_cel_switched)",
+		"Current Layer preview must follow layer selection changes",
+	)
+	var canvas_src := FileAccess.get_file_as_string(CANVAS_SOURCE)
+	check_has(
+		canvas_src,
+		"var _preview_only_layer_index := -1",
+		"Canvas should own a temporary preview filter instead of mutating project visibility",
+	)
+	check_has(
+		canvas_src,
+		"layer_metadata_image.set_pixel(ordered_index, 1, Color())",
+		"non-selected layers must be hidden only in render metadata",
+	)
+	check_true(
+		not src.contains(".visible = false"),
+		"Color Picker must not persistently rewrite layer visibility",
 	)
 
 

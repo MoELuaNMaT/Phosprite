@@ -9,8 +9,9 @@ script = ExtResource("2")
 
 [node name="OpacitySlider" parent="." index="5" unique_id=1822012064 instance=ExtResource("3")]
 layout_mode = 2
-max_value = 255.0
-value = 255.0
+max_value = 100.0
+value = 100.0
 prefix = "Opacity:"
+suffix = "%"
 
 [connection signal="value_changed" from="OpacitySlider" to="." method="_on_Opacity_value_changed"]

@@ -49,14 +49,14 @@ const TILEMAP_CEL_CHUNK_SIZE := BASE_CEL_CHUNK_SIZE + 32
 
 
 # gdlint: disable=function-variable-name
-static func open_aseprite_file(path: String) -> void:
+static func open_aseprite_file(path: String) -> bool:
 	var ase_file := FileAccess.open(path, FileAccess.READ)
 	if FileAccess.get_open_error() != OK or ase_file == null:
-		return
+		return false
 	var _file_size := ase_file.get_32()
 	var magic_number := ase_file.get_16()
 	if magic_number != 0xA5E0:
-		return
+		return false
 	var frames := ase_file.get_16()
 	var project_width := ase_file.get_16()
 	var project_height := ase_file.get_16()
@@ -82,8 +82,8 @@ static func open_aseprite_file(path: String) -> void:
 	var number_of_colors := ase_file.get_16()
 	var _pixel_width := ase_file.get_8()
 	var _pixel_height := ase_file.get_8()
-	var _grid_position_x := ase_file.get_16()
-	var _grid_position_y := ase_file.get_16()
+	var _grid_position_x := signed_16(ase_file.get_16())
+	var _grid_position_y := signed_16(ase_file.get_16())
 	var _grid_width := ase_file.get_16()
 	var _grid_height := ase_file.get_16()
 	ase_file.get_buffer(84)  # For future
@@ -157,11 +157,11 @@ static func open_aseprite_file(path: String) -> void:
 					var layer_index := ase_file.get_16()
 					var layer := new_project.layers[layer_index]
 					var cel := layer.new_empty_cel()
-					var x_pos := ase_file.get_16()
-					var y_pos := ase_file.get_16()
+					var x_pos := signed_16(ase_file.get_16())
+					var y_pos := signed_16(ase_file.get_16())
 					cel.opacity = ase_file.get_8() / 255.0
 					var cel_type := ase_file.get_16()
-					cel.z_index = ase_file.get_16()
+					cel.z_index = signed_16(ase_file.get_16())
 					ase_file.get_buffer(5)  # For future
 					if cel_type == 0 or cel_type == 2:  # Raw uncompressed and compressed image
 						var width := ase_file.get_16()
@@ -169,9 +169,15 @@ static func open_aseprite_file(path: String) -> void:
 						var image_rect := Rect2i(Vector2i.ZERO, Vector2i(width, height))
 						var color_bytes := ase_file.get_buffer(chunk_size - IMAGE_CEL_CHUNK_SIZE)
 						if cel_type == 2:  # Compressed image
-							color_bytes = color_bytes.decompress(
-								width * height * pixel_byte, FileAccess.COMPRESSION_DEFLATE
+							color_bytes = decompress_aseprite_payload(
+								color_bytes, width * height * pixel_byte
 							)
+							if color_bytes.size() != width * height * pixel_byte:
+								printerr("Could not decompress Aseprite image cel.")
+								return false
+						elif color_bytes.size() != width * height * pixel_byte:
+							printerr("Invalid Aseprite raw image cel size.")
+							return false
 						if color_depth > 8:
 							var ase_cel_image := Image.create_from_data(
 								width, height, false, image_format, color_bytes
@@ -222,9 +228,12 @@ static func open_aseprite_file(path: String) -> void:
 						var tile_data_size := (
 							width * height * tile_size.x * tile_size.y * pixel_byte
 						)
-						var tile_data := tile_data_compressed.decompress(
-							tile_data_size, FileAccess.COMPRESSION_DEFLATE
+						var tile_data := decompress_aseprite_payload(
+							tile_data_compressed, tile_data_size
 						)
+						if tile_data.size() != tile_data_size:
+							printerr("Could not decompress Aseprite tilemap cel.")
+							return false
 						tilemap_cel.offset = Vector2(x_pos, y_pos)
 						for y in height:
 							for x in width:
@@ -273,8 +282,8 @@ static func open_aseprite_file(path: String) -> void:
 						ase_file.get_buffer(7)  # Reserved
 						var _external_file_name := parse_aseprite_string(ase_file)
 				ChunkTypes.MASK:
-					var _position_x := ase_file.get_16()
-					var _position_y := ase_file.get_16()
+					var _position_x := signed_16(ase_file.get_16())
+					var _position_y := signed_16(ase_file.get_16())
 					var mask_width := ase_file.get_16()
 					var mask_height := ase_file.get_16()
 					ase_file.get_buffer(8)  # For future
@@ -402,9 +411,12 @@ static func open_aseprite_file(path: String) -> void:
 						var data_compressed_length := ase_file.get_32()
 						var image_data_compressed := ase_file.get_buffer(data_compressed_length)
 						var data_length := tile_width * (tile_height * n_of_tiles) * pixel_byte
-						all_tiles_image_data = image_data_compressed.decompress(
-							data_length, FileAccess.COMPRESSION_DEFLATE
+						all_tiles_image_data = decompress_aseprite_payload(
+							image_data_compressed, data_length
 						)
+						if all_tiles_image_data.size() != data_length:
+							printerr("Could not decompress Aseprite tileset image data.")
+							return false
 					var tileset := TileSetCustom.new(
 						Vector2i(tile_width, tile_height),
 						tileset_name,
@@ -457,6 +469,77 @@ static func open_aseprite_file(path: String) -> void:
 	new_project.project_current_palette_name = project_current_palette_name
 	Global.projects.append(new_project)
 	Global.tabs.current_tab = Global.tabs.get_tab_count() - 1
+	return true
+
+
+static func signed_16(value: int) -> int:
+	value &= 0xFFFF
+	return value - 0x10000 if value & 0x8000 else value
+
+
+static func decompress_aseprite_payload(
+	compressed: PackedByteArray, expected_size: int
+) -> PackedByteArray:
+	if expected_size <= 0 or compressed.is_empty():
+		return PackedByteArray()
+
+	var decoded := compressed.decompress(expected_size, FileAccess.COMPRESSION_DEFLATE)
+	if decoded.size() == expected_size:
+		return decoded
+	if not _looks_like_zlib_stream(compressed):
+		return PackedByteArray()
+
+	# Some valid Aseprite files in the wild omit the final Adler-32 zlib trailer.
+	# Aseprite's desktop reader can still recover their complete deflate payload,
+	# while PackedByteArray.decompress() rejects the incomplete wrapper. Use the
+	# streaming inflater only as a fallback and accept it exclusively when the
+	# exact byte count declared by the cel/tileset metadata is recovered.
+	var stream := StreamPeerGZIP.new()
+	if stream.start_decompression(true) != OK:
+		return PackedByteArray()
+
+	var offset := 0
+	var streamed := PackedByteArray()
+	while offset < compressed.size():
+		var result := stream.put_partial_data(compressed.slice(offset))
+		if result.size() < 2:
+			break
+		var sent := int(result[1])
+		_drain_decompression_stream(stream, streamed)
+		if streamed.size() > expected_size:
+			return PackedByteArray()
+		if sent <= 0:
+			break
+		offset += sent
+
+	_drain_decompression_stream(stream, streamed)
+	if streamed.size() != expected_size:
+		return PackedByteArray()
+	return streamed
+
+
+static func _drain_decompression_stream(stream: StreamPeerGZIP, output: PackedByteArray) -> void:
+	while stream.get_available_bytes() > 0:
+		var result := stream.get_partial_data(stream.get_available_bytes())
+		if result.size() < 2:
+			return
+		var bytes := result[1] as PackedByteArray
+		if bytes.is_empty():
+			return
+		output.append_array(bytes)
+
+
+static func _looks_like_zlib_stream(compressed: PackedByteArray) -> bool:
+	if compressed.size() < 2:
+		return false
+	var cmf := int(compressed[0])
+	var flg := int(compressed[1])
+	if (cmf & 0x0F) != 8 or (cmf >> 4) > 7:
+		return false
+	if ((cmf << 8) + flg) % 31 != 0:
+		return false
+	# Aseprite zlib streams do not use a preset dictionary.
+	return (flg & 0x20) == 0
 
 
 static func parse_aseprite_string(ase_file: FileAccess) -> String:

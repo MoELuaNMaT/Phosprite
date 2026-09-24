@@ -1,0 +1,357 @@
+extends "res://tests/test_base.gd"
+
+const TIMELINE_SOURCE := "res://src/UI/Timeline/AnimationTimeline.gd"
+const TIMELINE_SCENE := "res://src/UI/Timeline/AnimationTimeline.tscn"
+const HEADER_SOURCE := "res://src/UI/Workspace/TimelineHeaderControls.gd"
+const HEADER_SCENE := "res://src/UI/Workspace/TimelineHeaderControls.tscn"
+const STRIP_SOURCE := "res://src/UI/Timeline/SingleFrameLayerStrip.gd"
+const STRIP_SCENE := "res://src/UI/Timeline/SingleFrameLayerStrip.tscn"
+const CARD_SOURCE := "res://src/UI/Timeline/SingleFrameLayerCard.gd"
+const CARD_SCENE := "res://src/UI/Timeline/SingleFrameLayerCard.tscn"
+const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
+const APP_SHELL_SOURCE := "res://src/AppShell/AppShellController.gd"
+const PROJECT_STATE_SOURCE := "res://src/UI/Timeline/TimelineProjectState.gd"
+
+
+class FakeHeightProject:
+	extends RefCounted
+
+	var project_uuid := ""
+
+
+func test_timeline_exposes_two_persistent_display_modes() -> void:
+	var source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
+	var scene := FileAccess.get_file_as_string(TIMELINE_SCENE)
+	var state_source := FileAccess.get_file_as_string(PROJECT_STATE_SOURCE)
+	check_has(
+		source,
+		"enum TimelineMode { ANIMATION, SINGLE_FRAME }",
+		"Timeline must expose explicit animation and single-frame modes",
+	)
+	check_has(
+		state_source,
+		'const MODE_META := &"phosprite_timeline_mode"',
+		"Timeline mode must be stored as project-scoped state",
+	)
+	check_has(
+		source,
+		"store_project_timeline_mode(timeline_mode)",
+		"user mode changes must persist against the current project",
+	)
+	check_has(
+		source,
+		"timeline_container.visible = timeline_mode == TimelineMode.ANIMATION",
+		"Animation mode must keep the existing timeline intact",
+	)
+	check_has(
+		source,
+		"single_frame_layer_strip.visible = timeline_mode == TimelineMode.SINGLE_FRAME",
+		"Single-frame mode must swap only the Timeline presentation",
+	)
+	check_has(
+		scene,
+		'[node name="SingleFrameLayerStrip" parent="." instance=ExtResource("32_single")]',
+		"single-frame view must live beside the existing TimelineContainer",
+	)
+
+
+func test_timeline_modes_are_project_scoped_and_new_projects_default_single_frame() -> void:
+	var timeline := AnimationTimeline.new()
+	var project_a := FakeHeightProject.new()
+	var project_b := FakeHeightProject.new()
+	project_a.project_uuid = "timeline-mode-test-a"
+	project_b.project_uuid = "timeline-mode-test-b"
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid
+	)
+
+	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a)
+	timeline.store_project_timeline_mode(AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	check_eq(
+		timeline.get_project_timeline_mode(project_a),
+		AnimationTimeline.TimelineMode.SINGLE_FRAME,
+		"Project A must retain its own Single-frame mode",
+	)
+	check_eq(
+		timeline.get_project_timeline_mode(project_b),
+		AnimationTimeline.TimelineMode.ANIMATION,
+		"Project B must retain its own Animation mode",
+	)
+
+	var app_shell := FileAccess.get_file_as_string(APP_SHELL_SOURCE)
+	check_has(
+		app_shell,
+		"AnimationTimeline.TIMELINE_MODE_META, AnimationTimeline.TimelineMode.SINGLE_FRAME",
+		"new managed projects must be created with Single-frame mode",
+	)
+
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_MODE_SECTION, project_b.project_uuid
+	)
+	timeline.free()
+
+
+func test_timeline_mode_heights_are_project_scoped_and_have_distinct_defaults() -> void:
+	var timeline := AnimationTimeline.new()
+	var project_a := FakeHeightProject.new()
+	var project_b := FakeHeightProject.new()
+	project_a.project_uuid = "timeline-height-test-a"
+	project_b.project_uuid = "timeline-height-test-b"
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_b.project_uuid
+	)
+
+	check_eq(
+		timeline.get_default_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME),
+		180.0,
+		"Single-frame default height must fully fit the layer cards without excess space",
+	)
+	check_eq(
+		timeline.get_default_workspace_height(AnimationTimeline.TimelineMode.ANIMATION),
+		220.0,
+		"Animation default height must be slightly taller than single-frame mode",
+	)
+
+	timeline.store_workspace_height(248.0, AnimationTimeline.TimelineMode.ANIMATION, project_a)
+	timeline.store_workspace_height(186.0, AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a)
+	timeline.store_workspace_height(276.0, AnimationTimeline.TimelineMode.ANIMATION, project_b)
+	timeline.store_workspace_height(194.0, AnimationTimeline.TimelineMode.SINGLE_FRAME, project_b)
+
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project_a),
+		248.0,
+		"Project A must retain its own Animation height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_a),
+		186.0,
+		"Project A must retain its own Single-frame height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.ANIMATION, project_b),
+		276.0,
+		"Project B must not inherit Project A's Animation height",
+	)
+	check_eq(
+		timeline.get_saved_workspace_height(AnimationTimeline.TimelineMode.SINGLE_FRAME, project_b),
+		194.0,
+		"Project B must not inherit Project A's Single-frame height",
+	)
+
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_a.project_uuid
+	)
+	Global.config_cache.erase_section_key(
+		AnimationTimeline.TIMELINE_HEIGHT_SECTION, project_b.project_uuid
+	)
+	timeline.free()
+
+
+func test_mode_switch_and_manual_resize_have_height_persistence_bridges() -> void:
+	var timeline_source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
+	var migration_source := FileAccess.get_file_as_string(MIGRATION_SOURCE)
+	var interaction_source := FileAccess.get_file_as_string(INTERACTION_SOURCE)
+	check_has(
+		timeline_source,
+		"timeline_mode_changing.emit(timeline_mode, next_mode)",
+		"mode switch must announce the outgoing mode before replacing it",
+	)
+	check_has(
+		migration_source,
+		"_store_current_timeline_height(from_mode)",
+		"Workspace must save the outgoing mode height before switching views",
+	)
+	check_has(
+		migration_source,
+		"_schedule_timeline_height_reconcile(mode)",
+		"Workspace must reconcile the incoming mode height after the layout settles",
+	)
+	check_has(
+		migration_source,
+		"await get_tree().process_frame",
+		"final Timeline height reconciliation must wait for one real layout frame",
+	)
+	check_has(
+		migration_source,
+		"_on_timeline_project_about_to_switch",
+		"leaving a project must persist that project's current Timeline height",
+	)
+	check_has(
+		migration_source,
+		"_on_timeline_project_switched",
+		"opening another project must restore that project's own Timeline height",
+	)
+	check_has(
+		interaction_source,
+		"Global.animation_timeline.store_workspace_height(final_height, mode, project)",
+		"manual Timeline resize must persist to the mode/project captured by the resize transaction",
+	)
+	check_has(
+		interaction_source,
+		"_resize_timeline_mode = Global.animation_timeline.get_timeline_mode()",
+		"Timeline resize must pin the active mode before pointer release can race a mode toggle",
+	)
+
+
+func test_single_frame_mode_stops_active_animation() -> void:
+	var source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
+	check_has(
+		source,
+		"if next_mode == TimelineMode.SINGLE_FRAME and is_animation_running:",
+		"single-frame mode must not leave animation playback running behind the layer strip",
+	)
+	check_has(
+		source,
+		"play_forward.button_pressed = false",
+		"forward animation must be stoppable when entering single-frame mode",
+	)
+	check_has(
+		source,
+		"play_backwards.button_pressed = false",
+		"reverse animation must be stoppable when entering single-frame mode",
+	)
+
+
+func test_mode_switch_is_fixed_on_timeline_header_right_side() -> void:
+	var scene := FileAccess.get_file_as_string(HEADER_SCENE)
+	var source := FileAccess.get_file_as_string(HEADER_SOURCE)
+	var overflow_pos := scene.find('[node name="OverflowButton"')
+	var mode_pos := scene.find('[node name="ModeSwitch"')
+	check_true(
+		overflow_pos >= 0 and mode_pos > overflow_pos,
+		"mode switch must be placed to the right of the responsive overflow button",
+	)
+	check_has(scene, "toggle_mode = true", "mode switch must toggle both views directly")
+	check_has(scene, 'text = "Animation"', "Animation must be the default visible mode label")
+	check_has(
+		source,
+		"fixed_right_width := mode_switch_button.get_combined_minimum_size().x",
+		"responsive overflow must reserve width for the mode switch instead of hiding it",
+	)
+	check_has(
+		source,
+		"_managed_items = [global_tool_options, undo_button, redo_button, frame_group]",
+		"mode switch must stay outside the overflow-managed command list",
+	)
+
+
+func test_single_frame_layer_strip_is_horizontal_and_keeps_add_layer_at_tail() -> void:
+	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(scene, '[node name="LayerScroll" type="ScrollContainer"', "layer view must scroll")
+	check_has(scene, "vertical_scroll_mode = 0", "single-frame layer view must scroll horizontally")
+	check_has(
+		scene,
+		'[node name="LayerRow" type="HBoxContainer"',
+		"single-frame layers must use a horizontal thumbnail row",
+	)
+	check_has(
+		scene,
+		"custom_minimum_size = Vector2(104, 104)",
+		"new-layer control must be a fixed square button",
+	)
+	check_has(
+		source,
+		"var layer_index := project.layers.size() - 1 - visual_index",
+		"horizontal order must preserve the existing top-to-bottom visual layer order",
+	)
+	check_has(
+		source,
+		"layer_row.move_child(card, layer_row.get_child_count() - 2)",
+		"every layer card must remain immediately before the trailing new-layer button",
+	)
+	check_has(
+		source,
+		"Global.animation_timeline.add_default_pixel_layer()",
+		"tail button must reuse the existing undoable pixel-layer creation path",
+	)
+
+
+func test_single_frame_cards_show_fixed_square_checkerboard_thumbnails() -> void:
+	var scene := FileAccess.get_file_as_string(CARD_SCENE)
+	var source := FileAccess.get_file_as_string(CARD_SOURCE)
+	check_has(
+		scene,
+		"offset_right = 98.0",
+		"thumbnail width must remain fixed inside the layer card",
+	)
+	check_has(
+		scene,
+		"offset_bottom = 98.0",
+		"thumbnail height must equal its width",
+	)
+	check_has(
+		scene,
+		'path="res://src/UI/Nodes/TransparentChecker.tscn"',
+		"every layer thumbnail must expose transparent pixels through the checkerboard",
+	)
+	check_has(scene, "texture_filter = 1", "layer preview must use nearest-neighbor filtering")
+	check_has(
+		scene,
+		"stretch_mode = 5",
+		"layer image must preserve aspect ratio and fit its long edge inside the square preview",
+	)
+	check_has(scene, "clip_text = true", "layer name must remain a single clipped line")
+	check_has(
+		source,
+		"preview_texture.texture = _cel.image_texture",
+		"thumbnail must reuse the current frame cel texture rather than render duplicate image data",
+	)
+	check_has(
+		source,
+		"_cel.texture_changed.connect(_on_cel_texture_changed)",
+		"thumbnail must update live when drawing changes the current cel texture",
+	)
+
+
+func test_single_frame_strip_is_bound_to_explicit_project_before_rendering() -> void:
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(
+		source,
+		"func set_project(project: Project) -> void:",
+		"Single-frame strip must expose one explicit project-binding entry point",
+	)
+	check_has(
+		source,
+		"var project := _bound_project",
+		"rendering must use the bound Project instead of reading a stale global project",
+	)
+	check_has(
+		source,
+		"card.setup(project, layer_index, project.current_frame)",
+		"every layer card must receive the same explicit Project binding",
+	)
+	check_has(
+		source,
+		"func _on_layers_updated() -> void:\n\trefresh()",
+		"adding a layer must immediately rebuild the visible horizontal strip",
+	)
+
+
+func test_single_frame_layer_selection_never_changes_the_current_frame() -> void:
+	var source := FileAccess.get_file_as_string(CARD_SOURCE)
+	check_has(
+		source,
+		"_project.selected_cels.append([_project.current_frame, layer_index])",
+		"single-frame card selection must remain bound to its explicit project's current frame",
+	)
+	check_has(
+		source,
+		"_project.change_cel(-1, layer_index)",
+		"layer cards must change only the layer and preserve the active frame",
+	)
+	check_has(
+		source,
+		"_project == Global.current_project",
+		"stale cards from another project must never accept selection input",
+	)

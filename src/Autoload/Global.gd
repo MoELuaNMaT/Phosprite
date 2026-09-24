@@ -170,6 +170,7 @@ var config_cache := ConfigFile.new()
 var loaded_locales: PackedStringArray = LANGUAGES_DICT.keys()
 
 var projects: Array[Project] = []  ## Array of currently open projects.
+var project_switch_guard := Callable()
 var current_project: Project:  ## The project that currently in focus.
 	set(value):
 		current_project = value
@@ -186,6 +187,13 @@ var current_project: Project:  ## The project that currently in focus.
 var current_project_index := 0:
 	set(value):
 		if value >= projects.size():
+			return
+		if (
+			value != current_project_index
+			and project_switch_guard.is_valid()
+			and current_project != null
+			and not bool(project_switch_guard.call(current_project, projects[value]))
+		):
 			return
 		transform_content_confirmed.emit()
 		project_about_to_switch.emit()

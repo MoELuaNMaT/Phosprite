@@ -75,6 +75,74 @@ func test_direct_content_can_upgrade_to_two_finger_navigation() -> void:
 	)
 
 
+func test_viewport_bounds_use_local_subviewport_coordinates() -> void:
+	check_true(
+		ADAPTER.viewport_position_inside_size(Vector2.ZERO, Vector2(980, 700)),
+		"the top-left SubViewport pixel must remain a valid canvas input position",
+	)
+	check_true(
+		ADAPTER.viewport_position_inside_size(Vector2(979, 699), Vector2(980, 700)),
+		"the final visible SubViewport pixel must remain addressable",
+	)
+	check_true(
+		not ADAPTER.viewport_position_inside_size(Vector2(20, -1), Vector2(980, 700)),
+		"negative local Y must be rejected instead of compensating for editor chrome",
+	)
+
+
+func test_adapter_does_not_subtract_editor_origin_from_ios_input() -> void:
+	var adapter := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	var canvas := FileAccess.get_file_as_string(CANVAS_SOURCE)
+	check_true(
+		not adapter.contains("screen_to_viewport_point"),
+		"iOS Canvas events are already SubViewport-local and must not subtract the toolbar origin",
+	)
+	check_true(
+		not adapter.contains("main_viewport_position"),
+		"all adapter coordinate consumers must use the event's SubViewport-local position directly",
+	)
+	check_has(
+		adapter,
+		"viewport_position_inside_size(viewport_position, Global.main_viewport.size)",
+		"canvas acquisition must use a zero-origin local SubViewport rectangle",
+	)
+	check_has(
+		canvas,
+		"func handle_adapter_tool_event(viewport_position: Vector2, event: InputEvent) -> void:",
+		"tool dispatch must accept the already-local SubViewport coordinate",
+	)
+
+
+func test_two_finger_tap_thresholds_keep_undo_distinct_from_navigation() -> void:
+	check_true(
+		ADAPTER.two_finger_tap_within_duration(1000, 1250),
+		"a quick two-finger chord should remain eligible for undo",
+	)
+	check_true(
+		not ADAPTER.two_finger_tap_within_duration(1000, 1301),
+		"a held two-finger gesture must leave tap recognition",
+	)
+	check_true(
+		ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(6, 6)),
+		"minor finger jitter must still count as a tap",
+	)
+	check_true(
+		not ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(11, 0)),
+		"a moving pair must become pan or pinch instead of firing undo",
+	)
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	check_has(
+		src,
+		"Global.current_project.commit_undo()",
+		"recognized two-finger taps must reuse the existing project undo boundary",
+	)
+	check_has(
+		src,
+		"_two_finger_tap_pair_within_slop()",
+		"pan and pinch must be deferred only while the pair still qualifies as a tap",
+	)
+
+
 func test_navigation_pair_geometry_uses_centroid_and_distance() -> void:
 	var geometry := ADAPTER.navigation_pair_geometry(Vector2.ZERO, Vector2(6, 8))
 	check_eq(geometry["centroid"], Vector2(3, 4), "pair centroid must be the two-touch midpoint")

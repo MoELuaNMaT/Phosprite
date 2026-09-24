@@ -158,6 +158,19 @@ func redraw_current_palette() -> void:
 		sort_button.hide()
 
 
+func get_used_color_content_height() -> float:
+	var scroll_container := %ScrollContainer as ScrollContainer
+	var grid_top := scroll_container.position.y
+	var last_color_bottom := 0.0
+	for swatch in palette_grid.swatches:
+		if not is_instance_valid(swatch) or swatch.empty:
+			continue
+		last_color_bottom = maxf(last_color_bottom, swatch.position.y + swatch.size.y)
+	if last_color_bottom <= 0.0:
+		last_color_bottom = minf(palette_grid.swatch_size.y, palette_grid.size.y)
+	return grid_top + last_color_bottom
+
+
 func toggle_add_delete_buttons() -> void:
 	if not is_instance_valid(Palettes.current_palette):
 		return

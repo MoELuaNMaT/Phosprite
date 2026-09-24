@@ -2828,7 +2828,7 @@ msgstr ""
 
 #. Found in the layer's section of the timeline, as a blend mode option. For more info refer to: https://en.wikipedia.org/wiki/Blend_modes
 msgid "Subtract"
-msgstr ""
+msgstr "減去"
 
 #. Found in the layer's section of the timeline, as a blend mode option. For more info refer to: https://en.wikipedia.org/wiki/Blend_modes
 msgid "Divide"
@@ -4150,3 +4150,25 @@ msgstr ""
 msgid "Probability:"
 msgstr ""
 
+msgid "Color Selection"
+msgstr "顏色選擇"
+
+msgid ""
+"Color Selection\n"
+"\n"
+"%s for left mouse button\n"
+"%s for right mouse button"
+msgstr ""
+"顏色選擇\n"
+"\n"
+"%s 用於滑鼠左鍵\n"
+"%s 用於滑鼠右鍵"
+
+msgid "Across Layers"
+msgstr "跨圖層"
+
+msgid "Replace"
+msgstr "取代"
+
+msgid "Intersect"
+msgstr "交集"

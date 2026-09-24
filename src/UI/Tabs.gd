@@ -41,6 +41,10 @@ func _input(_event: InputEvent) -> void:
 
 func _on_Tabs_tab_changed(tab: int) -> void:
 	Global.current_project_index = tab
+	if Global.current_project_index != tab:
+		set_block_signals(true)
+		current_tab = Global.current_project_index
+		set_block_signals(false)
 
 
 func _on_tab_close_pressed(tab: int) -> void:

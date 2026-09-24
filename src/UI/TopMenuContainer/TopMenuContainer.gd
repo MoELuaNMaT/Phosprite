@@ -1,5 +1,7 @@
 extends Panel
 
+signal return_home_requested
+
 enum ColorModes { RGBA, INDEXED }
 
 const DOCS_URL := "https://www.pixelorama.org/Introduction/"
@@ -11,7 +13,6 @@ const EXTERNAL_LINK_ICON := preload("res://assets/graphics/misc/external_link.sv
 const PIXELORAMA_ICON := preload("res://assets/graphics/icons/icon_16x16.png")
 const HEART_ICON := preload("res://assets/graphics/misc/heart.svg")
 
-var text_server := TextServerManager.get_primary_interface()
 var recent_projects := []
 var selected_layout := 0
 var zen_mode := false
@@ -79,8 +80,7 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var delete_layout_confirmation := $DeleteLayoutConfirmation as ConfirmationDialog
 @onready var layout_name_line_edit := %LayoutName as LineEdit
 @onready var layout_from_option_button := %LayoutFrom as OptionButton
-@onready var cursor_position_label := %CursorPosition as Label
-@onready var current_frame_mark := %CurrentFrameMark as Label
+@onready var return_home_button := %ReturnHome as Button
 
 @onready var greyscale_vision: ColorRect = main_ui.find_child("GreyscaleVision")
 
@@ -117,8 +117,6 @@ func _ready() -> void:
 	Global.collapse_main_menu_changed.connect(handle_main_menu_collapse)
 	Global.project_about_to_switch.connect(_on_project_about_to_switch)
 	Global.project_switched.connect(_on_project_switched)
-	Global.cel_switched.connect(_update_current_frame_mark)
-	Global.on_cursor_position_text_changed.connect(_on_cursor_position_text_changed)
 	OpenSave.shader_copied.connect(_load_shader_file)
 	_setup_file_menu()
 	_setup_edit_menu()
@@ -131,6 +129,22 @@ func _ready() -> void:
 	# Fill the copy layout from option button with the default layouts
 	for layout in Global.default_layouts:
 		layout_from_option_button.add_item(layout.resource_path.get_basename().get_file())
+
+
+func set_return_home_visible(should_show: bool) -> void:
+	return_home_button.visible = should_show
+	if not should_show:
+		return
+	var row := return_home_button.get_parent()
+	if row == null:
+		return
+	# iPadOS owns the center of the title bar for its multitasking ellipsis.
+	# Keep Projects immediately after the app menu so it stays in the left safe area.
+	row.move_child(return_home_button, mini(menu_bar.get_index() + 1, row.get_child_count() - 1))
+
+
+func _on_return_home_pressed() -> void:
+	return_home_requested.emit()
 
 
 func _input(event: InputEvent) -> void:
@@ -181,31 +195,19 @@ func handle_main_menu_collapse() -> void:
 
 func _on_project_about_to_switch() -> void:
 	var project := Global.current_project
-	project.resized.disconnect(_on_project_resized)
 	project.selection_changed.disconnect(_on_project_selection_changed)
 
 
 func _on_project_switched() -> void:
 	var project := Global.current_project
-	if not project.resized.is_connected(_on_project_resized):
-		project.resized.connect(_on_project_resized)
 	if not project.selection_changed.is_connected(_on_project_selection_changed):
 		project.selection_changed.connect(_on_project_selection_changed)
 	_on_project_selection_changed()
-	var project_size_text := "[%s×%s]" % [project.size.x, project.size.y]
-	_on_cursor_position_text_changed(project_size_text)
 	edit_menu.set_item_disabled(Global.EditMenu.NEW_BRUSH, not project.has_selection)
 	_update_file_menu_buttons(project)
 	for j in Tiles.MODE.values():
 		tile_mode_submenu.set_item_checked(j, j == project.tiles.mode)
 	_check_color_mode_submenu_item(project)
-	_update_current_frame_mark()
-
-
-func _on_project_resized() -> void:
-	var project := Global.current_project
-	var project_size_text := "[%s×%s]" % [project.size.x, project.size.y]
-	_on_cursor_position_text_changed(project_size_text)
 
 
 func _on_project_selection_changed() -> void:
@@ -216,10 +218,6 @@ func _on_project_selection_changed() -> void:
 	select_menu.set_item_disabled(Global.SelectMenu.CLEAR, not has_selection)
 	select_menu.set_item_disabled(Global.SelectMenu.RESELECT, can_reselect)
 	project_menu.set_item_disabled(Global.ProjectMenu.CROP_TO_SELECTION, not has_selection)
-
-
-func _on_cursor_position_text_changed(text: String) -> void:
-	cursor_position_label.text = text_server.format_number(text)
 
 
 func _update_file_menu_buttons(project: Project) -> void:
@@ -237,13 +235,6 @@ func _update_file_menu_buttons(project: Project) -> void:
 			file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export") + f_name)
 	else:
 		file_menu.set_item_text(Global.FileMenu.EXPORT, tr("Export"))
-
-
-func _update_current_frame_mark() -> void:
-	var project := Global.current_project
-	var current_frame := text_server.format_number(str(project.current_frame + 1))
-	var n_of_frames := text_server.format_number(str(project.frames.size()))
-	current_frame_mark.text = "%s/%s" % [current_frame, n_of_frames]
 
 
 func _setup_file_menu() -> void:

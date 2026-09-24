@@ -13,6 +13,10 @@ const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
 
 ## Platform policy for where .pxo files live; see the script for the iPad rules.
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
+const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
+const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
+const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
+const PROJECT_EXPORT_COORDINATOR := preload("res://src/ProjectLibrary/ProjectExportCoordinator.gd")
 
 var opensprite_file_selected := false
 var redone := false
@@ -28,8 +32,14 @@ var splash_dialog: AcceptDialog:
 			splash_dialog = load(SPLASH_DIALOG_SCENE_PATH).instantiate()
 			add_child(splash_dialog)
 		return splash_dialog
+var project_save_coordinator: ProjectSaveCoordinator
+var app_shell_controller: AppShellController
+var ios_document_bridge: IOSDocumentBridge
+var project_export_coordinator: ProjectExportCoordinator
 var _last_session_last_project := ""
 
+@onready var project_gallery_root := $ProjectGalleryRoot as ProjectGallery
+@onready var editor_root := $MenuAndUI as Control
 @onready var top_menu_container := $MenuAndUI/TopMenuContainer as Panel
 @onready var main_ui := $MenuAndUI/UI/DockableContainer as DockableContainer
 ## Dialog used to open images and project (.pxo) files.
@@ -43,6 +53,11 @@ var _last_session_last_project := ""
 @onready var restore_session_confirmation_dialog := (
 	$Dialogs/RestoreSessionConfirmationDialog as ConfirmationDialog
 )
+@onready var project_recovery_dialog := $Dialogs/ProjectRecoveryDialog as ConfirmationDialog
+@onready var new_project_dialog := $Dialogs/NewProjectDialog as NewProjectDialog
+@onready var import_source_dialog := $Dialogs/ImportSourceDialog as ImportSourceDialog
+@onready var image_import_mode_dialog := $Dialogs/ImageImportModeDialog as ImageImportModeDialog
+@onready var export_dialog := $Dialogs/ExportDialog as ConfirmationDialog
 @onready var download_confirmation := $Dialogs/DownloadImageConfirmationDialog as ConfirmationDialog
 @onready var left_cursor: Sprite2D = $LeftCursor
 @onready var right_cursor: Sprite2D = $RightCursor
@@ -218,6 +233,49 @@ func _init() -> void:
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
+	if (
+		OS.has_feature("mobile")
+		and not get_window().size_changed.is_connected(_on_mobile_window_size_changed)
+	):
+		get_window().size_changed.connect(_on_mobile_window_size_changed)
+	var managed_storage := STORAGE_POLICY.uses_managed_project_storage()
+	project_save_coordinator = PROJECT_SAVE_COORDINATOR.new()
+	project_save_coordinator.configure(managed_storage, STORAGE_POLICY.PROJECTS_DIRECTORY)
+	add_child(project_save_coordinator)
+	Global.project_switch_guard = project_save_coordinator.can_switch_project
+
+	app_shell_controller = APP_SHELL_CONTROLLER.new()
+	add_child(app_shell_controller)
+	app_shell_controller.configure(
+		managed_storage,
+		editor_root,
+		project_gallery_root,
+		project_recovery_dialog,
+		project_save_coordinator,
+		new_project_dialog,
+		import_source_dialog,
+		image_import_mode_dialog
+	)
+	if managed_storage:
+		project_export_coordinator = PROJECT_EXPORT_COORDINATOR.new()
+		project_export_coordinator.configure(export_dialog)
+		add_child(project_export_coordinator)
+		if not project_gallery_root.export_projects_requested.is_connected(
+			_on_gallery_export_projects_requested
+		):
+			project_gallery_root.export_projects_requested.connect(
+				_on_gallery_export_projects_requested
+			)
+
+		ios_document_bridge = IOS_DOCUMENT_BRIDGE.new()
+		ios_document_bridge.configure(app_shell_controller)
+		add_child(ios_document_bridge)
+		if not project_gallery_root.reveal_in_files_requested.is_connected(
+			_on_gallery_reveal_in_files_requested
+		):
+			project_gallery_root.reveal_in_files_requested.connect(
+				_on_gallery_reveal_in_files_requested
+			)
 
 	get_window().title = tr("untitled") + " - " + Global.PRODUCT_NAME + " " + Global.current_version
 
@@ -231,27 +289,56 @@ func _ready() -> void:
 	_last_session_last_project = get_last_project_path()
 	_handle_cmdline_arguments()
 	get_tree().root.files_dropped.connect(_on_files_dropped)
+	if top_menu_container.has_method("set_return_home_visible"):
+		top_menu_container.set_return_home_visible(managed_storage)
+	if top_menu_container.has_signal("return_home_requested"):
+		top_menu_container.return_home_requested.connect(_on_return_home_requested)
 	if OS.get_name() == "Android":
-		var intent_data := Applinks.get_data()
+		var intent_data: String = Applinks.get_data()
 		if not intent_data.is_empty():
 			_on_applinks_data_received(intent_data)
 	if not DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE_EXTRA):
 		save_sprite_dialog.option_count = 0
 
-	# Detect if Pixelorama crashed last time.
-	if Global.session_crashed_last_time() and OpenSave.had_backups_on_startup:
+	# Desktop keeps the legacy Pixelorama startup flow. Managed iPad storage starts
+	# in the Project Gallery and defers recovery decisions until that project is opened.
+	if (
+		not managed_storage
+		and Global.session_crashed_last_time()
+		and OpenSave.had_backups_on_startup
+	):
 		restore_session_confirmation_dialog.popup_centered_clamped()
 	await get_tree().process_frame
-	if Global.open_last_project:
+	if not managed_storage and Global.open_last_project:
 		load_last_project(true)
 	_setup_application_window_size()
-	_show_splash_screen()
+	if managed_storage:
+		app_shell_controller.startup()
+		if is_instance_valid(ios_document_bridge):
+			ios_document_bridge.start()
+	else:
+		_show_splash_screen()
 	Global.pixelorama_has_loaded = true
 	Global.pixelorama_opened.emit()
 	print("Time Phosprite took to open: %sms" % Time.get_ticks_msec())
 
 
+func _on_gallery_export_projects_requested(paths: PackedStringArray) -> void:
+	if not is_instance_valid(project_export_coordinator):
+		Global.popup_error(tr("Project export is unavailable."))
+		return
+	if not project_export_coordinator.begin_export(paths):
+		Global.popup_error(tr("Could not start project export."))
+
+
+func _on_gallery_reveal_in_files_requested(path: String) -> void:
+	if not is_instance_valid(ios_document_bridge) or not ios_document_bridge.reveal_in_files(path):
+		Global.popup_error(tr("Could not show this project in Files."))
+
+
 func _input(event: InputEvent) -> void:
+	if is_instance_valid(app_shell_controller) and app_shell_controller.is_gallery():
+		return
 	if event.is_action_pressed(&"layer_visibility"):
 		for selected_cel in Global.current_project.selected_cels:
 			var layer := Global.current_project.layers[selected_cel[1]]
@@ -268,6 +355,11 @@ func _input(event: InputEvent) -> void:
 		Global.main_viewport.get_child(0).push_input(event)
 	left_cursor.position = get_global_mouse_position() + Vector2(-32, 32)
 	right_cursor.position = get_global_mouse_position() + Vector2(32, 32)
+
+
+func _on_return_home_requested() -> void:
+	if is_instance_valid(app_shell_controller):
+		app_shell_controller.return_home()
 
 
 func _project_switched() -> void:
@@ -365,6 +457,13 @@ func set_display_scale() -> void:
 	set_custom_cursor()
 
 
+func _on_mobile_window_size_changed() -> void:
+	# iPad sensor rotation changes the safe area independently of the P3 shell
+	# Controls, which are intentionally anchored TOP_LEFT while fullscreen.
+	# Re-resolve it after the Window reports its new geometry.
+	set_mobile_fullscreen_safe_area()
+
+
 func set_mobile_fullscreen_safe_area() -> void:
 	if not OS.has_feature("mobile"):
 		return
@@ -373,15 +472,20 @@ func set_mobile_fullscreen_safe_area() -> void:
 		(get_window().mode == Window.MODE_EXCLUSIVE_FULLSCREEN)
 		or (get_window().mode == Window.MODE_FULLSCREEN)
 	)
-	var menu_and_ui: VBoxContainer = $MenuAndUI
+	var shell_roots: Array[Control] = [editor_root, project_gallery_root]
 	if is_fullscreen:
 		var safe_area := DisplayServer.get_display_safe_area()
-		menu_and_ui.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		var pos := safe_area.position / get_window().content_scale_factor
-		menu_and_ui.position = pos
-		menu_and_ui.size = (safe_area.size / get_window().content_scale_factor)
+		var shell_size := safe_area.size / get_window().content_scale_factor
+		for shell_root: Control in shell_roots:
+			shell_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			shell_root.position = pos
+			shell_root.size = shell_size
+		if is_instance_valid(project_gallery_root):
+			project_gallery_root.call_deferred("_update_layout")
 	else:
-		menu_and_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		for shell_root: Control in shell_roots:
+			shell_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func set_custom_cursor() -> void:
@@ -507,11 +611,13 @@ func _notification(what: int) -> void:
 		return
 	match what:
 		NOTIFICATION_WM_CLOSE_REQUEST:
-			show_quit_dialog()
+			if _flush_managed_projects("exit"):
+				show_quit_dialog()
 		NOTIFICATION_WM_GO_BACK_REQUEST:
 			var subwindows := get_window().get_embedded_subwindows()
 			if subwindows.is_empty():
-				show_quit_dialog()
+				if _flush_managed_projects("go_back"):
+					show_quit_dialog()
 			else:
 				if subwindows[-1] == save_sprite_dialog:
 					_on_save_sprite_canceled()
@@ -519,8 +625,11 @@ func _notification(what: int) -> void:
 		# If the mouse exits the window and another application has the focus,
 		# pause the application
 		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			_flush_managed_projects("background")
 			if Global.pause_when_unfocused:
 				get_tree().paused = true
+		NOTIFICATION_APPLICATION_PAUSED:
+			_flush_managed_projects("suspend")
 		NOTIFICATION_WM_MOUSE_EXIT:
 			# Do not pause the application if the mouse leaves the main window
 			# but there are child subwindows opened, because that makes them unresponsive.
@@ -534,6 +643,18 @@ func _notification(what: int) -> void:
 			get_tree().paused = false
 			Tools.quick_assign_tool_revert(MOUSE_BUTTON_RIGHT)
 			Tools.quick_assign_tool_revert(MOUSE_BUTTON_LEFT)
+
+
+func flush_before_home() -> bool:
+	if not is_instance_valid(project_save_coordinator):
+		return true
+	return project_save_coordinator.flush_before_leaving_editor()
+
+
+func _flush_managed_projects(reason: String) -> bool:
+	if not is_instance_valid(project_save_coordinator):
+		return true
+	return project_save_coordinator.flush_all(reason)
 
 
 func _on_files_dropped(files: PackedStringArray) -> void:
@@ -781,6 +902,8 @@ func _on_QuitAndSaveDialog_confirmed() -> void:
 
 
 func _quit() -> void:
+	if not _flush_managed_projects("exit"):
+		return
 	# Darken the UI to denote that the application is currently exiting
 	# (it won't respond to user input in this state).
 	modulate = Color(0.5, 0.5, 0.5)
@@ -788,6 +911,11 @@ func _quit() -> void:
 
 
 func _exit_tree() -> void:
+	if (
+		is_instance_valid(project_save_coordinator)
+		and Global.project_switch_guard == project_save_coordinator.can_switch_project
+	):
+		Global.project_switch_guard = Callable()
 	Global.pixelorama_about_to_close.emit()
 	for project in Global.projects:
 		project.remove()
