@@ -9,6 +9,8 @@ const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const CROP_SOURCE := "res://src/Tools/UtilityTools/CropTool.gd"
 const ERASER_SCENE := "res://src/Tools/DesignTools/Eraser.tscn"
 const ERASER_SOURCE := "res://src/Tools/DesignTools/Eraser.gd"
+const BASE_TOOL_SCENE := "res://src/Tools/BaseTool.tscn"
+const BUCKET_SCENE := "res://src/Tools/DesignTools/Bucket.tscn"
 
 
 func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_name() -> void:
@@ -131,4 +133,24 @@ func test_shading_is_removed_from_ios_toolbar() -> void:
 		source,
 		'const IOS_TOOLBAR_REMOVED_TOOLS := [&"Text", &"Zoom", &"Pan", &"Shading"]',
 		"Shading must be part of the iOS toolbar removal set",
+	)
+
+func test_tool_name_moves_out_of_options_and_bucket_label_is_compact() -> void:
+	var base_scene := FileAccess.get_file_as_string(BASE_TOOL_SCENE)
+	check_has(
+		base_scene,
+		'[node name="Label" type="Label" parent="." unique_id=236766783]\nvisible = false',
+		"tool options must not repeat the active tool name below the Workspace header",
+	)
+	var bucket_scene := FileAccess.get_file_as_string(BUCKET_SCENE)
+	check_has(
+		bucket_scene,
+		'text = "Across Layers"',
+		"Bucket merged-layer fill option should use the compact Across Layers label",
+	)
+	var zh_cn := FileAccess.get_file_as_string("res://Translations/zh_CN.po")
+	check_has(
+		zh_cn,
+		'msgid "Across Layers"\nmsgstr "跨图层"',
+		"Simplified Chinese Bucket UI must display the requested three-character label",
 	)
