@@ -1119,15 +1119,16 @@ func test_bottom_corner_snap_stops_above_fixed_timeline() -> void:
 
 	var preview_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_true(
-		surface.begin_module_drag(
-			Builtins.PREVIEW_ID,
-			preview_rect.position + Vector2(12.0, 12.0),
+		(
+			surface
+			. begin_module_drag(
+				Builtins.PREVIEW_ID,
+				preview_rect.position + Vector2(12.0, 12.0),
+			)
 		),
 		"Preview drag should begin before bottom-corner snap",
 	)
-	var candidate := surface.update_module_drag(
-		Vector2(bounds.end.x - 12.0, bounds.end.y - 12.0)
-	)
+	var candidate := surface.update_module_drag(Vector2(bounds.end.x - 12.0, bounds.end.y - 12.0))
 	check_eq(
 		int(candidate.get("placement", WorkspaceSurface.Placement.NONE)),
 		WorkspaceSurface.Placement.FLOATING,
