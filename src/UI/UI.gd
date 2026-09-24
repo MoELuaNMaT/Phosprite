@@ -18,6 +18,9 @@ const WORKSPACE_INTERACTION_CONTROLLER_SCRIPT := preload(
 const WORKSPACE_WINDOW_MENU_BRIDGE_SCRIPT := preload(
 	"res://src/UI/Workspace/WorkspaceWindowMenuBridge.gd"
 )
+const WORKSPACE_UI_PROFILE_CONTROLLER_SCRIPT := preload(
+	"res://src/UI/Workspace/WorkspaceUIProfileController.gd"
+)
 
 var shader_disabled := false
 var transparency_material: ShaderMaterial
@@ -29,6 +32,7 @@ var workspace_theme_controller: WorkspaceThemeController
 var workspace_migration: WorkspaceEditorMigration
 var workspace_interaction_controller: WorkspaceInteractionController
 var workspace_window_menu_bridge: WorkspaceWindowMenuBridge
+var workspace_ui_profile_controller: WorkspaceUIProfileController
 
 @onready var dockable_container: DockableContainer = $DockableContainer
 @onready var main_canvas_container := find_child("Main Canvas") as Container
@@ -129,6 +133,10 @@ func _setup_workspace_foundation() -> void:
 	workspace_window_menu_bridge = WORKSPACE_WINDOW_MENU_BRIDGE_SCRIPT.new()
 	workspace_window_menu_bridge.name = "WorkspaceWindowMenuBridge"
 	add_child(workspace_window_menu_bridge)
+
+	workspace_ui_profile_controller = WORKSPACE_UI_PROFILE_CONTROLLER_SCRIPT.new()
+	workspace_ui_profile_controller.name = "WorkspaceUIProfileController"
+	add_child(workspace_ui_profile_controller)
 	_refresh_workspace_theme()
 	_setup_workspace_window_menu.call_deferred()
 
@@ -146,6 +154,23 @@ func _setup_workspace_window_menu() -> void:
 		menu_root, workspace_migration, workspace_layout_store
 	):
 		push_error("P2-G failed to bridge Window menus to Workspace")
+
+	var ui_menu := menu_root.get("ui_menu") as PopupMenu
+	if ui_menu == null:
+		push_error("Workspace UI profiles could not resolve the top-bar UI menu")
+		return
+	if not workspace_ui_profile_controller.setup(
+		ui_menu, workspace_migration, workspace_layout_store
+	):
+		push_error("Failed to initialize Workspace UI profile switching")
+		return
+	workspace_ui_profile_controller.profile_changed.connect(_on_ui_profile_changed)
+
+
+func _on_ui_profile_changed(_profile_id: int) -> void:
+	_apply_context_panel_visibility()
+	if workspace_window_menu_bridge != null:
+		workspace_window_menu_bridge.refresh()
 
 
 func _refresh_workspace_theme() -> void:
