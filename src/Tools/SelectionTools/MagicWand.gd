@@ -7,6 +7,11 @@ var _allegro_image_segments: Array[Segment]
 var _tolerance := 0.003
 
 
+func _ready() -> void:
+	super._ready()
+	_sync_mode_buttons()
+
+
 class Segment:
 	var flooding := false
 	var todo_above := false
@@ -55,7 +60,22 @@ func set_config(config: Dictionary) -> void:
 
 func update_config() -> void:
 	super.update_config()
+	_sync_mode_buttons()
 	$ToleranceSlider.value = _tolerance * 255.0
+
+
+func _sync_mode_buttons() -> void:
+	var buttons := $ModeButtons.get_children()
+	for index in buttons.size():
+		var button := buttons[index] as BaseButton
+		if button != null:
+			button.set_pressed_no_signal(index == _mode_selected)
+
+
+func _on_mode_button_pressed(index: int) -> void:
+	_mode_selected = clampi(index, Mode.DEFAULT, Mode.INTERSECT)
+	_sync_mode_buttons()
+	save_config()
 
 
 func _on_tolerance_slider_value_changed(value: float) -> void:
