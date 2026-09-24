@@ -25,6 +25,16 @@ enum Placement {
 
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.14)
 const REGION_TARGET_HYSTERESIS := 48.0
+const FLOATING_SNAP_DISTANCE := 24.0
+const FLOATING_SNAP_MARGIN := 8.0
+
+enum FloatingSnapEdge {
+	NONE = 0,
+	LEFT = 1,
+	RIGHT = 2,
+	TOP = 4,
+	BOTTOM = 8,
+}
 
 var manager: WorkspaceModuleManager
 var dock_host: WorkspaceDockHost
@@ -43,6 +53,9 @@ var _drag_origin: Dictionary = {}
 var _drag_candidate: Dictionary = {}
 var _drag_started_from_dock := false
 var _drag_pointer_offset := Vector2.ZERO
+var _floating_snap_policy_enabled := false
+var _fixed_dock_zones: Dictionary = {}
+var _floating_anchors: Dictionary = {}
 
 
 func setup(module_manager: WorkspaceModuleManager, existing_dock_host: WorkspaceDockHost) -> bool:
@@ -54,6 +67,57 @@ func setup(module_manager: WorkspaceModuleManager, existing_dock_host: Workspace
 	dock_host = existing_dock_host
 	_ensure_layers()
 	return true
+
+
+func configure_floating_snap_policy(fixed_dock_zones: Dictionary) -> void:
+	_floating_snap_policy_enabled = true
+	_fixed_dock_zones.clear()
+	for raw_id: Variant in fixed_dock_zones:
+		var module_id := raw_id as StringName
+		var zone := int(fixed_dock_zones[raw_id])
+		if dock_host != null and dock_host.layout != null and dock_host.layout.is_valid_zone(zone):
+			_fixed_dock_zones[module_id] = zone
+
+
+func is_fixed_dock_module(module_id: StringName) -> bool:
+	return _floating_snap_policy_enabled and _fixed_dock_zones.has(module_id)
+
+
+func get_floating_bounds() -> Rect2:
+	if dock_host == null:
+		return Rect2()
+	var bounds := dock_host.get_content_rect()
+	if not bounds.has_area():
+		bounds = Rect2(Vector2.ZERO, dock_host.size)
+	var margin := minf(
+		FLOATING_SNAP_MARGIN,
+		minf(bounds.size.x, bounds.size.y) * 0.25,
+	)
+	return Rect2(
+		bounds.position + Vector2.ONE * margin,
+		Vector2(
+			maxf(0.0, bounds.size.x - margin * 2.0),
+			maxf(0.0, bounds.size.y - margin * 2.0),
+		),
+	)
+
+
+func refresh_floating_bounds() -> void:
+	if not _is_ready():
+		return
+	for module_id in _floating_rects.keys():
+		if get_module_placement(module_id) != Placement.FLOATING:
+			continue
+		var current := get_floating_rect(module_id)
+		if not current.has_area():
+			continue
+		var anchored := _apply_saved_anchor(module_id, current)
+		var rect := _constrain_floating_rect(module_id, anchored, false)
+		if rect == current:
+			continue
+		_apply_floating_rect(module_id, rect)
+		_floating_rects[module_id] = rect
+		_last_floating_rects[module_id] = rect
 
 
 func park_module(module_id: StringName) -> bool:
@@ -93,6 +157,7 @@ func park_module(module_id: StringName) -> bool:
 
 	_placements.erase(module_id)
 	_floating_rects.erase(module_id)
+	_floating_anchors.erase(module_id)
 	_collapsed_restore.erase(module_id)
 	_peeking.erase(module_id)
 	module_cleared.emit(module_id)
@@ -114,6 +179,19 @@ func dock_module(
 ) -> bool:
 	if not _is_ready() or not dock_host.layout.is_valid_zone(zone):
 		return false
+	if _floating_snap_policy_enabled:
+		if is_fixed_dock_module(module_id):
+			zone = int(_fixed_dock_zones[module_id])
+			index = 0
+			region_fill = true
+		else:
+			if not _can_float(module_id):
+				return false
+			return float_module(
+				module_id,
+				_legacy_dock_to_floating_rect(module_id, zone, index, requested_size),
+				context,
+			)
 	if not dock_host.layout.can_dock_module(module_id):
 		return false
 	if get_module_placement(module_id) == Placement.COLLAPSED and is_peeking(module_id):
@@ -143,7 +221,12 @@ func dock_module(
 
 
 func float_module(module_id: StringName, requested_rect: Rect2, context: Dictionary = {}) -> bool:
-	if not _is_ready() or not _can_float(module_id):
+	if not _is_ready():
+		return false
+	if is_fixed_dock_module(module_id):
+		var fixed_zone := int(_fixed_dock_zones[module_id])
+		return dock_module(module_id, fixed_zone, 0, requested_rect.size, context, true)
+	if not _can_float(module_id):
 		return false
 	if get_module_placement(module_id) == Placement.COLLAPSED and is_peeking(module_id):
 		if not end_peek(module_id):
@@ -178,6 +261,7 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
 	_last_floating_rects[module_id] = rect
+	_floating_anchors[module_id] = _detect_snap_edges(rect)
 	_collapsed_restore.erase(module_id)
 	_peeking.erase(module_id)
 	module_floated.emit(module_id, rect)
@@ -316,6 +400,7 @@ func set_floating_rect(module_id: StringName, requested_rect: Rect2) -> bool:
 	_apply_floating_rect(module_id, rect)
 	_floating_rects[module_id] = rect
 	_last_floating_rects[module_id] = rect
+	_floating_anchors[module_id] = _detect_snap_edges(rect)
 	module_floated.emit(module_id, rect)
 	return true
 
