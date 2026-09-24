@@ -654,9 +654,7 @@ func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() 
 	var surface := fixture["surface"] as WorkspaceSurface
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
 	check_true(
-		surface.set_floating_rect(
-			Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)
-		),
+		surface.set_floating_rect(Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)),
 		"Preview should use a large floating rect for resize-target validation",
 	)
 	preview.apply_visual_theme(VisualTheme.new(), &"floating")
@@ -927,11 +925,14 @@ func test_bottom_snapped_float_tracks_real_timeline_top_after_height_resize() ->
 
 	var initial_bounds := surface.get_floating_bounds()
 	check_true(
-		surface.dock_module(
-			Builtins.PREVIEW_ID,
-			WorkspaceDockLayout.DockZone.BOTTOM,
-			0,
-			Vector2(280.0, 140.0),
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				WorkspaceDockLayout.DockZone.BOTTOM,
+				0,
+				Vector2(280.0, 140.0),
+			)
 		),
 		"bottom edge request should place Preview as a snapped float above Timeline",
 	)
