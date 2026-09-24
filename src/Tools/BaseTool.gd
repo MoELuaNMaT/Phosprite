@@ -1,6 +1,10 @@
 class_name BaseTool
 extends VBoxContainer
 
+const SIDEBAR_CONTROL_WIDTH := 54.0
+const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
+const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
+
 var is_moving := false
 var is_syncing := false
 var kname: String
@@ -33,7 +37,138 @@ func _ready() -> void:
 	else:
 		color_rect.color = Global.right_tool_color
 	$Label.text = Tools.tools[name].display_name
+	_apply_stacked_option_layout(self)
 	load_config()
+
+
+func _apply_stacked_option_layout(root: Node) -> void:
+	for child in root.get_children():
+		if child is ValueSlider:
+			_configure_sidebar_value_slider(child)
+			_stack_value_slider(child)
+			continue
+		if child is ValueSliderV2:
+			_configure_sidebar_vector_slider(child)
+			continue
+		if child is CheckBox:
+			_stack_checkbox(child)
+			continue
+		if child is OptionButton:
+			_configure_sidebar_option_button(child)
+			continue
+		if child is Label:
+			_configure_sidebar_label(child)
+			continue
+		if child is Button:
+			_configure_sidebar_button(child)
+			continue
+		if child is HBoxContainer:
+			child.alignment = BoxContainer.ALIGNMENT_CENTER
+			_apply_stacked_option_layout(child)
+			continue
+		if child is Container:
+			_apply_stacked_option_layout(child)
+
+
+func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
+	slider.allow_text_input = false
+	slider.prefix = _strip_option_colon(slider.prefix)
+	slider.show_drag_arrows = true
+	slider.show_arrows = false
+	slider.show_progress = false
+	slider.drag_sensitivity = _tool_drag_sensitivity(slider)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.custom_minimum_size = Vector2(
+		SIDEBAR_CONTROL_WIDTH, maxf(slider.custom_minimum_size.y, 24.0)
+	)
+
+
+func _configure_sidebar_vector_slider(slider: ValueSliderV2) -> void:
+	slider.grid_columns = 1
+	slider.slider_min_size = Vector2(SIDEBAR_CONTROL_WIDTH, 24.0)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	for component in slider.get_sliders():
+		_configure_sidebar_value_slider(component)
+
+
+func _configure_sidebar_option_button(option: OptionButton) -> void:
+	option.clip_text = true
+	option.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	option.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+
+
+func _configure_sidebar_label(label: Label) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.text = _strip_option_colon(label.text)
+
+
+func _configure_sidebar_button(button: Button) -> void:
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.clip_text = true
+
+
+func _tool_drag_sensitivity(slider: ValueSlider) -> float:
+	if String(name) in ["Pencil", "Eraser"]:
+		if slider.name == &"BrushSize":
+			return PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY
+		return PRECISION_TOOL_DRAG_SENSITIVITY
+	return 1.0
+
+
+func _stack_value_slider(slider: ValueSlider) -> void:
+	if slider.get_parent() is not VBoxContainer:
+		return
+	var label_text := slider.prefix.strip_edges()
+	if label_text.is_empty():
+		return
+	_insert_stacked_option_label(slider, label_text)
+	slider.prefix = ""
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+
+
+func _stack_checkbox(checkbox: CheckBox) -> void:
+	if checkbox.get_parent() is not VBoxContainer:
+		return
+	var label_text := checkbox.text.strip_edges()
+	if label_text.is_empty():
+		return
+	_insert_stacked_option_label(checkbox, label_text)
+	checkbox.text = ""
+	checkbox.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+
+func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
+	var parent := control.get_parent() as VBoxContainer
+	if parent == null:
+		return
+	var label := Label.new()
+	label.name = StringName("%sOptionLabel" % control.name)
+	label.text = _format_option_label(raw_text)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.visible = control.visible
+	parent.add_child(label)
+	parent.move_child(label, control.get_index())
+	control.visibility_changed.connect(
+		func():
+			if is_instance_valid(label):
+				label.visible = control.visible
+	)
+
+
+func _format_option_label(raw_text: String) -> String:
+	return _strip_option_colon(raw_text)
+
+
+func _strip_option_colon(raw_text: String) -> String:
+	var label_text := raw_text.strip_edges()
+	if label_text.length() > 1 and (label_text.ends_with(":") or label_text.ends_with("：")):
+		return label_text.left(-1)
+	return label_text
 
 
 func save_config() -> void:

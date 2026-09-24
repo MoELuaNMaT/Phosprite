@@ -12,6 +12,47 @@ const PLUGIN_SINGLETON_NAME := "SharePlugin"
 const STAGING_DIRECTORY := "user://.share_export"
 
 
+class ShareCompletionGate:
+	extends RefCounted
+
+	signal finished(success: bool)
+
+	var plugin: Object
+	var done := false
+
+	func bind(target: Object) -> void:
+		plugin = target
+		plugin.connect(&"share_completed", _on_completed)
+		plugin.connect(&"share_canceled", _on_canceled)
+		plugin.connect(&"share_failed", _on_failed)
+
+	func _on_completed(_activity_type: String) -> void:
+		_finish(true)
+
+	func _on_canceled() -> void:
+		_finish(false)
+
+	func _on_failed(_message: String) -> void:
+		_finish(false)
+
+	func _finish(success: bool) -> void:
+		if done:
+			return
+		done = true
+		_disconnect_all()
+		finished.emit(success)
+
+	func _disconnect_all() -> void:
+		if plugin == null:
+			return
+		if plugin.is_connected(&"share_completed", _on_completed):
+			plugin.disconnect(&"share_completed", _on_completed)
+		if plugin.is_connected(&"share_canceled", _on_canceled):
+			plugin.disconnect(&"share_canceled", _on_canceled)
+		if plugin.is_connected(&"share_failed", _on_failed):
+			plugin.disconnect(&"share_failed", _on_failed)
+
+
 static func is_share_export_platform() -> bool:
 	return OS.get_name() == "iOS"
 
@@ -44,16 +85,49 @@ static func find_staged_files(extension: String) -> PackedStringArray:
 static func share_file(
 	path: String, title := "Phosprite Export", subject := "", content := ""
 ) -> bool:
+	var plugin := _share_plugin_for_path(path)
+	if plugin == null:
+		return false
+	_call_share(plugin, path, title, subject, content)
+	return true
+
+
+static func share_file_and_wait(
+	path: String, title := "Phosprite Export", subject := "", content := ""
+) -> bool:
+	var plugin := _share_plugin_for_path(path)
+	if plugin == null:
+		return false
+	if not (
+		plugin.has_signal("share_completed")
+		and plugin.has_signal("share_canceled")
+		and plugin.has_signal("share_failed")
+	):
+		push_error("%s does not expose share completion signals" % PLUGIN_SINGLETON_NAME)
+		return false
+	var gate := ShareCompletionGate.new()
+	gate.bind(plugin)
+	_call_share(plugin, path, title, subject, content)
+	return await gate.finished
+
+
+static func _share_plugin_for_path(path: String) -> Object:
 	if not FileAccess.file_exists(path):
 		push_error("Share export artifact does not exist: %s" % path)
-		return false
+		return null
 	if not Engine.has_singleton(PLUGIN_SINGLETON_NAME):
 		push_error("%s singleton is not available" % PLUGIN_SINGLETON_NAME)
-		return false
+		return null
 	var plugin := Engine.get_singleton(PLUGIN_SINGLETON_NAME)
 	if plugin == null or not plugin.has_method("share"):
 		push_error("%s does not expose share()" % PLUGIN_SINGLETON_NAME)
-		return false
+		return null
+	return plugin
+
+
+static func _call_share(
+	plugin: Object, path: String, title: String, subject: String, content: String
+) -> void:
 	(
 		plugin
 		. call(
@@ -67,7 +141,6 @@ static func share_file(
 			}
 		)
 	)
-	return true
 
 
 static func mime_type_for_path(path: String) -> String:

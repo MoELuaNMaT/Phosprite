@@ -87,6 +87,7 @@ presets_visible = false
 
 [node name="ColorButtons" type="HBoxContainer" parent="ScrollContainer/VerticalContainer" unique_id=1503366675]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_vertical = 0
 alignment = 1

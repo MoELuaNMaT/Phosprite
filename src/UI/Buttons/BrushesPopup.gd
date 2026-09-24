@@ -3,11 +3,11 @@ extends Popup
 
 signal brush_selected(brush)
 signal brush_removed(brush)
-enum { PIXEL, CIRCLE, FILLED_CIRCLE, FILE, RANDOM_FILE, CUSTOM }
+# Keep the existing numeric values stable because brush type is persisted in tool config.
+enum { PIXEL, CIRCLE, FILLED_CIRCLE, FILE, RANDOM_FILE, CUSTOM, HOLLOW_SQUARE }
 
-var pixel_image := preload("res://assets/graphics/pixel_image.png")
-var circle_image := preload("res://assets/graphics/circle_9x9.png")
-var circle_filled_image := preload("res://assets/graphics/circle_filled_9x9.png")
+const BrushShapes := preload("res://src/Tools/BrushShapeGenerator.gd")
+const DEFAULT_ICON_SIZE := 9
 
 
 class Brush:
@@ -19,21 +19,39 @@ class Brush:
 
 func _ready() -> void:
 	var container = get_node("Background/Brushes/Categories/DefaultBrushContainer")
-	var button := Brushes.create_button(pixel_image)
-	button.brush.type = PIXEL
-	button.tooltip_text = "Pixel brush"
-	container.add_child(button)
-	button.brush.index = button.get_index()
+	_add_default_brush(
+		container,
+		PIXEL,
+		BrushShapes.Shape.FILLED_SQUARE,
+		"Square brush",
+	)
+	_add_default_brush(
+		container,
+		HOLLOW_SQUARE,
+		BrushShapes.Shape.HOLLOW_SQUARE,
+		"Hollow square brush",
+	)
+	_add_default_brush(
+		container,
+		FILLED_CIRCLE,
+		BrushShapes.Shape.FILLED_CIRCLE,
+		"Filled circle brush",
+	)
+	_add_default_brush(
+		container,
+		CIRCLE,
+		BrushShapes.Shape.HOLLOW_CIRCLE,
+		"Hollow circle brush",
+	)
 
-	button = Brushes.create_button(circle_image)
-	button.brush.type = CIRCLE
-	button.tooltip_text = "Circle brush"
-	container.add_child(button)
-	button.brush.index = button.get_index()
 
-	button = Brushes.create_button(circle_filled_image)
-	button.brush.type = FILLED_CIRCLE
-	button.tooltip_text = "Filled circle brush"
+func _add_default_brush(
+	container: Container, type: int, shape: BrushShapes.Shape, tooltip: String
+) -> void:
+	var image := BrushShapes.create_preview_image(shape, DEFAULT_ICON_SIZE)
+	var button := Brushes.create_button(image)
+	button.brush.type = type
+	button.tooltip_text = tooltip
 	container.add_child(button)
 	button.brush.index = button.get_index()
 
@@ -103,6 +121,12 @@ static func clear_project_brush() -> void:
 
 func get_brush(type: int, index: int) -> Brush:
 	var container = get_node("Background/Brushes/Categories/DefaultBrushContainer")
+	if type in [PIXEL, CIRCLE, FILLED_CIRCLE, HOLLOW_SQUARE]:
+		for child in container.get_children():
+			if child.brush.type == type:
+				return child.brush
+		return Brushes.get_default_brush()
+
 	match type:
 		CUSTOM:
 			container = get_node("Background/Brushes/Categories/ProjectBrushContainer")

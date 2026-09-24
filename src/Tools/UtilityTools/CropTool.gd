@@ -6,62 +6,18 @@ var _crop: CropRect
 var _start_pos: Vector2
 var _syncing := false
 var _locked_ratio := false
+var _drag_changed := false
 
 
 func _ready() -> void:
 	super._ready()
 	_crop = Global.canvas.crop_rect
-	if OS.get_name() == "iOS":
-		_crop.mode = CropRect.Mode.MARGINS
-		_crop.locked_size = false
-		_configure_ios_margin_options()
+	_crop.mode = CropRect.Mode.MARGINS
+	_crop.locked_size = false
 	_crop.updated.connect(_sync_ui)
 	_crop.tool_count += 1
 	_sync_ui()
-
-
-func _configure_ios_margin_options() -> void:
-	$ModeLabel.hide()
-	$HBoxContainer.hide()
-	$"%RatioContainer".hide()
-	$"%PosSizeContainer".hide()
-	$"%DimensionsLabel".hide()
-	$Apply.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var margins := $"%MarginsContainer" as VBoxContainer
-	if margins.get_node_or_null(^"TopBottomRow") != null:
-		return
-	var top := $"%Top" as Control
-	var bottom := $"%Bottom" as Control
-	var left := $"%Left" as Control
-	var right := $"%Right" as Control
-	var top_bottom_row := HBoxContainer.new()
-	top_bottom_row.name = &"TopBottomRow"
-	top_bottom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var left_right_row := HBoxContainer.new()
-	left_right_row.name = &"LeftRightRow"
-	left_right_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	for control in [top, bottom, left, right]:
-		control.get_parent().remove_child(control)
-		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margins.add_child(top_bottom_row)
-	margins.add_child(left_right_row)
-	top_bottom_row.add_child(top)
-	top_bottom_row.add_child(bottom)
-	left_right_row.add_child(left)
-	left_right_row.add_child(right)
-
-
-func _apply_ios_crop_visibility() -> void:
-	if OS.get_name() != "iOS":
-		return
-	$ModeLabel.hide()
-	$HBoxContainer.hide()
-	$"%MarginsContainer".show()
-	$"%RatioContainer".hide()
-	$"%PosSizeContainer".hide()
-	$"%DimensionsLabel".hide()
+	_hide_crop_options()
 
 
 func _exit_tree() -> void:
@@ -71,12 +27,14 @@ func _exit_tree() -> void:
 
 func draw_start(pos: Vector2i) -> void:
 	super.draw_start(pos)
+	_drag_changed = false
 	_offset = pos - _crop.rect.position
 	_start_pos = pos
 
 
 func draw_move(pos: Vector2i) -> void:
 	super.draw_move(pos)
+	_drag_changed = true
 	if _crop.locked_size:
 		_crop.rect.position = pos - _offset
 	else:
@@ -140,8 +98,26 @@ func _sync_ui() -> void:
 	$"%Size".value = _crop.rect.size
 
 	$"%DimensionsLabel".text = str(_crop.rect.size.x, " x ", _crop.rect.size.y)
-	_apply_ios_crop_visibility()
+	_hide_crop_options()
 	_syncing = false
+
+
+func draw_end(pos: Vector2i) -> void:
+	super.draw_end(pos)
+	if not _drag_changed:
+		return
+	_drag_changed = false
+	_crop.apply()
+
+
+func _hide_crop_options() -> void:
+	for child in get_children():
+		if child is not Control:
+			continue
+		var control := child as Control
+		if control.name in [&"ColorRect", &"Label"]:
+			continue
+		control.hide()
 
 
 # UI Signals:

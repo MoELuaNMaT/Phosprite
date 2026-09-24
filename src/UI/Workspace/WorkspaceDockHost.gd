@@ -21,6 +21,9 @@ var layout: WorkspaceDockLayout
 
 var _zone_hosts: Dictionary = {}
 var _preview: ColorRect
+var _side_inset := 0.0
+var _top_edge_snap_y := 0.0
+var _top_edge_snap_height := EDGE_DOCK_TARGET_EXTENT
 var _drag_module_id: StringName = &""
 var _drag_candidate: Dictionary = {}
 
@@ -142,6 +145,24 @@ func set_preview_color(color: Color) -> void:
 		_preview.color = color
 
 
+func set_side_inset(inset: float) -> void:
+	_side_inset = maxf(0.0, inset)
+	_layout_zones()
+
+
+func get_side_inset() -> float:
+	return _resolved_side_inset()
+
+
+func set_top_edge_snap_band(offset_y: float, height: float) -> void:
+	_top_edge_snap_y = offset_y
+	_top_edge_snap_height = maxf(0.0, height)
+
+
+func get_top_edge_snap_band() -> Rect2:
+	return Rect2(0.0, _top_edge_snap_y, size.x, _top_edge_snap_height)
+
+
 func begin_module_drag(module_id: StringName) -> bool:
 	if layout == null or layout.get_module_zone(module_id) == WorkspaceDockLayout.DockZone.NONE:
 		return false
@@ -202,15 +223,18 @@ func get_zone_rects() -> Dictionary:
 	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
 	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
 	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
+	var inset := _resolved_side_inset()
+	var inner_width := maxf(0.0, size.x - inset * 2.0)
 	var middle_y := top_h
 	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
 	return {
-		WorkspaceDockLayout.DockZone.TOP: Rect2(0.0, 0.0, size.x, maxf(top_h, EMPTY_ZONE_EXTENT)),
+		WorkspaceDockLayout.DockZone.TOP:
+		Rect2(inset, 0.0, inner_width, maxf(top_h, EMPTY_ZONE_EXTENT)),
 		WorkspaceDockLayout.DockZone.LEFT:
-		Rect2(0.0, middle_y, maxf(left_w, EMPTY_ZONE_EXTENT), middle_h),
+		Rect2(inset, middle_y, maxf(left_w, EMPTY_ZONE_EXTENT), middle_h),
 		WorkspaceDockLayout.DockZone.RIGHT:
 		Rect2(
-			maxf(0.0, size.x - maxf(right_w, EMPTY_ZONE_EXTENT)),
+			maxf(inset, size.x - inset - maxf(right_w, EMPTY_ZONE_EXTENT)),
 			middle_y,
 			maxf(right_w, EMPTY_ZONE_EXTENT),
 			middle_h
@@ -229,7 +253,7 @@ func get_edge_snap_rects() -> Dictionary:
 	var extent_x := minf(EDGE_DOCK_TARGET_EXTENT, size.x)
 	var extent_y := minf(EDGE_DOCK_TARGET_EXTENT, size.y)
 	return {
-		WorkspaceDockLayout.DockZone.TOP: Rect2(0.0, 0.0, size.x, extent_y),
+		WorkspaceDockLayout.DockZone.TOP: get_top_edge_snap_band(),
 		WorkspaceDockLayout.DockZone.LEFT: Rect2(0.0, 0.0, extent_x, size.y),
 		WorkspaceDockLayout.DockZone.RIGHT:
 		Rect2(maxf(0.0, size.x - extent_x), 0.0, extent_x, size.y),
@@ -243,9 +267,12 @@ func get_content_rect() -> Rect2:
 	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
 	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
 	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
+	var inset := _resolved_side_inset()
 	return Rect2(
-		Vector2(left_w, top_h),
-		Vector2(maxf(0.0, size.x - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h))
+		Vector2(inset + left_w, top_h),
+		Vector2(
+			maxf(0.0, size.x - inset * 2.0 - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h)
+		)
 	)
 
 
@@ -303,19 +330,25 @@ func _layout_zones() -> void:
 	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
 	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
 	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
+	var inset := _resolved_side_inset()
+	var inner_width := maxf(0.0, size.x - inset * 2.0)
 	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
 
-	_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(0.0, 0.0, size.x, top_h))
+	_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
 	_set_host_rect(
 		WorkspaceDockLayout.DockZone.BOTTOM,
 		Rect2(0.0, maxf(0.0, size.y - bottom_h), size.x, bottom_h)
 	)
-	_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(0.0, top_h, left_w, middle_h))
+	_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, top_h, left_w, middle_h))
 	_set_host_rect(
 		WorkspaceDockLayout.DockZone.RIGHT,
-		Rect2(maxf(0.0, size.x - right_w), top_h, right_w, middle_h)
+		Rect2(maxf(inset, size.x - inset - right_w), top_h, right_w, middle_h)
 	)
 	layout_geometry_changed.emit(get_content_rect())
+
+
+func _resolved_side_inset() -> float:
+	return minf(_side_inset, size.x * 0.5)
 
 
 func _zone_extent(zone: int) -> float:

@@ -7,6 +7,9 @@
 [ext_resource type="Texture2D" uid="uid://bnc78807k1xjv" path="res://assets/graphics/misc/close.png" id="4_ad04n"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="6_2bdjf"]
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]
+allow_unpress = false
+
 [node name="ToolOptions" unique_id=1688504516 instance=ExtResource("1")]
 script = ExtResource("2")
 
@@ -50,27 +53,65 @@ layout_mode = 2
 text = "Mode:"
 
 [node name="Modes" type="OptionButton" parent="." index="4" unique_id=1993262786]
+visible = false
 layout_mode = 2
 mouse_default_cursor_shape = 2
 
-[node name="Algorithm" type="OptionButton" parent="." index="5" unique_id=915163476]
+[node name="ModeButtons" type="VBoxContainer" parent="." index="5"]
+layout_mode = 2
+alignment = 1
+
+[node name="Replace" type="Button" parent="ModeButtons" index="0"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Replace"
+clip_text = true
+
+[node name="Add" type="Button" parent="ModeButtons" index="1"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Add"
+clip_text = true
+
+[node name="Subtract" type="Button" parent="ModeButtons" index="2"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Subtract"
+clip_text = true
+
+[node name="Intersect" type="Button" parent="ModeButtons" index="3"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Intersect"
+clip_text = true
+
+[node name="Algorithm" type="OptionButton" parent="." index="6" unique_id=915163476]
 layout_mode = 2
 mouse_default_cursor_shape = 2
 
-[node name="PositionLabel" type="Label" parent="." index="6" unique_id=1872947077]
+[node name="PositionLabel" type="Label" parent="." index="7" unique_id=1872947077]
 layout_mode = 2
 text = "Position:"
 
-[node name="Position" parent="." index="7" unique_id=278681099 instance=ExtResource("4")]
+[node name="Position" parent="." index="8" unique_id=278681099 instance=ExtResource("4")]
 layout_mode = 2
 allow_greater = true
 allow_lesser = true
 
-[node name="SizeLabel" type="Label" parent="." index="8" unique_id=1456635026]
+[node name="SizeLabel" type="Label" parent="." index="9" unique_id=1456635026]
 layout_mode = 2
 text = "Size:"
 
-[node name="Size" parent="." index="9" unique_id=223058514 instance=ExtResource("4")]
+[node name="Size" parent="." index="10" unique_id=223058514 instance=ExtResource("4")]
 layout_mode = 2
 value = Vector2(1, 1)
 min_value = Vector2(1, 1)
@@ -79,11 +120,11 @@ show_ratio = true
 prefix_x = "Width:"
 prefix_y = "Height:"
 
-[node name="RotationLabel" type="Label" parent="." index="10" unique_id=209242353 groups=["ShowOnActiveTransformation"]]
+[node name="RotationLabel" type="Label" parent="." index="11" unique_id=209242353 groups=["ShowOnActiveTransformation"]]
 layout_mode = 2
 text = "Rotation:"
 
-[node name="Rotation" type="TextureProgressBar" parent="." index="11" unique_id=260307741 groups=["ShowOnActiveTransformation"]]
+[node name="Rotation" type="TextureProgressBar" parent="." index="12" unique_id=260307741 groups=["ShowOnActiveTransformation"]]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 mouse_default_cursor_shape = 2
@@ -100,7 +141,7 @@ script = ExtResource("6_2bdjf")
 suffix = "°"
 metadata/_custom_type_script = "uid://tfdhqto6j5j0"
 
-[node name="Shear" type="TextureProgressBar" parent="." index="12" unique_id=1423914130 groups=["ShowOnActiveTransformation"]]
+[node name="Shear" type="TextureProgressBar" parent="." index="13" unique_id=1423914130 groups=["ShowOnActiveTransformation"]]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 mouse_default_cursor_shape = 2
@@ -120,6 +161,10 @@ metadata/_custom_type_script = "uid://tfdhqto6j5j0"
 [connection signal="pressed" from="ConfirmButtons/ConfirmButton" to="." method="_on_confirm_button_pressed"]
 [connection signal="pressed" from="ConfirmButtons/CancelButton" to="." method="_on_cancel_button_pressed"]
 [connection signal="item_selected" from="Modes" to="." method="_on_modes_item_selected"]
+[connection signal="pressed" from="ModeButtons/Replace" to="." method="_on_mode_button_pressed" binds= [0]]
+[connection signal="pressed" from="ModeButtons/Add" to="." method="_on_mode_button_pressed" binds= [1]]
+[connection signal="pressed" from="ModeButtons/Subtract" to="." method="_on_mode_button_pressed" binds= [2]]
+[connection signal="pressed" from="ModeButtons/Intersect" to="." method="_on_mode_button_pressed" binds= [3]]
 [connection signal="item_selected" from="Algorithm" to="." method="_on_algorithm_item_selected"]
 [connection signal="value_changed" from="Position" to="." method="_on_position_value_changed"]
 [connection signal="value_changed" from="Size" to="." method="_on_size_value_changed"]

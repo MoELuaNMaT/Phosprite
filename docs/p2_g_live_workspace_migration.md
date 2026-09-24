@@ -135,3 +135,15 @@ P2-G does not redesign the internal content of individual panels, change drawing
 - Left Tool Options is no longer a standalone Workspace module. Its existing `LeftPanelContainer` is part of the Tools content: the tool picker remains at the top, and the selected left tool's options occupy the remaining space below it. Right Tool Options remains independent for dual-tool mode.
 
 - On iOS, Line Tool, Curve Tool, Rectangle Tool, Ellipse Tool and Isometric Box Tool share one compact Shapes toolbar entry. Tapping uses the most recently selected child; long-press opens the five-tool submenu and the proxy icon follows the selected child. Text, Zoom and Pan remain registered tools but are removed from the visible iOS Tools palette.
+
+
+## Bottom Timeline iPad interaction
+
+The live Workspace host spans the full editor width while retaining the existing side inset for
+Top/Left/Right docks. Bottom Region Fill deliberately ignores that inset, so Animation Timeline
+touches both horizontal screen edges instead of reading as an inset floating card.
+
+When Animation Timeline is docked as the Bottom Region on iPad, its entire Workspace header acts as
+a vertical resize gesture surface. A short vertical drag starts resizing from the top edge without
+the desktop-style long-press delay; horizontal motion is not classified as resize. The dedicated
+collapse and float affordances remain action targets.

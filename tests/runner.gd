@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Phosprite P0 headless regression runner.
+## Phosprite headless regression runner.
 ##
 ## Usage:
 ##   godot --headless --path . --script res://tests/runner.gd -- --phosprite-test-runner
@@ -42,7 +42,7 @@ func _init() -> void:
 ## against a live editor scene, because Project and OpenSave reach into UI nodes
 ## (Global.tabs, Global.canvas, Themes) and cannot function without one.
 func _run_all() -> void:
-	print("=== Phosprite P0 regression runner ===")
+	print("=== Phosprite regression runner ===")
 	var suites := _discover_suites()
 	if suites.is_empty():
 		print("No test suites found.")

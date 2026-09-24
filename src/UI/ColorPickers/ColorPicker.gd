@@ -1,5 +1,7 @@
 extends Container
 
+signal color_options_toggled(expanded: bool)
+
 const VALUE_ARROW := preload("res://assets/graphics/misc/value_arrow_right.svg")
 const VALUE_ARROW_EXPANDED := preload("res://assets/graphics/misc/value_arrow.svg")
 const TOUCH_TOOLTIP_META := &"phosprite_touch_tooltip"
@@ -87,22 +89,21 @@ func _ready() -> void:
 	_screen_sampler_button = sampler_cont.get_child(0, true) as BaseButton
 	if OS.get_name() == "iOS" and is_instance_valid(_screen_sampler_button):
 		_install_ios_screen_sampler()
-	# The color preview rectangle that we're hiding.
+	# Keep sampler/swap/default/left/right logic alive, but remove those controls from this UI.
+	if is_instance_valid(_screen_sampler_button):
+		_screen_sampler_button.visible = false
 	var color_texture_rect := sampler_cont.get_child(1, true) as TextureRect
 	color_texture_rect.visible = false
 	var shape_menu_button := sampler_cont.get_child(2, true) as MenuButton
 	var shape_popup_menu := shape_menu_button.get_popup()
 	shape_popup_menu.id_pressed.connect(_on_shape_popup_menu_id_pressed)
-	# The HBoxContainer where we get the hex LineEdit node from, and moving it to sampler_cont
-	var hex_cont := picker_vbox_container.get_child(4, true) as Container
-	var hex_edit := hex_cont.get_child(2, true)
-	hex_cont.remove_child(hex_edit)
-	sampler_cont.add_child(hex_edit)
-	sampler_cont.move_child(hex_edit, 1)
-	# Move the color buttons (left, right, switch, default, average) on the sampler container
-	color_buttons.get_parent().remove_child(color_buttons)
-	sampler_cont.add_child(color_buttons)
-	sampler_cont.move_child(color_buttons, 0)
+	color_buttons.visible = false
+	# Reuse the sampler row itself: Color options lives on the left, while the
+	# picker-shape mode button remains the only control on the far right.
+	expand_button.get_parent().remove_child(expand_button)
+	sampler_cont.add_child(expand_button)
+	sampler_cont.move_child(expand_button, 0)
+	expand_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	color_slider_types_hbox = picker_vbox_container.get_child(2, true) as HBoxContainer
 	color_slider_types_hbox.visible = false
@@ -118,15 +119,14 @@ func _ready() -> void:
 		picker_vbox_container.get_child(5, true).get_child(2, true) as GridContainer
 	)
 	presets_container.add_theme_constant_override("h_separation", 5)
-	# Move the expand button above the RGB, HSV etc buttons
-	expand_button.get_parent().remove_child(expand_button)
-	picker_vbox_container.add_child(expand_button)
-	picker_vbox_container.move_child(expand_button, 2)
-
 	expand_button.button_pressed = Global.config_cache.get_value(
 		"color_picker", "is_expanded", false
 	)
 	_on_shape_popup_menu_id_pressed(color_picker.picker_shape)
+
+
+func is_color_options_expanded() -> bool:
+	return expand_button.button_pressed
 
 
 func _notification(what: int) -> void:
@@ -217,21 +217,25 @@ func _handle_color_control_drag(event: InputEventScreenDrag) -> bool:
 func _color_control_action_at(screen_position: Vector2) -> StringName:
 	if (
 		is_instance_valid(left_color_button)
+		and left_color_button.is_visible_in_tree()
 		and left_color_button.get_global_rect().has_point(screen_position)
 	):
 		return &"left"
 	if (
 		is_instance_valid(right_color_button)
+		and right_color_button.is_visible_in_tree()
 		and right_color_button.get_global_rect().has_point(screen_position)
 	):
 		return &"right"
 	if (
 		is_instance_valid(color_switch)
+		and color_switch.is_visible_in_tree()
 		and color_switch.get_global_rect().has_point(screen_position)
 	):
 		return &"swap"
 	if (
 		is_instance_valid(_screen_sampler_button)
+		and _screen_sampler_button.is_visible_in_tree()
 		and _screen_sampler_button.get_global_rect().has_point(screen_position)
 	):
 		return &"sampler"
@@ -443,6 +447,7 @@ func _on_expand_button_toggled(toggled_on: bool) -> void:
 		color_slider_types_hbox.visible = toggled_on
 		color_sliders_grid.visible = toggled_on
 	Global.config_cache.set_value("color_picker", "is_expanded", toggled_on)
+	color_options_toggled.emit(toggled_on)
 
 
 func _average(color_1: Color, color_2: Color) -> void:

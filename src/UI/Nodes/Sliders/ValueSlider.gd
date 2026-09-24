@@ -47,6 +47,12 @@ const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
 ## If show_progress is true it will show the colored progress bar, good for values with a specific
 ## range. False will hide it, which is good for values that can be any number.
 @export var show_progress := true
+## If false, clicking never enters text editing; horizontal dragging remains available.
+@export var allow_text_input := true
+## Draws the read-only value as "< value >" to advertise horizontal drag adjustment.
+@export var show_drag_arrows := false
+## Multiplier applied to pointer drag distance. Values below 1.0 make drag adjustment slower.
+@export_range(0.05, 2.0, 0.05) var drag_sensitivity := 1.0
 @export var show_arrows := true:
 	set(v):
 		show_arrows = v
@@ -156,7 +162,11 @@ func _gui_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 	elif state == HELD:
 		if event.is_action_released("left_mouse"):
-			_line_edit.grab_focus()
+			if allow_text_input:
+				_line_edit.grab_focus()
+			else:
+				state = NORMAL
+				remove_meta("mouse_start_position")
 		elif event is InputEventMouseMotion:
 			if get_meta("mouse_start_position").distance_to(get_local_mouse_position()) > 2:
 				state = SLIDING
@@ -186,10 +196,11 @@ func _gui_input(event: InputEvent) -> void:
 			# Slow down to allow for more precision
 			if event.shift_pressed:
 				x_delta *= 0.1
+			var drag_delta := x_delta * drag_sensitivity
 			if show_progress:
-				ratio = get_meta("start_ratio") + x_delta / size.x
+				ratio = get_meta("start_ratio") + drag_delta / size.x
 			else:
-				value = _start_value + x_delta * step
+				value = _start_value + drag_delta * step
 			# Snap when snap_by_default is true, do the opposite when Control is pressed
 			if snap_by_default:
 				if not event.ctrl_pressed:
@@ -206,7 +217,7 @@ func _setup_nodes() -> void:  ## Only called once on _ready()
 	_line_edit.anchor_right = 1
 	_line_edit.anchor_bottom = 1
 	_line_edit.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_line_edit.focus_mode = Control.FOCUS_ALL
+	_line_edit.focus_mode = Control.FOCUS_ALL if allow_text_input else Control.FOCUS_NONE
 	_line_edit.add_theme_stylebox_override("read_only", StyleBoxEmpty.new())
 	_line_edit.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	_line_edit.text_submitted.connect(_on_line_edit_text_entered)
@@ -269,6 +280,9 @@ func _on_line_edit_text_entered(_new_text: String) -> void:
 
 
 func _on_line_edit_focus_entered() -> void:
+	if not allow_text_input:
+		_line_edit.release_focus()
+		return
 	state = TYPING
 	drag_started.emit()
 	_start_value = value
@@ -362,7 +376,10 @@ func _format_float_string(is_typing := false) -> String:
 		float_str = text_server.format_number(float_str)
 	if is_typing:
 		return float_str
-	return str(tr(prefix), " ", float_str, " ", tr(suffix)).strip_edges()
+	var display_value := str(float_str, " ", tr(suffix)).strip_edges()
+	if show_drag_arrows:
+		return str(tr(prefix), " < ", display_value, " >").strip_edges()
+	return str(tr(prefix), " ", display_value).strip_edges()
 
 
 func _on_value_button_down(direction: int) -> void:

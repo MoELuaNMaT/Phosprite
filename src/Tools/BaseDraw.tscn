@@ -53,11 +53,16 @@ events = [SubResource("InputEventAction_18g3a")]
 [node name="ToolOptions" unique_id=1048755954 instance=ExtResource("2")]
 script = ExtResource("3")
 
-[node name="Brush" type="HBoxContainer" parent="." index="2" unique_id=634582773]
+[node name="Brush" type="VBoxContainer" parent="." index="2" unique_id=634582773]
 layout_mode = 2
 alignment = 1
 
-[node name="Type" type="Button" parent="Brush" index="0" unique_id=1704216512]
+[node name="BrushLabel" type="Label" parent="Brush" index="0"]
+layout_mode = 2
+text = "Brush:"
+horizontal_alignment = 1
+
+[node name="Type" type="Button" parent="Brush" index="1" unique_id=1704216512]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 0
@@ -70,13 +75,16 @@ theme_override_styles/disabled = SubResource("2")
 theme_override_styles/focus = SubResource("2")
 
 [node name="Texture" type="TextureRect" parent="Brush/Type" index="0" unique_id=1497597906]
+texture_filter = 1
 layout_mode = 0
-offset_right = 32.0
-offset_bottom = 32.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 28.0
+offset_bottom = 28.0
 expand_mode = 1
 stretch_mode = 5
 
-[node name="BrushSize" parent="Brush" index="1" unique_id=1200951505 instance=ExtResource("1")]
+[node name="BrushSize" parent="Brush" index="2" unique_id=1200951505 instance=ExtResource("1")]
 layout_mode = 2
 focus_mode = 0
 min_value = 1.0
@@ -88,8 +96,12 @@ suffix = "px"
 allow_global_input_events = true
 global_increment_action = "brush_size_increment"
 global_decrement_action = "brush_size_decrement"
+show_progress = false
+allow_text_input = false
+show_drag_arrows = true
+show_arrows = false
 
-[node name="TransformButtonsContainer" type="HFlowContainer" parent="." index="3" unique_id=811103715]
+[node name="TransformButtonsContainer" type="VBoxContainer" parent="." index="3" unique_id=811103715]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2

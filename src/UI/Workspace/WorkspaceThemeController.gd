@@ -3,6 +3,8 @@ extends Node
 
 ## Applies WorkspaceVisualTheme to runtime modules and placement surfaces.
 
+const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+
 var manager: WorkspaceModuleManager
 var surface: WorkspaceSurface
 var visual_theme := WorkspaceVisualTheme.new()
@@ -90,6 +92,16 @@ func _visual_state_for(module_id: StringName) -> StringName:
 		return &"peek"
 	match surface.get_module_placement(module_id):
 		WorkspaceSurface.Placement.DOCKED:
+			if (
+				module_id == Builtins.TIMELINE_ID
+				and surface.dock_host != null
+				and (
+					surface.dock_host.layout.get_module_zone(module_id)
+					== WorkspaceDockLayout.DockZone.BOTTOM
+				)
+				and surface.dock_host.layout.is_module_region_fill(module_id)
+			):
+				return &"bottom_bar"
 			return &"docked"
 		WorkspaceSurface.Placement.FLOATING:
 			return &"floating"

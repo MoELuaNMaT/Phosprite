@@ -27,6 +27,8 @@ enum ResizeEdge {
 
 const INTERACTION_TARGET_SIZE := 28.0
 const RESIZE_EDGE_HIT_SIZE := 18.0
+const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
+const MIN_HEADER_DRAG_WIDTH := 96.0
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -41,8 +43,10 @@ var _content_collapsed := false
 var _content_visible_before_collapse := true
 var _minimum_size_before_collapse := Vector2.ZERO
 var _vertical_size_flags_before_collapse := Control.SIZE_FILL
+var _position_adjustment_enabled := true
 var _header_accessory_layer: Node2D
 var _header_accessory: Control
+var _header_title_override := ""
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -165,6 +169,17 @@ func get_content() -> Control:
 	return content
 
 
+func set_header_title_override(title: String) -> void:
+	if _header_title_override == title:
+		return
+	_header_title_override = title
+	queue_redraw()
+
+
+func clear_header_title_override() -> void:
+	set_header_title_override("")
+
+
 func set_header_accessory(accessory: Control) -> bool:
 	if not is_instance_valid(accessory) or is_instance_valid(_header_accessory):
 		return false
@@ -248,6 +263,18 @@ func get_header_height() -> float:
 	return height
 
 
+func set_position_adjustment_enabled(enabled: bool) -> void:
+	if _position_adjustment_enabled == enabled:
+		return
+	_position_adjustment_enabled = enabled
+	_layout_header_accessory()
+	queue_redraw()
+
+
+func is_position_adjustment_enabled() -> bool:
+	return _position_adjustment_enabled
+
+
 func get_visual_rect() -> Rect2:
 	var visual_height := get_header_height() if _content_collapsed else size.y
 	return Rect2(Vector2.ZERO, Vector2(size.x, visual_height))
@@ -258,6 +285,8 @@ func _has_point(point: Vector2) -> bool:
 
 
 func is_header_drag_point(local_point: Vector2) -> bool:
+	if not _position_adjustment_enabled:
+		return false
 	if local_point.y < 0.0 or local_point.y > get_header_height():
 		return false
 	if get_header_accessory_rect().has_point(local_point):
@@ -279,7 +308,8 @@ func is_collapse_point(local_point: Vector2) -> bool:
 
 func is_float_point(local_point: Vector2) -> bool:
 	if (
-		definition == null
+		not _position_adjustment_enabled
+		or definition == null
 		or not definition.can_float
 		or _visual_state != &"docked"
 		or _content_collapsed
@@ -302,7 +332,9 @@ func get_resize_edges(local_point: Vector2) -> int:
 		edges |= ResizeEdge.LEFT
 	elif local_point.x >= size.x - RESIZE_EDGE_HIT_SIZE:
 		edges |= ResizeEdge.RIGHT
-	if local_point.y >= size.y - RESIZE_EDGE_HIT_SIZE:
+	if local_point.y <= TOP_RESIZE_EDGE_HIT_SIZE:
+		edges |= ResizeEdge.TOP
+	elif local_point.y >= size.y - RESIZE_EDGE_HIT_SIZE:
 		edges |= ResizeEdge.BOTTOM
 	return edges
 
@@ -320,6 +352,11 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		return
 	var padding := int(_visual_theme.CONTENT_PADDING)
 	if state == &"collapsed" and _content_collapsed:
+		add_theme_constant_override(&"margin_left", 0)
+		add_theme_constant_override(&"margin_top", int(get_header_height()))
+		add_theme_constant_override(&"margin_right", 0)
+		add_theme_constant_override(&"margin_bottom", 0)
+	elif state == &"bottom_bar":
 		add_theme_constant_override(&"margin_left", 0)
 		add_theme_constant_override(&"margin_top", int(get_header_height()))
 		add_theme_constant_override(&"margin_right", 0)
@@ -356,11 +393,12 @@ func _draw() -> void:
 	draw_line(
 		Vector2(0.0, header_height), Vector2(size.x, header_height), _visual_theme.border_color, 1.0
 	)
-	var title: String
-	if definition != null:
-		title = definition.get_resolved_display_name()
-	else:
-		title = String(name)
+	var title := _header_title_override
+	if title.is_empty():
+		if definition != null:
+			title = definition.get_resolved_display_name()
+		else:
+			title = String(name)
 	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
 	var header_actions_width := _get_header_actions_width()
 	var header_accessory_width := (
@@ -396,7 +434,8 @@ func _get_header_actions_width() -> float:
 	if definition != null and definition.can_collapse:
 		width += INTERACTION_TARGET_SIZE
 	if (
-		definition != null
+		_position_adjustment_enabled
+		and definition != null
 		and definition.can_float
 		and _visual_state == &"docked"
 		and not _content_collapsed
@@ -408,12 +447,17 @@ func _get_header_actions_width() -> float:
 func _layout_header_accessory() -> void:
 	if not is_instance_valid(_header_accessory):
 		return
-	var accessory_size := _header_accessory.get_combined_minimum_size()
 	var padding := _visual_theme.CONTENT_PADDING if _visual_theme != null else 4.0
 	var right_edge := maxf(0.0, size.x - _get_header_actions_width() - padding)
+	var drag_reserve := minf(MIN_HEADER_DRAG_WIDTH, maxf(48.0, right_edge * 0.4))
+	var available_width := maxf(0.0, right_edge - drag_reserve - padding)
+	if _header_accessory.has_method(&"set_available_width"):
+		_header_accessory.call(&"set_available_width", available_width)
+	var accessory_size := _header_accessory.get_combined_minimum_size()
+	accessory_size.x = minf(accessory_size.x, available_width)
 	_header_accessory.size = accessory_size
 	_header_accessory.position = Vector2(
-		maxf(0.0, right_edge - accessory_size.x),
+		maxf(drag_reserve, right_edge - accessory_size.x),
 		maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
 	)
 
@@ -426,7 +470,8 @@ func _notification(what: int) -> void:
 
 func _draw_float_affordance() -> void:
 	if (
-		definition == null
+		not _position_adjustment_enabled
+		or definition == null
 		or not definition.can_float
 		or _visual_theme == null
 		or _visual_state != &"docked"

@@ -232,6 +232,77 @@ func test_drag_resolver_distinguishes_edge_region_from_module_insertion() -> voi
 	manager.free()
 
 
+func test_top_dock_requires_pointer_inside_explicit_toolbar_band() -> void:
+	var manager := Manager.new()
+	var layout := DockLayout.new()
+	Builtins.register_defaults(manager)
+	check_true(layout.configure(manager), "dock layout should configure")
+	check_true(
+		layout.place_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
+		"Preview should have a dock size before drag resolution"
+	)
+	var workspace_rect := Rect2(0.0, 0.0, 1200.0, 800.0)
+	var zone_rects := {
+		DockLayout.DockZone.TOP: Rect2(0.0, 0.0, 1200.0, 180.0),
+	}
+	var edge_rects := {
+		DockLayout.DockZone.TOP: Rect2(0.0, -32.0, 1200.0, 32.0),
+	}
+
+	var near_top_canvas := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(600.0, 24.0),
+			zone_rects,
+			{},
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
+	)
+	check_true(
+		not bool(near_top_canvas.get("valid", true)),
+		"being near the top inside Canvas must not trigger Top Dock"
+	)
+
+	var toolbar_target := (
+		DockResolver
+		. resolve(
+			Builtins.PREVIEW_ID,
+			Vector2(600.0, -16.0),
+			zone_rects,
+			{},
+			layout,
+			edge_rects,
+			workspace_rect,
+		)
+	)
+	check_true(bool(toolbar_target.get("valid", false)), "pointer inside top toolbar must snap")
+	check_eq(
+		int(toolbar_target.get("zone", DockLayout.DockZone.NONE)),
+		DockLayout.DockZone.TOP,
+		"toolbar band must resolve to Top Dock"
+	)
+	check_eq(
+		StringName(toolbar_target.get("target_kind", &"none")),
+		&"region",
+		"top toolbar target must use whole-region docking"
+	)
+
+	var host := DockHost.new()
+	host.size = workspace_rect.size
+	check_true(host.setup(manager), "dock host should initialize")
+	host.set_top_edge_snap_band(-32.0, 32.0)
+	check_eq(
+		host.get_edge_snap_rects()[DockLayout.DockZone.TOP],
+		Rect2(0.0, -32.0, 1200.0, 32.0),
+		"live host top snap rectangle must exactly match the toolbar band"
+	)
+	host.free()
+	manager.free()
+
+
 func test_dock_host_reparents_reorders_and_commits_cross_zone_drag() -> void:
 	var manager := Manager.new()
 	var host := DockHost.new()

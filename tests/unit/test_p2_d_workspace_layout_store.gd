@@ -83,9 +83,9 @@ func test_snapshot_round_trip_preserves_all_workspace_placements() -> void:
 	)
 	check_true(surface.collapse_module(&"test.extra"), "extra module should collapse")
 
-	var preview := manager.get_instance(Builtins.PREVIEW_ID)
-	var palette := manager.get_instance(Builtins.PALETTE_ID)
-	var extra := manager.get_instance(&"test.extra")
+	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
+	var palette: WorkspaceModule = manager.get_instance(Builtins.PALETTE_ID)
+	var extra: WorkspaceModule = manager.get_instance(&"test.extra")
 	var snapshot := store.capture_snapshot()
 
 	check_true(

@@ -7,7 +7,7 @@
 [node name="ToolOptions" unique_id=919885195 instance=ExtResource("1")]
 script = ExtResource("2")
 
-[node name="ToleranceSlider" type="TextureProgressBar" parent="." index="8" unique_id=85827552]
+[node name="ToleranceSlider" type="TextureProgressBar" parent="." index="14" unique_id=85827552]
 custom_minimum_size = Vector2(32, 24)
 layout_mode = 2
 focus_mode = 2

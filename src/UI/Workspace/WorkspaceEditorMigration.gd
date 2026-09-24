@@ -12,22 +12,28 @@ signal migration_completed
 signal panel_visibility_changed(module_id: StringName, visible: bool)
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
-const GLOBAL_TOOL_OPTIONS_SCENE := preload("res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn")
+const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
+const TIMELINE_HEADER_CONTROLS_SCENE := preload(
+	"res://src/UI/Workspace/TimelineHeaderControls.tscn"
+)
 
 const WORKSPACE_SIDE_MARGIN := 8.0
+const TOOL_PALETTE_WIDTH := 40.0
+const TOOL_OPTIONS_WIDTH := 60.0
 
 const DEFAULT_LAYOUT := [
 	{
-		"id": Builtins.PALETTE_ID,
-		"zone": WorkspaceDockLayout.DockZone.TOP,
+		"id": Builtins.TIMELINE_ID,
+		"zone": WorkspaceDockLayout.DockZone.BOTTOM,
 		"index": 0,
-		"size": Vector2(280.0, 140.0),
+		"size": Vector2(760.0, 220.0),
+		"region_fill": true,
 	},
 	{
 		"id": Builtins.TOOLS_ID,
 		"zone": WorkspaceDockLayout.DockZone.LEFT,
 		"index": 0,
-		"size": Vector2(180.0, 400.0),
+		"size": Vector2(108.0, 400.0),
 	},
 	{
 		"id": Builtins.PREVIEW_ID,
@@ -36,23 +42,16 @@ const DEFAULT_LAYOUT := [
 		"size": Vector2(280.0, 110.0),
 	},
 	{
-		"id": Builtins.COLOR_PICKER_ID,
+		"id": Builtins.PALETTE_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 1,
-		"size": Vector2(280.0, 200.0),
+		"size": Vector2(300.0, 360.0),
 	},
 	{
 		"id": Builtins.RIGHT_TOOL_OPTIONS_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 2,
 		"size": Vector2(280.0, 140.0),
-	},
-	{
-		"id": Builtins.TIMELINE_ID,
-		"zone": WorkspaceDockLayout.DockZone.BOTTOM,
-		"index": 0,
-		"size": Vector2(760.0, 180.0),
-		"region_fill": true,
 	},
 ]
 
@@ -73,11 +72,17 @@ var live := false
 var _ruler_overlay: Control
 var _ruler_project: Project
 var _left_tool_options: ScrollContainer
-var _merged_tools_content: VBoxContainer
-var _merged_tools_separator: HSeparator
+var _merged_tools_content: HBoxContainer
+var _merged_tools_separator: VSeparator
 var _left_tool_options_state: Dictionary = {}
 var _tools_palette_state: Dictionary = {}
+var _palette_color_root: VBoxContainer
+var _palette_color_separator: HSeparator
+var _palette_color_states: Dictionary = {}
 var _tools_root_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
+var _tools_root_horizontal_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
+var _left_tool_options_vertical_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
+var _left_tool_options_horizontal_scroll_mode := ScrollContainer.SCROLL_MODE_AUTO
 var _original_panel_state: Dictionary = {}
 var _context_restore: Dictionary = {}
 var _main_canvas_state: Dictionary = {}
@@ -88,6 +93,8 @@ var _legacy_visible := true
 var _legacy_processing := true
 var _previous_autosave_enabled := true
 var _zen_mode := false
+var _single_project_editor := false
+var _timeline_height_restore_generation := 0
 
 
 func setup(
@@ -113,9 +120,13 @@ func setup(
 	surface = workspace_surface
 	dock_host = surface.dock_host
 	layout_store = store
+	_single_project_editor = STORAGE_POLICY.uses_managed_project_storage()
 	if dock_host == null:
 		_clear_setup()
 		return false
+	surface.configure_floating_snap_policy(
+		{Builtins.TIMELINE_ID: WorkspaceDockLayout.DockZone.BOTTOM}
+	)
 	return _migrate_live_editor()
 
 
@@ -234,18 +245,31 @@ func merge_left_tool_options_after_startup() -> bool:
 func _migrate_live_editor() -> bool:
 	main_canvas = legacy_container.get_node_or_null(^"Main Canvas") as Control
 	_left_tool_options = legacy_container.get_node_or_null(^"Left Tool Options") as ScrollContainer
-	if main_canvas == null or _left_tool_options == null:
+	var legacy_palette := legacy_container.get_node_or_null(^"Palettes") as Control
+	var legacy_color_picker := legacy_container.get_node_or_null(^"Color Picker") as Control
+	if (
+		main_canvas == null
+		or _left_tool_options == null
+		or legacy_palette == null
+		or legacy_color_picker == null
+	):
 		_clear_setup()
 		return false
 
 	var resolved: Dictionary = {}
 	for module_id in get_panel_ids():
+		if module_id == Builtins.PALETTE_ID:
+			continue
 		var node_name := Builtins.get_live_panel_node_name(module_id)
 		var panel := legacy_container.get_node_or_null(NodePath(node_name)) as Control
 		if panel == null:
 			_clear_setup()
 			return false
 		resolved[module_id] = panel
+	if not _merge_palette_and_color_picker(legacy_palette, legacy_color_picker):
+		_clear_setup()
+		return false
+	resolved[Builtins.PALETTE_ID] = _palette_color_root
 
 	_capture_original_state(resolved)
 	_previous_autosave_enabled = layout_store.autosave_enabled
@@ -257,6 +281,7 @@ func _migrate_live_editor() -> bool:
 		var panel := resolved[module_id] as Control
 		if manager.adopt_module(module_id, panel, {"live_editor": true}) == null:
 			_rollback_adoption(adopted)
+			_restore_palette_color_merge()
 			layout_store.autosave_enabled = _previous_autosave_enabled
 			_restore_legacy_shell()
 			_clear_setup()
@@ -265,6 +290,7 @@ func _migrate_live_editor() -> bool:
 
 	if not _attach_timeline_header_options():
 		_rollback_adoption(adopted)
+		_restore_palette_color_merge()
 		layout_store.autosave_enabled = _previous_autosave_enabled
 		_restore_legacy_shell()
 		_clear_setup()
@@ -278,9 +304,10 @@ func _migrate_live_editor() -> bool:
 	_prepare_canvas_chrome()
 
 	dock_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dock_host.offset_left = WORKSPACE_SIDE_MARGIN
+	dock_host.offset_left = 0.0
 	dock_host.offset_top = _project_tabs_height
-	dock_host.offset_right = -WORKSPACE_SIDE_MARGIN
+	dock_host.offset_right = 0.0
+	dock_host.set_side_inset(WORKSPACE_SIDE_MARGIN)
 	dock_host.visible = true
 	dock_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not dock_host.layout_geometry_changed.is_connected(_on_layout_geometry_changed):
@@ -307,6 +334,9 @@ func _migrate_live_editor() -> bool:
 	if not layout_ready:
 		_rollback_live_migration()
 		return false
+	if not _bind_timeline_workspace_state():
+		_rollback_live_migration()
+		return false
 
 	_sync_content_visibility_from_placements()
 	_update_main_canvas_rect()
@@ -316,6 +346,116 @@ func _migrate_live_editor() -> bool:
 		return false
 	migration_completed.emit()
 	return true
+
+
+func _merge_palette_and_color_picker(palette: Control, color_picker: Control) -> bool:
+	if is_instance_valid(_palette_color_root):
+		return true
+	if palette == null or color_picker == null:
+		return false
+	var palette_parent := palette.get_parent()
+	var picker_parent := color_picker.get_parent()
+	if palette_parent == null or picker_parent != palette_parent:
+		return false
+
+	_palette_color_states = {
+		"palette":
+		{
+			"node": palette,
+			"parent": palette_parent,
+			"index": palette.get_index(),
+			"visible": palette.visible,
+			"size_flags_horizontal": palette.size_flags_horizontal,
+			"size_flags_vertical": palette.size_flags_vertical,
+			"stretch_ratio": palette.size_flags_stretch_ratio,
+		},
+		"picker":
+		{
+			"node": color_picker,
+			"parent": picker_parent,
+			"index": color_picker.get_index(),
+			"visible": color_picker.visible,
+			"size_flags_horizontal": color_picker.size_flags_horizontal,
+			"size_flags_vertical": color_picker.size_flags_vertical,
+			"stretch_ratio": color_picker.size_flags_stretch_ratio,
+		},
+	}
+	var insert_index := mini(palette.get_index(), color_picker.get_index())
+	palette_parent.remove_child(palette)
+	picker_parent.remove_child(color_picker)
+
+	_palette_color_root = VBoxContainer.new()
+	_palette_color_root.name = Builtins.get_live_panel_node_name(Builtins.PALETTE_ID)
+	_palette_color_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_palette_color_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_palette_color_root.add_theme_constant_override(&"separation", 0)
+	palette_parent.add_child(_palette_color_root)
+	palette_parent.move_child(
+		_palette_color_root, mini(insert_index, palette_parent.get_child_count() - 1)
+	)
+
+	palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette.size_flags_stretch_ratio = 0.9
+	_palette_color_root.add_child(palette)
+
+	_palette_color_separator = HSeparator.new()
+	_palette_color_separator.name = &"PaletteColorSeparator"
+	_palette_color_root.add_child(_palette_color_separator)
+
+	color_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	color_picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	color_picker.size_flags_stretch_ratio = 1.1
+	_palette_color_root.add_child(color_picker)
+	return true
+
+
+func _restore_palette_color_merge() -> void:
+	if not is_instance_valid(_palette_color_root) or _palette_color_states.is_empty():
+		return
+	var entries: Array[Dictionary] = []
+	for key in ["palette", "picker"]:
+		var state := _palette_color_states.get(key, {}) as Dictionary
+		if state.is_empty():
+			continue
+		var node := state.get("node") as Control
+		if node != null and node.get_parent() != null:
+			node.get_parent().remove_child(node)
+		entries.append(state)
+	if _palette_color_root.get_parent() != null:
+		_palette_color_root.get_parent().remove_child(_palette_color_root)
+	_palette_color_root.free()
+	_palette_color_root = null
+	_palette_color_separator = null
+
+	entries.sort_custom(
+		func(a: Dictionary, b: Dictionary): return int(a["index"]) < int(b["index"])
+	)
+	for state in entries:
+		var node := state.get("node") as Control
+		var parent := state.get("parent") as Node
+		if node == null or parent == null:
+			continue
+		parent.add_child(node)
+		parent.move_child(node, mini(int(state.get("index", 0)), parent.get_child_count() - 1))
+		node.visible = bool(state.get("visible", true))
+		node.size_flags_horizontal = int(state.get("size_flags_horizontal", Control.SIZE_FILL))
+		node.size_flags_vertical = int(state.get("size_flags_vertical", Control.SIZE_FILL))
+		node.size_flags_stretch_ratio = float(state.get("stretch_ratio", 1.0))
+	_palette_color_states.clear()
+
+
+func _update_top_edge_snap_band() -> void:
+	if dock_host == null or ui_root == null:
+		return
+	var shell := ui_root.get_parent()
+	var top_menu := (
+		shell.get_node_or_null(^"TopMenuContainer") as Control if shell != null else null
+	)
+	if top_menu == null:
+		return
+	var menu_height := maxf(0.0, top_menu.size.y)
+	dock_host.set_top_edge_snap_band(-(_project_tabs_height + menu_height), menu_height)
 
 
 func _merge_left_tool_options_into_tools() -> bool:
@@ -347,7 +487,10 @@ func _merge_left_tool_options_into_tools() -> bool:
 	_tools_palette_state = {
 		"parent": palette.get_parent(),
 		"index": palette.get_index(),
+		"size_flags_horizontal": palette.size_flags_horizontal,
 		"size_flags_vertical": palette.size_flags_vertical,
+		"stretch_ratio": palette.size_flags_stretch_ratio,
+		"custom_minimum_size": palette.custom_minimum_size,
 	}
 	_left_tool_options_state = {
 		"parent": left_parent,
@@ -355,29 +498,43 @@ func _merge_left_tool_options_into_tools() -> bool:
 		"visible": _left_tool_options.visible,
 		"size_flags_horizontal": _left_tool_options.size_flags_horizontal,
 		"size_flags_vertical": _left_tool_options.size_flags_vertical,
+		"stretch_ratio": _left_tool_options.size_flags_stretch_ratio,
+		"custom_minimum_size": _left_tool_options.custom_minimum_size,
 	}
 	_tools_root_vertical_scroll_mode = tools_root.vertical_scroll_mode
+	_tools_root_horizontal_scroll_mode = tools_root.horizontal_scroll_mode
+	_left_tool_options_vertical_scroll_mode = _left_tool_options.vertical_scroll_mode
+	_left_tool_options_horizontal_scroll_mode = _left_tool_options.horizontal_scroll_mode
 
 	tools_root.remove_child(palette)
-	_merged_tools_content = VBoxContainer.new()
+	_merged_tools_content = HBoxContainer.new()
 	_merged_tools_content.name = &"MergedToolsContent"
 	_merged_tools_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_merged_tools_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_merged_tools_content.add_theme_constant_override(&"separation", 0)
 	tools_root.add_child(_merged_tools_content)
 
-	palette.size_flags_vertical = Control.SIZE_FILL
+	palette.custom_minimum_size.x = TOOL_PALETTE_WIDTH
+	palette.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette.size_flags_stretch_ratio = 0.0
 	_merged_tools_content.add_child(palette)
-	_merged_tools_separator = HSeparator.new()
+	_merged_tools_separator = VSeparator.new()
 	_merged_tools_separator.name = &"ToolOptionsSeparator"
 	_merged_tools_content.add_child(_merged_tools_separator)
 
 	left_parent.remove_child(_left_tool_options)
+	_left_tool_options.custom_minimum_size.x = TOOL_OPTIONS_WIDTH
 	_left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_left_tool_options.size_flags_stretch_ratio = 1.0
 	_left_tool_options.visible = true
 	_merged_tools_content.add_child(_left_tool_options)
-	tools_root.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tools_root.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tools_root.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_bind_tools_header_title(tools_module)
 	return true
 
 
@@ -416,6 +573,12 @@ func _restore_merged_tools() -> void:
 	_left_tool_options.size_flags_vertical = int(
 		_left_tool_options_state.get("size_flags_vertical", Control.SIZE_FILL)
 	)
+	_left_tool_options.size_flags_stretch_ratio = float(
+		_left_tool_options_state.get("stretch_ratio", 1.0)
+	)
+	_left_tool_options.custom_minimum_size = (
+		_left_tool_options_state.get("custom_minimum_size", Vector2(72.0, 72.0)) as Vector2
+	)
 
 	if palette != null:
 		_merged_tools_content.remove_child(palette)
@@ -428,10 +591,18 @@ func _restore_merged_tools() -> void:
 					int(_tools_palette_state.get("index", 0)), palette_parent.get_child_count() - 1
 				)
 			)
+		palette.size_flags_horizontal = int(
+			_tools_palette_state.get("size_flags_horizontal", Control.SIZE_EXPAND_FILL)
+		)
 		palette.size_flags_vertical = int(
 			_tools_palette_state.get("size_flags_vertical", Control.SIZE_EXPAND_FILL)
 		)
+		palette.size_flags_stretch_ratio = float(_tools_palette_state.get("stretch_ratio", 1.0))
+		palette.custom_minimum_size = (
+			_tools_palette_state.get("custom_minimum_size", Vector2.ZERO) as Vector2
+		)
 
+	_unbind_tools_header_title()
 	if is_instance_valid(_merged_tools_separator):
 		_merged_tools_separator.queue_free()
 	_merged_tools_separator = null
@@ -439,23 +610,213 @@ func _restore_merged_tools() -> void:
 		_merged_tools_content.queue_free()
 	_merged_tools_content = null
 	if tools_root != null:
+		tools_root.horizontal_scroll_mode = _tools_root_horizontal_scroll_mode
 		tools_root.vertical_scroll_mode = _tools_root_vertical_scroll_mode
+	if is_instance_valid(_left_tool_options):
+		_left_tool_options.horizontal_scroll_mode = _left_tool_options_horizontal_scroll_mode
+		_left_tool_options.vertical_scroll_mode = _left_tool_options_vertical_scroll_mode
+
+
+func _bind_tools_header_title(tools_module: WorkspaceModule) -> void:
+	if not Tools.tool_changed.is_connected(_on_tools_header_tool_changed):
+		Tools.tool_changed.connect(_on_tools_header_tool_changed)
+	_sync_tools_header_title(tools_module)
+
+
+func _unbind_tools_header_title() -> void:
+	if Tools.tool_changed.is_connected(_on_tools_header_tool_changed):
+		Tools.tool_changed.disconnect(_on_tools_header_tool_changed)
+	if manager == null:
+		return
+	var tools_module := manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module != null:
+		tools_module.clear_header_title_override()
+
+
+func _sync_tools_header_title(tools_module: WorkspaceModule = null) -> void:
+	if tools_module == null and manager != null:
+		tools_module = manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module == null or not Tools._slots.has(MOUSE_BUTTON_LEFT):
+		return
+	var slot: Tools.Slot = Tools._slots[MOUSE_BUTTON_LEFT]
+	if not is_instance_valid(slot.tool_node):
+		return
+	_set_tools_header_title(String(slot.tool_node.name), tools_module)
+
+
+func _on_tools_header_tool_changed(tool_name: String, button: int) -> void:
+	if button != MOUSE_BUTTON_LEFT:
+		return
+	_set_tools_header_title(tool_name)
+
+
+func _set_tools_header_title(tool_name: String, tools_module: WorkspaceModule = null) -> void:
+	if not Tools.tools.has(tool_name):
+		return
+	if tools_module == null and manager != null:
+		tools_module = manager.get_instance(Builtins.TOOLS_ID)
+	if tools_module == null:
+		return
+	var tool: Tools.Tool = Tools.tools[tool_name]
+	tools_module.set_header_title_override(tr(tool.display_name))
 
 
 func _attach_timeline_header_options() -> bool:
 	var timeline := manager.get_instance(Builtins.TIMELINE_ID)
 	if timeline == null:
 		return false
-	var options := GLOBAL_TOOL_OPTIONS_SCENE.instantiate()
-	if not options is Control:
-		if options != null:
-			options.free()
+	var controls := TIMELINE_HEADER_CONTROLS_SCENE.instantiate()
+	if not controls is Control:
+		if controls != null:
+			controls.free()
 		return false
-	var options_control := options as Control
-	if not timeline.set_header_accessory(options_control):
-		options_control.free()
+	var header_controls := controls as Control
+	if not timeline.set_header_accessory(header_controls):
+		header_controls.free()
 		return false
+	timeline.set_position_adjustment_enabled(false)
 	return true
+
+
+func _bind_timeline_workspace_state() -> bool:
+	var module := manager.get_instance(Builtins.TIMELINE_ID)
+	if module == null:
+		return false
+	module.set_position_adjustment_enabled(false)
+	var timeline := module.get_content() as AnimationTimeline
+	if timeline == null:
+		timeline = Global.animation_timeline as AnimationTimeline
+	if timeline == null:
+		return true
+	if not timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
+		timeline.timeline_mode_changing.connect(_on_timeline_mode_changing)
+	if not timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed):
+		timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
+	if not Global.project_about_to_switch.is_connected(_on_timeline_project_about_to_switch):
+		Global.project_about_to_switch.connect(_on_timeline_project_about_to_switch)
+	if not Global.project_switched.is_connected(_on_timeline_project_switched):
+		Global.project_switched.connect(_on_timeline_project_switched)
+	_restore_timeline_height(timeline.get_timeline_mode())
+	return true
+
+
+func _unbind_timeline_workspace_state() -> void:
+	var module := manager.get_instance(Builtins.TIMELINE_ID) if manager != null else null
+	var timeline := (
+		(
+			module.get_content() as AnimationTimeline
+			if module != null and module.get_content() is AnimationTimeline
+			else Global.animation_timeline
+		)
+		as AnimationTimeline
+	)
+	if timeline != null:
+		if timeline.timeline_mode_changing.is_connected(_on_timeline_mode_changing):
+			timeline.timeline_mode_changing.disconnect(_on_timeline_mode_changing)
+		if timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed):
+			timeline.timeline_mode_changed.disconnect(_on_timeline_mode_changed)
+	if Global.project_about_to_switch.is_connected(_on_timeline_project_about_to_switch):
+		Global.project_about_to_switch.disconnect(_on_timeline_project_about_to_switch)
+	if Global.project_switched.is_connected(_on_timeline_project_switched):
+		Global.project_switched.disconnect(_on_timeline_project_switched)
+
+
+func _on_timeline_mode_changing(from_mode: int, _to_mode: int) -> void:
+	_store_current_timeline_height(from_mode)
+
+
+func _on_timeline_mode_changed(mode: int) -> void:
+	_restore_timeline_height(mode)
+	_schedule_timeline_height_reconcile(mode)
+
+
+func _on_timeline_project_about_to_switch() -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline != null:
+		_store_current_timeline_height(timeline.get_timeline_mode())
+
+
+func _on_timeline_project_switched() -> void:
+	call_deferred("_restore_current_project_timeline_height")
+
+
+func _restore_current_project_timeline_height() -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline != null:
+		var mode := timeline.get_timeline_mode()
+		_restore_timeline_height(mode)
+		_schedule_timeline_height_reconcile(mode)
+
+
+func _schedule_timeline_height_reconcile(mode: int) -> void:
+	_timeline_height_restore_generation += 1
+	var generation := _timeline_height_restore_generation
+	var project := Global.current_project
+	_restore_timeline_height_after_layout.call_deferred(mode, project, generation)
+
+
+func _restore_timeline_height_after_layout(mode: int, project: Project, generation: int) -> void:
+	await get_tree().process_frame
+	if generation != _timeline_height_restore_generation or project != Global.current_project:
+		return
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline == null or timeline.get_timeline_mode() != mode:
+		return
+	_restore_timeline_height(mode)
+
+
+func _store_current_timeline_height(mode: int) -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline == null:
+		return
+	var height := _get_timeline_workspace_height()
+	if height > 0.0:
+		timeline.store_workspace_height(height, mode)
+
+
+func _restore_timeline_height(mode: int) -> void:
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline == null:
+		return
+	_set_timeline_workspace_height(timeline.get_saved_workspace_height(mode))
+
+
+func _get_timeline_workspace_height() -> float:
+	if surface == null or dock_host == null or manager == null:
+		return 0.0
+	var placement := surface.get_module_placement(Builtins.TIMELINE_ID)
+	if placement == WorkspaceSurface.Placement.DOCKED:
+		var docked_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+		if docked_size.y > 0.0:
+			return docked_size.y
+	elif placement == WorkspaceSurface.Placement.FLOATING:
+		var floating_rect := surface.get_floating_rect(Builtins.TIMELINE_ID)
+		if floating_rect.size.y > 0.0:
+			return floating_rect.size.y
+	var module := manager.get_instance(Builtins.TIMELINE_ID)
+	return module.size.y if module != null else 0.0
+
+
+func _set_timeline_workspace_height(height: float) -> bool:
+	if height <= 0.0 or surface == null or dock_host == null or manager == null:
+		return false
+	var placement := surface.get_module_placement(Builtins.TIMELINE_ID)
+	if placement == WorkspaceSurface.Placement.DOCKED:
+		var current_size := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+		if current_size == Vector2.ZERO:
+			var module := manager.get_instance(Builtins.TIMELINE_ID)
+			if module == null:
+				return false
+			current_size = module.size
+		current_size.y = height
+		return dock_host.set_module_size(Builtins.TIMELINE_ID, current_size)
+	if placement == WorkspaceSurface.Placement.FLOATING:
+		var rect := surface.get_floating_rect(Builtins.TIMELINE_ID)
+		if not rect.has_area():
+			return false
+		rect.size.y = height
+		return surface.set_floating_rect(Builtins.TIMELINE_ID, rect)
+	return false
 
 
 func _capture_original_state(resolved: Dictionary) -> void:
@@ -485,6 +846,7 @@ func _capture_original_state(resolved: Dictionary) -> void:
 
 
 func _rollback_live_migration() -> void:
+	_unbind_timeline_workspace_state()
 	layout_store.autosave_enabled = false
 	for module_id in get_panel_ids():
 		if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.NONE:
@@ -492,6 +854,7 @@ func _rollback_live_migration() -> void:
 	var adopted := get_panel_ids()
 	_restore_merged_tools()
 	_rollback_adoption(adopted)
+	_restore_palette_color_merge()
 	_restore_canvas_chrome()
 	_restore_main_canvas()
 	_restore_legacy_shell()
@@ -684,7 +1047,10 @@ func _default_ids() -> Array[StringName]:
 
 
 func _on_layout_geometry_changed(_content_rect: Rect2) -> void:
-	# Dock geometry only positions overlay panels. The Canvas always stays full-background.
+	# Timeline is the only true dock. Floating edge anchors follow its top edge
+	# whenever the fixed bottom bar changes height.
+	if surface != null:
+		surface.refresh_floating_bounds()
 	_update_canvas_chrome_geometry.call_deferred()
 
 
@@ -703,6 +1069,7 @@ func _update_main_canvas_rect() -> void:
 		project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
 	if dock_host != null:
 		dock_host.offset_top = _project_tabs_height
+		_update_top_edge_snap_band()
 	_update_canvas_chrome_geometry.call_deferred()
 
 
@@ -721,14 +1088,21 @@ func _prepare_canvas_chrome() -> void:
 			_capture_chrome_state(control)
 
 	if project_tabs != null:
-		_project_tabs_height = maxf(
-			32.0, maxf(project_tabs.size.y, project_tabs.get_combined_minimum_size().y)
-		)
-		_reparent_control(project_tabs, ui_root)
-		project_tabs.set_anchors_preset(Control.PRESET_TOP_WIDE)
-		project_tabs.position = Vector2.ZERO
-		project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
-		project_tabs.z_index = 20
+		if _single_project_editor:
+			# P3 managed storage owns one Editor project at a time. The legacy project
+			# TabBar is both redundant and a source of a dead input strip above Canvas.
+			project_tabs.visible = false
+			project_tabs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_project_tabs_height = 0.0
+		else:
+			_project_tabs_height = maxf(
+				32.0, maxf(project_tabs.size.y, project_tabs.get_combined_minimum_size().y)
+			)
+			_reparent_control(project_tabs, ui_root)
+			project_tabs.set_anchors_preset(Control.PRESET_TOP_WIDE)
+			project_tabs.position = Vector2.ZERO
+			project_tabs.size = Vector2(ui_root.size.x, _project_tabs_height)
+			project_tabs.z_index = 20
 
 	if horizontal_ruler == null or vertical_ruler == null or viewport_container == null:
 		return
@@ -851,6 +1225,8 @@ func _capture_chrome_state(control: Control) -> void:
 			control.offset_left, control.offset_top, control.offset_right, control.offset_bottom
 		),
 		"z_index": control.z_index,
+		"visible": control.visible,
+		"mouse_filter": control.mouse_filter,
 	}
 
 
@@ -894,6 +1270,8 @@ func _restore_canvas_chrome() -> void:
 		control.offset_right = offsets.z
 		control.offset_bottom = offsets.w
 		control.z_index = int(state.get("z_index", 0))
+		control.visible = bool(state.get("visible", true))
+		control.mouse_filter = int(state.get("mouse_filter", Control.MOUSE_FILTER_STOP))
 	if is_instance_valid(_ruler_overlay):
 		_ruler_overlay.queue_free()
 	_ruler_overlay = null
@@ -901,6 +1279,8 @@ func _restore_canvas_chrome() -> void:
 
 
 func _clear_setup() -> void:
+	if Tools.tool_changed.is_connected(_on_tools_header_tool_changed):
+		Tools.tool_changed.disconnect(_on_tools_header_tool_changed)
 	ui_root = null
 	legacy_container = null
 	manager = null
@@ -922,7 +1302,11 @@ func _clear_setup() -> void:
 	_left_tool_options = null
 	_merged_tools_content = null
 	_merged_tools_separator = null
+	_palette_color_root = null
+	_palette_color_separator = null
+	_palette_color_states.clear()
 	_left_tool_options_state.clear()
 	_tools_palette_state.clear()
 	_project_tabs_height = 0.0
+	_single_project_editor = false
 	live = false

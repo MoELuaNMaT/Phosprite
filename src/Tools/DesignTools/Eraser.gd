@@ -26,13 +26,15 @@ func _init() -> void:
 
 func get_config() -> Dictionary:
 	var config := super.get_config()
+	config.erase("brush_density")
 	config["strength"] = _strength
 	return config
 
 
 func set_config(config: Dictionary) -> void:
 	super.set_config(config)
-	_strength = config.get("strength", _strength)
+	_brush_density = 100
+	_strength = clampf(float(config.get("strength", _strength)), 0.0, 1.0)
 
 
 func draw_start(pos: Vector2i) -> void:
@@ -119,16 +121,18 @@ func _draw_brush_image(image: Image, src_rect: Rect2i, dst: Vector2i) -> void:
 
 
 func _on_Opacity_value_changed(value: float) -> void:
-	_strength = value / 255
+	_strength = clampf(value / 100.0, 0.0, 1.0)
 	update_config()
 	save_config()
 
 
 func update_config() -> void:
 	super.update_config()
-	$OpacitySlider.value = _strength * 255
+	$DensityValueSlider.visible = false
+	$OpacitySlider.value = _strength * 100.0
 
 
 func update_brush() -> void:
 	super.update_brush()
 	$ColorInterpolation.visible = false
+	$DensityValueSlider.visible = false

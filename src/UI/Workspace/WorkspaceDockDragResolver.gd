@@ -28,6 +28,11 @@ static func resolve(
 	if zone == WorkspaceDockLayout.DockZone.NONE:
 		zone = _find_zone(pointer, zone_rects)
 		target_kind = &"insert"
+		if (
+			zone == WorkspaceDockLayout.DockZone.TOP
+			and edge_rects.has(WorkspaceDockLayout.DockZone.TOP)
+		):
+			zone = WorkspaceDockLayout.DockZone.NONE
 	if zone == WorkspaceDockLayout.DockZone.NONE:
 		return _invalid_result()
 

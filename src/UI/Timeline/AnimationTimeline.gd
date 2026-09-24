@@ -1,3 +1,4 @@
+class_name AnimationTimeline
 extends Panel
 
 ## Emitted when the animation starts playing.
@@ -9,15 +10,25 @@ signal animation_finished
 ## Emitted when the animation loops, meaning when it reaches the final frame
 ## and the animation keeps playing.
 signal animation_looped
+signal timeline_mode_changing(from_mode: int, to_mode: int)
+signal timeline_mode_changed(mode: int)
 
 enum LoopType { NO, CYCLE, PINGPONG }
+enum TimelineMode { ANIMATION, SINGLE_FRAME }
 
 const FRAME_BUTTON_TSCN := preload("res://src/UI/Timeline/FrameButton.tscn")
 const ANIMATION_TAG_TSCN := preload("res://src/UI/Timeline/AnimationTagUI.tscn")
 const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSettings.tscn"
+const PROJECT_STATE := preload("res://src/UI/Timeline/TimelineProjectState.gd")
 ## Do not let [member min_cel_size] go below 22, as this is the size of the layer icons.
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
+const TIMELINE_HEIGHT_SECTION := PROJECT_STATE.HEIGHT_SECTION
+const TIMELINE_MODE_SECTION := PROJECT_STATE.MODE_SECTION
+const TIMELINE_HEIGHT_META := PROJECT_STATE.HEIGHT_META
+const TIMELINE_MODE_META := PROJECT_STATE.MODE_META
+const DEFAULT_ANIMATION_WORKSPACE_HEIGHT := 220.0
+const DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT := 180.0
 
 var is_animation_running := false
 var animation_loop := LoopType.CYCLE
@@ -46,8 +57,11 @@ var layer_effect_settings: AcceptDialog:
 var global_layer_visibility := true
 var global_layer_lock := false
 var global_layer_expand := true
+var timeline_mode := TimelineMode.ANIMATION
 
 @onready var animation_timer := $AnimationTimer as Timer
+@onready var timeline_container := $TimelineContainer as VBoxContainer
+@onready var single_frame_layer_strip := %SingleFrameLayerStrip as SingleFrameLayerStrip
 @onready var tag_spacer := %TagSpacer as Control
 @onready var layer_settings_container := %LayerSettingsContainer as VBoxContainer
 @onready var layer_container := %LayerContainer as VBoxContainer
@@ -137,6 +151,8 @@ func _ready() -> void:
 	# Makes sure that the frame and tag scroll bars are in the right place:
 	layer_vbox.emit_signal.call_deferred("resized")
 	drag_highlight.visibility_changed.connect(clear_highlight)
+	single_frame_layer_strip.set_project(Global.current_project)
+	set_timeline_mode(get_project_timeline_mode(Global.current_project), false)
 
 
 func _notification(what: int) -> void:
@@ -257,6 +273,68 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
+func set_timeline_mode(
+	mode: int, persist_project_state := true, announce_mode_changing := true
+) -> void:
+	var next_mode := clampi(mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+	var changed := next_mode != timeline_mode
+	if changed and announce_mode_changing:
+		timeline_mode_changing.emit(timeline_mode, next_mode)
+	if next_mode == TimelineMode.SINGLE_FRAME and is_animation_running:
+		if animation_forward:
+			play_forward.button_pressed = false
+		else:
+			play_backwards.button_pressed = false
+	timeline_mode = next_mode
+	timeline_container.visible = timeline_mode == TimelineMode.ANIMATION
+	single_frame_layer_strip.visible = timeline_mode == TimelineMode.SINGLE_FRAME
+	if timeline_mode == TimelineMode.SINGLE_FRAME:
+		single_frame_layer_strip.set_project(Global.current_project)
+	if persist_project_state:
+		store_project_timeline_mode(timeline_mode)
+	update_minimum_size()
+	if changed:
+		timeline_mode_changed.emit(timeline_mode)
+
+
+func get_timeline_mode() -> int:
+	return timeline_mode
+
+
+func get_project_timeline_mode(
+	project: Object = Global.current_project, fallback := TimelineMode.ANIMATION
+) -> int:
+	return PROJECT_STATE.get_mode(
+		project, fallback, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME
+	)
+
+
+func store_project_timeline_mode(mode: int, project: Object = Global.current_project) -> void:
+	PROJECT_STATE.store_mode(project, mode, TimelineMode.ANIMATION, TimelineMode.SINGLE_FRAME)
+
+
+func get_default_workspace_height(mode: int) -> float:
+	return (
+		DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT
+		if mode == TimelineMode.SINGLE_FRAME
+		else DEFAULT_ANIMATION_WORKSPACE_HEIGHT
+	)
+
+
+func get_saved_workspace_height(mode: int, project: Object = Global.current_project) -> float:
+	return PROJECT_STATE.get_height(project, mode, get_default_workspace_height(mode))
+
+
+func store_workspace_height(
+	height: float, mode := timeline_mode, project: Object = Global.current_project
+) -> void:
+	PROJECT_STATE.store_height(project, mode, height)
+
+
+func add_default_pixel_layer() -> void:
+	_on_add_layer_pressed()
+
+
 func reset_settings() -> void:
 	cel_size = 36
 	%OnionSkinningOpacity.value = 60.0
@@ -273,6 +351,8 @@ func reset_settings() -> void:
 
 
 func _get_minimum_size() -> Vector2:
+	if timeline_mode == TimelineMode.SINGLE_FRAME:
+		return Vector2(220, 142)
 	# X targets enough to see layers, 1 frame, vertical scrollbar, and padding
 	# Y targets enough to see 1 layer
 	if not is_instance_valid(layer_vbox) or not cel_vbox.is_visible_in_tree():
@@ -1433,13 +1513,23 @@ func _on_timeline_settings_visibility_changed() -> void:
 
 func _on_project_about_to_switch() -> void:
 	var project := Global.current_project
-	project.layers_updated.disconnect(_update_layer_ui)
-	project.frames_updated.disconnect(_update_frame_ui)
-	project.tags_changed.disconnect(_on_animation_tags_changed)
+	store_project_timeline_mode(timeline_mode, project)
+	single_frame_layer_strip.set_project(null)
+	if project.layers_updated.is_connected(_update_layer_ui):
+		project.layers_updated.disconnect(_update_layer_ui)
+	if project.frames_updated.is_connected(_update_frame_ui):
+		project.frames_updated.disconnect(_update_frame_ui)
+	if project.tags_changed.is_connected(_on_animation_tags_changed):
+		project.tags_changed.disconnect(_on_animation_tags_changed)
 
 
 func _on_project_switched() -> void:
 	var project := Global.current_project
+	single_frame_layer_strip.set_project(project)
+	# The old project's height was already stored by project_about_to_switch.
+	# Do not announce an outgoing mode transition after Global.current_project has changed,
+	# otherwise that old physical height can be written into the new project's other mode.
+	set_timeline_mode(get_project_timeline_mode(project), false, false)
 	project_changed()
 	if not project.layers_updated.is_connected(_update_layer_ui):
 		project.layers_updated.connect(_update_layer_ui)

@@ -5,7 +5,7 @@ const Module := preload("res://src/UI/Workspace/WorkspaceModule.gd")
 const Manager := preload("res://src/UI/Workspace/WorkspaceModuleManager.gd")
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const PREVIEW_SCENE_PATH := "res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
-const PALETTE_SCENE_PATH := "res://src/Palette/PalettePanel.tscn"
+const PALETTE_SCENE_PATH := "res://src/UI/Workspace/PaletteColorPanel.tscn"
 
 
 func test_definition_contract_and_size_constraints() -> void:
@@ -38,6 +38,10 @@ func test_builtin_preview_and_palette_are_registered() -> void:
 
 	check_has(ids, Builtins.PREVIEW_ID, "Preview should have a stable workspace module ID")
 	check_has(ids, Builtins.PALETTE_ID, "Palette should have a stable workspace module ID")
+	check_true(
+		not ids.has(Builtins.COLOR_PICKER_ID),
+		"Color Picker must no longer register as an independent Workspace module"
+	)
 	check_eq(
 		manager.get_definition(Builtins.PREVIEW_ID).content_scene.resource_path,
 		PREVIEW_SCENE_PATH,
@@ -46,7 +50,7 @@ func test_builtin_preview_and_palette_are_registered() -> void:
 	check_eq(
 		manager.get_definition(Builtins.PALETTE_ID).content_scene.resource_path,
 		PALETTE_SCENE_PATH,
-		"Palette should keep using the existing Palette scene"
+		"Palette should use the combined Palette + Color Picker scene"
 	)
 	manager.free()
 
@@ -63,7 +67,21 @@ func test_manager_creates_preview_and_palette_as_independent_modules() -> void:
 	check_eq(
 		preview.get_content().name, "CanvasPreviewContainer", "Preview content should instantiate"
 	)
-	check_eq(palette.get_content().name, "PalettePanel", "Palette content should instantiate")
+	check_eq(
+		palette.get_content().name,
+		"PaletteColorPanel",
+		"combined Palette + Color Picker content should instantiate"
+	)
+	check_eq(
+		palette.get_content().get_child(0).name,
+		"Palettes",
+		"Palette must occupy the upper section of the combined panel"
+	)
+	check_eq(
+		palette.get_content().get_child(2).name,
+		"Color Picker",
+		"Color Picker must occupy the lower section of the combined panel"
+	)
 	check_eq(
 		preview.get_lifecycle_state(),
 		Module.LifecycleState.INITIALIZED,

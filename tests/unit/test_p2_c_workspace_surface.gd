@@ -166,7 +166,7 @@ func test_bottom_region_fill_resizes_height_from_top_edge() -> void:
 	_free_workspace(workspace)
 
 
-func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void:
+func test_floating_resize_supports_all_edges_and_corners() -> void:
 	var workspace := _make_workspace()
 	var surface: WorkspaceSurface = workspace["surface"]
 	check_true(
@@ -197,6 +197,17 @@ func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void
 	check_almost_eq(
 		right_rect.size.x, start.size.x + 90.0, 0.01, "right resize should change width"
 	)
+
+	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID, start, Vector2(0.0, 60.0), WorkspaceModule.ResizeEdge.TOP
+		),
+		"top edge resize should commit",
+	)
+	var top_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(top_rect.end.y, start.end.y, 0.01, "top resize must preserve bottom edge")
+	check_almost_eq(top_rect.size.y, start.size.y - 60.0, 0.01, "top resize should change height")
 
 	check_true(surface.set_floating_rect(Builtins.PREVIEW_ID, start), "reset floating rect")
 	check_true(
@@ -250,6 +261,113 @@ func test_floating_resize_supports_left_right_bottom_and_lower_corners() -> void
 		0.01,
 		"lower-right resize should change height",
 	)
+	_free_workspace(workspace)
+
+
+func test_side_dock_edges_directly_resize_width_and_height() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.LEFT,
+				0,
+				Vector2(260.0, 180.0),
+			)
+		),
+		"Preview should dock on the left before direct edge resize",
+	)
+	var module := workspace["manager"].get_instance(Builtins.PREVIEW_ID) as WorkspaceModule
+	check_eq(
+		surface.get_docked_resize_edges(
+			Builtins.PREVIEW_ID, Vector2(module.size.x - 2.0, module.size.y * 0.5)
+		),
+		WorkspaceModule.ResizeEdge.RIGHT,
+		"left dock inner edge should directly resize width",
+	)
+	check_eq(
+		surface.get_docked_resize_edges(
+			Builtins.PREVIEW_ID, Vector2(module.size.x * 0.5, module.size.y - 2.0)
+		),
+		WorkspaceModule.ResizeEdge.BOTTOM,
+		"side dock bottom edge should directly resize height",
+	)
+	check_eq(
+		surface.get_docked_resize_edges(
+			Builtins.PREVIEW_ID, Vector2(module.size.x - 2.0, module.size.y - 2.0)
+		),
+		WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
+		"side dock corner should resize width and height together",
+	)
+
+	var start_size := host.layout.get_module_size(Builtins.PREVIEW_ID)
+	check_true(
+		(
+			surface
+			. resize_docked_module(
+				Builtins.PREVIEW_ID,
+				start_size,
+				Vector2(70.0, 50.0),
+				WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
+		),
+		"direct side dock corner resize should commit both dimensions",
+	)
+	var resized := host.layout.get_module_size(Builtins.PREVIEW_ID)
+	check_almost_eq(resized.x, start_size.x + 70.0, 0.01, "side dock width should follow drag")
+	check_almost_eq(resized.y, start_size.y + 50.0, 0.01, "side dock height should follow drag")
+	_free_workspace(workspace)
+
+
+func test_docked_drag_preserves_exact_touch_grab_offset() -> void:
+	var workspace := _make_workspace()
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.LEFT,
+				0,
+				Vector2(260.0, 180.0),
+			)
+		),
+		"Preview should dock before grab-offset validation",
+	)
+	var module := manager.get_instance(Builtins.PREVIEW_ID)
+	var parent := module.get_parent() as Control
+	var grab_offset := Vector2(28.0, 14.0)
+	var grab_pointer := parent.position + module.position + grab_offset
+	check_true(
+		surface.begin_module_drag(Builtins.PREVIEW_ID, grab_pointer),
+		"docked direct drag should begin",
+	)
+	var pointer := Vector2(640.0, 420.0)
+	var candidate := surface.update_module_drag(pointer)
+	check_eq(
+		int(candidate.get("placement", Surface.Placement.NONE)),
+		Surface.Placement.FLOATING,
+		"moving away from dock should create a floating candidate",
+	)
+	var rect := candidate.get("rect", Rect2()) as Rect2
+	check_almost_eq(
+		rect.position.x,
+		pointer.x - grab_offset.x,
+		0.01,
+		"floating preview must preserve horizontal touch grab point",
+	)
+	check_almost_eq(
+		rect.position.y,
+		pointer.y - grab_offset.y,
+		0.01,
+		"floating preview must preserve vertical touch grab point",
+	)
+	surface.cancel_module_drag()
 	_free_workspace(workspace)
 
 
@@ -546,5 +664,67 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 	)
 	check_true(
 		not surface.collapse_module(restricted.module_id), "can_collapse=false must reject collapse"
+	)
+	_free_workspace(workspace)
+
+
+func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy({})
+
+	check_true(
+		(
+			surface
+			. dock_module(
+				Builtins.PREVIEW_ID,
+				DockLayout.DockZone.RIGHT,
+				0,
+				Vector2(320.0, 200.0),
+			)
+		),
+		"legacy right-dock request should be accepted as a floating snap",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		Surface.Placement.FLOATING,
+		"nonfixed Preview must remain floating after edge snap",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.NONE,
+		"snapped Preview must not enter DockLayout",
+	)
+	var bounds := surface.get_floating_bounds()
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "Preview should snap to the right edge")
+	check_almost_eq(snapped.position.y, bounds.position.y, 0.01, "Preview should snap top-right")
+
+	var start := snapped
+	check_true(
+		(
+			surface
+			. resize_floating_rect(
+				Builtins.PREVIEW_ID,
+				start,
+				Vector2(40.0, 30.0),
+				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+			)
+		),
+		"snapped Preview must retain normal floating resize",
+	)
+	var resized := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(resized.size != start.size, "resize should change the snapped floating rect")
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		Surface.Placement.FLOATING,
+		"resize must not convert the snapped panel into a dock",
+	)
+	check_almost_eq(
+		resized.end.x,
+		surface.get_floating_bounds().end.x,
+		0.01,
+		"right snap anchor should survive resize",
 	)
 	_free_workspace(workspace)
