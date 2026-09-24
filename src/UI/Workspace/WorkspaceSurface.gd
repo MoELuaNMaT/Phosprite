@@ -561,6 +561,8 @@ func clear_module_placement(module_id: StringName) -> bool:
 func begin_module_drag(module_id: StringName, pointer: Vector2 = Vector2.ZERO) -> bool:
 	if not _is_ready() or _drag_module_id != &"":
 		return false
+	if is_fixed_dock_module(module_id):
+		return false
 	var placement := get_module_placement(module_id)
 	if placement != Placement.DOCKED and placement != Placement.FLOATING:
 		return false
