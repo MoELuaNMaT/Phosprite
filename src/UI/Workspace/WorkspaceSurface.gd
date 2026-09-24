@@ -1007,18 +1007,18 @@ func _apply_floating_collapsed_rect(module_id: StringName, restore_rect: Rect2) 
 	var definition := manager.get_definition(module_id)
 	if module == null or definition == null:
 		return
+	var bounds := get_floating_bounds()
 	var width := definition.get_constrained_size(restore_rect.size).x
 	var header_height := module.get_header_height()
-	var bounds := dock_host.size if dock_host != null else Vector2.ZERO
-	width = minf(width, bounds.x) if bounds.x > 0.0 else width
-	var max_position := Vector2(maxf(0.0, bounds.x - width), maxf(0.0, bounds.y - header_height))
-	var position := Vector2(
-		clampf(restore_rect.position.x, 0.0, max_position.x),
-		clampf(restore_rect.position.y, 0.0, max_position.y)
-	)
+	if bounds.has_area():
+		width = minf(width, bounds.size.x)
+	var rect := Rect2(restore_rect.position, Vector2(width, header_height))
+	rect = _apply_saved_anchor(module_id, rect)
+	if bounds.has_area():
+		rect = _clamp_rect_to_bounds(rect, bounds)
 	module.custom_minimum_size = Vector2(minf(definition.minimum_size.x, width), header_height)
-	module.position = position
-	module.size = Vector2(width, header_height)
+	module.position = rect.position
+	module.size = rect.size
 	module.move_to_front()
 	_floating_layer.move_to_front()
 	_peek_layer.move_to_front()
