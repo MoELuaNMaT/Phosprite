@@ -39,6 +39,7 @@ func _ready() -> void:
 	set_confirm_buttons_visibility()
 	set_spinbox_values()
 	refresh_options()
+	_sync_mode_buttons()
 	selection_node.transformation_confirmed.connect(func(): _transformation_status_changed = true)
 	selection_node.transformation_canceled.connect(func(): _transformation_status_changed = true)
 	transformation_handles.preview_transform_changed.connect(set_confirm_buttons_visibility)
@@ -48,12 +49,9 @@ func _ready() -> void:
 func _apply_ios_compact_options() -> void:
 	if OS.get_name() != "iOS":
 		return
-	var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel"]
+	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]
 	if name == &"MagicWand":
-		visible_controls.append(&"ModeButtons")
 		visible_controls.append(&"ToleranceSlider")
-	else:
-		visible_controls.append(&"Modes")
 	for child in get_children():
 		if child is Control:
 			(child as Control).visible = StringName(child.name) in visible_controls
@@ -80,6 +78,14 @@ func refresh_options() -> void:
 	$Modes.add_item("Subtract from selection")
 	$Modes.add_item("Intersection of selections")
 	$Modes.select(_mode_selected)
+	_sync_mode_buttons()
+
+
+func _sync_mode_buttons() -> void:
+	for index in $ModeButtons.get_child_count():
+		var button := $ModeButtons.get_child(index) as BaseButton
+		if button != null:
+			button.set_pressed_no_signal(index == _mode_selected)
 
 
 func get_config() -> Dictionary:
@@ -89,7 +95,7 @@ func get_config() -> Dictionary:
 
 
 func set_config(config: Dictionary) -> void:
-	_mode_selected = config.get("mode_selected", 0)
+	_mode_selected = clampi(int(config.get("mode_selected", 0)), Mode.DEFAULT, Mode.INTERSECT)
 
 
 func update_config() -> void:
@@ -266,7 +272,15 @@ func _on_cancel_button_pressed() -> void:
 
 
 func _on_modes_item_selected(index: int) -> void:
-	_mode_selected = index
+	_mode_selected = clampi(index, Mode.DEFAULT, Mode.INTERSECT)
+	_sync_mode_buttons()
+	save_config()
+
+
+func _on_mode_button_pressed(index: int) -> void:
+	_mode_selected = clampi(index, Mode.DEFAULT, Mode.INTERSECT)
+	$Modes.select(_mode_selected)
+	_sync_mode_buttons()
 	save_config()
 
 
