@@ -1,6 +1,9 @@
 class_name BaseTool
 extends VBoxContainer
 
+const SIDEBAR_CONTROL_WIDTH := 68.0
+const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
+
 var is_moving := false
 var is_syncing := false
 var kname: String
@@ -40,13 +43,52 @@ func _ready() -> void:
 func _apply_stacked_option_layout(root: Node) -> void:
 	for child in root.get_children():
 		if child is ValueSlider:
+			_configure_sidebar_value_slider(child)
 			_stack_value_slider(child)
+			continue
+		if child is ValueSliderV2:
+			_configure_sidebar_vector_slider(child)
 			continue
 		if child is CheckBox:
 			_stack_checkbox(child)
 			continue
+		if child is OptionButton:
+			_configure_sidebar_option_button(child)
+			continue
 		if child is Container:
 			_apply_stacked_option_layout(child)
+
+
+func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
+	slider.allow_text_input = false
+	slider.show_drag_arrows = true
+	slider.show_arrows = false
+	slider.show_progress = false
+	slider.drag_sensitivity = _tool_drag_sensitivity()
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.custom_minimum_size = Vector2(
+		SIDEBAR_CONTROL_WIDTH, maxf(slider.custom_minimum_size.y, 24.0)
+	)
+
+
+func _configure_sidebar_vector_slider(slider: ValueSliderV2) -> void:
+	slider.grid_columns = 1
+	slider.slider_min_size = Vector2(SIDEBAR_CONTROL_WIDTH, 24.0)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	for component in slider.get_sliders():
+		_configure_sidebar_value_slider(component)
+
+
+func _configure_sidebar_option_button(option: OptionButton) -> void:
+	option.clip_text = true
+	option.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	option.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+
+
+func _tool_drag_sensitivity() -> float:
+	if String(name) in ["Pencil", "Eraser"]:
+		return PRECISION_TOOL_DRAG_SENSITIVITY
+	return 1.0
 
 
 func _stack_value_slider(slider: ValueSlider) -> void:
@@ -58,7 +100,7 @@ func _stack_value_slider(slider: ValueSlider) -> void:
 	_insert_stacked_option_label(slider, label_text)
 	slider.prefix = ""
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	slider.custom_minimum_size.x = maxf(slider.custom_minimum_size.x, 72.0)
+	slider.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
 
 
 func _stack_checkbox(checkbox: CheckBox) -> void:
@@ -80,6 +122,8 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.name = StringName("%sOptionLabel" % control.name)
 	label.text = _format_option_label(raw_text)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.visible = control.visible
