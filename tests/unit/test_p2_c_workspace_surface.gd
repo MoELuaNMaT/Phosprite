@@ -666,3 +666,139 @@ func test_collapse_restores_floating_rect_and_honors_capabilities() -> void:
 		not surface.collapse_module(restricted.module_id), "can_collapse=false must reject collapse"
 	)
 	_free_workspace(workspace)
+
+func test_floating_snap_policy_keeps_nonfixed_panels_floating_and_resizable() -> void:
+	var workspace := _make_workspace()
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy(
+		{Builtins.TIMELINE_ID: DockLayout.DockZone.BOTTOM}
+	)
+	check_true(
+		surface.dock_module(
+			Builtins.TIMELINE_ID,
+			DockLayout.DockZone.BOTTOM,
+			0,
+			Vector2(760.0, 180.0),
+			{},
+			true,
+		),
+		"Timeline should establish the fixed bottom boundary",
+	)
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			DockLayout.DockZone.RIGHT,
+			0,
+			Vector2(320.0, 200.0),
+		),
+		"legacy right-dock request should be accepted as a floating snap",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		Surface.Placement.FLOATING,
+		"nonfixed Preview must remain floating after edge snap",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.NONE,
+		"snapped Preview must not enter DockLayout",
+	)
+	var bounds := surface.get_floating_bounds()
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(snapped.end.x, bounds.end.x, 0.01, "Preview should snap to the right edge")
+	check_almost_eq(snapped.position.y, bounds.position.y, 0.01, "Preview should snap top-right")
+
+	var start := snapped
+	check_true(
+		surface.resize_floating_rect(
+			Builtins.PREVIEW_ID,
+			start,
+			Vector2(40.0, 30.0),
+			WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+		),
+		"snapped Preview must retain normal floating resize",
+	)
+	var resized := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(resized.size != start.size, "resize should change the snapped floating rect")
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		Surface.Placement.FLOATING,
+		"resize must not convert the snapped panel into a dock",
+	)
+	check_almost_eq(
+		resized.end.x,
+		surface.get_floating_bounds().end.x,
+		0.01,
+		"right snap anchor should survive resize",
+	)
+	check_true(
+		not manager.get_instance(Builtins.PREVIEW_ID).is_float_point(Vector2(8.0, 8.0)),
+		"floating panel should not expose a dock Pop-out target",
+	)
+	_free_workspace(workspace)
+
+
+func test_bottom_snap_tracks_timeline_top_when_timeline_height_changes() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy(
+		{Builtins.TIMELINE_ID: DockLayout.DockZone.BOTTOM}
+	)
+	check_true(
+		surface.dock_module(
+			Builtins.TIMELINE_ID,
+			DockLayout.DockZone.BOTTOM,
+			0,
+			Vector2(760.0, 160.0),
+			{},
+			true,
+		),
+		"Timeline should establish the initial bottom boundary",
+	)
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			DockLayout.DockZone.BOTTOM,
+			0,
+			Vector2(280.0, 140.0),
+		),
+		"legacy bottom placement should become a bottom-snapped float",
+	)
+	var initial_bounds := surface.get_floating_bounds()
+	var initial_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		initial_rect.end.y,
+		initial_bounds.end.y,
+		0.01,
+		"bottom snap should use the editor boundary above Timeline",
+	)
+
+	var timeline_size := host.layout.get_module_size(Builtins.TIMELINE_ID)
+	timeline_size.y += 80.0
+	check_true(
+		host.set_module_size(Builtins.TIMELINE_ID, timeline_size),
+		"Timeline height should remain resizable",
+	)
+	host.refresh_layout_geometry()
+	surface.refresh_floating_bounds()
+	var changed_bounds := surface.get_floating_bounds()
+	var changed_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(
+		changed_bounds.end.y < initial_bounds.end.y,
+		"raising Timeline should raise the floating bottom boundary",
+	)
+	check_almost_eq(
+		changed_rect.end.y,
+		changed_bounds.end.y,
+		0.01,
+		"bottom-snapped panel should follow Timeline top after resize",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		DockLayout.DockZone.NONE,
+		"following Timeline must still leave Preview floating",
+	)
+	_free_workspace(workspace)
