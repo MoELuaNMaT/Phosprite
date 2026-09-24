@@ -21,8 +21,16 @@ func test_color_selection_replaces_mode_dropdown_with_four_exclusive_buttons() -
 		'"Color Selection"',
 		"Magic Wand should be presented as Color Selection in the tool UI",
 	)
-	check_has(scene, '[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]')
-	check_has(scene, '[node name="Modes" parent="." index="4"]\nvisible = false')
+	check_has(
+		scene,
+		'[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]',
+		"Color Selection modes must share a dedicated ButtonGroup",
+	)
+	check_has(
+		scene,
+		'[node name="Modes" parent="." index="4"]\nvisible = false',
+		"the inherited mode dropdown must be hidden for Color Selection",
+	)
 	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
 		check_has(
 			scene,
