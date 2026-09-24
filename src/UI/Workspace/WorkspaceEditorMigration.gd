@@ -480,7 +480,9 @@ func _merge_left_tool_options_into_tools() -> bool:
 	_tools_palette_state = {
 		"parent": palette.get_parent(),
 		"index": palette.get_index(),
+		"size_flags_horizontal": palette.size_flags_horizontal,
 		"size_flags_vertical": palette.size_flags_vertical,
+		"stretch_ratio": palette.size_flags_stretch_ratio,
 	}
 	_left_tool_options_state = {
 		"parent": left_parent,
@@ -488,6 +490,7 @@ func _merge_left_tool_options_into_tools() -> bool:
 		"visible": _left_tool_options.visible,
 		"size_flags_horizontal": _left_tool_options.size_flags_horizontal,
 		"size_flags_vertical": _left_tool_options.size_flags_vertical,
+		"stretch_ratio": _left_tool_options.size_flags_stretch_ratio,
 	}
 	_tools_root_vertical_scroll_mode = tools_root.vertical_scroll_mode
 	_left_tool_options_vertical_scroll_mode = _left_tool_options.vertical_scroll_mode
@@ -554,6 +557,9 @@ func _restore_merged_tools() -> void:
 	_left_tool_options.size_flags_vertical = int(
 		_left_tool_options_state.get("size_flags_vertical", Control.SIZE_FILL)
 	)
+	_left_tool_options.size_flags_stretch_ratio = float(
+		_left_tool_options_state.get("stretch_ratio", 1.0)
+	)
 
 	if palette != null:
 		_merged_tools_content.remove_child(palette)
@@ -566,9 +572,13 @@ func _restore_merged_tools() -> void:
 					int(_tools_palette_state.get("index", 0)), palette_parent.get_child_count() - 1
 				)
 			)
+		palette.size_flags_horizontal = int(
+			_tools_palette_state.get("size_flags_horizontal", Control.SIZE_EXPAND_FILL)
+		)
 		palette.size_flags_vertical = int(
 			_tools_palette_state.get("size_flags_vertical", Control.SIZE_EXPAND_FILL)
 		)
+		palette.size_flags_stretch_ratio = float(_tools_palette_state.get("stretch_ratio", 1.0))
 
 	if is_instance_valid(_merged_tools_separator):
 		_merged_tools_separator.queue_free()
