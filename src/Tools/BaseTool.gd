@@ -3,6 +3,7 @@ extends VBoxContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
+const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
 
 var is_moving := false
 var is_syncing := false
@@ -75,7 +76,7 @@ func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
 	slider.show_drag_arrows = true
 	slider.show_arrows = false
 	slider.show_progress = false
-	slider.drag_sensitivity = _tool_drag_sensitivity()
+	slider.drag_sensitivity = _tool_drag_sensitivity(slider)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	slider.custom_minimum_size = Vector2(
 		SIDEBAR_CONTROL_WIDTH, maxf(slider.custom_minimum_size.y, 24.0)
@@ -106,8 +107,10 @@ func _configure_sidebar_button(button: Button) -> void:
 	button.clip_text = true
 
 
-func _tool_drag_sensitivity() -> float:
+func _tool_drag_sensitivity(slider: ValueSlider) -> float:
 	if String(name) in ["Pencil", "Eraser"]:
+		if slider.name == &"BrushSize":
+			return PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY
 		return PRECISION_TOOL_DRAG_SENSITIVITY
 	return 1.0
 

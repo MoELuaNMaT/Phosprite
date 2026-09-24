@@ -285,17 +285,27 @@ func test_all_tool_numeric_options_are_drag_only_and_precision_tools_are_slower(
 	for tool_name in ["Pencil", "Eraser"]:
 		var precision_tool := BaseTool.new()
 		precision_tool.name = tool_name
-		var slider := ValueSlider.new()
-		slider.prefix = "Size:"
-		precision_tool.add_child(slider)
+		var size_slider := ValueSlider.new()
+		size_slider.name = &"BrushSize"
+		size_slider.prefix = "Size:"
+		precision_tool.add_child(size_slider)
+		var opacity_slider := ValueSlider.new()
+		opacity_slider.name = &"Opacity"
+		opacity_slider.prefix = "Opacity:"
+		precision_tool.add_child(opacity_slider)
 		precision_tool._apply_stacked_option_layout(precision_tool)
 		check_eq(
-			slider.drag_sensitivity,
-			BaseTool.PRECISION_TOOL_DRAG_SENSITIVITY,
-			"%s numeric dragging must use the slower precision sensitivity" % tool_name,
+			size_slider.drag_sensitivity,
+			BaseTool.PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY,
+			"%s brush size dragging must use the extra-slow sensitivity" % tool_name,
 		)
 		check_eq(
-			slider.custom_minimum_size.x,
+			opacity_slider.drag_sensitivity,
+			BaseTool.PRECISION_TOOL_DRAG_SENSITIVITY,
+			"%s opacity dragging must keep the existing precision sensitivity" % tool_name,
+		)
+		check_eq(
+			size_slider.custom_minimum_size.x,
 			BaseTool.SIDEBAR_CONTROL_WIDTH,
 			"%s numeric control must fit the narrow sidebar" % tool_name,
 		)

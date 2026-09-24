@@ -4,10 +4,53 @@
 [ext_resource type="Script" uid="uid://dyeuj7wmtdmey" path="res://src/Tools/SelectionTools/MagicWand.gd" id="2"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="3_4ed6a"]
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]
+allow_unpress = false
+
 [node name="ToolOptions" unique_id=919885195 instance=ExtResource("1")]
 script = ExtResource("2")
 
-[node name="ToleranceSlider" type="TextureProgressBar" parent="." index="8" unique_id=85827552]
+[node name="Modes" parent="." index="4"]
+visible = false
+
+[node name="ModeButtons" type="VBoxContainer" parent="." index="5"]
+layout_mode = 2
+alignment = 1
+
+[node name="Replace" type="Button" parent="ModeButtons" index="0"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Replace"
+clip_text = true
+
+[node name="Add" type="Button" parent="ModeButtons" index="1"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Add"
+clip_text = true
+
+[node name="Subtract" type="Button" parent="ModeButtons" index="2"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Subtract"
+clip_text = true
+
+[node name="Intersect" type="Button" parent="ModeButtons" index="3"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_modes")
+text = "Intersect"
+clip_text = true
+
+[node name="ToleranceSlider" type="TextureProgressBar" parent="." index="9" unique_id=85827552]
 custom_minimum_size = Vector2(32, 24)
 layout_mode = 2
 focus_mode = 2
@@ -23,3 +66,9 @@ script = ExtResource("3_4ed6a")
 prefix = "Tolerance:"
 
 [connection signal="value_changed" from="ToleranceSlider" to="." method="_on_tolerance_slider_value_changed"]
+
+
+[connection signal="pressed" from="ModeButtons/Replace" to="." method="_on_mode_button_pressed" binds= [0]]
+[connection signal="pressed" from="ModeButtons/Add" to="." method="_on_mode_button_pressed" binds= [1]]
+[connection signal="pressed" from="ModeButtons/Subtract" to="." method="_on_mode_button_pressed" binds= [2]]
+[connection signal="pressed" from="ModeButtons/Intersect" to="." method="_on_mode_button_pressed" binds= [3]]

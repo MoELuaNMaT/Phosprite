@@ -28,7 +28,7 @@ const IOS_SHAPE_TOOLS := [
 	&"EllipseTool",
 	&"IsometricBoxTool",
 ]
-const IOS_TOOLBAR_REMOVED_TOOLS := [&"Text", &"Zoom", &"Pan"]
+const IOS_TOOLBAR_REMOVED_TOOLS := [&"Text", &"Zoom", &"Pan", &"Shading"]
 const IOS_TOOLBAR_REMOVAL_INSTALL_MAX_RETRIES := 8
 const FAMILY_DISCLOSURE_INDICATOR_NAME := &"FamilyDisclosureIndicator"
 const FAMILY_DISCLOSURE_INDICATOR_SIZE := 8.0
