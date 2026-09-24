@@ -29,6 +29,8 @@ var effects_color_submenu := PopupMenu.new()
 var effects_procedural_submenu := PopupMenu.new()
 var effects_blur_submenu := PopupMenu.new()
 var effects_loaded_submenu: PopupMenu
+var ui_layout_button: MenuButton
+var ui_menu: PopupMenu
 
 # Dialogs
 var new_image_dialog := Dialog.new("res://src/UI/Dialogs/CreateNewImage.tscn")
@@ -81,8 +83,6 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var layout_name_line_edit := %LayoutName as LineEdit
 @onready var layout_from_option_button := %LayoutFrom as OptionButton
 @onready var return_home_button := %ReturnHome as Button
-@onready var ui_layout_button := %UILayoutButton as MenuButton
-@onready var ui_menu := ui_layout_button.get_popup()
 
 @onready var greyscale_vision: ColorRect = main_ui.find_child("GreyscaleVision")
 
@@ -135,9 +135,14 @@ func _ready() -> void:
 
 func set_return_home_visible(should_show: bool) -> void:
 	return_home_button.visible = should_show
-	ui_layout_button.visible = should_show
 	if not should_show:
+		if is_instance_valid(ui_layout_button):
+			ui_layout_button.visible = false
 		return
+	_ensure_ui_layout_button()
+	if not is_instance_valid(ui_layout_button):
+		return
+	ui_layout_button.visible = true
 	var row := return_home_button.get_parent()
 	if row == null:
 		return
@@ -147,6 +152,21 @@ func set_return_home_visible(should_show: bool) -> void:
 	row.move_child(
 		ui_layout_button, mini(return_home_button.get_index() + 1, row.get_child_count() - 1)
 	)
+
+
+func _ensure_ui_layout_button() -> void:
+	if is_instance_valid(ui_layout_button):
+		return
+	var row := return_home_button.get_parent()
+	if row == null:
+		return
+	ui_layout_button = MenuButton.new()
+	ui_layout_button.name = &"UILayoutButton"
+	ui_layout_button.focus_mode = Control.FOCUS_ALL
+	ui_layout_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	ui_layout_button.text = "UI"
+	row.add_child(ui_layout_button)
+	ui_menu = ui_layout_button.get_popup()
 
 
 func _on_return_home_pressed() -> void:
@@ -160,7 +180,8 @@ func _input(event: InputEvent) -> void:
 		edit_menu.activate_item_by_event(event)
 		select_menu.activate_item_by_event(event)
 		project_menu.activate_item_by_event(event)
-		ui_menu.activate_item_by_event(event)
+		if ui_menu != null:
+			ui_menu.activate_item_by_event(event)
 		effects_menu.activate_item_by_event(event)
 		view_menu.activate_item_by_event(event)
 		window_menu.activate_item_by_event(event)
