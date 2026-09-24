@@ -264,9 +264,15 @@ func test_all_tool_numeric_options_are_drag_only_and_precision_tools_are_slower(
 	generic_tool.add_child(generic_slider)
 	generic_tool._apply_stacked_option_layout(generic_tool)
 	check_true(not generic_slider.allow_text_input, "tool numeric controls must disable text input")
-	check_true(generic_slider.show_drag_arrows, "tool numeric controls must advertise drag adjustment")
-	check_true(not generic_slider.show_arrows, "tool numeric controls must hide legacy arrow buttons")
-	check_true(not generic_slider.show_progress, "tool numeric controls should use pure drag presentation")
+	check_true(
+		generic_slider.show_drag_arrows, "tool numeric controls must advertise drag adjustment"
+	)
+	check_true(
+		not generic_slider.show_arrows, "tool numeric controls must hide legacy arrow buttons"
+	)
+	check_true(
+		not generic_slider.show_progress, "tool numeric controls should use pure drag presentation"
+	)
 	check_eq(
 		generic_slider.drag_sensitivity,
 		1.0,
