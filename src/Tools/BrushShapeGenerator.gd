@@ -30,7 +30,7 @@ static func create_preview_image(
 	shape: Shape, brush_size: int, color := Color.BLACK, source_limit := PREVIEW_SOURCE_LIMIT
 ) -> Image:
 	var safe_limit := maxi(1, source_limit)
-	var padding := mini(PREVIEW_PADDING, maxi(0, (safe_limit - 1) / 2))
+	var padding := mini(PREVIEW_PADDING, maxi(0, int((safe_limit - 1) / 2.0)))
 	var stamp_limit := maxi(1, safe_limit - padding * 2)
 	var stamp_size := mini(maxi(1, brush_size), stamp_limit)
 	var preview_size := stamp_size + padding * 2
