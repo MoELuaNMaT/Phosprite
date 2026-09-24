@@ -81,7 +81,7 @@ var tools: Dictionary[String, Tool] = {
 	"MagicWand":
 	Tool.new(
 		"MagicWand",
-		"Color Selection",
+		"Magic Wand",
 		"magic_wand",
 		"res://src/Tools/SelectionTools/MagicWand.tscn"
 	),
