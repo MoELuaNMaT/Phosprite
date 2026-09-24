@@ -1,7 +1,7 @@
 class_name BaseTool
 extends VBoxContainer
 
-const SIDEBAR_CONTROL_WIDTH := 68.0
+const SIDEBAR_CONTROL_WIDTH := 54.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 
 var is_moving := false
@@ -55,6 +55,16 @@ func _apply_stacked_option_layout(root: Node) -> void:
 		if child is OptionButton:
 			_configure_sidebar_option_button(child)
 			continue
+		if child is Label:
+			_configure_sidebar_label(child)
+			continue
+		if child is Button:
+			_configure_sidebar_button(child)
+			continue
+		if child is HBoxContainer:
+			child.alignment = BoxContainer.ALIGNMENT_CENTER
+			_apply_stacked_option_layout(child)
+			continue
 		if child is Container:
 			_apply_stacked_option_layout(child)
 
@@ -83,6 +93,18 @@ func _configure_sidebar_option_button(option: OptionButton) -> void:
 	option.clip_text = true
 	option.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	option.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+
+
+func _configure_sidebar_label(label: Label) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var text_value := label.text.strip_edges()
+	if text_value.length() > 1 and (text_value.ends_with(":") or text_value.ends_with("：")):
+		label.text = text_value.left(-1)
+
+
+func _configure_sidebar_button(button: Button) -> void:
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.clip_text = true
 
 
 func _tool_drag_sensitivity() -> float:
@@ -139,8 +161,8 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 func _format_option_label(raw_text: String) -> String:
 	var label_text := raw_text.strip_edges()
 	if label_text.ends_with(":") or label_text.ends_with("："):
-		return label_text
-	return label_text + ":"
+		return label_text.left(-1)
+	return label_text
 
 
 func save_config() -> void:
