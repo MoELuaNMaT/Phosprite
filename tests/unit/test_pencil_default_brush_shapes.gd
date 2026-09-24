@@ -233,7 +233,7 @@ func test_tool_option_fields_put_names_above_numeric_and_checkbox_controls() -> 
 	check_eq(tool.get_child_count(), 4, "each control should gain one separate label row")
 	var size_label := tool.get_child(0) as Label
 	check_true(size_label != null, "numeric option name must become a separate Label")
-	check_eq(size_label.text, "Size:", "numeric option label must keep its name")
+	check_eq(size_label.text, "Size", "numeric option label must remove its colon")
 	check_eq(slider.prefix, "", "numeric value row must no longer repeat the option name")
 	check_eq(
 		slider.size_flags_horizontal,
@@ -244,8 +244,8 @@ func test_tool_option_fields_put_names_above_numeric_and_checkbox_controls() -> 
 	check_true(checkbox_label != null, "checkbox option name must become a separate Label")
 	check_eq(
 		checkbox_label.text,
-		"Continuous:",
-		"checkbox labels should receive the same name-above-control presentation",
+		"Continuous",
+		"checkbox labels should use the same centered no-colon presentation",
 	)
 	check_eq(checkbox.text, "", "checkbox row itself must contain only the checkbox control")
 	check_eq(
@@ -278,6 +278,8 @@ func test_all_tool_numeric_options_are_drag_only_and_precision_tools_are_slower(
 		1.0,
 		"ordinary tools should keep the default numeric drag sensitivity",
 	)
+	check_eq(generic_slider.prefix, "", "stacked numeric controls should move their name above")
+
 	generic_tool.free()
 
 	for tool_name in ["Pencil", "Eraser"]:
@@ -312,3 +314,24 @@ func test_value_slider_drag_math_uses_configurable_sensitivity() -> void:
 		"var drag_delta := x_delta * drag_sensitivity",
 		"pointer delta must be scaled before numeric values are changed",
 	)
+
+
+func test_sidebar_labels_and_nested_numeric_prefixes_are_centered_without_colons() -> void:
+	var tool := BaseTool.new()
+	var title := Label.new()
+	title.text = "Mode:"
+	tool.add_child(title)
+	var pair := ValueSliderV2.new()
+	tool.add_child(pair)
+	tool._apply_stacked_option_layout(tool)
+	check_eq(title.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER, "option labels must be centered")
+	check_eq(title.text, "Mode", "option labels must drop trailing colons")
+	for slider in pair.get_sliders():
+		check_true(not slider.prefix.ends_with(":"), "nested X/Y numeric prefixes must drop colons")
+		check_true(slider.show_drag_arrows, "nested X/Y numeric controls must stay drag-only")
+		check_eq(
+			slider.custom_minimum_size.x,
+			BaseTool.SIDEBAR_CONTROL_WIDTH,
+			"nested numeric controls must use the compact right-column width",
+		)
+	tool.free()
