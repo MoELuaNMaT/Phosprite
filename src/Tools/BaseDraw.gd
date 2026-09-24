@@ -229,7 +229,7 @@ func update_brush() -> void:
 
 func _refresh_default_brush_preview() -> void:
 	var shape := _default_brush_shape(_brush.type)
-	var preview := BrushShapes.create_preview_image(shape, _brush_size)
+	var preview := BrushShapes.create_preview_image(shape, _brush_size, Color.BLACK)
 	_brush_texture = ImageTexture.create_from_image(preview)
 	$Brush/Type/Texture.texture = _brush_texture
 
