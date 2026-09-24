@@ -216,7 +216,6 @@ func test_pencil_numeric_controls_use_drag_only_arrow_value_presentation() -> vo
 	)
 
 
-
 func test_tool_option_fields_put_names_above_numeric_and_checkbox_controls() -> void:
 	var tool := BaseTool.new()
 	var slider := ValueSlider.new()
