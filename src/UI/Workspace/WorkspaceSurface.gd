@@ -89,10 +89,12 @@ func get_floating_bounds() -> Rect2:
 	var bounds := dock_host.get_content_rect()
 	if not bounds.has_area():
 		bounds = Rect2(Vector2.ZERO, dock_host.size)
-	var margin := minf(
-		FLOATING_SNAP_MARGIN,
-		minf(bounds.size.x, bounds.size.y) * 0.25,
-	)
+	var margin := 0.0
+	if _floating_snap_policy_enabled:
+		margin = minf(
+			FLOATING_SNAP_MARGIN,
+			minf(bounds.size.x, bounds.size.y) * 0.25,
+		)
 	return Rect2(
 		bounds.position + Vector2.ONE * margin,
 		Vector2(
