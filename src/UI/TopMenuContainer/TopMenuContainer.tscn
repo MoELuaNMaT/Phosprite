@@ -42,8 +42,6 @@ flat = true
 
 [node name="Project" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar" unique_id=1172244258]
 
-[node name="UI" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar"]
-
 [node name="Effects" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar" unique_id=77521974]
 
 [node name="View" type="PopupMenu" parent="MarginContainer/HBoxContainer/MenuBar" unique_id=1075900013]
@@ -60,6 +58,14 @@ focus_mode = 0
 mouse_default_cursor_shape = 2
 text = "Projects"
 tooltip_text = "Return to Projects"
+
+[node name="UILayoutButton" type="MenuButton" parent="MarginContainer/HBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+focus_mode = 2
+mouse_default_cursor_shape = 2
+text = "UI"
 
 [node name="UndoHistoryDialog" type="AcceptDialog" parent="." unique_id=935198027]
 oversampling_override = 1.0
