@@ -192,13 +192,13 @@ func test_shape_family_uses_long_press_proxy_and_persists_recent_child() -> void
 	)
 
 
-func test_ios_toolbar_removes_text_zoom_and_pan_without_deleting_tools() -> void:
+func test_ios_toolbar_removes_non_phosprite_tools_without_deleting_them() -> void:
 	var buttons_src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
 	var tools_src := FileAccess.get_file_as_string(TOOLS_SOURCE)
 	check_eq(
 		TOOL_BUTTONS.IOS_TOOLBAR_REMOVED_TOOLS,
-		[&"Text", &"Zoom", &"Pan"],
-		"iOS toolbar must remove exactly Text, Zoom and Pan"
+		[&"Text", &"Zoom", &"Pan", &"Shading"],
+		"iOS toolbar must remove Text, Zoom, Pan and Shading"
 	)
 	check_has(
 		buttons_src,
@@ -210,7 +210,7 @@ func test_ios_toolbar_removes_text_zoom_and_pan_without_deleting_tools() -> void
 		"tool_visible = _is_tool_available_on_current_layer(t)",
 		"toolbar removal must not disable valid keyboard shortcuts"
 	)
-	for tool_name in ["Text", "Zoom", "Pan"]:
+	for tool_name in ["Text", "Zoom", "Pan", "Shading"]:
 		check_has(
 			tools_src,
 			'"%s"' % tool_name,
@@ -272,25 +272,35 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 
 
-func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance() -> void:
+func test_ios_selection_options_use_color_selection_mode_buttons_and_tolerance() -> void:
 	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
 	check_has(
 		base_src, 'if OS.get_name() != "iOS":', "selection option compaction must remain iOS-only"
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel", &"Modes"]',
-		"ordinary iOS selection tools should expose only their header and Mode control"
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"Label", &"ModeLabel"]',
+		"selection options should start from the shared compact header controls"
+	)
+	check_has(
+		base_src,
+		'visible_controls.append(&"Modes")',
+		"ordinary selection tools should keep the existing mode selector"
 	)
 	check_has(
 		base_src,
 		'if name == &"MagicWand":',
-		"Magic Wand must have an explicit compact-options exception"
+		"Color Selection must have an explicit compact-options exception"
+	)
+	check_has(
+		base_src,
+		'visible_controls.append(&"ModeButtons")',
+		"Color Selection must show the new vertical mode-button group"
 	)
 	check_has(
 		base_src,
 		'visible_controls.append(&"ToleranceSlider")',
-		"Magic Wand should retain Tolerance in addition to Mode"
+		"Color Selection should retain Tolerance under the mode buttons"
 	)
 	check_has(
 		base_src,
@@ -311,55 +321,37 @@ func test_ios_selection_options_are_compact_mode_only_with_magic_wand_tolerance(
 	)
 
 
-func test_ios_crop_uses_margin_grid_without_mode_selector() -> void:
+func test_crop_options_are_hidden_and_drag_release_applies_crop() -> void:
 	var src := FileAccess.get_file_as_string(CROP_TOOL_SOURCE)
-	check_has(src, "_crop.mode = CropRect.Mode.MARGINS", "iOS Crop must always enter Margins mode")
+	check_has(
+		src,
+		"_crop.mode = CropRect.Mode.MARGINS",
+		"config-free Crop should use one stable rectangle interaction mode",
+	)
 	check_has(
 		src,
 		"_crop.locked_size = false",
-		"hidden Size Lock must not preserve a stale locked state on iOS"
-	)
-	check_has(src, "$ModeLabel.hide()", "iOS Crop should hide its Mode label")
-	check_has(src, "$HBoxContainer.hide()", "iOS Crop should hide Mode and Size Lock controls")
-	check_has(
-		src,
-		'top_bottom_row.name = &"TopBottomRow"',
-		"Top and Bottom margin controls must share the first compact row"
+		"hidden Size Lock must never preserve a stale locked state",
 	)
 	check_has(
 		src,
-		'left_right_row.name = &"LeftRightRow"',
-		"Left and Right margin controls must share the second compact row"
-	)
-	check_has(
-		src, "top_bottom_row.add_child(top)", "Top margin must move into the first compact row"
+		'if control.name in [&"ColorRect", &"Label"]',
+		"Crop options column must retain only the base tool identity controls",
 	)
 	check_has(
 		src,
-		"top_bottom_row.add_child(bottom)",
-		"Bottom margin must move into the first compact row"
-	)
-	check_has(
-		src, "left_right_row.add_child(left)", "Left margin must move into the second compact row"
-	)
-	check_has(
-		src, "left_right_row.add_child(right)", "Right margin must move into the second compact row"
+		"control.hide()",
+		"all numeric, mode and Apply controls must stay hidden",
 	)
 	check_has(
 		src,
-		"$Apply.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
-		"Apply must remain a full-width row under the margin grid"
+		"if not _drag_changed:",
+		"a simple tap must not commit an old crop rectangle",
 	)
 	check_has(
 		src,
-		'if _syncing or OS.get_name() == "iOS":',
-		"the hidden Crop mode selector must not change mode on iOS"
-	)
-	var scene_src := FileAccess.get_file_as_string(CROP_TOOL_SCENE)
-	check_has(
-		scene_src,
-		'[node name="CropMode" type="OptionButton"',
-		"desktop Crop must keep the original mode selector in the shared scene"
+		"_crop.apply()",
+		"drag release must replace the removed Apply button as the crop commit path",
 	)
 
 
