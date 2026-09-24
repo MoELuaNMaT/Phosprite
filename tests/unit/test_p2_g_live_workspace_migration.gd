@@ -653,6 +653,12 @@ func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() 
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var surface := fixture["surface"] as WorkspaceSurface
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	check_true(
+		surface.set_floating_rect(
+			Builtins.PREVIEW_ID, Rect2(300.0, 180.0, 360.0, 240.0)
+		),
+		"Preview should use a large floating rect for resize-target validation",
+	)
 	preview.apply_visual_theme(VisualTheme.new(), &"floating")
 	check_true(
 		preview.is_header_drag_point(Vector2(8.0, 8.0)),
@@ -770,6 +776,7 @@ func test_touch_workspace_drag_and_resize_capture_on_press_before_child_gui() ->
 	await tree.process_frame
 
 	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	preview.move_to_front()
 	preview.apply_visual_theme(VisualTheme.new(), &"floating")
 	var local_header_point := Vector2(20.0, preview.get_header_height() * 0.5)
 	var viewport_point := preview.get_global_transform_with_canvas() * local_header_point
@@ -903,6 +910,69 @@ func test_timeline_is_the_only_fixed_bottom_dock_and_cannot_float() -> void:
 		Rect2(main_canvas.position, main_canvas.size),
 		canvas_rect,
 		"fixed Bottom Timeline must continue overlaying the full-background Canvas",
+	)
+
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_bottom_snapped_float_tracks_real_timeline_top_after_height_resize() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	var surface := fixture["surface"] as WorkspaceSurface
+	tree.root.add_child(root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var initial_bounds := surface.get_floating_bounds()
+	check_true(
+		surface.dock_module(
+			Builtins.PREVIEW_ID,
+			WorkspaceDockLayout.DockZone.BOTTOM,
+			0,
+			Vector2(280.0, 140.0),
+		),
+		"bottom edge request should place Preview as a snapped float above Timeline",
+	)
+	var initial_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"bottom-snapped Preview must remain FLOATING",
+	)
+	check_almost_eq(
+		initial_rect.end.y,
+		initial_bounds.end.y,
+		0.01,
+		"bottom snap must use the Timeline top edge instead of screen bottom",
+	)
+
+	var timeline_size := host.layout.get_module_size(Builtins.TIMELINE_ID)
+	timeline_size.y += 60.0
+	check_true(
+		host.set_module_size(Builtins.TIMELINE_ID, timeline_size),
+		"fixed Timeline height must remain resizable",
+	)
+	await tree.process_frame
+	await tree.process_frame
+
+	var changed_bounds := surface.get_floating_bounds()
+	var changed_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_true(
+		changed_bounds.end.y < initial_bounds.end.y,
+		"raising Timeline must raise the floating editor bottom boundary",
+	)
+	check_almost_eq(
+		changed_rect.end.y,
+		changed_bounds.end.y,
+		0.01,
+		"bottom-snapped Preview must follow Timeline top after resize",
+	)
+	check_eq(
+		host.layout.get_module_zone(Builtins.PREVIEW_ID),
+		WorkspaceDockLayout.DockZone.NONE,
+		"following Timeline must never convert Preview into a real dock",
 	)
 
 	tree.root.remove_child(root)
