@@ -20,6 +20,8 @@ var layer_metadata_texture := ImageTexture.new()
 var _input_adapter := CanvasInputAdapter.new()
 var _adapter_pointer_mode := false
 var _adapter_tool_preview_active := false
+var _preview_only_layer_index := -1
+var _preview_only_layer_owner_id := 0
 
 @onready var currently_visible_frame := $CurrentlyVisibleFrame as SubViewport
 @onready var current_frame_drawer := $CurrentlyVisibleFrame/CurrentFrameDrawer as Node2D
@@ -203,6 +205,30 @@ func queue_redraw_all_layers() -> void:
 		queue_redraw()
 
 
+func set_preview_only_layer(layer_index: int, owner: Object = null) -> void:
+	var owner_id := owner.get_instance_id() if is_instance_valid(owner) else 0
+	if _preview_only_layer_index == layer_index and _preview_only_layer_owner_id == owner_id:
+		return
+	_preview_only_layer_index = layer_index
+	_preview_only_layer_owner_id = owner_id
+	queue_redraw_all_layers()
+
+
+func clear_preview_only_layer(owner: Object = null) -> void:
+	if is_instance_valid(owner) and _preview_only_layer_owner_id != owner.get_instance_id():
+		return
+	if _preview_only_layer_index < 0:
+		_preview_only_layer_owner_id = 0
+		return
+	_preview_only_layer_index = -1
+	_preview_only_layer_owner_id = 0
+	queue_redraw_all_layers()
+
+
+func get_preview_only_layer() -> int:
+	return _preview_only_layer_index
+
+
 func camera_zoom(project := Global.current_project) -> void:
 	await get_tree().process_frame
 	for camera: CanvasCamera in get_tree().get_nodes_in_group("CanvasCameras"):
@@ -347,6 +373,20 @@ func _update_texture_array_layer(
 	if update_layer:
 		layer_texture_array.update_layer(cel_image, ordered_index)
 	DrawingAlgos.set_layer_metadata_image(layer, cel, layer_metadata_image, ordered_index, include)
+	_apply_preview_only_layer_metadata(layer, cel, ordered_index)
+
+
+func _apply_preview_only_layer_metadata(layer: BaseLayer, cel: BaseCel, ordered_index: int) -> void:
+	if _preview_only_layer_index < 0:
+		return
+	if layer.index != _preview_only_layer_index:
+		layer_metadata_image.set_pixel(ordered_index, 1, Color())
+		return
+	var opacity := cel.get_final_opacity(layer)
+	layer_metadata_image.set_pixel(ordered_index, 1, Color(opacity, 0.0, 0.0, 0.0))
+	# A selected child layer must render on its own instead of being skipped by its
+	# group/blender ancestor while the temporary picker preview is active.
+	layer_metadata_image.set_pixel(ordered_index, 3, Color.BLACK)
 
 
 func refresh_onion() -> void:
@@ -357,6 +397,8 @@ func refresh_onion() -> void:
 func _on_project_about_to_switch() -> void:
 	var project := Global.current_project
 	project.resized.disconnect(camera_zoom)
+	_preview_only_layer_index = -1
+	_preview_only_layer_owner_id = 0
 
 
 func _on_project_switched() -> void:
