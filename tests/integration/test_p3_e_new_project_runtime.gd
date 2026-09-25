@@ -202,6 +202,15 @@ func test_new_project_is_saved_before_editor_and_blank_canvas_is_transparent() -
 
 	var project := Global.current_project
 	check_eq(project.size, Vector2i(85, 64), "new Project must keep the selected preset size")
+	check_eq(project.palettes.size(), 3, "new Project must contain the three starter palettes")
+	check_true(project.palettes.has("Endesga 32"), "new Project must contain Endesga 32")
+	check_true(project.palettes.has("Resurrect 64"), "new Project must contain Resurrect 64")
+	check_true(project.palettes.has("Lospec500"), "new Project must contain Lospec500")
+	check_eq(
+		project.project_current_palette_name,
+		"Endesga 32",
+		"new Project should initially select the first starter palette",
+	)
 	check_eq(
 		project.get_meta(AnimationTimeline.TIMELINE_MODE_META, -1),
 		AnimationTimeline.TimelineMode.SINGLE_FRAME,
