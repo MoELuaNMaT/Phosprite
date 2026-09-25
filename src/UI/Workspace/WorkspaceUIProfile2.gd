@@ -11,6 +11,7 @@ extends Node
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 const PRIMARY_TOOLS: Array[StringName] = [&"Pencil", &"Eraser", &"Move", &"Bucket"]
+const NO_POPUP_TOOLS: Array[StringName] = [&"Crop", &"ColorPicker"]
 const SELECTION_TOOLS: Array[StringName] = [
 	&"ColorSelect",
 	&"EllipseSelect",
@@ -309,6 +310,13 @@ func _on_proxy_pressed(proxy: BaseButton, source: BaseButton) -> void:
 		_move_options_to_primary.call_deferred()
 		return
 
+	if tool_name in NO_POPUP_TOOLS:
+		_pending_popup_anchor = null
+		_hide_options_popup()
+		_tool_buttons.call(&"_on_tool_pressed", source)
+		_park_no_popup_options.call_deferred()
+		return
+
 	var was_same_anchor := _popup_anchor == proxy and is_instance_valid(_options_popup)
 	var popup_was_visible := was_same_anchor and _options_popup.visible
 	_pending_popup_anchor = proxy
@@ -318,6 +326,16 @@ func _on_proxy_pressed(proxy: BaseButton, source: BaseButton) -> void:
 		_hide_options_popup()
 	else:
 		_show_requested_top_options.call_deferred(proxy)
+
+
+func _park_no_popup_options() -> void:
+	if not active or not is_instance_valid(_popup_options_host):
+		return
+	_hide_options_popup()
+	_set_current_options_horizontal(false)
+	_reparent_left_options(_popup_options_host)
+	left_tool_options.visible = false
+	_refresh_proxy_visuals()
 
 
 func _move_options_to_primary() -> void:
@@ -480,6 +498,9 @@ func _on_tool_changed(_tool_name: String, button: int) -> void:
 	if is_primary_tool(active_tool):
 		_pending_popup_anchor = null
 		_move_options_to_primary.call_deferred()
+	elif active_tool in NO_POPUP_TOOLS:
+		_pending_popup_anchor = null
+		_park_no_popup_options.call_deferred()
 
 
 func _on_workspace_context_changed() -> void:
