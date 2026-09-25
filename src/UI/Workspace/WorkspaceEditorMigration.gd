@@ -19,6 +19,7 @@ const TIMELINE_HEADER_CONTROLS_SCENE := preload(
 const UI_PROFILE_2_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
 const UI_PROFILE_3_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 
+const UI_PROFILE_3_LAYOUT_VERSION := 1
 const WORKSPACE_SIDE_MARGIN := 8.0
 const TOOL_PALETTE_WIDTH := 40.0
 const TOOL_OPTIONS_WIDTH := 60.0
@@ -146,6 +147,10 @@ func get_panel_name(module_id: StringName) -> String:
 
 func get_ui_profile() -> int:
 	return _active_ui_profile
+
+
+func get_ui_profile_implementation_version(profile_id: int) -> int:
+	return UI_PROFILE_3_LAYOUT_VERSION if profile_id == 3 else 0
 
 
 func activate_ui_profile(profile_id: int) -> bool:
@@ -442,11 +447,7 @@ func _ensure_ui_profile_3() -> bool:
 		return true
 	if is_instance_valid(_ui_profile_3):
 		return true
-	if (
-		not is_instance_valid(ui_root)
-		or not is_instance_valid(_left_tool_options)
-		or not is_instance_valid(_merged_tools_content)
-	):
+	if not is_instance_valid(ui_root) or not is_instance_valid(_left_tool_options):
 		return false
 	_ui_profile_3 = UI_PROFILE_3_SCRIPT.new()
 	_ui_profile_3.name = &"WorkspaceUIProfile3"
