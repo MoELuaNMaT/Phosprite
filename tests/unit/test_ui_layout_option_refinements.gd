@@ -147,6 +147,6 @@ func test_ui1_mode_buttons_reserve_full_text_width() -> void:
 	)
 	check_has(
 		builtins_src,
-		'Vector2(168.0, 220.0), Vector2(176.0, 520.0)',
+		"Vector2(168.0, 220.0), Vector2(176.0, 520.0)",
 		"UI 1 Tools module must be wide enough for readable mode buttons",
 	)
