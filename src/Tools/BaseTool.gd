@@ -1,5 +1,5 @@
 class_name BaseTool
-extends VBoxContainer
+extends BoxContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
@@ -27,6 +27,8 @@ var _spacing_mode := false  ## Enables spacing (continuous gaps between two stro
 var _spacing := Vector2i.ZERO  ## Spacing between two strokes
 var _stroke_dimensions := Vector2i.ONE  ## 2D vector containing _brush_size from Draw.gd
 var _spacing_offset := Vector2i.ZERO  ## The initial error between position and position.snapped()
+var _horizontal_option_layout := false
+var _horizontal_child_state: Dictionary = {}
 @onready var color_rect := $ColorRect as ColorRect
 
 
@@ -116,7 +118,7 @@ func _tool_drag_sensitivity(slider: ValueSlider) -> float:
 
 
 func _stack_value_slider(slider: ValueSlider) -> void:
-	if slider.get_parent() is not VBoxContainer:
+	if not _is_stacked_option_parent(slider.get_parent()):
 		return
 	var label_text := slider.prefix.strip_edges()
 	if label_text.is_empty():
@@ -128,7 +130,7 @@ func _stack_value_slider(slider: ValueSlider) -> void:
 
 
 func _stack_checkbox(checkbox: CheckBox) -> void:
-	if checkbox.get_parent() is not VBoxContainer:
+	if not _is_stacked_option_parent(checkbox.get_parent()):
 		return
 	var label_text := checkbox.text.strip_edges()
 	if label_text.is_empty():
@@ -138,8 +140,12 @@ func _stack_checkbox(checkbox: CheckBox) -> void:
 	checkbox.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 
+func _is_stacked_option_parent(parent: Node) -> bool:
+	return parent == self or parent is VBoxContainer
+
+
 func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
-	var parent := control.get_parent() as VBoxContainer
+	var parent := control.get_parent()
 	if parent == null:
 		return
 	var label := Label.new()
@@ -158,6 +164,43 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 			if is_instance_valid(label):
 				label.visible = control.visible
 	)
+
+
+func set_horizontal_option_layout(enabled: bool) -> void:
+	if _horizontal_option_layout == enabled:
+		return
+	_horizontal_option_layout = enabled
+	if enabled:
+		_horizontal_child_state.clear()
+		for child in get_children():
+			if child is not Control:
+				continue
+			var control := child as Control
+			_horizontal_child_state[control] = {
+				"horizontal": control.size_flags_horizontal,
+				"vertical": control.size_flags_vertical,
+			}
+			control.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		vertical = false
+		alignment = BoxContainer.ALIGNMENT_BEGIN
+	else:
+		vertical = true
+		alignment = BoxContainer.ALIGNMENT_BEGIN
+		for child in _horizontal_child_state:
+			if not is_instance_valid(child):
+				continue
+			var control := child as Control
+			var state := _horizontal_child_state[child] as Dictionary
+			control.size_flags_horizontal = int(
+				state.get("horizontal", Control.SIZE_FILL)
+			)
+			control.size_flags_vertical = int(state.get("vertical", Control.SIZE_FILL))
+		_horizontal_child_state.clear()
+
+
+func is_horizontal_option_layout() -> bool:
+	return _horizontal_option_layout
 
 
 func _format_option_label(raw_text: String) -> String:
