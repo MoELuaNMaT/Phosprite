@@ -388,6 +388,9 @@ func _on_other_button_pressed() -> void:
 	if not active:
 		return
 	_other_button.button_pressed = not is_primary_tool(_current_left_tool_name())
+	if is_instance_valid(_options_popup) and _options_popup.visible:
+		_hide_options_popup()
+		return
 	if is_instance_valid(_other_popup) and _other_popup.visible:
 		_other_popup.visible = false
 		return
