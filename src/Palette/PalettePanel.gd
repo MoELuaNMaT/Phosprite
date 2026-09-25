@@ -2,6 +2,7 @@ class_name PalettePanel
 extends Container
 # search for palette_focus_local
 const CREATE_PALETTE_SCENE_PATH := "res://src/Palette/CreatePaletteDialog.tscn"
+const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 const EDIT_PALETTE_SCENE_PATH := "res://src/Palette/EditPaletteDialog.tscn"
 
 var palettes_name_id := {}
@@ -106,6 +107,9 @@ func undo_redo_make_palette_local(palette: Palette, undo_redo: UndoRedo) -> void
 
 ## Setup palettes selector with available palettes
 func setup_palettes_selector() -> void:
+	var project := Global.current_project
+	if project and ProjectFactoryScript.ensure_default_project_palettes(project):
+		project.has_changed = true
 	# Clear selector
 	palettes_name_id.clear()
 	palettes_id_name.clear()
@@ -120,7 +124,6 @@ func setup_palettes_selector() -> void:
 		palettes_name_id[palette_name] = id
 		palettes_id_name[id] = palette_name
 		id += 1
-	var project := Global.current_project
 	if project:
 		if project.palettes.size() > 0:
 			palette_select.add_separator("")
