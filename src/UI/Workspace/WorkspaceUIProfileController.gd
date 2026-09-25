@@ -30,9 +30,22 @@ func setup(
 	menu = ui_menu
 	migration = editor_migration
 	store = layout_store
-	if not migration.activate_ui_profile(store.get_active_layout_slot()):
+	var active_profile := store.get_active_layout_slot()
+	if not migration.activate_ui_profile(active_profile):
 		_clear_setup()
 		return false
+	var required_version := migration.get_ui_profile_implementation_version(active_profile)
+	var current_version := store.get_ui_profile_version(active_profile)
+	if current_version < required_version:
+		migration.sync_workspace_content_visibility()
+		if (
+			not migration.apply_ui_profile_initial_defaults(active_profile)
+			or not store.set_ui_profile_version(active_profile, required_version)
+			or not store.save_current_layout()
+		):
+			store.set_ui_profile_version(active_profile, current_version)
+			_clear_setup()
+			return false
 
 	menu.clear()
 	for profile_id in range(1, WorkspaceLayoutStore.LAYOUT_SLOT_COUNT + 1):
@@ -55,6 +68,11 @@ func switch_profile(profile_id: int) -> bool:
 		return false
 	var rollback_snapshot := store.capture_snapshot()
 	var target_existed := store.has_layout_slot(profile_id)
+	var previous_target_version := store.get_ui_profile_version(profile_id)
+	var required_target_version := migration.get_ui_profile_implementation_version(profile_id)
+	var needs_profile_initialization := (
+		not target_existed or previous_target_version < required_target_version
+	)
 	var seed_profile := previous_profile
 	# Composition-specific profiles park normal Workspace modules. Never let one of those
 	# snapshots become the first state of another unused profile.
@@ -85,12 +103,15 @@ func switch_profile(profile_id: int) -> bool:
 
 	if applied:
 		migration.sync_workspace_content_visibility()
-		if not target_existed:
+		if needs_profile_initialization:
 			applied = migration.apply_ui_profile_initial_defaults(profile_id)
+	if applied:
+		applied = store.set_ui_profile_version(profile_id, required_target_version)
 	if applied:
 		applied = store.save_current_layout()
 
 	if not applied:
+		store.set_ui_profile_version(profile_id, previous_target_version)
 		migration.activate_ui_profile(previous_profile)
 		store.set_active_layout_slot(previous_profile)
 		store.apply_snapshot(rollback_snapshot)
