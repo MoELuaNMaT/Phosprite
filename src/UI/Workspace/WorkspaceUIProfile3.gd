@@ -227,7 +227,9 @@ func _create_taskbar() -> bool:
 	_color_indicator = Control.new()
 	_color_indicator.name = &"ColorCircle"
 	_color_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_color_indicator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE)
+	_color_indicator.set_anchors_and_offsets_preset(
+		Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE
+	)
 	_color_indicator.draw.connect(_draw_color_indicator)
 
 	for button in [_brush_button, _eraser_button, _other_button, _color_button]:
@@ -434,7 +436,9 @@ func _place_popup_below(popup: Control, anchor: Control, desired_size: Vector2) 
 	if popup == null or anchor == null:
 		return
 	popup.size = desired_size
-	var global_target := anchor.get_global_rect().end + Vector2(-desired_size.x + anchor.size.x, POPUP_GAP)
+	var global_target := (
+		anchor.get_global_rect().end + Vector2(-desired_size.x + anchor.size.x, POPUP_GAP)
+	)
 	var local_target := ui_root.get_global_transform_with_canvas().affine_inverse() * global_target
 	popup.position = Vector2(
 		clampf(local_target.x, 0.0, maxf(0.0, ui_root.size.x - desired_size.x)),
@@ -622,7 +626,11 @@ func _input(event: InputEvent) -> void:
 	if not pressed:
 		return
 	for popup in [_options_popup, _other_popup, _palette_popup]:
-		if is_instance_valid(popup) and popup.visible and popup.get_global_rect().has_point(position):
+		if (
+			is_instance_valid(popup)
+			and popup.visible
+			and popup.get_global_rect().has_point(position)
+		):
 			return
 	if is_instance_valid(_taskbar) and _taskbar.get_global_rect().has_point(position):
 		return
