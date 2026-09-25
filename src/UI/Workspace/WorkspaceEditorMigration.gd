@@ -22,7 +22,7 @@ const UI_PROFILE_3_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile3
 const UI_PROFILE_3_LAYOUT_VERSION := 1
 const WORKSPACE_SIDE_MARGIN := 8.0
 const TOOL_PALETTE_WIDTH := 40.0
-const TOOL_OPTIONS_WIDTH := 60.0
+const TOOL_OPTIONS_WIDTH := 128.0
 
 const DEFAULT_LAYOUT := [
 	{
@@ -36,7 +36,7 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.TOOLS_ID,
 		"zone": WorkspaceDockLayout.DockZone.LEFT,
 		"index": 0,
-		"size": Vector2(108.0, 400.0),
+		"size": Vector2(176.0, 400.0),
 	},
 	{
 		"id": Builtins.PREVIEW_ID,
