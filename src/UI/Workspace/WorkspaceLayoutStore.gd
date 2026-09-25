@@ -112,9 +112,7 @@ func get_ui_profile_version(slot: int) -> int:
 func set_ui_profile_version(slot: int, version: int) -> bool:
 	if config_cache == null or not _is_valid_layout_slot(slot) or version < 0:
 		return false
-	config_cache.set_value(
-		CONFIG_SECTION, CONFIG_PROFILE_VERSION_KEY_PREFIX + str(slot), version
-	)
+	config_cache.set_value(CONFIG_SECTION, CONFIG_PROFILE_VERSION_KEY_PREFIX + str(slot), version)
 	return true
 
 
