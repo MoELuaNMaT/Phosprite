@@ -192,9 +192,7 @@ func set_horizontal_option_layout(enabled: bool) -> void:
 				continue
 			var control := child as Control
 			var state := _horizontal_child_state[child] as Dictionary
-			control.size_flags_horizontal = int(
-				state.get("horizontal", Control.SIZE_FILL)
-			)
+			control.size_flags_horizontal = int(state.get("horizontal", Control.SIZE_FILL))
 			control.size_flags_vertical = int(state.get("vertical", Control.SIZE_FILL))
 		_horizontal_child_state.clear()
 
