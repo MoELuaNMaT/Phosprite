@@ -3,6 +3,9 @@
 [ext_resource type="PackedScene" uid="uid://ubyatap3sylf" path="res://src/Tools/BaseDraw.tscn" id="1_rvuea"]
 [ext_resource type="Script" uid="uid://u1adalnj5cfh" path="res://src/Tools/DesignTools/CurveTool.gd" id="2_tjnp6"]
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_bezier_mode"]
+allow_unpress = false
+
 [node name="ToolOptions" unique_id=17636591 instance=ExtResource("1_rvuea")]
 script = ExtResource("2_tjnp6")
 
@@ -14,19 +17,27 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Mode:"
 
-[node name="BezierMode" type="OptionButton" parent="BezierOptions" index="1" unique_id=133195326]
+[node name="BezierMode" type="HBoxContainer" parent="BezierOptions" index="1" unique_id=133195326]
 layout_mode = 2
 size_flags_horizontal = 3
-tooltip_text = "Chained: Makes a chain of multiple bezier curves, similar to Krita's curve tool.
-Single: Makes a single bezier curve, similar to Aseprite's curve tool."
-mouse_default_cursor_shape = 2
 alignment = 1
-selected = 0
-item_count = 2
-popup/item_0/text = "Chained"
-popup/item_0/id = 0
-popup/item_1/text = "Single"
-popup/item_1/id = 1
+
+[node name="Chained" type="Button" parent="BezierOptions/BezierMode"]
+layout_mode = 2
+tooltip_text = "Makes a chain of multiple bezier curves, similar to Krita's curve tool."
+mouse_default_cursor_shape = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_bezier_mode")
+text = "Chained"
+
+[node name="Single" type="Button" parent="BezierOptions/BezierMode"]
+layout_mode = 2
+tooltip_text = "Makes a single bezier curve, similar to Aseprite's curve tool."
+mouse_default_cursor_shape = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_bezier_mode")
+text = "Single"
 
 [node name="FillCheckbox" type="CheckBox" parent="." index="7" unique_id=374483038]
 layout_mode = 2
@@ -38,5 +49,6 @@ text = "Fill Shape"
 wait_time = 0.2
 one_shot = true
 
-[connection signal="item_selected" from="BezierOptions/BezierMode" to="." method="_on_bezier_mode_item_selected"]
+[connection signal="pressed" from="BezierOptions/BezierMode/Chained" to="." method="_on_bezier_mode_item_selected" binds= [0]]
+[connection signal="pressed" from="BezierOptions/BezierMode/Single" to="." method="_on_bezier_mode_item_selected" binds= [1]]
 [connection signal="toggled" from="FillCheckbox" to="." method="_on_fill_checkbox_toggled"]
