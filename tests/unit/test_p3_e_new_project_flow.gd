@@ -81,6 +81,40 @@ func test_new_project_default_palette_assets_are_packaged_and_parseable() -> voi
 		)
 
 
+func test_existing_projects_receive_missing_starter_palettes_idempotently() -> void:
+	var project := Project.new([], "legacy", Vector2i(16, 16))
+	check_eq(project.palettes.size(), 0, "legacy fixture should start without project palettes")
+	check_true(
+		Factory.ensure_default_project_palettes(project),
+		"legacy projects should receive the starter palettes on first migration",
+	)
+	check_eq(project.palettes.size(), 3, "legacy project should receive all three starter palettes")
+	check_eq(
+		project.project_current_palette_name,
+		"Endesga 32",
+		"starter palette migration should select the first palette",
+	)
+	check_false(
+		Factory.ensure_default_project_palettes(project),
+		"starter palette migration must be idempotent",
+	)
+	check_eq(project.palettes.size(), 3, "idempotent migration must not duplicate palettes")
+	project.remove()
+
+
+func test_ios_export_includes_gpl_starter_palette_assets() -> void:
+	var presets := FileAccess.get_file_as_string("res://export_presets.cfg")
+	var ios_start := presets.find("[preset.9]")
+	var ios_end := presets.find("[preset.9.options]", ios_start)
+	check_true(ios_start >= 0 and ios_end > ios_start, "iOS export preset must exist")
+	var ios_preset := presets.substr(ios_start, ios_end - ios_start)
+	check_has(
+		ios_preset,
+		'include_filter="pixelorama_data/ProjectPalettes/*.gpl"',
+		"iOS export must explicitly package the built-in GPL palettes",
+	)
+
+
 func test_p3_e_canvas_budget_blocks_oom_sizes_before_project_allocation() -> void:
 	check_true(
 		Factory.is_canvas_size_supported(Vector2i(4096, 4096)),
