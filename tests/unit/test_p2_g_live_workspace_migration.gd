@@ -1865,7 +1865,9 @@ func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void
 	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
 	check_true(controller.switch_profile(3), "profile 3 should activate")
 	check_false(store.has_layout_slot(4), "profile 4 should still be unused")
-	check_true(controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed")
+	check_true(
+		controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed"
+	)
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
 		profile_one_tools,
