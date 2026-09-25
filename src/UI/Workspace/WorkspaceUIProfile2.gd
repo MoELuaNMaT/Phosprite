@@ -51,6 +51,7 @@ var _source_by_proxy: Dictionary = {}
 var _original_left_options_state: Dictionary = {}
 var _popup_anchor: BaseButton
 var _pending_popup_anchor: BaseButton
+var _horizontalized_tool: BaseTool
 
 
 static func is_primary_tool(tool_name: StringName) -> bool:
@@ -101,6 +102,7 @@ func deactivate() -> void:
 	if Global.headless_test_mode:
 		return
 	_hide_options_popup()
+	_set_current_options_horizontal(false)
 	_restore_left_tool_options()
 	if is_instance_valid(_palette_tool_section):
 		_palette_tool_section.visible = false
@@ -213,7 +215,7 @@ func _create_top_tools_host() -> bool:
 
 	_top_tools_host = HBoxContainer.new()
 	_top_tools_host.name = &"UIProfile2TopTools"
-	_top_tools_host.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_top_tools_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_top_tools_host.alignment = BoxContainer.ALIGNMENT_END
 	_top_tools_host.add_theme_constant_override(&"separation", 2)
 	row.add_child(_top_tools_host)
@@ -322,12 +324,13 @@ func _move_options_to_primary() -> void:
 	if not active or not is_instance_valid(_primary_options_host):
 		return
 	_hide_options_popup()
+	_set_current_options_horizontal(true)
 	_reparent_left_options(_primary_options_host)
 	left_tool_options.custom_minimum_size = Vector2(0.0, PRIMARY_OPTIONS_MIN_HEIGHT)
 	left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_tool_options.visible = true
 	_refresh_proxy_visuals()
 
@@ -340,12 +343,13 @@ func _show_requested_top_options(proxy: BaseButton) -> void:
 		_hide_options_popup()
 		return
 	_popup_anchor = proxy
+	_set_current_options_horizontal(true)
 	_reparent_left_options(_popup_options_host)
 	left_tool_options.custom_minimum_size = Vector2(TOP_OPTIONS_WIDTH - 16.0, 0.0)
 	left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_tool_options.visible = true
 
 	var desired_height := clampf(
@@ -373,6 +377,30 @@ func _sync_options_location() -> void:
 	elif is_instance_valid(_options_popup):
 		_hide_options_popup()
 		_reparent_left_options(_popup_options_host)
+
+
+func _set_current_options_horizontal(enabled: bool) -> void:
+	if not enabled:
+		if is_instance_valid(_horizontalized_tool):
+			_horizontalized_tool.set_horizontal_option_layout(false)
+		_horizontalized_tool = null
+		return
+	var current := _current_tool_options()
+	if current == null:
+		return
+	if is_instance_valid(_horizontalized_tool) and _horizontalized_tool != current:
+		_horizontalized_tool.set_horizontal_option_layout(false)
+	current.set_horizontal_option_layout(true)
+	_horizontalized_tool = current
+
+
+func _current_tool_options() -> BaseTool:
+	if not is_instance_valid(left_tool_options):
+		return null
+	var panel := left_tool_options.get_node_or_null(^"LeftPanelContainer") as Control
+	if panel == null or panel.get_child_count() == 0:
+		return null
+	return panel.get_child(panel.get_child_count() - 1) as BaseTool
 
 
 func _hide_options_popup() -> void:
