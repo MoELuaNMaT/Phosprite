@@ -172,6 +172,18 @@ func activate_ui_profile(profile_id: int) -> bool:
 	return true
 
 
+func sync_active_tool_presentation() -> bool:
+	if Global.headless_test_mode:
+		return true
+	if not Tools.synchronize_tool_panel(MOUSE_BUTTON_LEFT):
+		return false
+	if _active_ui_profile == 2 and is_instance_valid(_ui_profile_2):
+		return _ui_profile_2.refresh_after_tools_ready()
+	if _active_ui_profile == 3 and is_instance_valid(_ui_profile_3):
+		return _ui_profile_3.refresh_after_tools_ready()
+	return true
+
+
 func sync_workspace_content_visibility() -> void:
 	if not live:
 		return
