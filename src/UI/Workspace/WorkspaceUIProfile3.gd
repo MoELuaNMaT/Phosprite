@@ -26,7 +26,9 @@ const SHAPE_TOOLS: Array[StringName] = [
 ]
 const TASK_BUTTON_SIZE := Vector2(38.0, 38.0)
 const POPUP_GAP := 6.0
-const OPTIONS_WIDTH := 300.0
+const OPTIONS_WIDTH := 520.0
+const SELECTED_TOOL_TINT := Color(0.45, 0.78, 1.0, 1.0)
+const UNSELECTED_TOOL_TINT := Color.WHITE
 const OPTIONS_MIN_HEIGHT := 100.0
 const OPTIONS_MAX_HEIGHT := 360.0
 const TOOLS_POPUP_WIDTH := 252.0
@@ -57,6 +59,8 @@ var _palette_content: Control
 
 var _other_sources: Dictionary = {}
 var _original_left_options_state: Dictionary = {}
+var _horizontalized_tool: BaseTool
+var _last_active_tool := &""
 
 
 static func is_primary_tool(tool_name: StringName) -> bool:
@@ -71,7 +75,7 @@ func setup(
 	ui_root = root
 	left_tool_options = left_options
 	surface = workspace_surface
-	set_process_input(true)
+	set_process_input(false)
 	return true
 
 
@@ -84,6 +88,7 @@ func activate() -> bool:
 	if not _ensure_presentation():
 		return false
 	_taskbar.visible = true
+	_last_active_tool = _current_left_tool_name()
 	_refresh_taskbar()
 	return true
 
@@ -93,6 +98,7 @@ func deactivate() -> void:
 	if Global.headless_test_mode:
 		return
 	_close_all_popups()
+	_set_current_options_horizontal(false)
 	_restore_left_tool_options()
 	if is_instance_valid(_taskbar):
 		_taskbar.visible = false
@@ -419,12 +425,13 @@ func _show_options_popup(anchor: BaseButton) -> void:
 		return
 	if not _has_left_tool_options():
 		return
+	_set_current_options_horizontal(true)
 	_reparent_left_options(_options_host)
 	left_tool_options.custom_minimum_size = Vector2(OPTIONS_WIDTH - 16.0, 0.0)
 	left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_tool_options.visible = true
 	var height := clampf(
 		left_tool_options.get_combined_minimum_size().y + 16.0,
@@ -448,6 +455,30 @@ func _place_popup_below(popup: Control, anchor: Control, desired_size: Vector2) 
 	)
 	popup.visible = true
 	popup.move_to_front()
+
+
+func _set_current_options_horizontal(enabled: bool) -> void:
+	if not enabled:
+		if is_instance_valid(_horizontalized_tool):
+			_horizontalized_tool.set_horizontal_option_layout(false)
+		_horizontalized_tool = null
+		return
+	var current := _current_tool_options()
+	if current == null:
+		return
+	if is_instance_valid(_horizontalized_tool) and _horizontalized_tool != current:
+		_horizontalized_tool.set_horizontal_option_layout(false)
+	current.set_horizontal_option_layout(true)
+	_horizontalized_tool = current
+
+
+func _current_tool_options() -> BaseTool:
+	if not is_instance_valid(left_tool_options):
+		return null
+	var panel := left_tool_options.get_node_or_null(^"LeftPanelContainer") as Control
+	if panel == null or panel.get_child_count() == 0:
+		return null
+	return panel.get_child(panel.get_child_count() - 1) as BaseTool
 
 
 func _hide_options_popup() -> void:
@@ -527,8 +558,14 @@ func _connect_runtime_signals() -> void:
 
 
 func _on_tool_changed(_tool_name: String, button: int) -> void:
-	if active and button == MOUSE_BUTTON_LEFT:
-		_refresh_taskbar.call_deferred()
+	if not active or button != MOUSE_BUTTON_LEFT:
+		return
+	var current := _current_left_tool_name()
+	if not _last_active_tool.is_empty() and current != _last_active_tool:
+		_close_all_popups()
+		_set_current_options_horizontal(false)
+	_last_active_tool = current
+	_refresh_taskbar.call_deferred()
 
 
 func _on_color_changed(_color_info: Dictionary, button: int) -> void:
@@ -552,11 +589,17 @@ func _refresh_taskbar() -> void:
 		return
 	var current := _current_left_tool_name()
 	if is_instance_valid(_brush_button):
-		_brush_button.button_pressed = current == BRUSH_TOOL
+		var brush_selected := current == BRUSH_TOOL
+		_brush_button.button_pressed = brush_selected
+		_apply_tool_button_highlight(_brush_button, brush_selected)
 	if is_instance_valid(_eraser_button):
-		_eraser_button.button_pressed = current == ERASER_TOOL
+		var eraser_selected := current == ERASER_TOOL
+		_eraser_button.button_pressed = eraser_selected
+		_apply_tool_button_highlight(_eraser_button, eraser_selected)
 	if is_instance_valid(_other_button):
-		_other_button.button_pressed = not is_primary_tool(current)
+		var other_selected := not is_primary_tool(current)
+		_other_button.button_pressed = other_selected
+		_apply_tool_button_highlight(_other_button, other_selected)
 	if is_instance_valid(_color_indicator):
 		_color_indicator.queue_redraw()
 
@@ -573,7 +616,15 @@ func _refresh_other_tools() -> void:
 		proxy.visible = source.visible
 		proxy.icon = _source_icon(source)
 		proxy.tooltip_text = source.tooltip_text
-		proxy.button_pressed = _source_represents_tool(source, current)
+		var selected := _source_represents_tool(source, current)
+		proxy.button_pressed = selected
+		_apply_tool_button_highlight(proxy, selected)
+
+
+func _apply_tool_button_highlight(button: BaseButton, selected: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	button.modulate = SELECTED_TOOL_TINT if selected else UNSELECTED_TOOL_TINT
 
 
 func _source_represents_tool(source: BaseButton, active_tool: StringName) -> bool:
@@ -610,30 +661,3 @@ func _draw_color_indicator() -> void:
 	_color_indicator.draw_arc(
 		center, radius + 2.0, 0.0, TAU, 32, Color(0.0, 0.0, 0.0, 0.7), 1.0, true
 	)
-
-
-func _input(event: InputEvent) -> void:
-	if not active:
-		return
-	var pressed := false
-	var position := Vector2.ZERO
-	if event is InputEventScreenTouch:
-		var touch := event as InputEventScreenTouch
-		pressed = touch.pressed
-		position = touch.position
-	elif event is InputEventMouseButton:
-		var mouse := event as InputEventMouseButton
-		pressed = mouse.pressed
-		position = mouse.position
-	if not pressed:
-		return
-	for popup in [_options_popup, _other_popup, _palette_popup]:
-		if (
-			is_instance_valid(popup)
-			and popup.visible
-			and popup.get_global_rect().has_point(position)
-		):
-			return
-	if is_instance_valid(_taskbar) and _taskbar.get_global_rect().has_point(position):
-		return
-	_close_all_popups()
