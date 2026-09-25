@@ -104,9 +104,7 @@ func get_ui_profile_version(slot: int) -> int:
 	return maxi(
 		0,
 		int(
-			config_cache.get_value(
-				CONFIG_SECTION, CONFIG_PROFILE_VERSION_KEY_PREFIX + str(slot), 0
-			)
+			config_cache.get_value(CONFIG_SECTION, CONFIG_PROFILE_VERSION_KEY_PREFIX + str(slot), 0)
 		),
 	)
 
