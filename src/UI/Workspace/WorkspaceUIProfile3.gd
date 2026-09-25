@@ -212,6 +212,7 @@ func _create_taskbar() -> bool:
 	_other_button.focus_mode = Control.FOCUS_NONE
 	_other_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_other_button.flat = true
+	_other_button.toggle_mode = true
 	_other_button.text = "•••"
 	_other_button.tooltip_text = "Other Tools"
 	_other_button.pressed.connect(_on_other_button_pressed)
@@ -339,6 +340,7 @@ func _build_other_tools() -> bool:
 		proxy.focus_mode = Control.FOCUS_NONE
 		proxy.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		proxy.flat = true
+		proxy.toggle_mode = true
 		proxy.expand_icon = true
 		proxy.icon_max_width = int(TASK_BUTTON_SIZE.x - 8.0)
 		proxy.tooltip_text = source.tooltip_text
@@ -370,6 +372,7 @@ func _on_primary_button_pressed(tool_name: StringName, button: BaseButton) -> vo
 		Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
 		_refresh_taskbar.call_deferred()
 		return
+	button.button_pressed = true
 	if is_instance_valid(_options_popup) and _options_popup.visible:
 		_hide_options_popup()
 	else:
@@ -380,6 +383,7 @@ func _on_primary_button_pressed(tool_name: StringName, button: BaseButton) -> vo
 func _on_other_button_pressed() -> void:
 	if not active:
 		return
+	_other_button.button_pressed = not is_primary_tool(_current_left_tool_name())
 	if is_instance_valid(_other_popup) and _other_popup.visible:
 		_other_popup.visible = false
 		return
