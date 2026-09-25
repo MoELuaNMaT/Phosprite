@@ -34,10 +34,10 @@ func test_profiles_2_and_3_request_horizontal_tool_options_only_in_their_present
 
 	check_has(
 		base_scene,
-		'[node name="ToolOptions" type="BoxContainer"',
-		"shared tool options root must support runtime orientation",
+		'[node name="ToolOptions" type="GridContainer"',
+		"shared tool options root must support title-over-control horizontal grouping",
 	)
-	check_has(base_scene, "vertical = true", "UI 1 must keep vertical tool options by default")
+	check_has(base_scene, "columns = 1", "UI 1 must keep one-column vertical options by default")
 	check_has(
 		base_src,
 		"func set_horizontal_option_layout(enabled: bool)",
@@ -86,4 +86,67 @@ func test_profile_3_popups_are_persistent_and_selected_tools_are_highlighted() -
 		profile_3,
 		"current != _last_active_tool",
 		"UI 3 must close persistent popups when the active tool actually changes",
+	)
+
+
+func test_tool_profile_switch_contract_keeps_one_authoritative_options_node() -> void:
+	var tools_src := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
+	var migration_src := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceEditorMigration.gd"
+	)
+	var controller_src := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceUIProfileController.gd"
+	)
+	check_has(
+		tools_src,
+		"func synchronize_tool_panel(button: int) -> bool:",
+		"tool runtime must be able to purge stale BaseTool option nodes",
+	)
+	check_has(
+		tools_src,
+		"child == slot.tool_node or child is not BaseTool",
+		"tool synchronization must preserve only the authoritative slot node",
+	)
+	check_has(
+		migration_src,
+		"func sync_active_tool_presentation() -> bool:",
+		"workspace migration must expose active-tool presentation synchronization",
+	)
+	check_has(
+		controller_src,
+		"applied = migration.sync_active_tool_presentation()",
+		"UI profile switches must resync tool state after applying the target layout",
+	)
+
+
+func test_ui2_and_ui3_keep_crop_and_color_picker_optionless() -> void:
+	var profile_2 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
+	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	for source in [profile_2, profile_3]:
+		check_has(
+			source,
+			'const NO_POPUP_TOOLS: Array[StringName] = [&"Crop", &"ColorPicker"]',
+			"Crop and Color Picker must not expose profile popup options",
+		)
+
+
+func test_ui1_mode_buttons_reserve_full_text_width() -> void:
+	var base_src := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
+	var builtins_src := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
+	)
+	check_has(
+		base_src,
+		"const MODE_BUTTON_MIN_WIDTH := 112.0",
+		"exclusive mode buttons must reserve enough width for their full labels",
+	)
+	check_has(
+		base_src,
+		"button.clip_text = false",
+		"exclusive mode button text must not be clipped",
+	)
+	check_has(
+		builtins_src,
+		'Vector2(168.0, 220.0), Vector2(176.0, 520.0)',
+		"UI 1 Tools module must be wide enough for readable mode buttons",
 	)
