@@ -228,14 +228,12 @@ func _create_taskbar() -> bool:
 	_color_indicator = Control.new()
 	_color_indicator.name = &"ColorCircle"
 	_color_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_color_indicator.set_anchors_and_offsets_preset(
-		Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE
-	)
 	_color_indicator.draw.connect(_draw_color_indicator)
 
 	for button in [_brush_button, _eraser_button, _other_button, _color_button]:
 		_taskbar.add_child(button)
 	_color_button.add_child(_color_indicator)
+	_color_indicator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	return true
 
 
