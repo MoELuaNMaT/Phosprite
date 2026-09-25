@@ -40,7 +40,7 @@ size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 text = "Fill area:"
 
-[node name="FillAreaOptions" type="HBoxContainer" parent="." index="3" unique_id=321873914]
+[node name="FillAreaOptions" type="VBoxContainer" parent="." index="3" unique_id=321873914]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
@@ -93,7 +93,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Fill with:"
 
-[node name="FillWithOptions" type="HBoxContainer" parent="." index="7" unique_id=1494059608]
+[node name="FillWithOptions" type="VBoxContainer" parent="." index="7" unique_id=1494059608]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
