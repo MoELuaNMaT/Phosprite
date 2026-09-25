@@ -56,6 +56,27 @@ func test_p3_e_exact_presets_and_default_size() -> void:
 	)
 
 
+func test_new_project_default_palette_assets_are_packaged_and_parseable() -> void:
+	check_eq(
+		Factory.DEFAULT_PROJECT_PALETTE_PATHS.size(),
+		3,
+		"new projects should ship with exactly three starter palettes",
+	)
+	var expected := {
+		"res://pixelorama_data/ProjectPalettes/endesga-32.gpl": ["Endesga 32", 32],
+		"res://pixelorama_data/ProjectPalettes/resurrect-64.gpl": ["Resurrect 64", 64],
+		"res://pixelorama_data/ProjectPalettes/lospec500.gpl": ["Lospec500", 42],
+	}
+	for path in Factory.DEFAULT_PROJECT_PALETTE_PATHS:
+		check_file_exists(path, "starter palette asset must be packaged")
+		var palette := Palettes.load_palette_from_path(path)
+		check_true(is_instance_valid(palette), "starter GPL palette must parse")
+		if not is_instance_valid(palette):
+			continue
+		check_eq(palette.name, expected[path][0], "starter palette should keep its source name")
+		check_eq(palette.colors.size(), expected[path][1], "starter palette should keep all source colors")
+
+
 func test_p3_e_canvas_budget_blocks_oom_sizes_before_project_allocation() -> void:
 	check_true(
 		Factory.is_canvas_size_supported(Vector2i(4096, 4096)),
