@@ -2,7 +2,8 @@
 
 [ext_resource type="Script" uid="uid://cvovhck0o66tc" path="res://src/Tools/BaseTool.gd" id="1"]
 
-[node name="ToolOptions" type="VBoxContainer" unique_id=1941710537]
+[node name="ToolOptions" type="BoxContainer" unique_id=1941710537]
+vertical = true
 offset_left = 7.0
 offset_top = 7.0
 offset_right = 80.0
