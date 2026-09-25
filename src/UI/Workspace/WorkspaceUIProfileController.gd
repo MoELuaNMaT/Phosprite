@@ -54,10 +54,16 @@ func switch_profile(profile_id: int) -> bool:
 	if not store.flush_pending_autosave():
 		return false
 	var rollback_snapshot := store.capture_snapshot()
+	var target_existed := store.has_layout_slot(profile_id)
 	var seed_profile := previous_profile
-	# Profile 2 has a different module composition (the standalone Tools module is parked).
-	# Never let that implementation-specific snapshot become the first state of a normal profile.
-	if previous_profile == 2 and profile_id != 2 and store.has_layout_slot(1):
+	# Composition-specific profiles park normal Workspace modules. Never let one of those
+	# snapshots become the first state of another unused profile.
+	if (
+		not target_existed
+		and migration.has_ui_profile_custom_composition(previous_profile)
+		and profile_id != previous_profile
+		and store.has_layout_slot(1)
+	):
 		seed_profile = 1
 	var seed_snapshot := store.get_layout_slot_snapshot(seed_profile)
 	if seed_snapshot.is_empty():
@@ -70,15 +76,18 @@ func switch_profile(profile_id: int) -> bool:
 		return false
 
 	var applied := false
-	if store.has_layout_slot(profile_id):
+	if target_existed:
 		applied = store.restore_current_layout()
 	else:
-		# A never-used slot starts as a copy of the profile the user came from,
-		# then becomes independent as soon as it is saved.
+		# A never-used slot starts from a safe seed, then receives any profile-specific
+		# initial composition before becoming independent.
 		applied = store.apply_snapshot(seed_snapshot)
 
 	if applied:
 		migration.sync_workspace_content_visibility()
+		if not target_existed:
+			applied = migration.apply_ui_profile_initial_defaults(profile_id)
+	if applied:
 		applied = store.save_current_layout()
 
 	if not applied:
