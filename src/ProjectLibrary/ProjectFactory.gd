@@ -74,23 +74,28 @@ static func create_blank_project(project_name: String, canvas_size: Vector2i) ->
 	var project := Project.new([], project_name, canvas_size)
 	project.layers.append(PixelLayer.new(project))
 	project.frames.append(project.new_empty_frame())
-	_attach_default_project_palettes(project)
+	ensure_default_project_palettes(project)
 	TimelineProjectStateScript.initialize_new_project(project)
 	return project
 
 
-static func _attach_default_project_palettes(project: Project) -> void:
+static func ensure_default_project_palettes(project: Project) -> bool:
 	if project == null:
-		return
+		return false
+	var added := false
 	for path in DEFAULT_PROJECT_PALETTE_PATHS:
 		var palette := Palettes.load_palette_from_path(path)
 		if not is_instance_valid(palette):
+			continue
+		if project.palettes.has(palette.name):
 			continue
 		palette.name = Palettes.get_valid_name(palette.name, project)
 		palette.is_project_palette = true
 		project.palettes[palette.name] = palette
 		if project.project_current_palette_name.is_empty():
 			project.project_current_palette_name = palette.name
+		added = true
+	return added
 
 
 static func make_untitled_name(date_time := {}) -> String:
