@@ -10,6 +10,7 @@ const Interaction := preload("res://src/UI/Workspace/WorkspaceInteractionControl
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
 const UIProfileController := preload("res://src/UI/Workspace/WorkspaceUIProfileController.gd")
+const UIProfile2 := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
 
 
 func _make_live_fixture(
@@ -1757,6 +1758,23 @@ func test_managed_editor_removes_project_tabs_and_their_canvas_dead_strip() -> v
 	)
 
 
+func test_ui_profile_2_contract_keeps_primary_tools_inside_palette() -> void:
+	check_eq(
+		UIProfile2.PRIMARY_TOOLS,
+		[&"Pencil", &"Eraser", &"Move", &"Bucket"],
+		"profile 2 primary row must stay Pencil, Eraser, Move, Bucket",
+	)
+	for tool_name in UIProfile2.PRIMARY_TOOLS:
+		check_true(
+			UIProfile2.is_primary_tool(tool_name),
+			"profile 2 should classify every configured primary tool as embedded",
+		)
+	check_false(
+		UIProfile2.is_primary_tool(&"ColorPicker"),
+		"non-primary tools must remain eligible for the top-right toolbar",
+	)
+
+
 func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -1788,9 +1806,24 @@ func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> 
 		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_one_rect),
 		"slot 1 should accept a Preview position",
 	)
+	var slot_one_tools_placement := surface.get_module_placement(Builtins.TOOLS_ID)
+	check_ne(
+		slot_one_tools_placement,
+		WorkspaceSurface.Placement.NONE,
+		"profile 1 should retain its standalone Tools workspace placement",
+	)
 	check_true(store.save_current_layout(false), "slot 1 should persist before switching")
 
 	check_true(controller.switch_profile(2), "switching to UI profile 2 should succeed")
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		WorkspaceSurface.Placement.NONE,
+		"profile 2 must remove the standalone Tools workspace placement",
+	)
+	check_true(
+		surface.is_module_parked(Builtins.TOOLS_ID),
+		"profile 2 should park rather than destroy the original Tools module",
+	)
 	check_eq(store.get_active_layout_slot(), 2, "profile 2 should become the active storage slot")
 	check_eq(migration.get_ui_profile(), 2, "profile 2 should reach the implementation hook")
 	check_eq(
@@ -1805,6 +1838,11 @@ func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> 
 	check_true(store.save_current_layout(false), "slot 2 should persist independently")
 
 	check_true(controller.switch_profile(1), "switching back to profile 1 should succeed")
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		slot_one_tools_placement,
+		"profile 1 must restore the standalone Tools placement after leaving profile 2",
+	)
 	check_eq(
 		surface.get_floating_rect(Builtins.PREVIEW_ID),
 		slot_one_rect,
