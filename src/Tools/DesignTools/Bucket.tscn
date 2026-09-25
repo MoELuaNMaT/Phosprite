@@ -23,6 +23,12 @@ corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 anti_aliasing = false
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_fill_area"]
+allow_unpress = false
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_fill_with"]
+allow_unpress = false
+
 [node name="ToolOptions" unique_id=964459986 instance=ExtResource("2")]
 offset_right = 138.0
 offset_bottom = 105.0
@@ -34,18 +40,32 @@ size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 text = "Fill area:"
 
-[node name="FillAreaOptions" type="OptionButton" parent="." index="3" unique_id=321873914]
+[node name="FillAreaOptions" type="HBoxContainer" parent="." index="3" unique_id=321873914]
 layout_mode = 2
 size_flags_horizontal = 3
+alignment = 1
+
+[node name="SimilarArea" type="Button" parent="FillAreaOptions"]
+layout_mode = 2
 mouse_default_cursor_shape = 2
-selected = 0
-item_count = 3
-popup/item_0/text = "Similar area"
-popup/item_0/id = 0
-popup/item_1/text = "Similar colors"
-popup/item_1/id = 1
-popup/item_2/text = "Whole selection"
-popup/item_2/id = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_fill_area")
+text = "Similar area"
+
+[node name="SimilarColors" type="Button" parent="FillAreaOptions"]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_fill_area")
+text = "Similar colors"
+
+[node name="WholeSelection" type="Button" parent="FillAreaOptions"]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_fill_area")
+text = "Whole selection"
 
 [node name="MergeAreaOptions" type="CheckBox" parent="." index="4" unique_id=218009629]
 layout_mode = 2
@@ -73,16 +93,25 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Fill with:"
 
-[node name="FillWithOptions" type="OptionButton" parent="." index="7" unique_id=1494059608]
+[node name="FillWithOptions" type="HBoxContainer" parent="." index="7" unique_id=1494059608]
 layout_mode = 2
 size_flags_horizontal = 3
+alignment = 1
+
+[node name="SelectedColor" type="Button" parent="FillWithOptions"]
+layout_mode = 2
 mouse_default_cursor_shape = 2
-selected = 0
-item_count = 2
-popup/item_0/text = "Selected color"
-popup/item_0/id = 0
-popup/item_1/text = "Pattern"
-popup/item_1/id = 1
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_fill_with")
+text = "Selected color"
+
+[node name="Pattern" type="Button" parent="FillWithOptions"]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_fill_with")
+text = "Pattern"
 
 [node name="FillPattern" type="VBoxContainer" parent="." index="8" unique_id=1597102964]
 visible = false
@@ -116,10 +145,13 @@ prefix = "Offset X:"
 layout_mode = 2
 prefix = "Offset Y:"
 
-[connection signal="item_selected" from="FillAreaOptions" to="." method="_on_FillAreaOptions_item_selected"]
+[connection signal="pressed" from="FillAreaOptions/SimilarArea" to="." method="_on_FillAreaOptions_item_selected" binds= [0]]
+[connection signal="pressed" from="FillAreaOptions/SimilarColors" to="." method="_on_FillAreaOptions_item_selected" binds= [1]]
+[connection signal="pressed" from="FillAreaOptions/WholeSelection" to="." method="_on_FillAreaOptions_item_selected" binds= [2]]
 [connection signal="toggled" from="MergeAreaOptions" to="." method="_on_merge_area_options_toggled"]
 [connection signal="value_changed" from="ToleranceSlider" to="." method="_on_tolerance_slider_value_changed"]
-[connection signal="item_selected" from="FillWithOptions" to="." method="_on_FillWithOptions_item_selected"]
+[connection signal="pressed" from="FillWithOptions/SelectedColor" to="." method="_on_FillWithOptions_item_selected" binds= [0]]
+[connection signal="pressed" from="FillWithOptions/Pattern" to="." method="_on_FillWithOptions_item_selected" binds= [1]]
 [connection signal="pressed" from="FillPattern/Type" to="." method="_on_PatternType_pressed"]
 [connection signal="value_changed" from="FillPattern/OffsetX" to="." method="_on_PatternOffsetX_value_changed"]
 [connection signal="value_changed" from="FillPattern/OffsetY" to="." method="_on_PatternOffsetY_value_changed"]
