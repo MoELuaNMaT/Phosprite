@@ -9,7 +9,7 @@ allow_unpress = false
 [node name="ToolOptions" unique_id=17636591 instance=ExtResource("1_rvuea")]
 script = ExtResource("2_tjnp6")
 
-[node name="BezierOptions" type="HBoxContainer" parent="." index="6" unique_id=1966803803]
+[node name="BezierOptions" type="VBoxContainer" parent="." index="6" unique_id=1966803803]
 layout_mode = 2
 
 [node name="Label" type="Label" parent="BezierOptions" index="0" unique_id=1474254133]
@@ -17,7 +17,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Mode:"
 
-[node name="BezierMode" type="HBoxContainer" parent="BezierOptions" index="1" unique_id=133195326]
+[node name="BezierMode" type="VBoxContainer" parent="BezierOptions" index="1" unique_id=133195326]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
