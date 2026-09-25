@@ -1797,8 +1797,12 @@ func test_existing_slot_3_is_upgraded_to_procreate_layout_once() -> void:
 	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
 	check_true(store.set_active_layout_slot(3), "test should seed legacy slot 3")
 	check_true(store.save_current_layout(false), "legacy slot 3 snapshot should exist")
-	check_eq(store.get_ui_profile_version(3), 0, "legacy slot 3 should have no implementation version")
-	check_true(store.set_active_layout_slot(1), "profile 1 should be active before controller setup")
+	check_eq(
+		store.get_ui_profile_version(3), 0, "legacy slot 3 should have no implementation version"
+	)
+	check_true(
+		store.set_active_layout_slot(1), "profile 1 should be active before controller setup"
+	)
 
 	var menu := PopupMenu.new()
 	root.add_child(menu)
