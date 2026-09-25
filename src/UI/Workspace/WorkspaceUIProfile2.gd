@@ -11,6 +11,18 @@ extends Node
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 const PRIMARY_TOOLS: Array[StringName] = [&"Pencil", &"Eraser", &"Move", &"Bucket"]
+const SELECTION_TOOLS: Array[StringName] = [
+	&"ColorSelect",
+	&"EllipseSelect",
+	&"Lasso",
+	&"MagicWand",
+	&"PaintSelect",
+	&"PolygonSelect",
+	&"RectSelect",
+]
+const SHAPE_TOOLS: Array[StringName] = [
+	&"LineTool", &"CurveTool", &"RectangleTool", &"EllipseTool", &"IsometricBoxTool"
+]
 const TOOL_BUTTON_SIZE := Vector2(36.0, 36.0)
 const PRIMARY_OPTIONS_MIN_HEIGHT := 84.0
 const TOP_OPTIONS_WIDTH := 300.0
@@ -480,11 +492,14 @@ func _refresh_proxy_visuals() -> void:
 func _source_represents_tool(source: BaseButton, active_tool: StringName) -> bool:
 	if StringName(source.name) == active_tool:
 		return true
-	if is_instance_valid(_tool_buttons):
-		if bool(_tool_buttons.call(&"_is_ios_selection_family_button", source)):
-			return bool(_tool_buttons.call(&"is_ios_selection_tool", active_tool))
-		if bool(_tool_buttons.call(&"_is_ios_shape_family_button", source)):
-			return bool(_tool_buttons.call(&"is_ios_shape_tool", active_tool))
+	if not is_instance_valid(_tool_buttons):
+		return false
+	var selection_family := _tool_buttons.get("_ios_selection_family_button") as BaseButton
+	if is_instance_valid(selection_family) and source == selection_family:
+		return active_tool in SELECTION_TOOLS
+	var shape_family := _tool_buttons.get("_ios_shape_family_button") as BaseButton
+	if is_instance_valid(shape_family) and source == shape_family:
+		return active_tool in SHAPE_TOOLS
 	return false
 
 
