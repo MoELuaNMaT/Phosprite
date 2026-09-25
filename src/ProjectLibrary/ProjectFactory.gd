@@ -7,6 +7,11 @@ const TimelineProjectStateScript := preload("res://src/UI/Timeline/TimelineProje
 const DEFAULT_SIZE := Vector2i(64, 64)
 const MAX_CANVAS_SIDE := 16384
 const MAX_CANVAS_PIXELS := 4096 * 4096
+const DEFAULT_PROJECT_PALETTE_PATHS: Array[String] = [
+	"res://pixelorama_data/ProjectPalettes/endesga-32.gpl",
+	"res://pixelorama_data/ProjectPalettes/resurrect-64.gpl",
+	"res://pixelorama_data/ProjectPalettes/lospec500.gpl",
+]
 
 const SQUARE_PRESETS: Array[Vector2i] = [
 	Vector2i(16, 16),
@@ -69,8 +74,23 @@ static func create_blank_project(project_name: String, canvas_size: Vector2i) ->
 	var project := Project.new([], project_name, canvas_size)
 	project.layers.append(PixelLayer.new(project))
 	project.frames.append(project.new_empty_frame())
+	_attach_default_project_palettes(project)
 	TimelineProjectStateScript.initialize_new_project(project)
 	return project
+
+
+static func _attach_default_project_palettes(project: Project) -> void:
+	if project == null:
+		return
+	for path in DEFAULT_PROJECT_PALETTE_PATHS:
+		var palette := Palettes.load_palette_from_path(path)
+		if not is_instance_valid(palette):
+			continue
+		palette.name = Palettes.get_valid_name(palette.name, project)
+		palette.is_project_palette = true
+		project.palettes[palette.name] = palette
+		if project.project_current_palette_name.is_empty():
+			project.project_current_palette_name = palette.name
 
 
 static func make_untitled_name(date_time := {}) -> String:
