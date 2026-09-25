@@ -71,7 +71,13 @@ func _on_merge_area_options_toggled(toggled_on: bool) -> void:
 
 
 func _select_fill_area_optionbutton() -> void:
-	$FillAreaOptions.selected = _fill_area
+	var buttons: Array[Button] = [
+		$FillAreaOptions/SimilarArea,
+		$FillAreaOptions/SimilarColors,
+		$FillAreaOptions/WholeSelection,
+	]
+	for index in buttons.size():
+		buttons[index].set_pressed_no_signal(index == _fill_area)
 	$MergeAreaOptions.visible = _fill_area == FillArea.AREA
 	$ToleranceSlider.visible = (_fill_area != FillArea.SELECTION)
 
@@ -147,7 +153,8 @@ func set_config(config: Dictionary) -> void:
 
 func update_config() -> void:
 	_select_fill_area_optionbutton()
-	$FillWithOptions.selected = _fill_with
+	$FillWithOptions/SelectedColor.set_pressed_no_signal(_fill_with == FillWith.COLOR)
+	$FillWithOptions/Pattern.set_pressed_no_signal(_fill_with == FillWith.PATTERN)
 	$ToleranceSlider.value = _tolerance * 255.0
 	$FillPattern.visible = _fill_with == FillWith.PATTERN
 	$FillPattern/OffsetX.value = _offset_x
