@@ -553,31 +553,36 @@ func _get_palette_files(path: String) -> PackedStringArray:
 	return results
 
 
+func load_palette_from_path(path: String) -> Palette:
+	var palette: Palette = null
+	if not FileAccess.file_exists(path):
+		return palette
+	var palette_ext := path.to_lower().get_extension()
+	if palette_ext in Global.SUPPORTED_IMAGE_TYPES:
+		var image := Image.new()
+		var err := image.load(path)
+		if !err:
+			palette = _import_image_palette(path, image)
+	elif palette_ext == "gpl":
+		var text := FileAccess.open(path, FileAccess.READ).get_as_text()
+		palette = _import_gpl(path, text)
+	elif palette_ext == "pal":
+		var text := FileAccess.open(path, FileAccess.READ).get_as_text()
+		palette = _import_pal_palette(path, text)
+	elif palette_ext == "json":
+		var text := FileAccess.open(path, FileAccess.READ).get_as_text()
+		palette = Palette.new(path.get_basename().get_file())
+		palette.path = path
+		palette.deserialize(text)
+	return palette
+
+
 func import_palette_from_path(path: String, make_copy := false, is_initialising := false) -> void:
 	if does_palette_exist(path.get_basename().get_file()):
 		# If there is a palette with same name ignore import for now
 		return
 
-	var palette: Palette = null
-	if FileAccess.file_exists(path):
-		var palette_ext := path.to_lower().get_extension()
-		if palette_ext in Global.SUPPORTED_IMAGE_TYPES:
-			var image := Image.new()
-			var err := image.load(path)
-			if !err:
-				palette = _import_image_palette(path, image)
-		elif palette_ext == "gpl":
-			var text := FileAccess.open(path, FileAccess.READ).get_as_text()
-			palette = _import_gpl(path, text)
-		elif palette_ext == "pal":
-			var text := FileAccess.open(path, FileAccess.READ).get_as_text()
-			palette = _import_pal_palette(path, text)
-		elif palette_ext == "json":
-			var text := FileAccess.open(path, FileAccess.READ).get_as_text()
-			palette = Palette.new(path.get_basename().get_file())
-			palette.path = path
-			palette.deserialize(text)
-
+	var palette := load_palette_from_path(path)
 	if is_instance_valid(palette):
 		if make_copy:
 			save_palette(palette)  # Makes a copy of the palette
