@@ -1787,6 +1787,39 @@ func test_ui_profile_3_contract_matches_procreate_taskbar() -> void:
 	)
 
 
+func test_existing_slot_3_is_upgraded_to_procreate_layout_once() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var surface := fixture["surface"] as WorkspaceSurface
+	var store := fixture["store"] as WorkspaceLayoutStore
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+
+	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
+	check_true(store.set_active_layout_slot(3), "test should seed legacy slot 3")
+	check_true(store.save_current_layout(false), "legacy slot 3 snapshot should exist")
+	check_eq(store.get_ui_profile_version(3), 0, "legacy slot 3 should have no implementation version")
+	check_true(store.set_active_layout_slot(1), "profile 1 should be active before controller setup")
+
+	var menu := PopupMenu.new()
+	root.add_child(menu)
+	var controller := UIProfileController.new()
+	root.add_child(controller)
+	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
+	check_true(controller.switch_profile(3), "existing slot 3 should upgrade successfully")
+	check_eq(
+		store.get_ui_profile_version(3),
+		Migration.UI_PROFILE_3_LAYOUT_VERSION,
+		"profile 3 implementation version should persist after upgrade",
+	)
+	var preview_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_eq(
+		preview_rect.position,
+		surface.get_floating_bounds().position + UIProfile3.PREVIEW_MARGIN,
+		"legacy slot 3 should receive the Procreate upper-left Preview default exactly once",
+	)
+	_free_fixture(fixture)
+
+
 func test_ui_profile_3_parks_tools_and_palette_and_defaults_preview_upper_left() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
