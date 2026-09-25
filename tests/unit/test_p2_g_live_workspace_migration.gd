@@ -1775,6 +1775,41 @@ func test_ui_profile_2_contract_keeps_primary_tools_inside_palette() -> void:
 	)
 
 
+func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var surface := fixture["surface"] as WorkspaceSurface
+	var store := fixture["store"] as WorkspaceLayoutStore
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+	var menu := PopupMenu.new()
+	root.add_child(menu)
+	var controller := UIProfileController.new()
+	root.add_child(controller)
+
+	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
+	var profile_one_tools_placement := surface.get_module_placement(Builtins.TOOLS_ID)
+	check_ne(
+		profile_one_tools_placement,
+		WorkspaceSurface.Placement.NONE,
+		"profile 1 should begin with a standalone Tools placement",
+	)
+	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
+	check_true(controller.switch_profile(2), "profile 2 should activate")
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		WorkspaceSurface.Placement.NONE,
+		"profile 2 should park Tools",
+	)
+	check_false(store.has_layout_slot(3), "profile 3 should still be unused before first switch")
+	check_true(controller.switch_profile(3), "first switch to profile 3 should succeed")
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		profile_one_tools_placement,
+		"unused profile 3 must seed from normal UI instead of profile 2 composition",
+	)
+	_free_fixture(fixture)
+
+
 func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
