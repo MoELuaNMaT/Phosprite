@@ -12,6 +12,7 @@ const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
+const NO_POPUP_TOOLS: Array[StringName] = [&"Crop", &"ColorPicker"]
 const SELECTION_TOOLS: Array[StringName] = [
 	&"ColorSelect",
 	&"EllipseSelect",
@@ -403,10 +404,14 @@ func _on_other_tool_pressed(_proxy: BaseButton, source: BaseButton) -> void:
 	if not active or not is_instance_valid(source):
 		return
 	var current := _current_left_tool_name()
+	var tool_name := StringName(source.name)
 	var repeated := _source_represents_tool(source, current)
 	_other_popup.visible = false
 	_tool_buttons.call(&"_on_tool_pressed", source)
-	if repeated:
+	if tool_name in NO_POPUP_TOOLS:
+		_hide_options_popup()
+		_set_current_options_horizontal(false)
+	elif repeated:
 		_show_options_popup.call_deferred(_other_button)
 	else:
 		_hide_options_popup()
