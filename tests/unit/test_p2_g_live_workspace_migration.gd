@@ -11,6 +11,7 @@ const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
 const UIProfileController := preload("res://src/UI/Workspace/WorkspaceUIProfileController.gd")
 const UIProfile2 := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
+const UIProfile3 := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 
 
 func _make_live_fixture(
@@ -1775,6 +1776,109 @@ func test_ui_profile_2_contract_keeps_primary_tools_inside_palette() -> void:
 	)
 
 
+func test_ui_profile_3_contract_matches_procreate_taskbar() -> void:
+	check_eq(UIProfile3.BRUSH_TOOL, &"Pencil", "profile 3 brush entry must use Pencil")
+	check_eq(UIProfile3.ERASER_TOOL, &"Eraser", "profile 3 eraser entry must use Eraser")
+	check_true(UIProfile3.is_primary_tool(&"Pencil"), "Pencil should be a primary taskbar tool")
+	check_true(UIProfile3.is_primary_tool(&"Eraser"), "Eraser should be a primary taskbar tool")
+	check_false(
+		UIProfile3.is_primary_tool(&"Move"),
+		"Move and the remaining toolbar tools should stay inside Other Tools",
+	)
+
+
+func test_ui_profile_3_parks_tools_and_palette_and_defaults_preview_upper_left() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var surface := fixture["surface"] as WorkspaceSurface
+	var store := fixture["store"] as WorkspaceLayoutStore
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+	var menu := PopupMenu.new()
+	root.add_child(menu)
+	var controller := UIProfileController.new()
+	root.add_child(controller)
+
+	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
+	var profile_one_tools := surface.get_module_placement(Builtins.TOOLS_ID)
+	var profile_one_palette := surface.get_module_placement(Builtins.PALETTE_ID)
+	check_ne(profile_one_tools, WorkspaceSurface.Placement.NONE, "profile 1 should own Tools")
+	check_ne(profile_one_palette, WorkspaceSurface.Placement.NONE, "profile 1 should own Palette")
+	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
+
+	check_true(controller.switch_profile(3), "profile 3 should activate")
+	for module_id in [
+		Builtins.TOOLS_ID,
+		Builtins.PALETTE_ID,
+		Builtins.RIGHT_TOOL_OPTIONS_ID,
+	]:
+		check_eq(
+			surface.get_module_placement(module_id),
+			WorkspaceSurface.Placement.NONE,
+			"profile 3 should remove standalone workspace chrome for its taskbar modules",
+		)
+		check_true(
+			surface.is_module_parked(module_id),
+			"profile 3 should park taskbar-backed modules rather than destroy them",
+		)
+
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"profile 3 should keep Preview as a floating module",
+	)
+	var preview_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	var bounds := surface.get_floating_bounds()
+	check_eq(
+		preview_rect.position,
+		bounds.position + UIProfile3.PREVIEW_MARGIN,
+		"first profile 3 activation should place Preview in the upper-left",
+	)
+
+	check_true(controller.switch_profile(1), "leaving profile 3 should restore profile 1")
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		profile_one_tools,
+		"profile 1 Tools placement must survive profile 3",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PALETTE_ID),
+		profile_one_palette,
+		"profile 1 Palette placement must survive profile 3",
+	)
+	_free_fixture(fixture)
+
+
+func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var surface := fixture["surface"] as WorkspaceSurface
+	var store := fixture["store"] as WorkspaceLayoutStore
+	var migration := fixture["migration"] as WorkspaceEditorMigration
+	var menu := PopupMenu.new()
+	root.add_child(menu)
+	var controller := UIProfileController.new()
+	root.add_child(controller)
+
+	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
+	var profile_one_tools := surface.get_module_placement(Builtins.TOOLS_ID)
+	var profile_one_palette := surface.get_module_placement(Builtins.PALETTE_ID)
+	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
+	check_true(controller.switch_profile(3), "profile 3 should activate")
+	check_false(store.has_layout_slot(4), "profile 4 should still be unused")
+	check_true(controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed")
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		profile_one_tools,
+		"profile 4 must seed normal Tools instead of profile 3 parking",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PALETTE_ID),
+		profile_one_palette,
+		"profile 4 must seed normal Palette instead of profile 3 parking",
+	)
+	_free_fixture(fixture)
+
+
 func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -1800,12 +1904,12 @@ func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> vo
 		WorkspaceSurface.Placement.NONE,
 		"profile 2 should park Tools",
 	)
-	check_false(store.has_layout_slot(3), "profile 3 should still be unused before first switch")
-	check_true(controller.switch_profile(3), "first switch to profile 3 should succeed")
+	check_false(store.has_layout_slot(4), "profile 4 should still be unused before first switch")
+	check_true(controller.switch_profile(4), "first switch to profile 4 should succeed")
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
 		profile_one_tools_placement,
-		"unused profile 3 must seed from normal UI instead of profile 2 composition",
+		"unused profile 4 must seed from normal UI instead of profile 2 composition",
 	)
 	_free_fixture(fixture)
 
