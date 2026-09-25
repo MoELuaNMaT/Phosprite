@@ -18,6 +18,7 @@ const CONFIG_SECTION := "workspace"
 const CONFIG_STATE_KEY := "layout_state"
 const CONFIG_ACTIVE_SLOT_KEY := "active_layout_slot"
 const CONFIG_SLOT_KEY_PREFIX := "layout_state_"
+const CONFIG_PROFILE_VERSION_KEY_PREFIX := "ui_profile_version_"
 const LAYOUT_SLOT_COUNT := 4
 const PRESET_SECTION := "workspace_layout"
 const PRESET_STATE_KEY := "state"
@@ -94,6 +95,28 @@ func set_active_layout_slot(slot: int) -> bool:
 	if not _is_valid_layout_slot(slot):
 		return false
 	active_layout_slot = slot
+	return true
+
+
+func get_ui_profile_version(slot: int) -> int:
+	if config_cache == null or not _is_valid_layout_slot(slot):
+		return 0
+	return maxi(
+		0,
+		int(
+			config_cache.get_value(
+				CONFIG_SECTION, CONFIG_PROFILE_VERSION_KEY_PREFIX + str(slot), 0
+			)
+		),
+	)
+
+
+func set_ui_profile_version(slot: int, version: int) -> bool:
+	if config_cache == null or not _is_valid_layout_slot(slot) or version < 0:
+		return false
+	config_cache.set_value(
+		CONFIG_SECTION, CONFIG_PROFILE_VERSION_KEY_PREFIX + str(slot), version
+	)
 	return true
 
 
