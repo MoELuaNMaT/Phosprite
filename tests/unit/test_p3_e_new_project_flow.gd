@@ -74,7 +74,11 @@ func test_new_project_default_palette_assets_are_packaged_and_parseable() -> voi
 		if not is_instance_valid(palette):
 			continue
 		check_eq(palette.name, expected[path][0], "starter palette should keep its source name")
-		check_eq(palette.colors.size(), expected[path][1], "starter palette should keep all source colors")
+		check_eq(
+			palette.colors.size(),
+			expected[path][1],
+			"starter palette should keep all source colors"
+		)
 
 
 func test_p3_e_canvas_budget_blocks_oom_sizes_before_project_allocation() -> void:
