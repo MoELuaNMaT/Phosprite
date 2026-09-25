@@ -563,6 +563,29 @@ func get_tool(button: int) -> Slot:
 	return _slots[button]
 
 
+func synchronize_tool_panel(button: int) -> bool:
+	if not _slots.has(button) or not _panels.has(button):
+		return false
+	var slot: Slot = _slots[button]
+	var panel := _panels[button]
+	if slot == null or panel == null or not is_instance_valid(slot.tool_node):
+		return false
+	for child in panel.get_children():
+		if child == slot.tool_node or child is not BaseTool:
+			continue
+		var stale_tool := child as BaseTool
+		stale_tool.cancel_tool()
+		panel.remove_child(stale_tool)
+		stale_tool.queue_free()
+	if slot.tool_node.get_parent() != panel:
+		if slot.tool_node.get_parent() != null:
+			slot.tool_node.get_parent().remove_child(slot.tool_node)
+		panel.add_child(slot.tool_node)
+	update_tool_buttons()
+	update_tool_cursors()
+	return true
+
+
 func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void:
 	if not tools.has(tool_name) or not _slots.has(button) or not _panels.has(button):
 		return
@@ -571,6 +594,8 @@ func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void
 	var slot := _slots[button]
 	var panel := _panels[button]
 
+	if is_instance_valid(slot.tool_node):
+		synchronize_tool_panel(button)
 	if slot.tool_node != null:
 		if slot.tool_node.name == tool_name and not allow_refresh:
 			return
