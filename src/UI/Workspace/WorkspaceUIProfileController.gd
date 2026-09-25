@@ -46,6 +46,9 @@ func setup(
 			store.set_ui_profile_version(active_profile, current_version)
 			_clear_setup()
 			return false
+	if not migration.sync_active_tool_presentation():
+		_clear_setup()
+		return false
 
 	menu.clear()
 	for profile_id in range(1, WorkspaceLayoutStore.LAYOUT_SLOT_COUNT + 1):
@@ -106,6 +109,8 @@ func switch_profile(profile_id: int) -> bool:
 		if needs_profile_initialization:
 			applied = migration.apply_ui_profile_initial_defaults(profile_id)
 	if applied:
+		applied = migration.sync_active_tool_presentation()
+	if applied:
 		applied = store.set_ui_profile_version(profile_id, required_target_version)
 	if applied:
 		applied = store.save_current_layout()
@@ -116,6 +121,7 @@ func switch_profile(profile_id: int) -> bool:
 		store.set_active_layout_slot(previous_profile)
 		store.apply_snapshot(rollback_snapshot)
 		migration.sync_workspace_content_visibility()
+		migration.sync_active_tool_presentation()
 		store.save_current_layout()
 		_sync_menu()
 		return false
