@@ -175,6 +175,11 @@ func activate_ui_profile(profile_id: int) -> bool:
 func sync_active_tool_presentation() -> bool:
 	if Global.headless_test_mode:
 		return true
+	if (
+		not Tools._slots.has(MOUSE_BUTTON_LEFT)
+		or not is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node)
+	):
+		return true
 	if not Tools.synchronize_tool_panel(MOUSE_BUTTON_LEFT):
 		return false
 	if _active_ui_profile == 2 and is_instance_valid(_ui_profile_2):
