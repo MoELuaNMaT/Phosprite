@@ -14,7 +14,10 @@ var _last_mouse_position := Vector2.INF  ## The last position of the mouse
 var _bezier_mode: int = Bezier.CHAINED
 var _current_state: int = SingleState.START  ## Current state of the bezier curve (in SINGLE mode)
 
-@onready var bezier_option_button: OptionButton = $BezierOptions/BezierMode
+@onready var bezier_mode_buttons: Array[Button] = [
+	$BezierOptions/BezierMode/Chained,
+	$BezierOptions/BezierMode/Single,
+]
 
 
 func _init() -> void:
@@ -73,7 +76,8 @@ func update_config() -> void:
 	Tools.write_curve_activation_phase("curve_update_config_enter:%d" % tool_slot.button)
 	super.update_config()
 	$FillCheckbox.button_pressed = _fill_inside
-	bezier_option_button.select(_bezier_mode)
+	for index in bezier_mode_buttons.size():
+		bezier_mode_buttons[index].set_pressed_no_signal(index == _bezier_mode)
 	Tools.write_curve_activation_phase("curve_update_config_done:%d" % tool_slot.button)
 
 
@@ -139,7 +143,8 @@ func draw_start(pos: Vector2i) -> void:
 	Global.transform_content_confirmed.emit()
 	update_mask()
 	if !_drawing:
-		bezier_option_button.disabled = true
+		for button in bezier_mode_buttons:
+			button.disabled = true
 		_drawing = true
 		_current_state = SingleState.START
 	# NOTE: _current_state of CHAINED mode is always SingleState.START so it will always pass this.
@@ -237,7 +242,8 @@ func draw_preview() -> void:
 
 
 func _draw_shape() -> void:
-	bezier_option_button.disabled = false
+	for button in bezier_mode_buttons:
+		button.disabled = false
 	var points := _bezier()
 	prepare_undo()
 	_prepare_tool()
