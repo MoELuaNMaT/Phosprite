@@ -190,7 +190,9 @@ func _create_top_tools_host() -> bool:
 	var top_menu := Global.top_menu_container as Control
 	if not is_instance_valid(top_menu):
 		var scene := get_tree().current_scene
-		top_menu = scene.find_child("TopMenuContainer", true, false) as Control if scene != null else null
+		top_menu = (
+			scene.find_child("TopMenuContainer", true, false) as Control if scene != null else null
+		)
 	if top_menu == null:
 		return false
 	var row := top_menu.get_node_or_null(^"MarginContainer/HBoxContainer") as HBoxContainer
@@ -341,9 +343,7 @@ func _show_requested_top_options(proxy: BaseButton) -> void:
 	)
 	_options_popup.size = Vector2(TOP_OPTIONS_WIDTH, desired_height)
 	var below := proxy.get_global_rect().end + Vector2(-proxy.size.x, POPUP_GAP)
-	var local_position := (
-		ui_root.get_global_transform_with_canvas().affine_inverse() * below
-	)
+	var local_position := ui_root.get_global_transform_with_canvas().affine_inverse() * below
 	var max_x := maxf(0.0, ui_root.size.x - _options_popup.size.x)
 	var max_y := maxf(0.0, ui_root.size.y - _options_popup.size.y)
 	_options_popup.position = Vector2(
@@ -400,10 +400,7 @@ func _restore_left_tool_options() -> void:
 	_reparent_left_options(parent)
 	parent.move_child(
 		left_tool_options,
-		mini(
-			int(_original_left_options_state.get("index", 0)),
-			parent.get_child_count() - 1
-		)
+		mini(int(_original_left_options_state.get("index", 0)), parent.get_child_count() - 1)
 	)
 	left_tool_options.visible = bool(_original_left_options_state.get("visible", true))
 	left_tool_options.size_flags_horizontal = int(
@@ -419,9 +416,7 @@ func _restore_left_tool_options() -> void:
 		_original_left_options_state.get("custom_minimum_size", Vector2.ZERO) as Vector2
 	)
 	left_tool_options.horizontal_scroll_mode = int(
-		_original_left_options_state.get(
-			"horizontal_scroll_mode", ScrollContainer.SCROLL_MODE_AUTO
-		)
+		_original_left_options_state.get("horizontal_scroll_mode", ScrollContainer.SCROLL_MODE_AUTO)
 	)
 	left_tool_options.vertical_scroll_mode = int(
 		_original_left_options_state.get("vertical_scroll_mode", ScrollContainer.SCROLL_MODE_AUTO)
