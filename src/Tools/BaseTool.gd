@@ -1,7 +1,8 @@
 class_name BaseTool
-extends BoxContainer
+extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
+const MODE_BUTTON_MIN_WIDTH := 112.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
 
@@ -29,6 +30,8 @@ var _stroke_dimensions := Vector2i.ONE  ## 2D vector containing _brush_size from
 var _spacing_offset := Vector2i.ZERO  ## The initial error between position and position.snapped()
 var _horizontal_option_layout := false
 var _horizontal_child_state: Dictionary = {}
+var _horizontal_original_order: Array[Node] = []
+var _horizontal_spacers: Dictionary = {}
 @onready var color_rect := $ColorRect as ColorRect
 
 
@@ -105,6 +108,11 @@ func _configure_sidebar_label(label: Label) -> void:
 
 
 func _configure_sidebar_button(button: Button) -> void:
+	if button.button_group != null:
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.clip_text = false
+		button.custom_minimum_size.x = maxf(button.custom_minimum_size.x, MODE_BUTTON_MIN_WIDTH)
+		return
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.clip_text = true
 
@@ -168,37 +176,133 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 
 func set_horizontal_option_layout(enabled: bool) -> void:
 	if _horizontal_option_layout == enabled:
+		if enabled:
+			_rebuild_horizontal_option_layout()
 		return
 	_horizontal_option_layout = enabled
 	if enabled:
-		_horizontal_child_state.clear()
-		for child in get_children():
-			if child is not Control:
-				continue
-			var control := child as Control
-			_horizontal_child_state[control] = {
-				"horizontal": control.size_flags_horizontal,
-				"vertical": control.size_flags_vertical,
-			}
-			control.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-			control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		vertical = false
-		alignment = BoxContainer.ALIGNMENT_BEGIN
+		_capture_horizontal_option_layout()
+		_rebuild_horizontal_option_layout()
 	else:
-		vertical = true
-		alignment = BoxContainer.ALIGNMENT_BEGIN
-		for child in _horizontal_child_state:
-			if not is_instance_valid(child):
-				continue
-			var control := child as Control
-			var state := _horizontal_child_state[child] as Dictionary
-			control.size_flags_horizontal = int(state.get("horizontal", Control.SIZE_FILL))
-			control.size_flags_vertical = int(state.get("vertical", Control.SIZE_FILL))
-		_horizontal_child_state.clear()
+		_restore_vertical_option_layout()
 
 
 func is_horizontal_option_layout() -> bool:
 	return _horizontal_option_layout
+
+
+func _capture_horizontal_option_layout() -> void:
+	_horizontal_child_state.clear()
+	_horizontal_original_order.clear()
+	for child in get_children():
+		if child is not Control:
+			continue
+		var control := child as Control
+		_horizontal_original_order.append(control)
+		_horizontal_child_state[control] = {
+			"horizontal": control.size_flags_horizontal,
+			"vertical": control.size_flags_vertical,
+			"minimum": control.custom_minimum_size,
+		}
+		if control != color_rect and control != $Label:
+			var callback := Callable(self, "_on_horizontal_child_visibility_changed")
+			if not control.visibility_changed.is_connected(callback):
+				control.visibility_changed.connect(callback)
+	if is_instance_valid(color_rect):
+		color_rect.visible = false
+	columns = 1
+
+
+func _restore_vertical_option_layout() -> void:
+	for spacer in _horizontal_spacers.values():
+		if is_instance_valid(spacer):
+			spacer.queue_free()
+	_horizontal_spacers.clear()
+	columns = 1
+	for child in _horizontal_original_order:
+		if not is_instance_valid(child):
+			continue
+		move_child(child, get_child_count() - 1)
+		var control := child as Control
+		var state := _horizontal_child_state.get(control, {}) as Dictionary
+		control.size_flags_horizontal = int(state.get("horizontal", Control.SIZE_FILL))
+		control.size_flags_vertical = int(state.get("vertical", Control.SIZE_FILL))
+		control.custom_minimum_size = state.get("minimum", control.custom_minimum_size)
+	if is_instance_valid(color_rect):
+		color_rect.visible = true
+	_horizontal_child_state.clear()
+	_horizontal_original_order.clear()
+
+
+func _on_horizontal_child_visibility_changed() -> void:
+	if _horizontal_option_layout:
+		_rebuild_horizontal_option_layout.call_deferred()
+
+
+func _rebuild_horizontal_option_layout() -> void:
+	if not _horizontal_option_layout:
+		return
+	var header := $Label as Control
+	var candidates: Array[Control] = []
+	for child in _horizontal_original_order:
+		if not is_instance_valid(child) or child == color_rect or child == header:
+			continue
+		candidates.append(child as Control)
+
+	var groups: Array[Dictionary] = []
+	var index := 0
+	while index < candidates.size():
+		var node := candidates[index]
+		if node is Label and index + 1 < candidates.size() and candidates[index + 1] is not Label:
+			groups.append({"title": node, "control": candidates[index + 1]})
+			index += 2
+		else:
+			groups.append({"title": null, "control": node})
+			index += 1
+
+	var active_groups: Array[Dictionary] = []
+	for group in groups:
+		var control := group["control"] as Control
+		var title := group["title"] as Control
+		if title != null:
+			title.visible = control.visible
+		if control.visible:
+			active_groups.append(group)
+
+	for spacer in _horizontal_spacers.values():
+		if is_instance_valid(spacer):
+			spacer.visible = false
+
+	columns = maxi(1, active_groups.size())
+	var first_row: Array[Control] = []
+	var second_row: Array[Control] = []
+	for group in active_groups:
+		var control := group["control"] as Control
+		var title := group["title"] as Control
+		if title == null:
+			var spacer := _horizontal_spacers.get(control) as Control
+			if not is_instance_valid(spacer):
+				spacer = Control.new()
+				spacer.name = StringName("%sHorizontalTitleSpacer" % control.name)
+				spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				add_child(spacer)
+				_horizontal_spacers[control] = spacer
+			spacer.visible = true
+			title = spacer
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		control.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		control.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		first_row.append(title)
+		second_row.append(control)
+
+	var position := 0
+	for node in first_row:
+		move_child(node, position)
+		position += 1
+	for node in second_row:
+		move_child(node, position)
+		position += 1
 
 
 func _format_option_label(raw_text: String) -> String:
