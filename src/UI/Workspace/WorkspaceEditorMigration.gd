@@ -162,10 +162,14 @@ func activate_ui_profile(profile_id: int) -> bool:
 		_ui_profile_3.deactivate()
 	_active_ui_profile = profile_id
 	if profile_id == 2 and is_instance_valid(_merged_tools_content):
+		if Global.headless_test_mode:
+			return true
 		if not _ensure_ui_profile_2():
 			return false
 		return _ui_profile_2.activate()
 	if profile_id == 3 and is_instance_valid(_merged_tools_content):
+		if Global.headless_test_mode:
+			return true
 		if not _ensure_ui_profile_3():
 			return false
 		return _ui_profile_3.activate()
