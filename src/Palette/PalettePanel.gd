@@ -139,6 +139,8 @@ func setup_palettes_selector() -> void:
 			palettes_name_id[palette_name] = id
 			palettes_id_name[id] = palette_name
 			id += 1
+		if not project.project_current_palette_name.is_empty():
+			Palettes.select_palette(project.project_current_palette_name)
 
 
 func select_palette(palette_name: String) -> void:
