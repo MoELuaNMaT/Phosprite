@@ -17,6 +17,7 @@ const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveC
 const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
 const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
 const PROJECT_EXPORT_COORDINATOR := preload("res://src/ProjectLibrary/ProjectExportCoordinator.gd")
+const TOUCH_UI_BEHAVIOR := preload("res://src/InputAdapter/TouchUIBehavior.gd")
 
 var opensprite_file_selected := false
 var redone := false
@@ -36,6 +37,7 @@ var project_save_coordinator: ProjectSaveCoordinator
 var app_shell_controller: AppShellController
 var ios_document_bridge: IOSDocumentBridge
 var project_export_coordinator: ProjectExportCoordinator
+var touch_ui_behavior: TouchUIBehavior
 var _last_session_last_project := ""
 
 @onready var project_gallery_root := $ProjectGalleryRoot as ProjectGallery
@@ -232,6 +234,11 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	touch_ui_behavior = TOUCH_UI_BEHAVIOR.new()
+	touch_ui_behavior.name = &"TouchUIBehavior"
+	add_child(touch_ui_behavior)
+	touch_ui_behavior.setup(get_tree(), self)
+
 	get_tree().set_auto_accept_quit(false)
 	if (
 		OS.has_feature("mobile")
