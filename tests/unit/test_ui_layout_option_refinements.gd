@@ -155,7 +155,9 @@ func test_ui1_mode_buttons_reserve_full_text_width() -> void:
 func test_saved_ui_profile_waits_for_real_tools_readiness_on_startup() -> void:
 	var tools_src := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
 	var ui_src := FileAccess.get_file_as_string("res://src/UI/UI.gd")
-	check_has(tools_src, "signal runtime_ready", "Tools must expose deterministic startup readiness")
+	check_has(
+		tools_src, "signal runtime_ready", "Tools must expose deterministic startup readiness"
+	)
 	check_has(
 		tools_src,
 		"_runtime_ready = true",
