@@ -1,6 +1,7 @@
 extends "res://tests/test_base.gd"
 
 const Factory := preload("res://src/ProjectLibrary/ProjectFactory.gd")
+const StarterPalettes := preload("res://src/Palette/StarterPalettes.gd")
 
 const TEST_ROOT := "user://p3_e_factory_tests"
 
@@ -56,28 +57,28 @@ func test_p3_e_exact_presets_and_default_size() -> void:
 	)
 
 
-func test_new_project_default_palette_assets_are_packaged_and_parseable() -> void:
+func test_new_project_default_palettes_are_embedded_and_parseable() -> void:
 	check_eq(
-		Factory.DEFAULT_PROJECT_PALETTE_PATHS.size(),
+		StarterPalettes.ENTRIES.size(),
 		3,
-		"new projects should ship with exactly three starter palettes",
+		"runtime should compile exactly three starter palettes into the PCK",
 	)
 	var expected := {
-		"res://pixelorama_data/ProjectPalettes/endesga-32.gpl": ["Endesga 32", 32],
-		"res://pixelorama_data/ProjectPalettes/resurrect-64.gpl": ["Resurrect 64", 64],
-		"res://pixelorama_data/ProjectPalettes/lospec500.gpl": ["Lospec500", 42],
+		"endesga-32.gpl": ["Endesga 32", 32],
+		"resurrect-64.gpl": ["Resurrect 64", 64],
+		"lospec500.gpl": ["Lospec500", 42],
 	}
-	for path in Factory.DEFAULT_PROJECT_PALETTE_PATHS:
-		check_file_exists(path, "starter palette asset must be packaged")
-		var palette := Palettes.load_palette_from_path(path)
-		check_true(is_instance_valid(palette), "starter GPL palette must parse")
+	for entry in StarterPalettes.ENTRIES:
+		var file_name := str(entry.get("file_name", ""))
+		var palette := Palettes.load_palette_from_gpl_text(file_name, str(entry.get("text", "")))
+		check_true(is_instance_valid(palette), "embedded starter GPL palette must parse")
 		if not is_instance_valid(palette):
 			continue
-		check_eq(palette.name, expected[path][0], "starter palette should keep its source name")
+		check_eq(palette.name, expected[file_name][0], "starter palette should keep its source name")
 		check_eq(
 			palette.colors.size(),
-			expected[path][1],
-			"starter palette should keep all source colors"
+			expected[file_name][1],
+			"starter palette should keep all source colors",
 		)
 
 
