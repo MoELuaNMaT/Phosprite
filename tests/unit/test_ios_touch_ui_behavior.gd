@@ -14,7 +14,9 @@ func test_touch_mode_suppresses_tooltips_and_restores_for_real_pointer() -> void
 
 	var policy := POLICY.new()
 	host.add_child(policy)
-	check_true(policy.setup(tree, host, true), "touch UI policy should initialize in forced test mode")
+	check_true(
+		policy.setup(tree, host, true), "touch UI policy should initialize in forced test mode"
+	)
 	check_eq(button.tooltip_text, "Desktop hint", "pointer mode should preserve desktop tooltip")
 
 	var touch_press := InputEventScreenTouch.new()
