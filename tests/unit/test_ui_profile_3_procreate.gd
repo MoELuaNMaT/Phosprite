@@ -254,25 +254,39 @@ func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void
 
 func test_profile_3_toolbar_and_config_panel_contract() -> void:
 	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	var builtins := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
+	)
+	check_has(
+		builtins,
+		'const UI3_TOOL_OPTIONS_ID := &"ui3_tool_options"',
+		"UI 3 tool options must be a registered Workspace module",
+	)
 	check_has(
 		source,
-		'_options_popup.name = &"UIProfile3ToolOptionsPanel"',
-		"UI 3 must expose a persistent floating tool configuration panel",
+		"surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, rect)",
+		"UI 3 tool options must use the Workspace floating-window system",
+	)
+	check_true(
+		not source.contains("_options_popup: PanelContainer"),
+		"UI 3 must not use an ad-hoc rigid PanelContainer for tool options",
 	)
 	check_has(
 		source,
 		"_refresh_config_panel.call_deferred()",
 		"active tool changes must refresh the floating configuration panel",
 	)
-	check_has(
-		source,
-		"_taskbar.add_child(_brush_button)",
-		"Pencil must be appended at the right side of the UI 3 taskbar",
+	var brush_index := source.find("_taskbar.add_child(_brush_button)")
+	var eraser_index := source.find("_taskbar.add_child(_eraser_button)")
+	var color_index := source.find("_taskbar.add_child(_color_button)")
+	check_true(
+		brush_index >= 0 and eraser_index > brush_index and color_index > eraser_index,
+		"UI 3 taskbar must end with Pencil, Eraser, then the current color at the far right",
 	)
 	check_has(
 		source,
-		"_taskbar.add_child(_eraser_button)",
-		"Eraser must be appended after Pencil at the far right of the UI 3 taskbar",
+		"_color_indicator.draw.connect(_draw_color_indicator)",
+		"current color indicator must wire its draw callback",
 	)
 	check_true(
 		not source.contains("UIProfile3OtherToolsPopup"),
@@ -280,6 +294,6 @@ func test_profile_3_toolbar_and_config_panel_contract() -> void:
 	)
 	check_has(
 		source,
-		'_family_row.name = &"FamilyChooser"',
-		"selection and shape family choices must live inside the config panel",
+		'content.get_node_or_null(^"FamilyChooser")',
+		"selection and shape family choices must live inside the Workspace config module",
 	)
