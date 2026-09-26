@@ -54,7 +54,7 @@ func _ready() -> void:
 	await Global.pixelorama_opened
 	var tool_options_merged := false
 	if is_workspace_live():
-		if not Tools.is_runtime_ready():
+		if not Global.headless_test_mode and not Tools.is_runtime_ready():
 			await Tools.runtime_ready
 		tool_options_merged = workspace_migration.merge_left_tool_options_after_startup()
 		if tool_options_merged:
