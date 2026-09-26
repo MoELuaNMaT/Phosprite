@@ -71,7 +71,7 @@ func test_profile_3_popups_are_persistent_and_selected_tools_are_highlighted() -
 	check_has(
 		profile_3,
 		"_apply_tool_button_highlight",
-		"UI 3 taskbar and Other Tools entries must apply selected-tool highlighting",
+		"UI 3 taskbar entries must apply selected-tool highlighting",
 	)
 	check_has(
 		profile_3,
@@ -119,15 +119,37 @@ func test_tool_profile_switch_contract_keeps_one_authoritative_options_node() ->
 	)
 
 
-func test_ui2_and_ui3_keep_crop_and_color_picker_optionless() -> void:
+func test_ui2_keeps_crop_and_color_picker_optionless() -> void:
 	var profile_2 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
+	check_has(
+		profile_2,
+		'const NO_POPUP_TOOLS: Array[StringName] = [&"Crop", &"ColorPicker"]',
+		"UI 2 Crop and Color Picker must not expose profile popup options",
+	)
+
+
+func test_ui3_moves_family_selection_into_persistent_config_panel() -> void:
 	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
-	for source in [profile_2, profile_3]:
-		check_has(
-			source,
-			'const NO_POPUP_TOOLS: Array[StringName] = [&"Crop", &"ColorPicker"]',
-			"Crop and Color Picker must not expose profile popup options",
-		)
+	check_has(
+		profile_3,
+		"func _refresh_family_row(current: StringName)",
+		"UI 3 config panel must own selection/shape family switching",
+	)
+	check_has(
+		profile_3,
+		"button.pressed.connect(_on_family_tool_pressed.bind(tool_name))",
+		"UI 3 family choices must directly select the requested family tool",
+	)
+	check_has(
+		profile_3,
+		"or (tool_name in SELECTION_TOOLS and tool_name != SELECTION_TOOLBAR_REP)",
+		"UI 3 taskbar must collapse selection children into one first-level family entry",
+	)
+	check_has(
+		profile_3,
+		"or (tool_name in SHAPE_TOOLS and tool_name != SHAPE_TOOLBAR_REP)",
+		"UI 3 taskbar must collapse shape children into one first-level family entry",
+	)
 
 
 func test_ui1_mode_buttons_reserve_full_text_width() -> void:
