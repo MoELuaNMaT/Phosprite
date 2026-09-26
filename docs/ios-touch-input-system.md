@@ -6,7 +6,7 @@ This document records the iPad input contract implemented through P1-D2. The des
 
 `CanvasInputAdapter` owns raw iOS canvas contacts. It identifies Pencil/direct touch, arbitrates one-finger content versus two-finger navigation, filters touch-generated mouse events only on the Canvas path, and forwards committed content through the existing left-tool event boundary.
 
-P1-D1 keeps Primary/Secondary as the existing data model. Direct touch operates Primary unless a feature explicitly targets a color slot. The toolbar and normal GUI Controls continue to use ordinary GUI interaction; canvas input does not globally disable touch-to-mouse emulation.
+P1-D1 keeps Primary/Secondary as the existing data model. Direct touch operates Primary unless a feature explicitly targets a color slot. The toolbar and normal GUI Controls continue to use ordinary GUI interaction; canvas input does not globally disable touch-to-mouse emulation. `TouchUIBehavior` now owns the app-wide presentation policy on iOS: direct touch suppresses desktop hover tooltips and clears residual BaseButton focus, while a real mouse/trackpad restores pointer tooltip semantics. This avoids synthetic mouse hover artifacts without breaking ordinary GUI Controls.
 
 ## P1-D2 Selection family
 
