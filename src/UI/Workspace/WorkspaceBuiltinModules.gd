@@ -27,9 +27,11 @@ const OBJECT_TREE_3D_ID := &"object_tree_3d"
 const REFERENCE_IMAGES_ID := &"reference_images"
 const PERSPECTIVE_EDITOR_ID := &"perspective_editor"
 const RECORDER_ID := &"recorder"
+const UI3_TOOL_OPTIONS_ID := &"ui3_tool_options"
 
 const PREVIEW_SCENE := preload("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn")
 const PALETTE_SCENE := preload("res://src/UI/Workspace/PaletteColorPanel.tscn")
+const UI3_TOOL_OPTIONS_SCENE := preload("res://src/UI/Workspace/UI3ToolOptionsContent.tscn")
 
 const LIVE_PANEL_NODE_NAMES := {
 	TOOLS_ID: "Tools",
@@ -74,6 +76,18 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	palette.can_float = true
 	palette.can_collapse = true
 	definitions.append(palette)
+
+	var ui3_tool_options := WorkspaceModuleDefinition.new()
+	ui3_tool_options.module_id = UI3_TOOL_OPTIONS_ID
+	ui3_tool_options.display_name = "Tool Options"
+	ui3_tool_options.content_scene = UI3_TOOL_OPTIONS_SCENE
+	ui3_tool_options.minimum_size = Vector2(280.0, 120.0)
+	ui3_tool_options.preferred_size = Vector2(620.0, 220.0)
+	ui3_tool_options.maximum_size = Vector2(780.0, 420.0)
+	ui3_tool_options.can_dock = false
+	ui3_tool_options.can_float = true
+	ui3_tool_options.can_collapse = true
+	definitions.append(ui3_tool_options)
 
 	var tools := _external(TOOLS_ID, "Tools", Vector2(168.0, 220.0), Vector2(176.0, 520.0))
 	tools.maximum_size = Vector2(260.0, 0.0)
