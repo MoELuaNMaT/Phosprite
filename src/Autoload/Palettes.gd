@@ -553,6 +553,10 @@ func _get_palette_files(path: String) -> PackedStringArray:
 	return results
 
 
+func load_palette_from_gpl_text(source_name: String, text: String) -> Palette:
+	return _import_gpl(source_name, text)
+
+
 func load_palette_from_path(path: String) -> Palette:
 	var palette: Palette = null
 	if not FileAccess.file_exists(path):
@@ -565,7 +569,7 @@ func load_palette_from_path(path: String) -> Palette:
 			palette = _import_image_palette(path, image)
 	elif palette_ext == "gpl":
 		var text := FileAccess.open(path, FileAccess.READ).get_as_text()
-		palette = _import_gpl(path, text)
+		palette = load_palette_from_gpl_text(path, text)
 	elif palette_ext == "pal":
 		var text := FileAccess.open(path, FileAccess.READ).get_as_text()
 		palette = _import_pal_palette(path, text)
