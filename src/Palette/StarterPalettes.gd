@@ -6,7 +6,7 @@ extends RefCounted
 
 const ENDESGA_32 := """GIMP Palette
 #Palette Name: Endesga 32
-#Description: Originally created for <a href="http://nykra.com/">NYKRA</a>. 
+#Description: Originally created for <a href="http://nykra.com/">NYKRA</a>.
 #Colors: 32
 190	74	47	be4a2f
 215	118	67	d77643
@@ -44,7 +44,7 @@ const ENDESGA_32 := """GIMP Palette
 
 const RESURRECT_64 := """GIMP Palette
 #Palette Name: Resurrect 64
-#Description: 
+#Description:
 #Colors: 64
 46	34	47	2e222f
 62	53	70	3e3546
@@ -114,7 +114,10 @@ const RESURRECT_64 := """GIMP Palette
 
 const LOSPEC_500 := """GIMP Palette
 #Palette Name: Lospec500
-#Description: A collaboration from the Lospec Discord server to create a palette celebrating 500 palettes hosted on Lospec. Base colors were chosen by Foxbutt, Rhoq, Dimi, Skeddles, MiggityMoogity, PureAsbestos, Polyducks, SybilQ, Unsettled,  DaaWeed, Moertel, KingW, Glacier, WildLeoKnight and GooGroker, and the rest of the colors were filled in and adjusted collaboratively.
+#Description: A collaboration from the Lospec Discord server celebrating 500 hosted palettes.
+# Base colors: Foxbutt, Rhoq, Dimi, Skeddles, MiggityMoogity, PureAsbestos, Polyducks,
+# SybilQ, Unsettled, DaaWeed, Moertel, KingW, Glacier, WildLeoKnight and GooGroker.
+# Remaining colors were filled in and adjusted collaboratively.
 #Colors: 42
 16	18	28	10121c
 44	30	49	2c1e31
