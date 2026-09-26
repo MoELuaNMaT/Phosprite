@@ -515,9 +515,7 @@ func _place_popup_below(popup: Control, anchor: Control, desired_size: Vector2) 
 	if popup == null or anchor == null:
 		return
 	popup.size = desired_size
-	var global_target := (
-		anchor.get_global_rect().end + Vector2(-desired_size.x, POPUP_GAP)
-	)
+	var global_target := anchor.get_global_rect().end + Vector2(-desired_size.x, POPUP_GAP)
 	var local_target := ui_root.get_global_transform_with_canvas().affine_inverse() * global_target
 	popup.position = Vector2(
 		clampf(local_target.x, 0.0, maxf(0.0, ui_root.size.x - desired_size.x)),
@@ -580,9 +578,12 @@ func _restore_left_tool_options() -> void:
 	if parent == null:
 		return
 	_reparent_left_options(parent)
-	parent.move_child(
-		left_tool_options,
-		mini(int(_original_left_options_state.get("index", 0)), parent.get_child_count() - 1),
+	(
+		parent
+		. move_child(
+			left_tool_options,
+			mini(int(_original_left_options_state.get("index", 0)), parent.get_child_count() - 1),
+		)
 	)
 	left_tool_options.visible = bool(_original_left_options_state.get("visible", true))
 	left_tool_options.size_flags_horizontal = int(
@@ -740,13 +741,16 @@ func _draw_color_indicator() -> void:
 	var color := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
 	_color_indicator.draw_circle(center, radius + 2.0, Color(1.0, 1.0, 1.0, 0.9))
 	_color_indicator.draw_circle(center, radius, color)
-	_color_indicator.draw_arc(
-		center,
-		radius + 2.0,
-		0.0,
-		TAU,
-		32,
-		Color(0.0, 0.0, 0.0, 0.7),
-		1.0,
-		true,
+	(
+		_color_indicator
+		. draw_arc(
+			center,
+			radius + 2.0,
+			0.0,
+			TAU,
+			32,
+			Color(0.0, 0.0, 0.0, 0.7),
+			1.0,
+			true,
+		)
 	)
