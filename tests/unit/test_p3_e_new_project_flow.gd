@@ -74,7 +74,9 @@ func test_new_project_default_palettes_are_embedded_and_parseable() -> void:
 		check_true(is_instance_valid(palette), "embedded starter GPL palette must parse")
 		if not is_instance_valid(palette):
 			continue
-		check_eq(palette.name, expected[file_name][0], "starter palette should keep its source name")
+		check_eq(
+			palette.name, expected[file_name][0], "starter palette should keep its source name"
+		)
 		check_eq(
 			palette.colors.size(),
 			expected[file_name][1],
