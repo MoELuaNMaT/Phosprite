@@ -205,9 +205,7 @@ func test_ui3_tool_options_use_standard_workspace_window_chrome() -> void:
 	var builtins := FileAccess.get_file_as_string(
 		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
 	)
-	var scene := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/UI3ToolOptionsContent.tscn"
-	)
+	var scene := FileAccess.get_file_as_string("res://src/UI/Workspace/UI3ToolOptionsContent.tscn")
 	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(
 		builtins,
@@ -224,7 +222,11 @@ func test_ui3_tool_options_use_standard_workspace_window_chrome() -> void:
 		"ui3_tool_options.can_collapse = true",
 		"UI 3 options window must support standard Workspace collapse behavior",
 	)
-	check_has(scene, '[node name="OptionsHost" type="MarginContainer"', "config scene needs an options host")
+	check_has(
+		scene,
+		'[node name="OptionsHost" type="MarginContainer"',
+		"config scene needs an options host"
+	)
 	check_has(
 		profile_3,
 		"surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)",
