@@ -133,8 +133,8 @@ func test_profile_3_contract_matches_procreate_taskbar() -> void:
 	check_eq(UIProfile3.ERASER_TOOL, &"Eraser", "profile 3 eraser entry must use Eraser")
 	check_true(UIProfile3.is_primary_tool(&"Pencil"), "Pencil should be a primary taskbar tool")
 	check_true(UIProfile3.is_primary_tool(&"Eraser"), "Eraser should be a primary taskbar tool")
-	check_false(
-		UIProfile3.is_primary_tool(&"Move"),
+	check_true(
+		not UIProfile3.is_primary_tool(&"Move"),
 		"Move should remain a normal first-level tool rather than a Pencil/Eraser primary",
 	)
 
@@ -235,7 +235,7 @@ func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void
 	var profile_one_palette := surface.get_module_placement(Builtins.PALETTE_ID)
 	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
 	check_true(controller.switch_profile(3), "profile 3 should activate")
-	check_false(store.has_layout_slot(4), "profile 4 should still be unused")
+	check_true(not store.has_layout_slot(4), "profile 4 should still be unused")
 	check_true(
 		controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed"
 	)
