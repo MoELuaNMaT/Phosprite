@@ -12,6 +12,9 @@ const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
+const SELECTION_TOOLBAR_REP := &"RectSelect"
+const SHAPE_TOOLBAR_REP := &"LineTool"
+const IOS_REMOVED_TOOLS: Array[StringName] = [&"Text", &"Zoom", &"Pan", &"Shading"]
 const SELECTION_TOOLS: Array[StringName] = [
 	&"ColorSelect",
 	&"EllipseSelect",
@@ -231,7 +234,12 @@ func _build_toolbar_tools() -> bool:
 		if source == null:
 			continue
 		var tool_name := StringName(source.name)
-		if is_primary_tool(tool_name):
+		if (
+			is_primary_tool(tool_name)
+			or tool_name in IOS_REMOVED_TOOLS
+			or (tool_name in SELECTION_TOOLS and tool_name != SELECTION_TOOLBAR_REP)
+			or (tool_name in SHAPE_TOOLS and tool_name != SHAPE_TOOLBAR_REP)
+		):
 			continue
 		var proxy := _make_toolbar_proxy(source)
 		_taskbar.add_child(proxy)
@@ -698,17 +706,11 @@ func _source_represents_tool(source: BaseButton, active_tool: StringName) -> boo
 
 
 func _is_selection_family_source(source: BaseButton) -> bool:
-	if not is_instance_valid(_tool_buttons):
-		return false
-	var family := _tool_buttons.get("_ios_selection_family_button") as BaseButton
-	return is_instance_valid(family) and source == family
+	return is_instance_valid(source) and StringName(source.name) == SELECTION_TOOLBAR_REP
 
 
 func _is_shape_family_source(source: BaseButton) -> bool:
-	if not is_instance_valid(_tool_buttons):
-		return false
-	var family := _tool_buttons.get("_ios_shape_family_button") as BaseButton
-	return is_instance_valid(family) and source == family
+	return is_instance_valid(source) and StringName(source.name) == SHAPE_TOOLBAR_REP
 
 
 func _family_recent_tool(selection_family: bool) -> StringName:
