@@ -3,6 +3,7 @@ extends RefCounted
 
 const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 const TimelineProjectStateScript := preload("res://src/UI/Timeline/TimelineProjectState.gd")
+const StarterPalettesScript := preload("res://src/Palette/StarterPalettes.gd")
 
 const DEFAULT_SIZE := Vector2i(64, 64)
 const MAX_CANVAS_SIDE := 16384
@@ -83,11 +84,13 @@ static func ensure_default_project_palettes(project: Project) -> bool:
 	if project == null:
 		return false
 	var added := false
-	for path in DEFAULT_PROJECT_PALETTE_PATHS:
-		var palette := Palettes.load_palette_from_path(path)
+	for entry in StarterPalettesScript.ENTRIES:
+		var source_name := str(entry.get("file_name", ""))
+		var text := str(entry.get("text", ""))
+		var palette := Palettes.load_palette_from_gpl_text(source_name, text)
 		if not is_instance_valid(palette):
 			continue
-		if project.palettes.has(palette.name):
+		if _project_has_palette_base_name(project, palette.name):
 			continue
 		palette.name = Palettes.get_valid_name(palette.name, project)
 		palette.is_project_palette = true
@@ -96,6 +99,13 @@ static func ensure_default_project_palettes(project: Project) -> bool:
 			project.project_current_palette_name = palette.name
 		added = true
 	return added
+
+
+static func _project_has_palette_base_name(project: Project, base_name: String) -> bool:
+	for palette_name in project.palettes:
+		if Palettes.get_name_without_suffix(str(palette_name)) == base_name:
+			return true
+	return false
 
 
 static func make_untitled_name(date_time := {}) -> String:
