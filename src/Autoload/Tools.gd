@@ -9,6 +9,7 @@ signal config_changed(slot_idx: int, config: Dictionary)
 @warning_ignore("unused_signal")
 signal flip_rotated(flip_x: bool, flip_y: bool, transposed: bool)
 signal options_reset
+signal runtime_ready
 
 enum Dynamics { NONE, PRESSURE, VELOCITY }
 
@@ -286,6 +287,7 @@ var _right_tools_per_layer_type := {
 var _tool_buttons: Node
 var _last_position := Vector2i(Vector2.INF)
 var _active_last_document_position := Vector2i(Vector2.INF)
+var _runtime_ready := false
 
 
 class Tool:
@@ -445,6 +447,12 @@ func _ready() -> void:
 	var layer: BaseLayer = Global.current_project.layers[Global.current_project.current_layer]
 	var layer_type := layer.get_layer_type()
 	_show_relevant_tools(layer_type)
+	_runtime_ready = true
+	runtime_ready.emit()
+
+
+func is_runtime_ready() -> bool:
+	return _runtime_ready
 
 
 func _input(event: InputEvent) -> void:
