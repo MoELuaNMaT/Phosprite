@@ -34,11 +34,9 @@ const SHAPE_TOOLS: Array[StringName] = [
 const TASK_BUTTON_SIZE := Vector2(38.0, 38.0)
 const FAMILY_BUTTON_SIZE := Vector2(42.0, 38.0)
 const POPUP_GAP := 6.0
-const OPTIONS_WIDTH := 620.0
-const OPTIONS_MIN_HEIGHT := 112.0
-const OPTIONS_MAX_HEIGHT := 380.0
 const PALETTE_POPUP_SIZE := Vector2(320.0, 460.0)
 const PREVIEW_MARGIN := Vector2(8.0, 8.0)
+const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
 const SELECTED_TOOL_TINT := Color(0.45, 0.78, 1.0, 1.0)
 const UNSELECTED_TOOL_TINT := Color.WHITE
 
@@ -56,12 +54,13 @@ var _color_button: Button
 var _color_indicator: Control
 var _toolbar_sources: Dictionary = {}
 
-var _options_popup: PanelContainer
-var _options_root: VBoxContainer
-var _tool_title: Label
+var _options_module: WorkspaceModule
 var _family_row: HBoxContainer
 var _family_buttons: Dictionary = {}
+var _options_separator: HSeparator
 var _options_host: MarginContainer
+var _options_last_rect := Rect2()
+var _options_was_collapsed := false
 
 var _palette_popup: PanelContainer
 var _palette_content: Control
@@ -96,7 +95,8 @@ func activate() -> bool:
 	if not _ensure_presentation():
 		return false
 	_taskbar.visible = true
-	_options_popup.visible = true
+	if not _ensure_options_module_placement():
+		return false
 	_last_active_tool = _current_left_tool_name()
 	_refresh_taskbar()
 	_refresh_config_panel()
@@ -109,10 +109,11 @@ func deactivate() -> void:
 		return
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
-	if is_instance_valid(_options_popup):
-		_options_popup.visible = false
+	_capture_options_module_state()
 	_set_current_options_horizontal(false)
 	_restore_left_tool_options()
+	if surface != null and surface.manager.has_instance(Builtins.UI3_TOOL_OPTIONS_ID):
+		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
 	if is_instance_valid(_taskbar):
 		_taskbar.visible = false
 
@@ -176,7 +177,8 @@ func _ensure_presentation() -> bool:
 		return false
 	if not _build_toolbar_tools():
 		return false
-	_create_options_panel()
+	if not _ensure_options_module():
+		return false
 	if not _create_palette_popup():
 		return false
 	_connect_runtime_signals()
@@ -256,7 +258,7 @@ func _build_toolbar_tools() -> bool:
 	_color_indicator = Control.new()
 	_color_indicator.name = &"ColorCircle"
 	_color_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_taskbar.add_child(_color_button)
+	_color_indicator.draw.connect(_draw_color_indicator)
 	_color_button.add_child(_color_indicator)
 	_color_indicator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -264,6 +266,7 @@ func _build_toolbar_tools() -> bool:
 	_eraser_button = _make_primary_button(ERASER_TOOL, "Eraser")
 	_taskbar.add_child(_brush_button)
 	_taskbar.add_child(_eraser_button)
+	_taskbar.add_child(_color_button)
 	return true
 
 
@@ -302,49 +305,67 @@ func _make_primary_button(tool_name: StringName, tooltip: String) -> Button:
 	return button
 
 
-func _create_options_panel() -> void:
-	_options_popup = PanelContainer.new()
-	_options_popup.name = &"UIProfile3ToolOptionsPanel"
-	_options_popup.visible = false
-	_options_popup.z_index = 1000
-	_options_popup.mouse_filter = Control.MOUSE_FILTER_STOP
-	ui_root.add_child(_options_popup)
+func _ensure_options_module() -> bool:
+	if surface == null or surface.manager == null:
+		return false
+	_options_module = surface.manager.get_instance(Builtins.UI3_TOOL_OPTIONS_ID)
+	if not is_instance_valid(_options_module):
+		_options_module = surface.manager.create_module(Builtins.UI3_TOOL_OPTIONS_ID)
+	if not is_instance_valid(_options_module):
+		return false
+	var content := _options_module.get_content()
+	if not is_instance_valid(content):
+		return false
+	_family_row = content.get_node_or_null(^"FamilyChooser") as HBoxContainer
+	_options_separator = content.get_node_or_null(^"OptionsSeparator") as HSeparator
+	_options_host = content.get_node_or_null(^"OptionsHost") as MarginContainer
+	return (
+		is_instance_valid(_family_row)
+		and is_instance_valid(_options_separator)
+		and is_instance_valid(_options_host)
+	)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override(&"margin_left", 10)
-	margin.add_theme_constant_override(&"margin_top", 8)
-	margin.add_theme_constant_override(&"margin_right", 10)
-	margin.add_theme_constant_override(&"margin_bottom", 8)
-	_options_popup.add_child(margin)
 
-	_options_root = VBoxContainer.new()
-	_options_root.name = &"ToolOptionsRoot"
-	_options_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_options_root.add_theme_constant_override(&"separation", 6)
-	margin.add_child(_options_root)
+func _ensure_options_module_placement() -> bool:
+	if not _ensure_options_module():
+		return false
+	var placement := surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+	if (
+		placement == WorkspaceSurface.Placement.FLOATING
+		or placement == WorkspaceSurface.Placement.COLLAPSED
+		or placement == WorkspaceSurface.Placement.DOCKED
+	):
+		return true
+	var rect := _options_last_rect
+	if not rect.has_area():
+		var definition := surface.manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
+		if definition == null:
+			return false
+		var size := definition.get_constrained_preferred_size()
+		var bounds := surface.get_floating_bounds()
+		rect = Rect2(
+			Vector2(bounds.end.x - size.x - TOOL_OPTIONS_MARGIN.x, bounds.position.y + TOOL_OPTIONS_MARGIN.y),
+			size,
+		)
+	if not surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, rect):
+		return false
+	if _options_was_collapsed:
+		_options_was_collapsed = false
+		return surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID)
+	return true
 
-	_tool_title = Label.new()
-	_tool_title.name = &"ActiveToolTitle"
-	_tool_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_options_root.add_child(_tool_title)
 
-	_family_row = HBoxContainer.new()
-	_family_row.name = &"FamilyChooser"
-	_family_row.visible = false
-	_family_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_family_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_family_row.add_theme_constant_override(&"separation", 4)
-	_options_root.add_child(_family_row)
-
-	var separator := HSeparator.new()
-	separator.name = &"OptionsSeparator"
-	_options_root.add_child(separator)
-
-	_options_host = MarginContainer.new()
-	_options_host.name = &"OptionsHost"
-	_options_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_options_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_options_root.add_child(_options_host)
+func _capture_options_module_state() -> void:
+	if surface == null:
+		return
+	var placement := surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+	_options_was_collapsed = placement == WorkspaceSurface.Placement.COLLAPSED
+	if placement == WorkspaceSurface.Placement.FLOATING:
+		_options_last_rect = surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
+	elif placement == WorkspaceSurface.Placement.COLLAPSED:
+		var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
+		if int(restore.get("placement", WorkspaceSurface.Placement.NONE)) == WorkspaceSurface.Placement.FLOATING:
+			_options_last_rect = restore.get("rect", Rect2()) as Rect2
 
 
 func _create_palette_popup() -> bool:
@@ -435,35 +456,25 @@ func _on_color_button_pressed() -> void:
 func _refresh_config_panel() -> void:
 	if (
 		not active
-		or not is_instance_valid(_options_popup)
+		or not _ensure_options_module()
 		or not is_instance_valid(_options_host)
-		or not is_instance_valid(_taskbar)
 	):
 		return
 	var current := _current_left_tool_name()
-	_tool_title.text = _tool_display_name(current)
+	_options_module.set_header_title_override("Tool Options · %s" % _tool_display_name(current))
 	_refresh_family_row(current)
 	_set_current_options_horizontal(true)
 	_reparent_left_options(_options_host)
 
 	var has_options := _has_left_tool_options()
-	left_tool_options.custom_minimum_size = Vector2(OPTIONS_WIDTH - 20.0, 0.0)
+	left_tool_options.custom_minimum_size = Vector2.ZERO
 	left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	left_tool_options.visible = has_options
-
-	var body_height := 0.0
-	if has_options:
-		body_height = left_tool_options.get_combined_minimum_size().y
-	var family_height := FAMILY_BUTTON_SIZE.y + 6.0 if _family_row.visible else 0.0
-	var height := clampf(
-		44.0 + family_height + body_height,
-		OPTIONS_MIN_HEIGHT,
-		OPTIONS_MAX_HEIGHT,
-	)
-	_place_popup_below(_options_popup, _taskbar, Vector2(OPTIONS_WIDTH, height))
+	_options_host.visible = has_options
+	_options_separator.visible = _family_row.visible and has_options
 
 
 func _refresh_family_row(current: StringName) -> void:
@@ -645,10 +656,8 @@ func _on_single_tool_mode_changed(_enabled: bool) -> void:
 
 
 func _on_workspace_resized() -> void:
-	if active:
-		_refresh_config_panel.call_deferred()
-		if is_instance_valid(_palette_popup) and _palette_popup.visible:
-			_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
+	if active and is_instance_valid(_palette_popup) and _palette_popup.visible:
+		_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
 
 
 func _refresh_taskbar() -> void:
