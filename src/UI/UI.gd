@@ -54,14 +54,15 @@ func _ready() -> void:
 	await Global.pixelorama_opened
 	var tool_options_merged := false
 	if is_workspace_live():
-		for _attempt in range(4):
-			await get_tree().process_frame
-			if workspace_migration.merge_left_tool_options_after_startup():
-				tool_options_merged = true
-				break
-		if not tool_options_merged:
+		if not Tools.is_runtime_ready():
+			await Tools.runtime_ready
+		tool_options_merged = workspace_migration.merge_left_tool_options_after_startup()
+		if tool_options_merged:
+			workspace_migration.sync_workspace_content_visibility()
+			workspace_migration.sync_active_tool_presentation()
+		else:
 			push_error(
-				"P2-G skipped Left Tool Options merge because Tools initialization was incomplete"
+				"P2-G skipped Left Tool Options merge after Tools reported runtime readiness"
 			)
 	_apply_context_panel_visibility()
 
