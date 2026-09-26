@@ -84,8 +84,8 @@ func test_profile_3_popups_are_persistent_and_selected_tools_are_highlighted() -
 	)
 	check_has(
 		profile_3,
-		"current != _last_active_tool",
-		"UI 3 must close persistent popups when the active tool actually changes",
+		"_refresh_config_panel.call_deferred()",
+		"UI 3 must keep the config panel open and refresh it when the active tool changes",
 	)
 
 
