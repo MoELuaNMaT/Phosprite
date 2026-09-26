@@ -150,3 +150,28 @@ func test_ui1_mode_buttons_reserve_full_text_width() -> void:
 		"Vector2(168.0, 220.0), Vector2(176.0, 520.0)",
 		"UI 1 Tools module must be wide enough for readable mode buttons",
 	)
+
+
+func test_saved_ui_profile_waits_for_real_tools_readiness_on_startup() -> void:
+	var tools_src := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
+	var ui_src := FileAccess.get_file_as_string("res://src/UI/UI.gd")
+	check_has(tools_src, "signal runtime_ready", "Tools must expose deterministic startup readiness")
+	check_has(
+		tools_src,
+		"_runtime_ready = true",
+		"Tools must mark itself ready only after initial tool setup completes",
+	)
+	check_has(
+		ui_src,
+		"await Tools.runtime_ready",
+		"Workspace startup must wait for Tools before restoring profile presentation",
+	)
+	check_true(
+		not ui_src.contains("for _attempt in range(4)"),
+		"saved UI profile restore must not depend on a four-frame timing guess",
+	)
+	check_has(
+		ui_src,
+		"workspace_migration.sync_workspace_content_visibility()",
+		"saved profile startup must re-apply its custom composition after Tools is ready",
+	)
