@@ -344,7 +344,10 @@ func _ensure_options_module_placement() -> bool:
 		var size := definition.get_constrained_preferred_size()
 		var bounds := surface.get_floating_bounds()
 		rect = Rect2(
-			Vector2(bounds.end.x - size.x - TOOL_OPTIONS_MARGIN.x, bounds.position.y + TOOL_OPTIONS_MARGIN.y),
+			Vector2(
+				bounds.end.x - size.x - TOOL_OPTIONS_MARGIN.x,
+				bounds.position.y + TOOL_OPTIONS_MARGIN.y
+			),
 			size,
 		)
 	if not surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, rect):
@@ -364,7 +367,10 @@ func _capture_options_module_state() -> void:
 		_options_last_rect = surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
 	elif placement == WorkspaceSurface.Placement.COLLAPSED:
 		var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
-		if int(restore.get("placement", WorkspaceSurface.Placement.NONE)) == WorkspaceSurface.Placement.FLOATING:
+		if (
+			int(restore.get("placement", WorkspaceSurface.Placement.NONE))
+			== WorkspaceSurface.Placement.FLOATING
+		):
 			_options_last_rect = restore.get("rect", Rect2()) as Rect2
 
 
@@ -454,11 +460,7 @@ func _on_color_button_pressed() -> void:
 
 
 func _refresh_config_panel() -> void:
-	if (
-		not active
-		or not _ensure_options_module()
-		or not is_instance_valid(_options_host)
-	):
+	if not active or not _ensure_options_module() or not is_instance_valid(_options_host):
 		return
 	var current := _current_left_tool_name()
 	_options_module.set_header_title_override("Tool Options · %s" % _tool_display_name(current))
