@@ -1,0 +1,167 @@
+class_name StarterPalettes
+extends RefCounted
+
+## Built-in starter palettes are compiled into the PCK instead of depending on
+## non-resource .gpl files surviving platform export filters.
+
+const ENDESGA_32 := """GIMP Palette
+#Palette Name: Endesga 32
+#Description: Originally created for <a href="http://nykra.com/">NYKRA</a>. 
+#Colors: 32
+190	74	47	be4a2f
+215	118	67	d77643
+234	212	170	ead4aa
+228	166	114	e4a672
+184	111	80	b86f50
+115	62	57	733e39
+62	39	49	3e2731
+162	38	51	a22633
+228	59	68	e43b44
+247	118	34	f77622
+254	174	52	feae34
+254	231	97	fee761
+99	199	77	63c74d
+62	137	72	3e8948
+38	92	66	265c42
+25	60	62	193c3e
+18	78	137	124e89
+0	153	219	0099db
+44	232	245	2ce8f5
+255	255	255	ffffff
+192	203	220	c0cbdc
+139	155	180	8b9bb4
+90	105	136	5a6988
+58	68	102	3a4466
+38	43	68	262b44
+24	20	37	181425
+255	0	68	ff0044
+104	56	108	68386c
+181	80	136	b55088
+246	117	122	f6757a
+232	183	150	e8b796
+194	133	105	c28569
+"""
+
+const RESURRECT_64 := """GIMP Palette
+#Palette Name: Resurrect 64
+#Description: 
+#Colors: 64
+46	34	47	2e222f
+62	53	70	3e3546
+98	85	101	625565
+150	108	108	966c6c
+171	148	122	ab947a
+105	79	98	694f62
+127	112	138	7f708a
+155	171	178	9babb2
+199	220	208	c7dcd0
+255	255	255	ffffff
+110	39	39	6e2727
+179	56	49	b33831
+234	79	54	ea4f36
+245	125	74	f57d4a
+174	35	52	ae2334
+232	59	59	e83b3b
+251	107	29	fb6b1d
+247	150	23	f79617
+249	194	43	f9c22b
+122	48	69	7a3045
+158	69	57	9e4539
+205	104	61	cd683d
+230	144	78	e6904e
+251	185	84	fbb954
+76	62	36	4c3e24
+103	102	51	676633
+162	169	71	a2a947
+213	224	75	d5e04b
+251	255	134	fbff86
+22	90	76	165a4c
+35	144	99	239063
+30	188	115	1ebc73
+145	219	105	91db69
+205	223	108	cddf6c
+49	54	56	313638
+55	78	74	374e4a
+84	126	100	547e64
+146	169	132	92a984
+178	186	144	b2ba90
+11	94	101	0b5e65
+11	138	143	0b8a8f
+14	175	155	0eaf9b
+48	225	185	30e1b9
+143	248	226	8ff8e2
+50	51	83	323353
+72	74	119	484a77
+77	101	180	4d65b4
+77	155	230	4d9be6
+143	211	255	8fd3ff
+69	41	63	45293f
+107	62	117	6b3e75
+144	94	169	905ea9
+168	132	243	a884f3
+234	173	237	eaaded
+117	60	84	753c54
+162	75	111	a24b6f
+207	101	127	cf657f
+237	128	153	ed8099
+131	28	93	831c5d
+195	36	84	c32454
+240	79	120	f04f78
+246	129	129	f68181
+252	167	144	fca790
+253	203	176	fdcbb0
+"""
+
+const LOSPEC_500 := """GIMP Palette
+#Palette Name: Lospec500
+#Description: A collaboration from the Lospec Discord server to create a palette celebrating 500 palettes hosted on Lospec. Base colors were chosen by Foxbutt, Rhoq, Dimi, Skeddles, MiggityMoogity, PureAsbestos, Polyducks, SybilQ, Unsettled,  DaaWeed, Moertel, KingW, Glacier, WildLeoKnight and GooGroker, and the rest of the colors were filled in and adjusted collaboratively.
+#Colors: 42
+16	18	28	10121c
+44	30	49	2c1e31
+107	38	67	6b2643
+172	40	71	ac2847
+236	39	63	ec273f
+148	73	58	94493a
+222	93	58	de5d3a
+233	133	55	e98537
+243	168	51	f3a833
+77	53	51	4d3533
+110	76	48	6e4c30
+162	109	63	a26d3f
+206	146	72	ce9248
+218	177	99	dab163
+232	210	130	e8d282
+247	243	183	f7f3b7
+30	64	68	1e4044
+0	101	84	006554
+38	133	76	26854c
+90	181	82	5ab552
+157	230	78	9de64e
+0	139	139	008b8b
+98	164	119	62a477
+166	203	150	a6cb96
+211	238	211	d3eed3
+62	59	101	3e3b65
+56	89	179	3859b3
+51	136	222	3388de
+54	197	244	36c5f4
+109	234	214	6dead6
+94	91	140	5e5b8c
+140	120	165	8c78a5
+176	167	184	b0a7b8
+222	206	237	deceed
+154	77	118	9a4d76
+200	120	175	c878af
+204	153	255	cc99ff
+250	110	121	fa6e79
+255	162	172	ffa2ac
+255	209	213	ffd1d5
+246	232	224	f6e8e0
+255	255	255	ffffff
+"""
+
+const ENTRIES := [
+	{"file_name": "endesga-32.gpl", "text": ENDESGA_32},
+	{"file_name": "resurrect-64.gpl", "text": RESURRECT_64},
+	{"file_name": "lospec500.gpl", "text": LOSPEC_500},
+]
