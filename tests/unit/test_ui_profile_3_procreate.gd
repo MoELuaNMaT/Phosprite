@@ -135,7 +135,7 @@ func test_profile_3_contract_matches_procreate_taskbar() -> void:
 	check_true(UIProfile3.is_primary_tool(&"Eraser"), "Eraser should be a primary taskbar tool")
 	check_false(
 		UIProfile3.is_primary_tool(&"Move"),
-		"Move and the remaining toolbar tools should stay inside Other Tools",
+		"Move should remain a normal first-level tool rather than a Pencil/Eraser primary",
 	)
 
 
@@ -250,3 +250,36 @@ func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void
 		"profile 4 must seed normal Palette instead of profile 3 parking",
 	)
 	_free_fixture(fixture)
+
+
+func test_profile_3_toolbar_and_config_panel_contract() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	check_has(
+		source,
+		'_options_popup.name = &"UIProfile3ToolOptionsPanel"',
+		"UI 3 must expose a persistent floating tool configuration panel",
+	)
+	check_has(
+		source,
+		"_refresh_config_panel.call_deferred()",
+		"active tool changes must refresh the floating configuration panel",
+	)
+	check_has(
+		source,
+		"_taskbar.add_child(_brush_button)",
+		"Pencil must be appended at the right side of the UI 3 taskbar",
+	)
+	check_has(
+		source,
+		"_taskbar.add_child(_eraser_button)",
+		"Eraser must be appended after Pencil at the far right of the UI 3 taskbar",
+	)
+	check_true(
+		not source.contains("UIProfile3OtherToolsPopup"),
+		"UI 3 must no longer hide first-level tools inside an Other Tools popup",
+	)
+	check_has(
+		source,
+		'_family_row.name = &"FamilyChooser"',
+		"selection and shape family choices must live inside the config panel",
+	)
