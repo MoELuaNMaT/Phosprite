@@ -199,3 +199,34 @@ func test_saved_ui_profile_waits_for_real_tools_readiness_on_startup() -> void:
 		"workspace_migration.sync_workspace_content_visibility()",
 		"saved profile startup must re-apply its custom composition after Tools is ready",
 	)
+
+
+func test_ui3_tool_options_use_standard_workspace_window_chrome() -> void:
+	var builtins := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
+	)
+	var scene := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/UI3ToolOptionsContent.tscn"
+	)
+	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	check_has(
+		builtins,
+		"ui3_tool_options.content_scene = UI3_TOOL_OPTIONS_SCENE",
+		"UI 3 options content must be owned by a standard Workspace module definition",
+	)
+	check_has(
+		builtins,
+		"ui3_tool_options.can_float = true",
+		"UI 3 options window must support standard Workspace floating",
+	)
+	check_has(
+		builtins,
+		"ui3_tool_options.can_collapse = true",
+		"UI 3 options window must support standard Workspace collapse behavior",
+	)
+	check_has(scene, '[node name="OptionsHost" type="MarginContainer"', "config scene needs an options host")
+	check_has(
+		profile_3,
+		"surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)",
+		"leaving UI 3 must hide the config Workspace module without leaking it into other profiles",
+	)
