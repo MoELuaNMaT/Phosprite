@@ -179,11 +179,22 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 
 
 func set_compact_option_layout(enabled: bool) -> void:
-	set_horizontal_option_layout(enabled)
+	if _compact_option_layout == enabled:
+		if enabled:
+			_rebuild_compact_option_layout()
+		return
+	if enabled and _horizontal_option_layout:
+		set_horizontal_option_layout(false)
+	_compact_option_layout = enabled
+	if enabled:
+		_capture_horizontal_option_layout()
+		_rebuild_compact_option_layout()
+	else:
+		_restore_vertical_option_layout()
 
 
 func is_compact_option_layout() -> bool:
-	return _horizontal_option_layout
+	return _compact_option_layout
 
 
 func set_horizontal_option_layout(enabled: bool) -> void:
@@ -191,6 +202,8 @@ func set_horizontal_option_layout(enabled: bool) -> void:
 		if enabled:
 			_rebuild_horizontal_option_layout()
 		return
+	if enabled and _compact_option_layout:
+		set_compact_option_layout(false)
 	_horizontal_option_layout = enabled
 	if enabled:
 		_capture_horizontal_option_layout()
@@ -201,7 +214,6 @@ func set_horizontal_option_layout(enabled: bool) -> void:
 
 func is_horizontal_option_layout() -> bool:
 	return _horizontal_option_layout
-
 
 func _capture_horizontal_option_layout() -> void:
 	_horizontal_child_state.clear()
