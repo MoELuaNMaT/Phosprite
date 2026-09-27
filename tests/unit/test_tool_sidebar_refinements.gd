@@ -74,6 +74,40 @@ func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_n
 	)
 
 
+func test_ui3_compact_tool_options_use_two_column_property_rows() -> void:
+	var source := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
+	check_has(
+		source,
+		"func set_compact_option_layout(enabled: bool) -> void:",
+		"UI 3 needs an explicit compact layout entry point without changing normal sidebar use",
+	)
+	check_has(
+		source,
+		"const COMPACT_OPTION_LABEL_WIDTH := 96.0",
+		"compact option rows need a bounded label column",
+	)
+	check_has(
+		source,
+		"const COMPACT_OPTION_ROW_HEIGHT := 28.0",
+		"compact option rows need a consistent minimum height",
+	)
+	check_has(
+		source,
+		"columns = 2",
+		"compact options must be laid out as label/control rows instead of N horizontal columns",
+	)
+	check_has(
+		source,
+		"title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT",
+		"compact labels should align consistently next to their controls",
+	)
+	check_has(
+		source,
+		"control.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
+		"compact controls must consume the remaining row width instead of forcing horizontal scroll",
+	)
+
+
 func test_crop_sidebar_has_no_configuration_and_applies_on_release() -> void:
 	var source := FileAccess.get_file_as_string(CROP_SOURCE)
 	check_has(
