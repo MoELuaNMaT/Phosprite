@@ -7,6 +7,11 @@ var _start_pos: Vector2
 var _syncing := false
 var _locked_ratio := false
 var _drag_changed := false
+var _crop_registered := false
+
+
+func _enter_tree() -> void:
+	_register_crop_overlay()
 
 
 func _ready() -> void:
@@ -15,14 +20,28 @@ func _ready() -> void:
 	_crop.mode = CropRect.Mode.MARGINS
 	_crop.locked_size = false
 	_crop.updated.connect(_sync_ui)
-	_crop.tool_count += 1
+	_register_crop_overlay()
 	_sync_ui()
 	_hide_crop_options()
 
 
 func _exit_tree() -> void:
 	super._exit_tree()
+	_unregister_crop_overlay()
+
+
+func _register_crop_overlay() -> void:
+	if _crop_registered or not is_instance_valid(_crop):
+		return
+	_crop.tool_count += 1
+	_crop_registered = true
+
+
+func _unregister_crop_overlay() -> void:
+	if not _crop_registered or not is_instance_valid(_crop):
+		return
 	_crop.tool_count -= 1
+	_crop_registered = false
 
 
 func draw_start(pos: Vector2i) -> void:
