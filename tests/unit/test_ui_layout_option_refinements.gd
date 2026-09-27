@@ -26,7 +26,7 @@ func test_bucket_and_curve_modes_use_exclusive_buttons() -> void:
 	)
 
 
-func test_profiles_2_and_3_request_horizontal_tool_options_only_in_their_presentations() -> void:
+func test_profiles_2_and_3_request_profile_specific_tool_option_presentations() -> void:
 	var base_scene := FileAccess.get_file_as_string("res://src/Tools/BaseTool.tscn")
 	var base_src := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
 	var profile_2 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
@@ -49,9 +49,14 @@ func test_profiles_2_and_3_request_horizontal_tool_options_only_in_their_present
 		"UI 2 must opt into horizontal tool options",
 	)
 	check_has(
+		base_src,
+		"func set_compact_option_layout(enabled: bool)",
+		"shared tool options must expose the compact floating-panel presentation used by UI 3",
+	)
+	check_has(
 		profile_3,
-		"set_horizontal_option_layout(true)",
-		"UI 3 must opt into horizontal tool options",
+		"set_compact_option_layout(true)",
+		"UI 3 must opt into compact two-column tool options",
 	)
 	check_has(
 		profile_2,
