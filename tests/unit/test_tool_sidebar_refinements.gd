@@ -7,6 +7,7 @@ const BASE_SELECTION_SCENE := "res://src/Tools/BaseSelectionTool.tscn"
 const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const CROP_SOURCE := "res://src/Tools/UtilityTools/CropTool.gd"
+const CROP_RECT_SOURCE := "res://src/UI/Canvas/CropRect.gd"
 const ERASER_SCENE := "res://src/Tools/DesignTools/Eraser.tscn"
 const ERASER_SOURCE := "res://src/Tools/DesignTools/Eraser.gd"
 const BASE_TOOL_SCENE := "res://src/Tools/BaseTool.tscn"
@@ -94,6 +95,36 @@ func test_crop_sidebar_has_no_configuration_and_applies_on_release() -> void:
 		source,
 		"_crop.apply()",
 		"Crop must commit on drag release after removing the Apply button from the UI",
+	)
+
+
+func test_crop_overlay_lifecycle_survives_workspace_reparenting() -> void:
+	var source := FileAccess.get_file_as_string(CROP_SOURCE)
+	var crop_rect_source := FileAccess.get_file_as_string(CROP_RECT_SOURCE)
+	check_has(
+		source,
+		"func _enter_tree() -> void:\n\t_register_crop_overlay()",
+		"Crop must re-register its overlay whenever Workspace reparenting re-enters the scene tree",
+	)
+	check_has(
+		source,
+		"var _crop_registered := false",
+		"Crop overlay ownership must guard against duplicate registration",
+	)
+	check_has(
+		source,
+		"func _unregister_crop_overlay() -> void:",
+		"Crop must explicitly balance overlay ownership on every tree exit",
+	)
+	check_has(
+		crop_rect_source,
+		"var next_count := maxi(0, value)",
+		"Crop overlay owner count must never become negative after repeated reparenting",
+	)
+	check_has(
+		crop_rect_source,
+		"visible = tool_count > 0",
+		"Crop overlay visibility must be derived from a positive owner count only",
 	)
 
 
