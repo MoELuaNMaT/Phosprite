@@ -252,6 +252,48 @@ func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void
 	_free_fixture(fixture)
 
 
+func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
+	var profile_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
+	)
+	var content_scene := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/UI3ToolOptionsContent.tscn"
+	)
+	var builtins := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
+	)
+	check_has(
+		profile_source,
+		"current.set_compact_option_layout(true)",
+		"UI 3 must opt the active tool into the compact floating property layout",
+	)
+	check_has(
+		profile_source,
+		"left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED",
+		"compact Tool Options must never require horizontal scrolling",
+	)
+	check_has(
+		profile_source,
+		"if control.visible:",
+		"UI 3 must only reserve configuration space for controls that are actually visible",
+	)
+	check_has(
+		content_scene,
+		'[node name="FamilyChooser" type="HFlowContainer" parent="."]',
+		"tool-family shortcuts must wrap inside a narrow floating panel",
+	)
+	check_has(
+		builtins,
+		"ui3_tool_options.preferred_size = Vector2(340.0, 260.0)",
+		"UI 3 Tool Options should default to a small floating-window footprint",
+	)
+	check_has(
+		builtins,
+		"ui3_tool_options.maximum_size = Vector2(440.0, 500.0)",
+		"legacy wide Tool Options windows must be constrained to compact bounds",
+	)
+
+
 func test_profile_3_toolbar_and_config_panel_contract() -> void:
 	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	var builtins := FileAccess.get_file_as_string(
