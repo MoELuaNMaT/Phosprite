@@ -20,10 +20,11 @@ var rect := Rect2i(0, 0, 1, 1)
 ## How many crop tools are active (0-2), setter makes this visible if not 0
 var tool_count := 0:
 	set(value):
-		if tool_count == 0 and value > 0:
+		var next_count := maxi(0, value)
+		if tool_count == 0 and next_count > 0:
 			reset()  # Reset once 1 tool becomes the crop tool
-		tool_count = value
-		visible = tool_count
+		tool_count = next_count
+		visible = tool_count > 0
 
 
 func _ready() -> void:
