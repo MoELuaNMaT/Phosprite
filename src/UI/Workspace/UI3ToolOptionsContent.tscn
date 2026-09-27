@@ -4,13 +4,14 @@
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 
-[node name="FamilyChooser" type="HBoxContainer" parent="."]
+[node name="FamilyChooser" type="HFlowContainer" parent="."]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
 
 [node name="OptionsSeparator" type="HSeparator" parent="."]
 layout_mode = 2
@@ -19,3 +20,7 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 2
