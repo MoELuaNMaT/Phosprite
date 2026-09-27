@@ -272,12 +272,80 @@ func _restore_vertical_option_layout() -> void:
 
 
 func _on_horizontal_child_visibility_changed() -> void:
-	if _horizontal_option_layout:
+	if _compact_option_layout:
+		_rebuild_compact_option_layout.call_deferred()
+	elif _horizontal_option_layout:
 		_rebuild_horizontal_option_layout.call_deferred()
 
 
 func _rebuild_horizontal_option_layout() -> void:
 	if not _horizontal_option_layout:
+		return
+	var header := $Label as Control
+	var candidates: Array[Control] = []
+	for child in _horizontal_original_order:
+		if not is_instance_valid(child) or child == color_rect or child == header:
+			continue
+		candidates.append(child as Control)
+
+	var groups: Array[Dictionary] = []
+	var index := 0
+	while index < candidates.size():
+		var node := candidates[index]
+		if node is Label and index + 1 < candidates.size() and candidates[index + 1] is not Label:
+			groups.append({"title": node, "control": candidates[index + 1]})
+			index += 2
+		else:
+			groups.append({"title": null, "control": node})
+			index += 1
+
+	var active_groups: Array[Dictionary] = []
+	for group in groups:
+		var control := group["control"] as Control
+		var title := group["title"] as Control
+		if title != null:
+			title.visible = control.visible
+		if control.visible:
+			active_groups.append(group)
+
+	for spacer in _horizontal_spacers.values():
+		if is_instance_valid(spacer):
+			spacer.visible = false
+
+	columns = maxi(1, active_groups.size())
+	var first_row: Array[Control] = []
+	var second_row: Array[Control] = []
+	for group in active_groups:
+		var control := group["control"] as Control
+		var title := group["title"] as Control
+		if title == null:
+			var spacer := _horizontal_spacers.get(control) as Control
+			if not is_instance_valid(spacer):
+				spacer = Control.new()
+				spacer.name = StringName("%sHorizontalTitleSpacer" % control.name)
+				spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				add_child(spacer)
+				_horizontal_spacers[control] = spacer
+			spacer.visible = true
+			title = spacer
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		control.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		control.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		first_row.append(title)
+		second_row.append(control)
+
+	var position := 0
+	for node in first_row:
+		move_child(node, position)
+		position += 1
+	for node in second_row:
+		move_child(node, position)
+		position += 1
+
+
+func _rebuild_compact_option_layout() -> void:
+	if not _compact_option_layout:
 		return
 	var header := $Label as Control
 	var candidates: Array[Control] = []
@@ -306,9 +374,6 @@ func _rebuild_horizontal_option_layout() -> void:
 		if is_instance_valid(spacer):
 			spacer.visible = false
 
-	# UI3 uses the legacy "horizontal" hook as a compact two-column property sheet:
-	# short label on the left, one expanding control on the right. This keeps the
-	# floating panel narrow and predictable regardless of how many options a tool has.
 	columns = 2
 	var position := 0
 	for group in groups:
@@ -347,7 +412,6 @@ func _rebuild_horizontal_option_layout() -> void:
 		position += 1
 		move_child(control, position)
 		position += 1
-
 
 func _format_option_label(raw_text: String) -> String:
 	return _strip_option_colon(raw_text)
