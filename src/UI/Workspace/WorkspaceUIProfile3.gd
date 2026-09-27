@@ -330,9 +330,18 @@ func _ensure_options_module_placement() -> bool:
 	if not _ensure_options_module():
 		return false
 	var placement := surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+	if placement == WorkspaceSurface.Placement.FLOATING:
+		var definition := surface.manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
+		if definition == null:
+			return false
+		var current_rect := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
+		var constrained_size := definition.get_constrained_size(current_rect.size)
+		if constrained_size != current_rect.size:
+			current_rect.size = constrained_size
+			return surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, current_rect)
+		return true
 	if (
-		placement == WorkspaceSurface.Placement.FLOATING
-		or placement == WorkspaceSurface.Placement.COLLAPSED
+		placement == WorkspaceSurface.Placement.COLLAPSED
 		or placement == WorkspaceSurface.Placement.DOCKED
 	):
 		return true
