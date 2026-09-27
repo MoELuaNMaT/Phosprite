@@ -3,6 +3,9 @@ extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
 const MODE_BUTTON_MIN_WIDTH := 112.0
+const COMPACT_OPTION_LABEL_WIDTH := 96.0
+const COMPACT_OPTION_CONTROL_WIDTH := 132.0
+const COMPACT_OPTION_ROW_HEIGHT := 28.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
 
@@ -174,6 +177,14 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	)
 
 
+func set_compact_option_layout(enabled: bool) -> void:
+	set_horizontal_option_layout(enabled)
+
+
+func is_compact_option_layout() -> bool:
+	return _horizontal_option_layout
+
+
 func set_horizontal_option_layout(enabled: bool) -> void:
 	if _horizontal_option_layout == enabled:
 		if enabled:
@@ -199,11 +210,17 @@ func _capture_horizontal_option_layout() -> void:
 			continue
 		var control := child as Control
 		_horizontal_original_order.append(control)
-		_horizontal_child_state[control] = {
+		var state := {
 			"horizontal": control.size_flags_horizontal,
 			"vertical": control.size_flags_vertical,
 			"minimum": control.custom_minimum_size,
 		}
+		if control is Label:
+			var label := control as Label
+			state["horizontal_alignment"] = label.horizontal_alignment
+			state["vertical_alignment"] = label.vertical_alignment
+			state["autowrap_mode"] = label.autowrap_mode
+		_horizontal_child_state[control] = state
 		if control != color_rect and control != $Label:
 			var callback := Callable(self, "_on_horizontal_child_visibility_changed")
 			if not control.visibility_changed.is_connected(callback):
@@ -228,6 +245,15 @@ func _restore_vertical_option_layout() -> void:
 		control.size_flags_horizontal = int(state.get("horizontal", Control.SIZE_FILL))
 		control.size_flags_vertical = int(state.get("vertical", Control.SIZE_FILL))
 		control.custom_minimum_size = state.get("minimum", control.custom_minimum_size)
+		if control is Label:
+			var label := control as Label
+			label.horizontal_alignment = int(
+				state.get("horizontal_alignment", HORIZONTAL_ALIGNMENT_LEFT)
+			)
+			label.vertical_alignment = int(
+				state.get("vertical_alignment", VERTICAL_ALIGNMENT_TOP)
+			)
+			label.autowrap_mode = int(state.get("autowrap_mode", TextServer.AUTOWRAP_OFF))
 	if is_instance_valid(color_rect):
 		color_rect.visible = true
 	_horizontal_child_state.clear()
@@ -245,7 +271,12 @@ func _rebuild_horizontal_option_layout() -> void:
 	var header := $Label as Control
 	var candidates: Array[Control] = []
 	for child in _horizontal_original_order:
-		if not is_instance_valid(child) or child == color_rect or child == header:
+		if (
+			not is_instance_valid(child)
+			or child == color_rect
+			or child == header
+			or not (child as Control).visible
+		):
 			continue
 		candidates.append(child as Control)
 
@@ -260,48 +291,51 @@ func _rebuild_horizontal_option_layout() -> void:
 			groups.append({"title": null, "control": node})
 			index += 1
 
-	var active_groups: Array[Dictionary] = []
-	for group in groups:
-		var control := group["control"] as Control
-		var title := group["title"] as Control
-		if title != null:
-			title.visible = control.visible
-		if control.visible:
-			active_groups.append(group)
-
 	for spacer in _horizontal_spacers.values():
 		if is_instance_valid(spacer):
 			spacer.visible = false
 
-	columns = maxi(1, active_groups.size())
-	var first_row: Array[Control] = []
-	var second_row: Array[Control] = []
-	for group in active_groups:
+	# UI3 uses the legacy "horizontal" hook as a compact two-column property sheet:
+	# short label on the left, one expanding control on the right. This keeps the
+	# floating panel narrow and predictable regardless of how many options a tool has.
+	columns = 2
+	var position := 0
+	for group in groups:
 		var control := group["control"] as Control
 		var title := group["title"] as Control
 		if title == null:
 			var spacer := _horizontal_spacers.get(control) as Control
 			if not is_instance_valid(spacer):
 				spacer = Control.new()
-				spacer.name = StringName("%sHorizontalTitleSpacer" % control.name)
+				spacer.name = StringName("%sCompactTitleSpacer" % control.name)
 				spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				add_child(spacer)
 				_horizontal_spacers[control] = spacer
 			spacer.visible = true
 			title = spacer
-		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		control.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		control.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		first_row.append(title)
-		second_row.append(control)
 
-	var position := 0
-	for node in first_row:
-		move_child(node, position)
+		title.custom_minimum_size = Vector2(
+			COMPACT_OPTION_LABEL_WIDTH,
+			maxf(title.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+		)
+		title.size_flags_horizontal = Control.SIZE_FILL
+		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if title is Label:
+			var title_label := title as Label
+			title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+
+		control.custom_minimum_size = Vector2(
+			maxf(control.custom_minimum_size.x, COMPACT_OPTION_CONTROL_WIDTH),
+			maxf(control.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+		)
+		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+		move_child(title, position)
 		position += 1
-	for node in second_row:
-		move_child(node, position)
+		move_child(control, position)
 		position += 1
 
 
