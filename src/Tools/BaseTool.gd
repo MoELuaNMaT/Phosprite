@@ -250,9 +250,7 @@ func _restore_vertical_option_layout() -> void:
 			label.horizontal_alignment = int(
 				state.get("horizontal_alignment", HORIZONTAL_ALIGNMENT_LEFT)
 			)
-			label.vertical_alignment = int(
-				state.get("vertical_alignment", VERTICAL_ALIGNMENT_TOP)
-			)
+			label.vertical_alignment = int(state.get("vertical_alignment", VERTICAL_ALIGNMENT_TOP))
 			label.autowrap_mode = int(state.get("autowrap_mode", TextServer.AUTOWRAP_OFF))
 	if is_instance_valid(color_rect):
 		color_rect.visible = true
@@ -315,8 +313,7 @@ func _rebuild_horizontal_option_layout() -> void:
 			title = spacer
 
 		title.custom_minimum_size = Vector2(
-			COMPACT_OPTION_LABEL_WIDTH,
-			maxf(title.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+			COMPACT_OPTION_LABEL_WIDTH, maxf(title.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
 		)
 		title.size_flags_horizontal = Control.SIZE_FILL
 		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
