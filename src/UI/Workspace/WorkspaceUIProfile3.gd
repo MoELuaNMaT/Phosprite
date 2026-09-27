@@ -32,7 +32,7 @@ const SHAPE_TOOLS: Array[StringName] = [
 	&"IsometricBoxTool",
 ]
 const TASK_BUTTON_SIZE := Vector2(38.0, 38.0)
-const FAMILY_BUTTON_SIZE := Vector2(42.0, 38.0)
+const FAMILY_BUTTON_SIZE := Vector2(34.0, 32.0)
 const POPUP_GAP := 6.0
 const PALETTE_POPUP_SIZE := Vector2(320.0, 460.0)
 const PREVIEW_MARGIN := Vector2(8.0, 8.0)
@@ -55,7 +55,7 @@ var _color_indicator: Control
 var _toolbar_sources: Dictionary = {}
 
 var _options_module: WorkspaceModule
-var _family_row: HBoxContainer
+var _family_row: HFlowContainer
 var _family_buttons: Dictionary = {}
 var _options_separator: HSeparator
 var _options_host: MarginContainer
@@ -66,7 +66,7 @@ var _palette_popup: PanelContainer
 var _palette_content: Control
 
 var _original_left_options_state: Dictionary = {}
-var _horizontalized_tool: BaseTool
+var _compacted_tool: BaseTool
 var _last_active_tool := &""
 
 
@@ -110,7 +110,7 @@ func deactivate() -> void:
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
 	_capture_options_module_state()
-	_set_current_options_horizontal(false)
+	_set_current_options_compact(false)
 	_restore_left_tool_options()
 	if surface != null and surface.manager.has_instance(Builtins.UI3_TOOL_OPTIONS_ID):
 		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
@@ -316,7 +316,7 @@ func _ensure_options_module() -> bool:
 	var content := _options_module.get_content()
 	if not is_instance_valid(content):
 		return false
-	_family_row = content.get_node_or_null(^"FamilyChooser") as HBoxContainer
+	_family_row = content.get_node_or_null(^"FamilyChooser") as HFlowContainer
 	_options_separator = content.get_node_or_null(^"OptionsSeparator") as HSeparator
 	_options_host = content.get_node_or_null(^"OptionsHost") as MarginContainer
 	return (
@@ -465,14 +465,14 @@ func _refresh_config_panel() -> void:
 	var current := _current_left_tool_name()
 	_options_module.set_header_title_override("Tool Options · %s" % _tool_display_name(current))
 	_refresh_family_row(current)
-	_set_current_options_horizontal(true)
+	_set_current_options_compact(true)
 	_reparent_left_options(_options_host)
 
 	var has_options := _has_left_tool_options()
 	left_tool_options.custom_minimum_size = Vector2.ZERO
 	left_tool_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_tool_options.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	left_tool_options.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_tool_options.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	left_tool_options.visible = has_options
 	_options_host.visible = has_options
@@ -538,19 +538,19 @@ func _place_popup_below(popup: Control, anchor: Control, desired_size: Vector2) 
 	popup.move_to_front()
 
 
-func _set_current_options_horizontal(enabled: bool) -> void:
+func _set_current_options_compact(enabled: bool) -> void:
 	if not enabled:
-		if is_instance_valid(_horizontalized_tool):
-			_horizontalized_tool.set_horizontal_option_layout(false)
-			_horizontalized_tool = null
+		if is_instance_valid(_compacted_tool):
+			_compacted_tool.set_compact_option_layout(false)
+			_compacted_tool = null
 		return
 	var current := _current_tool_options()
 	if current == null:
 		return
-	if is_instance_valid(_horizontalized_tool) and _horizontalized_tool != current:
-		_horizontalized_tool.set_horizontal_option_layout(false)
-	current.set_horizontal_option_layout(true)
-	_horizontalized_tool = current
+	if is_instance_valid(_compacted_tool) and _compacted_tool != current:
+		_compacted_tool.set_compact_option_layout(false)
+	current.set_compact_option_layout(true)
+	_compacted_tool = current
 
 
 func _current_tool_options() -> BaseTool:
@@ -563,15 +563,18 @@ func _current_tool_options() -> BaseTool:
 
 
 func _has_left_tool_options() -> bool:
-	if not is_instance_valid(left_tool_options):
-		return false
-	var panel := left_tool_options.get_node_or_null(^"LeftPanelContainer") as Control
-	if panel == null or panel.get_child_count() == 0:
-		return false
-	var tool_node := panel.get_child(panel.get_child_count() - 1) as Control
+	var tool_node := _current_tool_options()
 	if tool_node == null:
 		return false
-	return tool_node.get_child_count() > 0 or tool_node.get_combined_minimum_size().y > 4.0
+	for child in tool_node.get_children():
+		if child is not Control:
+			continue
+		var control := child as Control
+		if control == tool_node.color_rect or control == tool_node.get_node_or_null(^"Label"):
+			continue
+		if control.visible:
+			return true
+	return false
 
 
 func _reparent_left_options(parent: Node) -> void:
