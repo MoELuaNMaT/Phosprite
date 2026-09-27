@@ -215,6 +215,7 @@ func set_horizontal_option_layout(enabled: bool) -> void:
 func is_horizontal_option_layout() -> bool:
 	return _horizontal_option_layout
 
+
 func _capture_horizontal_option_layout() -> void:
 	_horizontal_child_state.clear()
 	_horizontal_original_order.clear()
@@ -412,6 +413,7 @@ func _rebuild_compact_option_layout() -> void:
 		position += 1
 		move_child(control, position)
 		position += 1
+
 
 func _format_option_label(raw_text: String) -> String:
 	return _strip_option_colon(raw_text)
