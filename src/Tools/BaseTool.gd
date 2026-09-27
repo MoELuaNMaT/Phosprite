@@ -32,6 +32,7 @@ var _spacing := Vector2i.ZERO  ## Spacing between two strokes
 var _stroke_dimensions := Vector2i.ONE  ## 2D vector containing _brush_size from Draw.gd
 var _spacing_offset := Vector2i.ZERO  ## The initial error between position and position.snapped()
 var _horizontal_option_layout := false
+var _compact_option_layout := false
 var _horizontal_child_state: Dictionary = {}
 var _horizontal_original_order: Array[Node] = []
 var _horizontal_spacers: Dictionary = {}
