@@ -9,6 +9,26 @@ extends "res://tests/test_base.gd"
 const PROJECT_GODOT := "res://project.godot"
 const GLOBAL_SOURCE := "res://src/Autoload/Global.gd"
 const MAIN_SCENE := "res://src/Main.tscn"
+const EXPORT_PRESETS := "res://export_presets.cfg"
+const IOS_ICON := "res://assets/graphics/icons/ios/phosprite_ios_1024.png"
+const IOS_ICON_OPTIONS := [
+	"icons/settings_58x58",
+	"icons/settings_87x87",
+	"icons/notification_40x40",
+	"icons/notification_60x60",
+	"icons/notification_76x76",
+	"icons/notification_114x114",
+	"icons/spotlight_80x80",
+	"icons/spotlight_120x120",
+	"icons/iphone_120x120",
+	"icons/iphone_180x180",
+	"icons/ipad_167x167",
+	"icons/ipad_152x152",
+	"icons/ios_128x128",
+	"icons/ios_192x192",
+	"icons/ios_136x136",
+	"icons/app_store_1024x1024",
+]
 
 
 func test_project_metadata_is_phosprite() -> void:
@@ -96,3 +116,23 @@ func test_steam_manager_node_removed_from_main_scene() -> void:
 		not src.contains("SteamManager"),
 		"Main.tscn must not instantiate SteamManager in the normal runtime"
 	)
+
+
+func test_ios_icon_export_uses_dedicated_pixel_source() -> void:
+	var preset_source := FileAccess.get_file_as_string(EXPORT_PRESETS)
+	check_has(
+		preset_source,
+		"application/icon_interpolation=0",
+		"iOS icon resizing must use nearest-neighbor interpolation for the pixel-art app icon"
+	)
+	for option in IOS_ICON_OPTIONS:
+		check_has(
+			preset_source,
+			'%s="%s"' % [option, IOS_ICON],
+			"iOS icon slot %s must use the dedicated high-resolution icon source" % option
+		)
+	check_true(FileAccess.file_exists(IOS_ICON), "dedicated iOS icon source must exist")
+	var image := Image.load_from_file(IOS_ICON)
+	check_true(not image.is_empty(), "dedicated iOS icon source must load as an image")
+	check_eq(image.get_width(), 1024, "dedicated iOS icon source must be 1024 px wide")
+	check_eq(image.get_height(), 1024, "dedicated iOS icon source must be 1024 px tall")
