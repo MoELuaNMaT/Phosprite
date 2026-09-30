@@ -15,20 +15,81 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="LayerScroll" type="ScrollContainer" parent="MarginContainer"]
+[node name="MainColumn" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="MultiSelectBar" type="HBoxContainer" parent="MarginContainer/MainColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="SelectionCount" type="Label" parent="MarginContainer/MainColumn/MultiSelectBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 36)
+layout_mode = 2
+text = "1 selected"
+vertical_alignment = 1
+
+[node name="ExitMultiSelect" type="Button" parent="MarginContainer/MainColumn/MultiSelectBar" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(118, 36)
+layout_mode = 2
+focus_mode = 0
+text = "Exit Multi-Select"
+
+[node name="CreateFolder" type="Button" parent="MarginContainer/MainColumn/MultiSelectBar" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+focus_mode = 0
+text = "Create Folder"
+
+[node name="MergeLayers" type="Button" parent="MarginContainer/MainColumn/MultiSelectBar" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+focus_mode = 0
+text = "Merge Layers"
+
+[node name="DuplicateLayers" type="Button" parent="MarginContainer/MainColumn/MultiSelectBar" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+focus_mode = 0
+text = "Duplicate"
+
+[node name="LayerScroll" type="ScrollContainer" parent="MarginContainer/MainColumn"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 vertical_scroll_mode = 0
 
-[node name="LayerRow" type="HBoxContainer" parent="MarginContainer/LayerScroll"]
+[node name="LayerContent" type="VBoxContainer" parent="MarginContainer/MainColumn/LayerScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 2
+
+[node name="GroupBracketLane" type="Control" parent="MarginContainer/MainColumn/LayerScroll/LayerContent"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(1, 28)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="LayerRow" type="HBoxContainer" parent="MarginContainer/MainColumn/LayerScroll/LayerContent"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 0
 theme_override_constants/separation = 6
 
-[node name="AddLayer" type="Button" parent="MarginContainer/LayerScroll/LayerRow" groups=["UIButtons"]]
+[node name="AddLayer" type="Button" parent="MarginContainer/MainColumn/LayerScroll/LayerContent/LayerRow" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(104, 104)
 layout_mode = 2
