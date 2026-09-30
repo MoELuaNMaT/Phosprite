@@ -93,31 +93,20 @@ func _draw_line_measurement() -> void:
 	var font_size := Themes.get_font_size()
 	var length_px := roundi(line_length)
 	var label := text_server.format_number(str(length_px)) + "px"
-	var text_size := font.get_string_size(
-		label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size
-	)
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
 
 	# Leave a real gap in the dimension line for the upright label.
 	var half_label_extent_screen := (
-		text_size.x * absf(screen_direction.x) + text_size.y * absf(screen_direction.y)
-	) * 0.5 + LINE_MEASUREMENT_PADDING_SCREEN
+		(text_size.x * absf(screen_direction.x) + text_size.y * absf(screen_direction.y)) * 0.5
+		+ LINE_MEASUREMENT_PADDING_SCREEN
+	)
 	var screen_pixels_per_canvas_pixel := screen_delta.length() / line_length
 	var half_gap := half_label_extent_screen / screen_pixels_per_canvas_pixel
 	var line_direction := line_delta / line_length
 	var line_width := LINE_MEASUREMENT_WIDTH_SCREEN / maxf(absf(canvas_zoom.x), 0.001)
 	if half_gap < line_length * 0.5:
-		draw_line(
-			measure_start,
-			measure_center - line_direction * half_gap,
-			line_color,
-			line_width
-		)
-		draw_line(
-			measure_center + line_direction * half_gap,
-			measure_end,
-			line_color,
-			line_width
-		)
+		draw_line(measure_start, measure_center - line_direction * half_gap, line_color, line_width)
+		draw_line(measure_center + line_direction * half_gap, measure_end, line_color, line_width)
 
 	var tick_half := canvas_normal_per_screen_pixel * (LINE_MEASUREMENT_TICK_SCREEN * 0.5)
 	draw_line(measure_start - tick_half, measure_start + tick_half, line_color, line_width)
@@ -125,8 +114,9 @@ func _draw_line_measurement() -> void:
 
 	# Counter-transform only the label: position follows the line, glyphs stay upright on screen.
 	var label_screen_pos := (measure_center * canvas_zoom).rotated(viewport_rotation)
-	var label_pos := label_screen_pos + Vector2(
-		-text_size.x * 0.5, font.get_ascent(font_size) - text_size.y * 0.5
+	var label_pos := (
+		label_screen_pos
+		+ Vector2(-text_size.x * 0.5, font.get_ascent(font_size) - text_size.y * 0.5)
 	)
 	draw_set_transform(Vector2.ZERO, -viewport_rotation, Vector2.ONE / canvas_zoom)
 	draw_string(
@@ -138,15 +128,7 @@ func _draw_line_measurement() -> void:
 		font_size,
 		Color(0.0, 0.0, 0.0, 0.8)
 	)
-	draw_string(
-		font,
-		label_pos,
-		label,
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1.0,
-		font_size,
-		line_color
-	)
+	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, line_color)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
