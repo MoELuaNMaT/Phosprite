@@ -579,6 +579,7 @@ func _rebuild_group_brackets() -> void:
 		group_bracket_lane.visible = false
 	group_bracket_lane.size.x = maxf(layer_row.size.x, group_bracket_lane.size.x)
 
+
 func _ensure_current_layer_visible() -> void:
 	var project := _bound_project
 	if project == null or not is_instance_valid(scroll_container):
