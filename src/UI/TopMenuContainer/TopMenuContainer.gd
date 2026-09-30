@@ -85,8 +85,6 @@ var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 @onready var layout_from_option_button := %LayoutFrom as OptionButton
 @onready var return_home_button := %ReturnHome as Button
 
-@onready var greyscale_vision: ColorRect = main_ui.find_child("GreyscaleVision")
-
 
 class Dialog:
 	## This class is used to help with lazy loading dialog scenes in order to
@@ -1082,8 +1080,6 @@ func _on_delete_layout_confirmation_visibility_changed() -> void:
 
 func _toggle_greyscale_view() -> void:
 	Global.greyscale_view = !Global.greyscale_view
-	greyscale_vision.visible = Global.greyscale_view
-	view_menu.set_item_checked(Global.ViewMenu.GREYSCALE_VIEW, Global.greyscale_view)
 
 
 func _toggle_mirror_view() -> void:
