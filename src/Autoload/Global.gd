@@ -26,6 +26,7 @@ signal transform_content_canceled(project: Project)
 signal font_loaded  ## Emitted when a new font has been loaded, or an old one gets unloaded.
 signal collapse_main_menu_changed  ## Emitted when [member collapse_main_menu] changes.
 signal single_tool_mode_changed(mode: bool)  ## Emitted when [member single_tool_mode] changes.
+signal greyscale_view_changed(enabled: bool)
 ## Emitted when [member share_options_between_tools] changes.
 signal share_options_between_tools_changed(mode: bool)
 @warning_ignore("unused_signal")
@@ -654,7 +655,18 @@ var cross_cursor := true
 
 #region View menu options
 ## If [code]true[/code], the canvas is in greyscale.
-var greyscale_view := false
+var greyscale_view := false:
+	set(value):
+		if value == greyscale_view:
+			return
+		greyscale_view = value
+		if is_instance_valid(control):
+			var greyscale_vision := control.find_child("GreyscaleVision", true, false) as ColorRect
+			if is_instance_valid(greyscale_vision):
+				greyscale_vision.visible = value
+		if is_instance_valid(top_menu_container) and is_instance_valid(top_menu_container.view_menu):
+			top_menu_container.view_menu.set_item_checked(ViewMenu.GREYSCALE_VIEW, value)
+		greyscale_view_changed.emit(value)
 ## If [code]true[/code], the content of canvas is flipped.
 var mirror_view := false
 ## If [code]true[/code], the grid is visible.
