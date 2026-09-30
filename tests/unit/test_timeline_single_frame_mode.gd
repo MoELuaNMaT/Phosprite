@@ -485,7 +485,7 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 	check_has(
 		strip_source,
-		"layer_opacity_slider.value = layer.opacity * 100.0",
+		"_set_opacity_slider_value(layer.opacity * 100.0)",
 		"the opacity control must refresh from the active layer",
 	)
 	check_has(
