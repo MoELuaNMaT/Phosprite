@@ -11,6 +11,7 @@ const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
 const UIProfileController := preload("res://src/UI/Workspace/WorkspaceUIProfileController.gd")
 const UIProfile2 := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
+const UIProfile3 := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 
 
 func _make_live_fixture(
@@ -1775,7 +1776,32 @@ func test_ui_profile_2_contract_keeps_primary_tools_inside_palette() -> void:
 	)
 
 
-func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> void:
+func test_ui_profile_3_contract_matches_procreate_entry_model() -> void:
+	check_eq(
+		UIProfile3.PRIMARY_TOOLS,
+		[&"Pencil", &"Eraser"],
+		"profile 3 should expose Pencil and Eraser as the two direct tool entries",
+	)
+	check_true(
+		UIProfile3.is_workspace_embedded_module(Builtins.TOOLS_ID),
+		"profile 3 should replace the standalone Tools panel with top-bar entries",
+	)
+	check_true(
+		UIProfile3.is_workspace_embedded_module(Builtins.PALETTE_ID),
+		"profile 3 should replace standalone Palette & Color with the color entry popup",
+	)
+	check_false(
+		UIProfile3.is_workspace_embedded_module(Builtins.PREVIEW_ID),
+		"Preview remains a real Workspace panel in profile 3",
+	)
+	check_eq(
+		UIProfile3.PREVIEW_RECT.position,
+		Vector2(8.0, 8.0),
+		"profile 3 Preview should be anchored at the workspace top-left",
+	)
+
+
+func test_profile_3_parks_tools_and_palette_and_keeps_normal_profiles_isolated() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
 	var surface := fixture["surface"] as WorkspaceSurface
@@ -1788,12 +1814,20 @@ func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> vo
 
 	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
 	var profile_one_tools_placement := surface.get_module_placement(Builtins.TOOLS_ID)
+	var profile_one_palette_placement := surface.get_module_placement(Builtins.PALETTE_ID)
+	var profile_one_preview_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_ne(
 		profile_one_tools_placement,
 		WorkspaceSurface.Placement.NONE,
-		"profile 1 should begin with a standalone Tools placement",
+		"profile 1 should begin with standalone Tools",
+	)
+	check_ne(
+		profile_one_palette_placement,
+		WorkspaceSurface.Placement.NONE,
+		"profile 1 should begin with standalone Palette & Color",
 	)
 	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
+
 	check_true(controller.switch_profile(2), "profile 2 should activate")
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
@@ -1801,11 +1835,70 @@ func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> vo
 		"profile 2 should park Tools",
 	)
 	check_false(store.has_layout_slot(3), "profile 3 should still be unused before first switch")
-	check_true(controller.switch_profile(3), "first switch to profile 3 should succeed")
+
+	check_true(controller.switch_profile(3), "profile 3 should activate")
+	check_eq(migration.get_ui_profile(), 3, "profile 3 should reach the implementation hook")
+	check_true(
+		surface.is_module_parked(Builtins.TOOLS_ID),
+		"profile 3 must park the original Tools module rather than destroy it",
+	)
+	check_true(
+		surface.is_module_parked(Builtins.PALETTE_ID),
+		"profile 3 must park the original Palette & Color module rather than destroy it",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.TOOLS_ID),
+		WorkspaceSurface.Placement.NONE,
+		"profile 3 should remove standalone Tools from workspace geometry",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PALETTE_ID),
+		WorkspaceSurface.Placement.NONE,
+		"profile 3 should remove standalone Palette & Color from workspace geometry",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PREVIEW_ID),
+		WorkspaceSurface.Placement.FLOATING,
+		"profile 3 Preview should remain a floating Workspace panel",
+	)
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		UIProfile3.PREVIEW_RECT,
+		"profile 3 should move Preview to the top-left compact position",
+	)
+	check_false(
+		migration.is_panel_visible(Builtins.TOOLS_ID),
+		"Window visibility must report embedded Tools as hidden in profile 3",
+	)
+	check_false(
+		migration.is_panel_visible(Builtins.PALETTE_ID),
+		"Window visibility must report embedded Palette as hidden in profile 3",
+	)
+	check_false(
+		migration.set_panel_visible(Builtins.TOOLS_ID, true),
+		"profile 3 must reject reopening the standalone Tools panel",
+	)
+	check_false(
+		migration.set_panel_visible(Builtins.PALETTE_ID, true),
+		"profile 3 must reject reopening standalone Palette & Color",
+	)
+
+	check_false(store.has_layout_slot(4), "profile 4 should still be unused before first switch")
+	check_true(controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed")
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
 		profile_one_tools_placement,
-		"unused profile 3 must seed from normal UI instead of profile 2 composition",
+		"unused normal profile 4 must seed standalone Tools from profile 1",
+	)
+	check_eq(
+		surface.get_module_placement(Builtins.PALETTE_ID),
+		profile_one_palette_placement,
+		"unused normal profile 4 must seed Palette & Color from profile 1",
+	)
+	check_eq(
+		surface.get_floating_rect(Builtins.PREVIEW_ID),
+		profile_one_preview_rect,
+		"unused normal profile 4 must not inherit profile 3's forced Preview position",
 	)
 	_free_fixture(fixture)
 
