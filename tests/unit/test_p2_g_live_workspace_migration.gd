@@ -1884,7 +1884,9 @@ func test_profile_3_parks_tools_and_palette_and_keeps_normal_profiles_isolated()
 	)
 
 	check_false(store.has_layout_slot(4), "profile 4 should still be unused before first switch")
-	check_true(controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed")
+	check_true(
+		controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed"
+	)
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
 		profile_one_tools_placement,
