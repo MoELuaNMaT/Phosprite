@@ -15,7 +15,12 @@ var _cards_by_layer: Dictionary = {}
 var _last_tap_msec := -1
 var _last_tap_layer := -1
 var _last_tap_position := Vector2.INF
+var _settings_layer: BaseLayer
 
+@onready var layer_settings_panel := %LayerSettingsPanel as PanelContainer
+@onready var current_layer_name := %CurrentLayerName as Label
+@onready var layer_opacity_slider := %OpacitySlider as ValueSlider
+@onready var layer_style_button := %LayerStyle as Button
 @onready var layer_content := %LayerContent as Control
 @onready var group_bracket_lane := %GroupBracketLane as Control
 @onready var layer_row := %LayerRow as HBoxContainer
@@ -30,6 +35,8 @@ var _last_tap_position := Vector2.INF
 
 
 func _ready() -> void:
+	layer_opacity_slider.value_changed.connect(_on_layer_opacity_changed)
+	layer_style_button.pressed.connect(_on_layer_style_pressed)
 	add_layer_button.pressed.connect(_on_add_layer_pressed)
 	exit_multiselect_button.pressed.connect(_on_exit_multiselect_pressed)
 	create_folder_button.pressed.connect(_on_create_folder_pressed)
@@ -38,6 +45,7 @@ func _ready() -> void:
 	Global.cel_switched.connect(_on_cel_switched)
 	set_process(true)
 	set_project(Global.current_project)
+	_sync_layer_settings()
 
 
 func _process(_delta: float) -> void:
@@ -45,6 +53,7 @@ func _process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	_disconnect_settings_layer()
 	_unbind_project()
 	_gesture_resolver.reset()
 	if Global.cel_switched.is_connected(_on_cel_switched):
@@ -75,6 +84,7 @@ func refresh() -> void:
 		_displayed_frame = -1
 		multiselect_mode = false
 		multiselect_bar.hide()
+		_sync_layer_settings()
 		return
 	_displayed_frame = project.current_frame
 	for visual_index in project.layers.size():
@@ -90,6 +100,7 @@ func refresh() -> void:
 		card.pointer_cancel.connect(_on_card_pointer_cancel)
 		_cards_by_layer[layer_index] = card
 	_update_multiselect_bar()
+	_sync_layer_settings()
 	call_deferred("_sync_content_geometry")
 	call_deferred("_rebuild_group_brackets")
 	call_deferred("_ensure_current_layer_visible")
@@ -103,6 +114,7 @@ func sync_selection() -> void:
 		if child is SingleFrameLayerCard:
 			(child as SingleFrameLayerCard)._sync_selected()
 	_update_multiselect_bar()
+	_sync_layer_settings()
 	call_deferred("_ensure_current_layer_visible")
 
 
@@ -175,6 +187,97 @@ func _on_cel_switched() -> void:
 		refresh()
 	else:
 		sync_selection()
+
+
+func _on_layer_opacity_changed(value: float) -> void:
+	var project := _bound_project
+	if (
+		project == null
+		or project != Global.current_project
+		or project.current_layer < 0
+		or project.current_layer >= project.layers.size()
+	):
+		return
+	var layer := project.layers[project.current_layer]
+	var new_opacity := value / 100.0
+	if is_equal_approx(layer.opacity, new_opacity):
+		return
+	if Global.layer_opacity_undoable:
+		project.undo_redo.create_action(
+			"Change Layer Opacity", UndoRedo.MergeMode.MERGE_ENDS
+		)
+		project.undo_redo.add_do_property(layer, "opacity", new_opacity)
+		project.undo_redo.add_undo_property(layer, "opacity", layer.opacity)
+		project.undo_redo.add_do_method(Global.canvas.queue_redraw)
+		project.undo_redo.add_undo_method(Global.canvas.queue_redraw)
+		project.undo_redo.add_do_method(_sync_layer_settings)
+		project.undo_redo.add_undo_method(_sync_layer_settings)
+		project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
+		project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
+		project.undo_redo.commit_action()
+	else:
+		layer.opacity = new_opacity
+		Global.canvas.queue_redraw()
+		_sync_layer_settings()
+
+
+func _on_layer_style_pressed() -> void:
+	if not is_instance_valid(Global.animation_timeline):
+		return
+	Global.animation_timeline.open_current_layer_effects()
+
+
+func _sync_layer_settings() -> void:
+	if not is_instance_valid(layer_settings_panel):
+		return
+	var project := _bound_project
+	var has_layer := (
+		project != null
+		and project == Global.current_project
+		and project.current_layer >= 0
+		and project.current_layer < project.layers.size()
+	)
+	layer_settings_panel.modulate.a = 1.0 if has_layer else 0.55
+	layer_opacity_slider.editable = has_layer
+	layer_style_button.disabled = not has_layer
+	if not has_layer:
+		_disconnect_settings_layer()
+		current_layer_name.text = tr("No layer")
+		layer_opacity_slider.set_block_signals(true)
+		layer_opacity_slider.value = 100.0
+		layer_opacity_slider.set_block_signals(false)
+		return
+
+	var layer := project.layers[project.current_layer]
+	_bind_settings_layer(layer)
+	current_layer_name.text = layer.name
+	layer_opacity_slider.set_block_signals(true)
+	layer_opacity_slider.value = layer.opacity * 100.0
+	layer_opacity_slider.set_block_signals(false)
+	layer_style_button.disabled = layer is AudioLayer
+
+
+func _bind_settings_layer(layer: BaseLayer) -> void:
+	if _settings_layer == layer:
+		return
+	_disconnect_settings_layer()
+	_settings_layer = layer
+	if is_instance_valid(_settings_layer):
+		_settings_layer.name_changed.connect(_on_settings_layer_name_changed)
+
+
+func _disconnect_settings_layer() -> void:
+	if not is_instance_valid(_settings_layer):
+		_settings_layer = null
+		return
+	if _settings_layer.name_changed.is_connected(_on_settings_layer_name_changed):
+		_settings_layer.name_changed.disconnect(_on_settings_layer_name_changed)
+	_settings_layer = null
+
+
+func _on_settings_layer_name_changed() -> void:
+	if is_instance_valid(_settings_layer):
+		current_layer_name.text = _settings_layer.name
 
 
 func _on_add_layer_pressed() -> void:
