@@ -454,7 +454,6 @@ func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void
 	)
 
 
-
 func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> void:
 	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
 	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
@@ -496,7 +495,7 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 	check_has(
 		strip_source,
-		'project.undo_redo.create_action(\n\t\t\t"Change Layer Opacity"',
+		'project.undo_redo.create_action("Change Layer Opacity", UndoRedo.MergeMode.MERGE_ENDS)',
 		"single-frame opacity changes must remain undoable",
 	)
 	check_has(
