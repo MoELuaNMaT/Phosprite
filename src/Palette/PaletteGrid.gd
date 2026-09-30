@@ -118,50 +118,47 @@ func init_swatch(swatch: PaletteSwatch) -> void:
 
 
 ## Called when the color changes, either the left or the right, determined by [param mouse_button].
-## If current palette has [param color_info], then select the first slot that has it.
-## This is helpful when we select color indirectly (e.g through colorpicker)
+## Palette selection is derived from the currently assigned tool color. A swatch is selected only
+## when its Color value is exactly equal to the assigned color. An incoming palette index is only
+## a preferred location for duplicate colors; it never overrides a color mismatch.
 func find_and_select_color(color_info: Dictionary, mouse_button: int) -> void:
-	var target_color: Color = color_info.get("color", Color(0, 0, 0, 0))
-	var palette_color_index: int = color_info.get("index", -1)
 	if not is_instance_valid(current_palette):
 		return
+	var target_color: Color = color_info.get("color", Color(0, 0, 0, 0))
+	var preferred_index: int = color_info.get("index", -1)
 	var selected_index := Palettes.current_palette_get_selected_color_index(mouse_button)
-	if palette_color_index != -1:  # If color has a defined index in palette then prioritize index
-		if selected_index == palette_color_index:  # Index already selected
-			return
-		select_swatch(mouse_button, palette_color_index, selected_index)
-		match mouse_button:
-			MOUSE_BUTTON_LEFT:
-				Palettes.left_selected_color = palette_color_index
-			MOUSE_BUTTON_RIGHT:
-				Palettes.right_selected_color = palette_color_index
-		return
-	else:  # If it doesn't then select the first match in the palette
-		if get_swatch_color(selected_index) == target_color:  # Color already selected
-			return
-		for color_ind in swatches.size():
-			if (
-				target_color.is_equal_approx(swatches[color_ind].color)
-				or target_color.to_html() == swatches[color_ind].color.to_html()
-			):
-				var index := convert_grid_index_to_palette_index(color_ind)
-				select_swatch(mouse_button, index, selected_index)
-				match mouse_button:
-					MOUSE_BUTTON_LEFT:
-						Palettes.left_selected_color = index
-					MOUSE_BUTTON_RIGHT:
-						Palettes.right_selected_color = index
-				return
-	# Unselect swatches when tools color is changed
-	var swatch_to_unselect := -1
-	if mouse_button == MOUSE_BUTTON_LEFT:
-		swatch_to_unselect = Palettes.left_selected_color
-		Palettes.left_selected_color = -1
-	elif mouse_button == MOUSE_BUTTON_RIGHT:
-		swatch_to_unselect = Palettes.right_selected_color
-		Palettes.right_selected_color = -1
+	var matching_index := _find_exact_color_index(target_color, preferred_index)
 
-	unselect_swatch(mouse_button, swatch_to_unselect)
+	if matching_index == selected_index:
+		return
+	if matching_index >= 0:
+		select_swatch(mouse_button, matching_index, selected_index)
+	else:
+		unselect_swatch(mouse_button, selected_index)
+
+	match mouse_button:
+		MOUSE_BUTTON_LEFT:
+			Palettes.left_selected_color = matching_index
+		MOUSE_BUTTON_RIGHT:
+			Palettes.right_selected_color = matching_index
+
+
+func _find_exact_color_index(target_color: Color, preferred_index := -1) -> int:
+	if not is_instance_valid(current_palette):
+		return -1
+
+	if preferred_index >= 0:
+		var preferred_color = current_palette.get_color(preferred_index)
+		if preferred_color != null and target_color == preferred_color:
+			return preferred_index
+
+	for palette_index in current_palette.colors_max:
+		if palette_index == preferred_index:
+			continue
+		var palette_color = current_palette.get_color(palette_index)
+		if palette_color != null and target_color == palette_color:
+			return palette_index
+	return -1
 
 
 ## Displays a left/right highlight over a swatch
