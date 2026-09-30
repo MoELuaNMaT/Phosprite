@@ -269,8 +269,8 @@ func test_single_frame_layer_strip_is_horizontal_and_keeps_add_layer_at_tail() -
 	)
 	check_has(
 		source,
-		"layer_row.move_child(card, layer_row.get_child_count() - 2)",
-		"every layer card must remain immediately before the trailing new-layer button",
+		"layer_row.move_child(card, layer_row.get_child_count() - 3)",
+		"layer cards must stay before the temporary menu and trailing new-layer button",
 	)
 	check_has(
 		source,
@@ -432,10 +432,10 @@ func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void
 		'[node name="MultiSelectBar" type="HBoxContainer"',
 		"multi-select needs a temporary action bar"
 	)
-	check_has(scene, 'text = "Exit Multi-Select"', "action bar must expose exit")
-	check_has(scene, 'text = "Create Folder"', "action bar must expose folder creation")
-	check_has(scene, 'text = "Merge Layers"', "action bar must expose layer merge")
-	check_has(scene, 'text = "Duplicate"', "action bar must expose duplicate")
+	check_has(scene, '[node name="ExitMultiSelect" type="Button"', "action menu must expose exit")
+	check_has(scene, '[node name="CreateFolder" type="Button"', "action menu must expose folder creation")
+	check_has(scene, '[node name="MergeLayers" type="Button"', "action menu must expose layer merge")
+	check_has(scene, '[node name="DuplicateLayers" type="Button"', "action menu must expose duplicate")
 	check_has(
 		source,
 		"Global.animation_timeline.flatten_layers(indices, false)",
@@ -481,4 +481,9 @@ func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
 		bracket_source,
 		"label.text = group_layer.name",
 		"the folder bracket must display the real GroupLayer name",
+	)
+	check_has(
+		strip_source,
+		"group_bracket_lane.size = layer_content.size",
+		"folder brackets must overlay the card lane without changing saved Timeline height",
 	)
