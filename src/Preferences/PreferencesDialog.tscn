@@ -1618,32 +1618,6 @@ mouse_default_cursor_shape = 2
 button_pressed = true
 text = "On"
 
-[node name="Label3" type="Label" parent="HSplitContainer/VBoxContainer/ScrollContainer/RightSide/Cursors/CursorsContainer" unique_id=44218030]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Show left tool icon"
-
-[node name="LeftToolIconCheckbox" type="CheckBox" parent="HSplitContainer/VBoxContainer/ScrollContainer/RightSide/Cursors/CursorsContainer" unique_id=1999405425]
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Displays an icon of the selected left tool next to the cursor on the canvas"
-mouse_default_cursor_shape = 2
-button_pressed = true
-text = "On"
-
-[node name="Label4" type="Label" parent="HSplitContainer/VBoxContainer/ScrollContainer/RightSide/Cursors/CursorsContainer" unique_id=36547986]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Show right tool icon"
-
-[node name="RightToolIconCheckbox" type="CheckBox" parent="HSplitContainer/VBoxContainer/ScrollContainer/RightSide/Cursors/CursorsContainer" unique_id=28317713]
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Displays an icon of the selected right tool next to the cursor on the canvas"
-mouse_default_cursor_shape = 2
-button_pressed = true
-text = "On"
-
 [node name="Label5" type="Label" parent="HSplitContainer/VBoxContainer/ScrollContainer/RightSide/Cursors/CursorsContainer" unique_id=2092951659]
 layout_mode = 2
 size_flags_horizontal = 3
