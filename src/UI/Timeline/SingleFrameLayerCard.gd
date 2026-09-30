@@ -39,10 +39,7 @@ func _exit_tree() -> void:
 
 
 func setup(
-	project: Project,
-	new_layer_index: int,
-	new_frame_index: int,
-	host: SingleFrameLayerStrip = null
+	project: Project, new_layer_index: int, new_frame_index: int, host: SingleFrameLayerStrip = null
 ) -> void:
 	_disconnect_bound_data()
 	_project = project
@@ -104,10 +101,7 @@ func _on_gui_input(event: InputEvent) -> void:
 		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if _should_suppress_mouse_after_touch(
-			Time.get_ticks_msec(),
-			_last_touch_msec,
-			mouse_button.position,
-			_last_touch_position
+			Time.get_ticks_msec(), _last_touch_msec, mouse_button.position, _last_touch_position
 		):
 			accept_event()
 			return
@@ -152,10 +146,7 @@ func _to_global_position(local_position: Vector2) -> Vector2:
 
 
 static func _should_suppress_mouse_after_touch(
-	now_msec: int,
-	last_touch_msec: int,
-	mouse_position: Vector2,
-	last_touch_position: Vector2
+	now_msec: int, last_touch_msec: int, mouse_position: Vector2, last_touch_position: Vector2
 ) -> bool:
 	if last_touch_msec < 0:
 		return false
