@@ -84,7 +84,7 @@ func refresh() -> void:
 		var card := LAYER_CARD_SCENE.instantiate() as SingleFrameLayerCard
 		layer_row.add_child(card)
 		layer_row.move_child(card, layer_row.get_child_count() - 2)
-		card.setup(project, layer_index, project.current_frame, self)
+		card.setup(project, layer_index, project.current_frame)
 		card.pointer_down.connect(_on_card_pointer_down)
 		card.pointer_up.connect(_on_card_pointer_up)
 		card.pointer_cancel.connect(_on_card_pointer_cancel)
