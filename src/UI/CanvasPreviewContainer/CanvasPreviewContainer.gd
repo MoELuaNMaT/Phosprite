@@ -18,8 +18,20 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var canvas_preview := $"%CanvasPreview" as Node2D
 @onready var camera := $"%CameraPreview" as CanvasCamera
 @onready var play_button := $"%PlayButton" as Button
+@onready var grayscale_button := $"%GrayscaleButton" as Button
 @onready var start_frame := $"%StartFrame" as ValueSlider
 @onready var end_frame := $"%EndFrame" as ValueSlider
+
+
+func _ready() -> void:
+	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
+		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+	_on_greyscale_view_changed(Global.greyscale_view)
+
+
+func _exit_tree() -> void:
+	if Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
+		Global.greyscale_view_changed.disconnect(_on_greyscale_view_changed)
 
 
 func _input(event: InputEvent) -> void:
@@ -162,6 +174,16 @@ func _preview_navigation_geometry() -> Dictionary:
 	var first: Vector2 = _preview_touches[_navigation_ids[0]]
 	var second: Vector2 = _preview_touches[_navigation_ids[1]]
 	return NAVIGATION.navigation_pair_geometry(first, second)
+
+
+func _on_GrayscaleButton_toggled(button_pressed: bool) -> void:
+	if Global.greyscale_view != button_pressed:
+		Global.greyscale_view = button_pressed
+
+
+func _on_greyscale_view_changed(enabled: bool) -> void:
+	if is_instance_valid(grayscale_button):
+		grayscale_button.set_pressed_no_signal(enabled)
 
 
 func _on_PlayButton_toggled(button_pressed: bool) -> void:
