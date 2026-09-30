@@ -16,12 +16,12 @@ var _last_tap_msec := -1
 var _last_tap_layer := -1
 var _last_tap_position := Vector2.INF
 
-@onready var layer_content := %LayerContent as VBoxContainer
+@onready var layer_content := %LayerContent as Control
 @onready var group_bracket_lane := %GroupBracketLane as Control
 @onready var layer_row := %LayerRow as HBoxContainer
 @onready var scroll_container := %LayerScroll as ScrollContainer
 @onready var add_layer_button := %AddLayer as Button
-@onready var multiselect_bar := %MultiSelectBar as HBoxContainer
+@onready var multiselect_bar := %MultiSelectBar as PanelContainer
 @onready var selection_count := %SelectionCount as Label
 @onready var exit_multiselect_button := %ExitMultiSelect as Button
 @onready var create_folder_button := %CreateFolder as Button
@@ -64,7 +64,7 @@ func refresh() -> void:
 		return
 	_cards_by_layer.clear()
 	for child in layer_row.get_children():
-		if child == add_layer_button:
+		if child == add_layer_button or child == multiselect_bar:
 			continue
 		layer_row.remove_child(child)
 		child.queue_free()
@@ -83,13 +83,14 @@ func refresh() -> void:
 			continue
 		var card := LAYER_CARD_SCENE.instantiate() as SingleFrameLayerCard
 		layer_row.add_child(card)
-		layer_row.move_child(card, layer_row.get_child_count() - 2)
+		layer_row.move_child(card, layer_row.get_child_count() - 3)
 		card.setup(project, layer_index, project.current_frame)
 		card.pointer_down.connect(_on_card_pointer_down)
 		card.pointer_up.connect(_on_card_pointer_up)
 		card.pointer_cancel.connect(_on_card_pointer_cancel)
 		_cards_by_layer[layer_index] = card
 	_update_multiselect_bar()
+	call_deferred("_sync_content_geometry")
 	call_deferred("_rebuild_group_brackets")
 	call_deferred("_ensure_current_layer_visible")
 
@@ -114,6 +115,7 @@ func set_multiselect_mode(enabled: bool, initial_layer := -1) -> void:
 	if not is_instance_valid(multiselect_bar):
 		return
 	multiselect_bar.visible = enabled
+	call_deferred("_sync_content_geometry")
 	var project := _bound_project
 	if project == null or project != Global.current_project:
 		return
@@ -537,7 +539,22 @@ func _clear_group_brackets() -> void:
 	for child in group_bracket_lane.get_children():
 		child.free()
 	group_bracket_lane.visible = false
-	group_bracket_lane.custom_minimum_size = Vector2(1.0, 28.0)
+
+
+func _sync_content_geometry() -> void:
+	if (
+		not is_instance_valid(layer_content)
+		or not is_instance_valid(layer_row)
+		or not is_instance_valid(group_bracket_lane)
+	):
+		return
+	var row_size := layer_row.get_combined_minimum_size()
+	row_size.y = maxf(row_size.y, 126.0)
+	layer_row.size = row_size
+	layer_content.custom_minimum_size = row_size
+	layer_content.size = row_size
+	group_bracket_lane.position = Vector2.ZERO
+	group_bracket_lane.size = row_size
 
 
 func _rebuild_group_brackets() -> void:
@@ -548,7 +565,8 @@ func _rebuild_group_brackets() -> void:
 	if project != _bound_project or not is_instance_valid(group_bracket_lane):
 		return
 	_clear_group_brackets()
-	var max_lane := -1
+	_sync_content_geometry()
+	var has_brackets := false
 	for layer in project.layers:
 		if not layer is GroupLayer:
 			continue
@@ -564,20 +582,13 @@ func _rebuild_group_brackets() -> void:
 		if is_inf(left) or is_inf(right) or right <= left:
 			continue
 		var lane := layer.get_hierarchy_depth()
-		max_lane = maxi(max_lane, lane)
+		has_brackets = true
 		var bracket := GROUP_BRACKET_SCENE.instantiate() as SingleFrameLayerGroupBracket
 		group_bracket_lane.add_child(bracket)
 		bracket.setup(layer)
 		bracket.set_span(left, right - left, lane)
-	if max_lane >= 0:
-		group_bracket_lane.visible = true
-		group_bracket_lane.custom_minimum_size = Vector2(
-			maxf(layer_row.size.x, 1.0),
-			(max_lane + 1) * SingleFrameLayerGroupBracket.BRACKET_HEIGHT
-		)
-	else:
-		group_bracket_lane.visible = false
-	group_bracket_lane.size.x = maxf(layer_row.size.x, group_bracket_lane.size.x)
+	group_bracket_lane.visible = has_brackets
+	group_bracket_lane.size = layer_content.size
 
 
 func _ensure_current_layer_visible() -> void:
