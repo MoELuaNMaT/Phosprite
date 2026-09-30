@@ -9,6 +9,9 @@ signal configured_export_canceled(project: Project)
 
 const SHARE_SERVICE := preload("res://src/PlatformServices/ShareService.gd")
 const EXPORT_PROFILE := preload("res://src/ProjectLibrary/ExportProfile.gd")
+const TRANSPARENT_CHECKER := preload("res://src/UI/Nodes/TransparentChecker.gd")
+const CANVAS_VISUAL_POLICY := preload("res://src/UI/Canvas/CanvasVisualPolicy.gd")
+const PREVIEW_DOCUMENT_SIZE_META := &"phosprite_export_preview_document_size"
 
 var preview_current_frame := 0
 var preview_frames: Array[Texture2D] = []
@@ -36,7 +39,6 @@ var _configured_project: Project
 var _profile_only := false
 
 @onready var tabs: TabBar = $VBoxContainer/TabBar
-@onready var checker: ColorRect = $"%TransparentChecker"
 @onready var previews: GridContainer = $"%Previews"
 
 @onready var spritesheet_orientation: OptionButton = $"%Orientation"
@@ -190,9 +192,9 @@ func set_preview() -> void:
 
 func add_image_preview(image: Image, canvas_number: int = -1) -> void:
 	var container := create_preview_container()
-	var preview := create_preview_rect()
-	preview.texture = ImageTexture.create_from_image(image)
-	container.add_child(preview)
+	var texture := ImageTexture.create_from_image(image)
+	var preview_surface := create_preview_surface(texture, image.get_size())
+	container.add_child(preview_surface)
 
 	if canvas_number != -1:
 		var label := Label.new()
@@ -213,10 +215,12 @@ func add_animated_preview() -> void:
 
 	var container := create_preview_container()
 	container.name = "PreviewContainer"
-	var preview := create_preview_rect()
-	preview.name = "Preview"
-	preview.texture = preview_frames[preview_current_frame]
-	container.add_child(preview)
+	var preview_surface := create_preview_surface(
+		preview_frames[preview_current_frame],
+		_preview_images[preview_current_frame].image.get_size()
+	)
+	preview_surface.name = "PreviewSurface"
+	container.add_child(preview_surface)
 
 	previews.add_child(container)
 	frame_timer.set_one_shot(true)  # wait_time can't change correctly if the timer is playing
@@ -232,13 +236,100 @@ func create_preview_container() -> VBoxContainer:
 	return container
 
 
+func create_preview_surface(texture: Texture2D, document_size: Vector2i) -> Control:
+	var surface := Control.new()
+	surface.name = "PreviewSurface"
+	surface.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	surface.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	surface.custom_minimum_size = Vector2(0, 128)
+	surface.set_meta(PREVIEW_DOCUMENT_SIZE_META, document_size)
+
+	var checker := TRANSPARENT_CHECKER.new() as TransparentChecker
+	checker.name = "TransparentChecker"
+	surface.add_child(checker)
+
+	var preview := create_preview_rect()
+	preview.name = "Preview"
+	preview.texture = texture
+	surface.add_child(preview)
+
+	surface.resized.connect(_layout_preview_surface.bind(surface))
+	call_deferred("_layout_preview_surface", surface)
+	return surface
+
+
 func create_preview_rect() -> TextureRect:
 	var preview := TextureRect.new()
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	return preview
+
+
+static func _fit_preview_rect(available_size: Vector2, document_size: Vector2i) -> Rect2:
+	if (
+		available_size.x <= 0.0
+		or available_size.y <= 0.0
+		or document_size.x <= 0
+		or document_size.y <= 0
+	):
+		return Rect2()
+	var scale_factor := minf(
+		available_size.x / float(document_size.x),
+		available_size.y / float(document_size.y)
+	)
+	var fitted_size := Vector2(document_size) * scale_factor
+	return Rect2((available_size - fitted_size) * 0.5, fitted_size)
+
+
+static func _preview_checker_cell_size(display_size: Vector2, document_size: Vector2i) -> float:
+	if display_size.x <= 0.0 or document_size.x <= 0:
+		return 0.0
+	return CANVAS_VISUAL_POLICY.DOCUMENT_CHECKER_SIZE * display_size.x / float(document_size.x)
+
+
+func _layout_preview_surface(surface: Control) -> void:
+	if not is_instance_valid(surface):
+		return
+	var document_size: Vector2i = surface.get_meta(PREVIEW_DOCUMENT_SIZE_META, Vector2i.ZERO)
+	var display_rect := _fit_preview_rect(surface.size, document_size)
+	var checker := surface.get_node_or_null("TransparentChecker") as TransparentChecker
+	var preview := surface.get_node_or_null("Preview") as TextureRect
+	if not is_instance_valid(checker) or not is_instance_valid(preview):
+		return
+
+	checker.position = display_rect.position
+	checker.size = display_rect.size
+	preview.position = display_rect.position
+	preview.size = display_rect.size
+
+	var checker_material := checker.material as ShaderMaterial
+	if checker_material == null:
+		return
+	checker_material.set_shader_parameter(
+		&"size", _preview_checker_cell_size(display_rect.size, document_size)
+	)
+	checker_material.set_shader_parameter(&"alpha", 1.0)
+	checker_material.set_shader_parameter(&"color1", Global.checker_color_1)
+	checker_material.set_shader_parameter(&"color2", Global.checker_color_2)
+	checker_material.set_shader_parameter(&"offset", Vector2.ZERO)
+	checker_material.set_shader_parameter(&"scale", Vector2.ONE)
+	checker_material.set_shader_parameter(&"rect_size", display_rect.size)
+	checker_material.set_shader_parameter(&"follow_movement", false)
+	checker_material.set_shader_parameter(&"follow_scale", false)
+
+
+func _set_preview_surface_texture(
+	surface: Control, texture: Texture2D, document_size: Vector2i
+) -> void:
+	if not is_instance_valid(surface):
+		return
+	var preview := surface.get_node_or_null("Preview") as TextureRect
+	if not is_instance_valid(preview):
+		return
+	preview.texture = texture
+	surface.set_meta(PREVIEW_DOCUMENT_SIZE_META, document_size)
+	_layout_preview_surface(surface)
 
 
 func remove_previews() -> void:
@@ -384,9 +475,6 @@ func _on_about_to_popup() -> void:
 		path_dialog_popup.current_dir = project.export_directory_path
 	Export.cache_blended_frames(project)
 	show_tab()
-
-	# Set the size of the preview checker
-	checker.size = checker.get_parent().size
 
 
 func _on_tab_bar_tab_changed(tab: Export.ExportTab) -> void:
@@ -615,10 +703,14 @@ func _on_file_exists_alert_custom_action(action: StringName) -> void:
 
 
 func _on_frame_timer_timeout() -> void:
-	var preview_texture_rect: TextureRect = previews.get_node("PreviewContainer/Preview")
-	if not preview_texture_rect:
+	var preview_surface := previews.get_node_or_null("PreviewContainer/PreviewSurface") as Control
+	if not is_instance_valid(preview_surface):
 		return
-	preview_texture_rect.texture = preview_frames[preview_current_frame]
+	_set_preview_surface_texture(
+		preview_surface,
+		preview_frames[preview_current_frame],
+		_preview_images[preview_current_frame].image.get_size()
+	)
 
 	if preview_current_frame == preview_frames.size() - 1:
 		preview_current_frame = 0
