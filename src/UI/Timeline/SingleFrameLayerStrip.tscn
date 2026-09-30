@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/UI/Timeline/SingleFrameLayerStrip.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/graphics/layers/new.png" id="2_new"]
+[ext_resource type="PackedScene" path="res://src/UI/Nodes/Sliders/ValueSlider.tscn" id="3_value_slider"]
+[ext_resource type="Texture2D" path="res://assets/graphics/layers/fx.png" id="4_fx"]
 
 [node name="SingleFrameLayerStrip" type="PanelContainer"]
 size_flags_horizontal = 3
@@ -15,42 +17,95 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="LayerScroll" type="ScrollContainer" parent="MarginContainer"]
+[node name="SingleFrameBody" type="HBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LayerSettingsPanel" type="PanelContainer" parent="MarginContainer/SingleFrameBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 126)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="SettingsColumn" type="VBoxContainer" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CurrentLayerName" type="Label" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+text = "Layer"
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="OpacitySlider" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn" instance=ExtResource("3_value_slider")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+focus_mode = 0
+value = 100.0
+prefix = "Opacity:"
+
+[node name="LayerStyle" type="Button" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+tooltip_text = "Layer effects"
+text = "Layer Style"
+icon = ExtResource("4_fx")
+expand_icon = true
+icon_max_width = 24
+
+[node name="LayerScroll" type="ScrollContainer" parent="MarginContainer/SingleFrameBody"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 vertical_scroll_mode = 0
 
-[node name="LayerContent" type="Control" parent="MarginContainer/LayerScroll"]
+[node name="LayerContent" type="Control" parent="MarginContainer/SingleFrameBody/LayerScroll"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(104, 126)
 layout_mode = 2
 
-[node name="LayerRow" type="HBoxContainer" parent="MarginContainer/LayerScroll/LayerContent"]
+[node name="LayerRow" type="HBoxContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent"]
 unique_name_in_owner = true
 offset_right = 104.0
 offset_bottom = 126.0
 theme_override_constants/separation = 6
 
-[node name="MultiSelectBar" type="PanelContainer" parent="MarginContainer/LayerScroll/LayerContent/LayerRow"]
+[node name="MultiSelectBar" type="PanelContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow"]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(196, 126)
 layout_mode = 2
 
-[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar"]
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar"]
 layout_mode = 2
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="MenuColumn" type="VBoxContainer" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer"]
+[node name="MenuColumn" type="VBoxContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="SelectionCount" type="Label" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn"]
+[node name="SelectionCount" type="Label" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
@@ -58,40 +113,40 @@ text = "1 selected"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ActionGrid" type="GridContainer" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn"]
+[node name="ActionGrid" type="GridContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 columns = 2
 
-[node name="ExitMultiSelect" type="Button" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
+[node name="ExitMultiSelect" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 40)
 layout_mode = 2
 focus_mode = 0
 text = "Exit"
 
-[node name="CreateFolder" type="Button" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
+[node name="CreateFolder" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 40)
 layout_mode = 2
 focus_mode = 0
 text = "Folder"
 
-[node name="MergeLayers" type="Button" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
+[node name="MergeLayers" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 40)
 layout_mode = 2
 focus_mode = 0
 text = "Merge"
 
-[node name="DuplicateLayers" type="Button" parent="MarginContainer/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
+[node name="DuplicateLayers" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 40)
 layout_mode = 2
 focus_mode = 0
 text = "Duplicate"
 
-[node name="AddLayer" type="Button" parent="MarginContainer/LayerScroll/LayerContent/LayerRow" groups=["UIButtons"]]
+[node name="AddLayer" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(104, 104)
 layout_mode = 2
@@ -102,7 +157,7 @@ focus_mode = 0
 mouse_default_cursor_shape = 2
 text = "+"
 
-[node name="GroupBracketLane" type="Control" parent="MarginContainer/LayerScroll/LayerContent"]
+[node name="GroupBracketLane" type="Control" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 0
