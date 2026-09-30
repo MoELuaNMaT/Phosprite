@@ -664,7 +664,10 @@ var greyscale_view := false:
 			var greyscale_vision := control.find_child("GreyscaleVision", true, false) as ColorRect
 			if is_instance_valid(greyscale_vision):
 				greyscale_vision.visible = value
-		if is_instance_valid(top_menu_container) and is_instance_valid(top_menu_container.view_menu):
+		if (
+			is_instance_valid(top_menu_container)
+			and is_instance_valid(top_menu_container.view_menu)
+		):
 			top_menu_container.view_menu.set_item_checked(ViewMenu.GREYSCALE_VIEW, value)
 		greyscale_view_changed.emit(value)
 ## If [code]true[/code], the content of canvas is flipped.
