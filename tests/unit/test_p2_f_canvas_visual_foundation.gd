@@ -114,3 +114,61 @@ func test_canvas_scene_mounts_backdrop_and_boundary_without_input_capture() -> v
 		viewport_source.contains("_canvas_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE"),
 		"visual backdrop must never capture Canvas input"
 	)
+
+
+func test_preview_footer_exposes_synced_grayscale_toggle() -> void:
+	var preview_scene := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
+	)
+	var preview_source := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
+	)
+	var global_source := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
+	var top_menu_source := FileAccess.get_file_as_string(
+		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
+	)
+	check_has(
+		preview_scene,
+		'[node name="GrayscaleButton" type="Button" parent="VBox/Animation"',
+		"Preview footer must expose a dedicated grayscale toggle",
+	)
+	check_has(
+		preview_scene,
+		"toggle_mode = true",
+		"Preview grayscale control must visually stay pressed while grayscale view is active",
+	)
+	check_has(
+		preview_source,
+		"Global.greyscale_view = button_pressed",
+		"Preview grayscale toggle must write the shared editor grayscale state",
+	)
+	check_has(
+		preview_source,
+		"Global.greyscale_view_changed.connect(_on_greyscale_view_changed)",
+		"Preview button must follow grayscale changes made from other entry points",
+	)
+	check_has(
+		preview_source,
+		"grayscale_button.set_pressed_no_signal(enabled)",
+		"external grayscale changes must synchronize the Preview button without recursive toggles",
+	)
+	check_has(
+		global_source,
+		'control.find_child("GreyscaleVision", true, false)',
+		"the shared grayscale state must still control the existing canvas grayscale overlay",
+	)
+	check_has(
+		global_source,
+		"top_menu_container.view_menu.set_item_checked(ViewMenu.GREYSCALE_VIEW, value)",
+		"the shared grayscale state must keep the View menu checkmark synchronized",
+	)
+	check_has(
+		global_source,
+		"greyscale_view_changed.emit(value)",
+		"the shared grayscale state must notify secondary UI entry points",
+	)
+	check_has(
+		top_menu_source,
+		"Global.greyscale_view = !Global.greyscale_view",
+		"the existing View menu must continue toggling the same shared grayscale state",
+	)
