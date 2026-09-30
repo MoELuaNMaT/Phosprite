@@ -429,17 +429,19 @@ func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	check_has(
 		scene,
-		'[node name="MultiSelectBar" type="HBoxContainer"',
+		'[node name="MultiSelectBar" type="PanelContainer"',
 		"multi-select needs a temporary action bar"
 	)
 	check_has(scene, '[node name="ExitMultiSelect" type="Button"', "action menu must expose exit")
 	check_has(
-		scene,
-		'[node name="CreateFolder" type="Button"',
-		"action menu must expose folder creation"
+		scene, '[node name="CreateFolder" type="Button"', "action menu must expose folder creation"
 	)
-	check_has(scene, '[node name="MergeLayers" type="Button"', "action menu must expose layer merge")
-	check_has(scene, '[node name="DuplicateLayers" type="Button"', "action menu must expose duplicate")
+	check_has(
+		scene, '[node name="MergeLayers" type="Button"', "action menu must expose layer merge"
+	)
+	check_has(
+		scene, '[node name="DuplicateLayers" type="Button"', "action menu must expose duplicate"
+	)
 	check_has(
 		source,
 		"Global.animation_timeline.flatten_layers(indices, false)",
