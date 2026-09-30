@@ -1796,8 +1796,8 @@ func test_ui_profile_3_contract_matches_procreate_entry_model() -> void:
 	)
 	check_eq(
 		UIProfile3.PREVIEW_RECT.position,
-		Vector2(8.0, 8.0),
-		"profile 3 Preview should be anchored at the workspace top-left",
+		Vector2.ZERO,
+		"profile 3 Preview should be snapped to the workspace top-left edge",
 	)
 
 
