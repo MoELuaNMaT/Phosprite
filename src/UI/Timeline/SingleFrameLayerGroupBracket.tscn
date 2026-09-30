@@ -1,0 +1,33 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/UI/Timeline/SingleFrameLayerGroupBracket.gd" id="1_script"]
+
+[node name="SingleFrameLayerGroupBracket" type="Control"]
+custom_minimum_size = Vector2(1, 28)
+offset_right = 1.0
+offset_bottom = 28.0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="BracketLine" type="Line2D" parent="."]
+unique_name_in_owner = true
+points = PackedVector2Array(0, 27, 0, 4, 1, 4, 1, 27)
+width = 1.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="FolderName" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+text = "Folder"
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
