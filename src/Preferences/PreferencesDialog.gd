@@ -120,18 +120,6 @@ var preferences: Array[Preference] = [
 		Global.ButtonSize.SMALL
 	),
 	Preference.new(
-		"show_left_tool_icon",
-		"Cursors/CursorsContainer/LeftToolIconCheckbox",
-		"button_pressed",
-		true
-	),
-	Preference.new(
-		"show_right_tool_icon",
-		"Cursors/CursorsContainer/RightToolIconCheckbox",
-		"button_pressed",
-		true
-	),
-	Preference.new(
 		"left_square_indicator_visible",
 		"Cursors/CursorsContainer/LeftIndicatorCheckbox",
 		"button_pressed",
