@@ -26,6 +26,7 @@ var _last_touch_position := Vector2.ZERO
 
 func _ready() -> void:
 	toggle_mode = true
+	pressed.connect(_on_native_pressed)
 	gui_input.connect(_on_gui_input)
 	if not Global.cel_switched.is_connected(_sync_selected):
 		Global.cel_switched.connect(_sync_selected)
@@ -75,6 +76,13 @@ func _disconnect_bound_data() -> void:
 	_layer = null
 	_cel = null
 	_pointer_active = false
+
+
+func _on_native_pressed() -> void:
+	# The Button still receives native press feedback. Restore the authoritative
+	# project selection after its internal toggle so double-tap/long-press never
+	# leaves a stale pressed visual behind.
+	call_deferred("_sync_selected")
 
 
 func _on_gui_input(event: InputEvent) -> void:
