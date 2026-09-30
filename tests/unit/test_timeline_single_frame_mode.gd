@@ -355,3 +355,37 @@ func test_single_frame_layer_selection_never_changes_the_current_frame() -> void
 		"_project == Global.current_project",
 		"stale cards from another project must never accept selection input",
 	)
+
+func test_single_frame_layer_double_click_toggles_visibility_undoably() -> void:
+	var source := FileAccess.get_file_as_string(CARD_SOURCE)
+	check_has(
+		source,
+		"gui_input.connect(_on_gui_input)",
+		"single-frame layer cards must listen for pointer double-click input",
+	)
+	check_has(
+		source,
+		"and event.double_click",
+		"single-frame layer cards must toggle visibility only on a double-click gesture",
+	)
+	check_has(
+		source,
+		'project.undo_redo.create_action("Change Layer Visibility")',
+		"double-click visibility changes must reuse the undoable layer visibility action",
+	)
+	check_has(
+		source,
+		'project.undo_redo.add_do_property(layer, "visible", not layer.visible)',
+		"double-click must invert the target layer visibility",
+	)
+	check_has(
+		source,
+		"Global.canvas.queue_redraw",
+		"double-click visibility changes must redraw the canvas immediately",
+	)
+	check_has(
+		source,
+		"_project == Global.current_project",
+		"stale single-frame cards must not mutate another project's layer visibility",
+	)
+
