@@ -237,24 +237,30 @@ func _sync_layer_settings() -> void:
 		and project.current_layer >= 0
 		and project.current_layer < project.layers.size()
 	)
-	layer_settings_panel.modulate.a = 1.0 if has_layer else 0.55
+	layer_settings_panel.modulate = Color(1.0, 1.0, 1.0, 1.0 if has_layer else 0.55)
 	layer_opacity_slider.editable = has_layer
 	layer_style_button.disabled = not has_layer
 	if not has_layer:
 		_disconnect_settings_layer()
 		current_layer_name.text = tr("No layer")
-		layer_opacity_slider.set_block_signals(true)
-		layer_opacity_slider.value = 100.0
-		layer_opacity_slider.set_block_signals(false)
+		_set_opacity_slider_value(100.0)
 		return
 
 	var layer := project.layers[project.current_layer]
 	_bind_settings_layer(layer)
 	current_layer_name.text = layer.name
-	layer_opacity_slider.set_block_signals(true)
-	layer_opacity_slider.value = layer.opacity * 100.0
-	layer_opacity_slider.set_block_signals(false)
+	_set_opacity_slider_value(layer.opacity * 100.0)
 	layer_style_button.disabled = layer is AudioLayer
+
+
+func _set_opacity_slider_value(value: float) -> void:
+	var callback := Callable(self, "_on_layer_opacity_changed")
+	var was_connected := layer_opacity_slider.value_changed.is_connected(callback)
+	if was_connected:
+		layer_opacity_slider.value_changed.disconnect(callback)
+	layer_opacity_slider.value = value
+	if was_connected:
+		layer_opacity_slider.value_changed.connect(callback)
 
 
 func _bind_settings_layer(layer: BaseLayer) -> void:
