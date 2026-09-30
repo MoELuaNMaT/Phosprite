@@ -10,6 +10,7 @@ enum PointerKind { UNKNOWN, PENCIL, DIRECT, INDIRECT }
 enum FingerPolicy { UNRESTRICTED, FINGER_NAVIGATION_ONLY, PENCIL_PRIORITY }
 
 const COLOR_SAMPLING := preload("res://src/Tools/UtilityTools/ColorSampling.gd")
+const LONG_PRESS_COLOR_INDICATOR := preload("res://src/UI/Canvas/LongPressColorIndicator.gd")
 const POINTER_IDENTITY_SINGLETON := &"PhospritePointerIdentity"
 const CANVAS_TOUCH_BLOCKER_GROUP := &"CanvasTouchBlockers"
 const PREFERENCE_SECTION := "preferences"
@@ -18,6 +19,8 @@ const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const TWO_FINGER_EPSILON := 0.01
 const FINGER_LONG_PRESS_SECONDS := 0.45
 const FINGER_LONG_PRESS_SLOP_PX := 12.0
+const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2
+const LONG_PRESS_INDICATOR_CANVAS_LAYER := 100
 const TWO_FINGER_TAP_MAX_MS := 300
 const TWO_FINGER_TAP_SLOP_PX := 10.0
 
@@ -54,6 +57,8 @@ var _last_navigation_centroid := Vector2.ZERO
 var _last_navigation_distance := 0.0
 var _finger_policy := DEFAULT_FINGER_POLICY
 var _initialized := false
+var _long_press_indicator_layer: CanvasLayer
+var _long_press_indicator: Node2D
 
 
 static func request_touch_color_sample() -> void:
@@ -149,6 +154,7 @@ func reset(canvas: Node2D) -> void:
 	_clear_navigation()
 	_clear_two_finger_tap_candidate()
 	_clear_pointer_identity_pending()
+	_dismiss_long_press_indicator()
 	if is_instance_valid(canvas):
 		canvas.set_adapter_tool_preview_active(false)
 		canvas.queue_redraw()
@@ -442,14 +448,18 @@ func _handle_drag(canvas: Node2D, event: InputEventScreenDrag) -> void:
 			return
 		if bool(state.get("long_press_pick", false)):
 			_sample_active_color(canvas, event.position, COLOR_SAMPLING.TOP_COLOR)
+			_update_long_press_indicator_active(event.position)
 			return
 		if bool(state.get("content_pending", false)):
 			var origin := Vector2(state["content_origin"])
 			if long_press_motion_exceeds_slop(origin, event.position):
 				state["content_pending"] = false
 				_touches[event.index] = state
+				_cancel_long_press_indicator()
 				_start_content(canvas, event.index, origin)
 				_dispatch_motion(canvas, event, int(state["kind"]))
+			else:
+				_update_long_press_indicator_pending(canvas, event.position)
 			return
 		_dispatch_motion(canvas, event, int(state["kind"]))
 		return
@@ -470,6 +480,7 @@ func _begin_pencil_ownership(canvas: Node2D, touch_id: int) -> void:
 	# explicitly preempts it; cancel through the existing Tool boundary, then owns content.
 	if _content_touch_id != -1 and _content_touch_id != touch_id:
 		_cancel_active_tool()
+		_cancel_long_press_indicator()
 		_content_touch_id = -1
 
 	# Pencil takes exclusive canvas ownership. Existing direct touches are suppressed
@@ -497,6 +508,7 @@ func _start_pending_content(canvas: Node2D, touch_id: int, screen_position: Vect
 	state["direct_color_pick"] = false
 	state["content_origin"] = screen_position
 	_touches[touch_id] = state
+	_begin_long_press_indicator(canvas, screen_position)
 	var generation := int(state.get("generation", -1))
 	var timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_SECONDS)
 	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id, generation))
@@ -525,6 +537,7 @@ func _try_begin_long_press(canvas: Node2D, touch_id: int, generation: int) -> vo
 	_touches[touch_id] = state
 	canvas.set_adapter_tool_preview_active(false)
 	_sample_active_color(canvas, current, COLOR_SAMPLING.TOP_COLOR)
+	_activate_long_press_indicator(current)
 
 
 func _start_direct_color_pick(
@@ -589,12 +602,15 @@ func _end_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> vo
 	if bool(state.get("long_press_pick", false)):
 		# The release position is authoritative even if UIKit did not deliver a final drag event.
 		_sample_active_color(canvas, screen_position, COLOR_SAMPLING.TOP_COLOR)
+		_update_long_press_indicator_active(screen_position)
+		_dismiss_long_press_indicator()
 		_content_touch_id = -1
 		canvas.set_adapter_tool_preview_active(false)
 		return
 	if bool(state.get("content_pending", false)):
 		# A short stationary finger contact is a normal Primary tap. Resolve it only
 		# on release so a future long press never needs to undo an already-mutated stroke.
+		_cancel_long_press_indicator()
 		screen_position = Vector2(state["content_origin"])
 		_start_content(canvas, touch_id, screen_position)
 
@@ -632,10 +648,90 @@ func _sample_active_color(canvas: Node2D, viewport_position: Vector2, mode: int)
 	)
 	if not Tools.is_position_inside_document(Vector2i(canvas_position.floor())):
 		return
+	COLOR_SAMPLING.pick_color(
+		Vector2i(canvas_position.floor()), _active_color_target_button(), mode
+	)
+
+
+func _active_color_target_button() -> int:
 	var target_button := Tools.picking_color_for
 	if target_button not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-		target_button = MOUSE_BUTTON_LEFT
-	COLOR_SAMPLING.pick_color(Vector2i(canvas_position.floor()), target_button, mode)
+		return MOUSE_BUTTON_LEFT
+	return target_button
+
+
+func _peek_active_color(canvas: Node2D, viewport_position: Vector2, mode: int) -> Color:
+	var fallback := Tools.get_assigned_color(_active_color_target_button())
+	var canvas_position := (
+		canvas.get_global_transform_with_canvas().affine_inverse() * viewport_position
+	)
+	var pixel := Vector2i(canvas_position.floor())
+	if not Tools.is_position_inside_document(pixel):
+		return fallback
+	var sample: Dictionary = COLOR_SAMPLING.sample_color(pixel, mode)
+	if sample.is_empty():
+		return fallback
+	return sample.get("color", fallback)
+
+
+func _ensure_long_press_indicator(canvas: Node2D) -> void:
+	if is_instance_valid(_long_press_indicator):
+		return
+	var viewport := canvas.get_viewport()
+	if not is_instance_valid(viewport):
+		return
+	_long_press_indicator_layer = CanvasLayer.new()
+	_long_press_indicator_layer.name = "LongPressColorIndicatorLayer"
+	_long_press_indicator_layer.layer = LONG_PRESS_INDICATOR_CANVAS_LAYER
+	viewport.add_child(_long_press_indicator_layer)
+	_long_press_indicator = LONG_PRESS_COLOR_INDICATOR.new()
+	_long_press_indicator.name = "LongPressColorIndicator"
+	_long_press_indicator_layer.add_child(_long_press_indicator)
+
+
+func _begin_long_press_indicator(canvas: Node2D, viewport_position: Vector2) -> void:
+	_ensure_long_press_indicator(canvas)
+	if not is_instance_valid(_long_press_indicator):
+		return
+	var initial_color := Tools.get_assigned_color(_active_color_target_button())
+	var target_color := _peek_active_color(canvas, viewport_position, COLOR_SAMPLING.TOP_COLOR)
+	_long_press_indicator.begin(
+		viewport_position, initial_color, target_color, FINGER_LONG_PRESS_SECONDS
+	)
+
+
+func _update_long_press_indicator_pending(canvas: Node2D, viewport_position: Vector2) -> void:
+	if not is_instance_valid(_long_press_indicator):
+		return
+	_long_press_indicator.update_pending_target(
+		_peek_active_color(canvas, viewport_position, COLOR_SAMPLING.TOP_COLOR)
+	)
+
+
+func _activate_long_press_indicator(viewport_position: Vector2) -> void:
+	if not is_instance_valid(_long_press_indicator):
+		return
+	_long_press_indicator.activate(
+		viewport_position, Tools.get_assigned_color(_active_color_target_button())
+	)
+
+
+func _update_long_press_indicator_active(viewport_position: Vector2) -> void:
+	if not is_instance_valid(_long_press_indicator):
+		return
+	_long_press_indicator.update_active(
+		viewport_position, Tools.get_assigned_color(_active_color_target_button())
+	)
+
+
+func _cancel_long_press_indicator() -> void:
+	if is_instance_valid(_long_press_indicator):
+		_long_press_indicator.cancel(FINGER_LONG_PRESS_CANCEL_SECONDS)
+
+
+func _dismiss_long_press_indicator() -> void:
+	if is_instance_valid(_long_press_indicator):
+		_long_press_indicator.dismiss()
 
 
 func _primary_color_picker_mode() -> int:
@@ -675,6 +771,7 @@ func _try_promote_direct_content_to_navigation(canvas: Node2D) -> bool:
 			_touch_color_sampler_requested = false
 	else:
 		_cancel_active_tool()
+	_cancel_long_press_indicator()
 	_content_touch_id = -1
 	if is_instance_valid(canvas):
 		canvas.set_adapter_tool_preview_active(false)

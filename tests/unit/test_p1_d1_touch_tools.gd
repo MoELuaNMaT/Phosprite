@@ -7,6 +7,8 @@ const TOOL_BUTTONS_SOURCE := "res://src/UI/ToolsPanel/ToolButtons.gd"
 const TOOLS_SOURCE := "res://src/Autoload/Tools.gd"
 const COLOR_PICKER_SOURCE := "res://src/Tools/UtilityTools/ColorPicker.gd"
 const COLOR_SAMPLING_SOURCE := "res://src/Tools/UtilityTools/ColorSampling.gd"
+const LONG_PRESS_INDICATOR := preload("res://src/UI/Canvas/LongPressColorIndicator.gd")
+const LONG_PRESS_INDICATOR_SOURCE := "res://src/UI/Canvas/LongPressColorIndicator.gd"
 const UI_COLOR_PICKER_SOURCE := "res://src/UI/ColorPickers/ColorPicker.gd"
 const CURVE_TOOL_SOURCE := "res://src/Tools/DesignTools/CurveTool.gd"
 
@@ -84,6 +86,98 @@ func test_long_press_does_not_draw_then_undo() -> void:
 		not ("undo_redo.undo" in src),
 		"long-press disambiguation must not mutate first and repair the result through Undo"
 	)
+
+
+func test_long_press_color_ring_blends_from_palette_to_sampled_color() -> void:
+	var initial := Color(1.0, 0.0, 0.0, 1.0)
+	var sampled := Color(0.0, 0.0, 1.0, 1.0)
+	var quarter: Color = LONG_PRESS_INDICATOR.blend_ring_color(initial, sampled, 0.25)
+	check_true(
+		(
+			is_equal_approx(quarter.r, 0.75)
+			and is_equal_approx(quarter.g, 0.0)
+			and is_equal_approx(quarter.b, 0.25)
+		),
+		"ring progress must move from the current palette color toward the sampled color"
+	)
+	var complete: Color = LONG_PRESS_INDICATOR.blend_ring_color(initial, sampled, 1.0)
+	check_true(
+		complete.is_equal_approx(sampled),
+		"a completed long-press ring must display the sampled color without a success-time color jump"
+	)
+
+
+func test_long_press_color_ring_uses_screen_space_clockwise_progress_and_cancel_rewind() -> void:
+	var src := FileAccess.get_file_as_string(LONG_PRESS_INDICATOR_SOURCE)
+	check_has(src, "const RADIUS_PX := 44.0", "ring must be large enough to sit outside the finger")
+	check_has(src, "var start_angle := -PI * 0.5", "ring must begin at 12 o'clock")
+	check_has(
+		src,
+		"var end_angle := start_angle + TAU * _progress",
+		"acquisition progress must draw clockwise from 12 o'clock"
+	)
+	check_has(
+		src,
+		"_progress = _cancel_start_progress * (1.0 - t)",
+		"cancellation must retract the same arc back toward 12 o'clock"
+	)
+
+
+func test_long_press_color_ring_follows_input_state_machine() -> void:
+	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
+	check_has(
+		src,
+		"const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2",
+		"pre-acquisition cancellation must use the requested 0.2 second rewind"
+	)
+	check_has(
+		src,
+		"_begin_long_press_indicator(canvas, screen_position)",
+		"pending long press must create the ring at the initial finger contact"
+	)
+	check_has(
+		src,
+		"_cancel_long_press_indicator()\n\t\t\t\t_start_content",
+		"moving past long-press slop must cancel the ring before normal drawing begins"
+	)
+	var success_sequence := (
+		"_sample_active_color(canvas, current, COLOR_SAMPLING.TOP_COLOR)"
+		+ "\n\t_activate_long_press_indicator(current)"
+	)
+	check_has(
+		src,
+		success_sequence,
+		"successful acquisition must sample first and then complete the ring using that color"
+	)
+	var active_sequence := (
+		"_sample_active_color(canvas, event.position, COLOR_SAMPLING.TOP_COLOR)"
+		+ "\n\t\t\t_update_long_press_indicator_active(event.position)"
+	)
+	check_has(
+		src,
+		active_sequence,
+		"after acquisition the full ring must follow the finger and current sampled color"
+	)
+	check_has(
+		src,
+		"CanvasLayer.new()",
+		"the indicator must live in screen space instead of inheriting canvas zoom and rotation"
+	)
+
+
+func test_long_press_preview_sampling_has_no_palette_side_effect() -> void:
+	var sampling := FileAccess.get_file_as_string(COLOR_SAMPLING_SOURCE)
+	var sample_pos := sampling.find("static func sample_color")
+	var pick_pos := sampling.find("static func pick_color", sample_pos)
+	check_true(
+		sample_pos >= 0 and pick_pos > sample_pos, "shared sampler must expose a pure preview path"
+	)
+	if sample_pos >= 0 and pick_pos > sample_pos:
+		var sample_body := sampling.substr(sample_pos, pick_pos - sample_pos)
+		check_true(
+			not ("Tools.assign_color" in sample_body),
+			"ring preview color lookup must not mutate the user's palette before long press succeeds"
+		)
 
 
 func test_pending_long_press_hides_normal_pixel_preview() -> void:

@@ -7,20 +7,18 @@ extends RefCounted
 enum { TOP_COLOR, CURRENT_LAYER }
 
 
-static func pick_color(pos: Vector2i, target_button: int, mode := TOP_COLOR) -> bool:
+static func sample_color(pos: Vector2i, mode := TOP_COLOR) -> Dictionary:
 	var project := Global.current_project
+	if project == null:
+		return {}
 	pos = project.tiles.get_canon_position(pos)
-	if pos.x < 0 or pos.y < 0:
-		return false
-	if Tools.is_placing_tiles():
-		var cel := project.get_current_cel() as CelTileMap
-		Tools.selected_tile_index_changed.emit(cel.get_cell_index_at_coords(pos))
-		return true
+	if pos.x < 0 or pos.y < 0 or Tools.is_placing_tiles():
+		return {}
 
 	var image := Image.new()
 	image.copy_from(project.get_current_cel().get_image())
 	if pos.x > image.get_width() - 1 or pos.y > image.get_height() - 1:
-		return false
+		return {}
 
 	var color := Color(0, 0, 0, 0)
 	var palette_index := -1
@@ -45,7 +43,27 @@ static func pick_color(pos: Vector2i, target_button: int, mode := TOP_COLOR) -> 
 				if current_cel.image.is_indexed:
 					palette_index = current_cel.image.index_image.get_pixel(pos.x, pos.y).r8 - 1
 		_:
-			return false
+			return {}
 
-	Tools.assign_color(color, target_button, false, palette_index)
+	return {"color": color, "palette_index": palette_index}
+
+
+static func pick_color(pos: Vector2i, target_button: int, mode := TOP_COLOR) -> bool:
+	var project := Global.current_project
+	if project == null:
+		return false
+	pos = project.tiles.get_canon_position(pos)
+	if pos.x < 0 or pos.y < 0:
+		return false
+	if Tools.is_placing_tiles():
+		var cel := project.get_current_cel() as CelTileMap
+		Tools.selected_tile_index_changed.emit(cel.get_cell_index_at_coords(pos))
+		return true
+
+	var sample := sample_color(pos, mode)
+	if sample.is_empty():
+		return false
+	Tools.assign_color(
+		sample["color"] as Color, target_button, false, int(sample.get("palette_index", -1))
+	)
 	return true
