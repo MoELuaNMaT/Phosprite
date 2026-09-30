@@ -40,12 +40,14 @@ func set_span(left: float, width: float, lane: int) -> void:
 	size = Vector2(maxf(width, 1.0), BRACKET_HEIGHT)
 	custom_minimum_size = size
 	var right := size.x
-	line.points = PackedVector2Array([
-		Vector2(0.0, BRACKET_HEIGHT - 1.0),
-		Vector2(0.0, 4.0),
-		Vector2(right, 4.0),
-		Vector2(right, BRACKET_HEIGHT - 1.0),
-	])
+	line.points = PackedVector2Array(
+		[
+			Vector2(0.0, BRACKET_HEIGHT - 1.0),
+			Vector2(0.0, 4.0),
+			Vector2(right, 4.0),
+			Vector2(right, BRACKET_HEIGHT - 1.0),
+		]
+	)
 
 
 func _on_name_changed() -> void:
