@@ -259,7 +259,11 @@ func _reset_last_tap() -> void:
 
 func _select_only_layer(layer_index: int) -> void:
 	var project := _bound_project
-	if project == null or project != Global.current_project or not _is_valid_card_layer(layer_index):
+	if (
+		project == null
+		or project != Global.current_project
+		or not _is_valid_card_layer(layer_index)
+	):
 		return
 	Global.transform_content_confirmed.emit()
 	project.selected_cels.clear()
