@@ -106,6 +106,17 @@ popup/item_0/id = 0
 popup/item_1/text = "Current frame as spritesheet"
 popup/item_1/id = 1
 
+[node name="GrayscaleButton" type="Button" parent="VBox/Animation" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 32)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+mouse_default_cursor_shape = 2
+toggle_mode = true
+text = "Grayscale"
+tooltip_text = "Grayscale View"
+
 [node name="Options" type="FoldableContainer" parent="VBox/Animation/VBoxContainer" unique_id=968849488]
 visible = false
 layout_mode = 2
@@ -195,6 +206,7 @@ prefix = "End frame:"
 [connection signal="mouse_entered" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_entered"]
 [connection signal="mouse_exited" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_exited"]
 [connection signal="toggled" from="VBox/Animation/PlayButton" to="." method="_on_PlayButton_toggled"]
+[connection signal="toggled" from="VBox/Animation/GrayscaleButton" to="." method="_on_GrayscaleButton_toggled"]
 [connection signal="item_selected" from="VBox/Animation/VBoxContainer/Mode/OptionButton" to="." method="_on_OptionButton_item_selected"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/HFrames" to="." method="_on_HFrames_value_changed"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/VFrames" to="." method="_on_VFrames_value_changed"]
