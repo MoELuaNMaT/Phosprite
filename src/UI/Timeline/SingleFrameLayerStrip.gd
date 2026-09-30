@@ -114,6 +114,7 @@ func set_multiselect_mode(enabled: bool, initial_layer := -1) -> void:
 	if not is_instance_valid(multiselect_bar):
 		return
 	multiselect_bar.visible = enabled
+	_notify_timeline_minimum_size_changed()
 	var project := _bound_project
 	if project == null or project != Global.current_project:
 		return
@@ -570,6 +571,12 @@ func _rebuild_group_brackets() -> void:
 	else:
 		group_bracket_lane.visible = false
 	group_bracket_lane.size.x = maxf(layer_row.size.x, group_bracket_lane.size.x)
+	_notify_timeline_minimum_size_changed()
+
+
+func _notify_timeline_minimum_size_changed() -> void:
+	if is_instance_valid(Global.animation_timeline):
+		Global.animation_timeline.update_minimum_size()
 
 
 func _ensure_current_layer_visible() -> void:
