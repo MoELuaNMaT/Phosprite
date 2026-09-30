@@ -280,6 +280,13 @@ func set_timeline_mode(
 	var changed := next_mode != timeline_mode
 	if changed and announce_mode_changing:
 		timeline_mode_changing.emit(timeline_mode, next_mode)
+	if (
+		timeline_mode == TimelineMode.SINGLE_FRAME
+		and next_mode != TimelineMode.SINGLE_FRAME
+		and is_instance_valid(single_frame_layer_strip)
+		and single_frame_layer_strip.multiselect_mode
+	):
+		single_frame_layer_strip.set_multiselect_mode(false)
 	if next_mode == TimelineMode.SINGLE_FRAME and is_animation_running:
 		if animation_forward:
 			play_forward.button_pressed = false
