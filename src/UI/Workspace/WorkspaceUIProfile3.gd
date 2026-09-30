@@ -427,8 +427,7 @@ func _position_popup(popup: Control, anchor: Control) -> void:
 	var max_x := maxf(0.0, ui_root.size.x - popup.size.x)
 	var max_y := maxf(0.0, ui_root.size.y - popup.size.y)
 	popup.position = Vector2(
-		clampf(local_position.x, 0.0, max_x),
-		clampf(local_position.y, 0.0, max_y)
+		clampf(local_position.x, 0.0, max_x), clampf(local_position.y, 0.0, max_y)
 	)
 
 
@@ -577,7 +576,11 @@ func _refresh_color_button() -> void:
 	if not is_instance_valid(_color_button):
 		return
 	var color := _current_left_color()
-	var border := Color(0.05, 0.05, 0.05, 0.85) if color.get_luminance() > 0.65 else Color(1.0, 1.0, 1.0, 0.85)
+	var border := (
+		Color(0.05, 0.05, 0.05, 0.85)
+		if color.get_luminance() > 0.65
+		else Color(1.0, 1.0, 1.0, 0.85)
+	)
 	for state_name in [&"normal", &"hover", &"pressed", &"focus"]:
 		var style := StyleBoxFlat.new()
 		style.bg_color = color
@@ -626,7 +629,11 @@ func _input(event: InputEvent) -> void:
 		return
 
 	for popup in [_options_popup, _tools_popup, _palette_popup]:
-		if is_instance_valid(popup) and popup.visible and popup.get_global_rect().has_point(position):
+		if (
+			is_instance_valid(popup)
+			and popup.visible
+			and popup.get_global_rect().has_point(position)
+		):
 			return
 	for button in [_pencil_button, _eraser_button, _other_tools_button, _color_button]:
 		if is_instance_valid(button) and button.get_global_rect().has_point(position):
