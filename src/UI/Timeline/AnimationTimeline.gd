@@ -352,7 +352,12 @@ func reset_settings() -> void:
 
 func _get_minimum_size() -> Vector2:
 	if timeline_mode == TimelineMode.SINGLE_FRAME:
-		return Vector2(220, 142)
+		var single_frame_height := 142.0
+		if is_instance_valid(single_frame_layer_strip):
+			single_frame_height = maxf(
+				single_frame_height, single_frame_layer_strip.get_combined_minimum_size().y
+			)
+		return Vector2(220, single_frame_height)
 	# X targets enough to see layers, 1 frame, vertical scrollbar, and padding
 	# Y targets enough to see 1 layer
 	if not is_instance_valid(layer_vbox) or not cel_vbox.is_visible_in_tree():
