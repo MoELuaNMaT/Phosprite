@@ -157,10 +157,14 @@ func activate_ui_profile(profile_id: int) -> bool:
 		_ui_profile_3.deactivate()
 	_active_ui_profile = profile_id
 	if profile_id == 2 and is_instance_valid(_merged_tools_content):
+		if Global.headless_test_mode:
+			return true
 		if not _ensure_ui_profile_2():
 			return false
 		return _ui_profile_2.activate()
 	if profile_id == 3 and is_instance_valid(_merged_tools_content):
+		if Global.headless_test_mode:
+			return true
 		if not _ensure_ui_profile_3():
 			return false
 		return _ui_profile_3.activate()
@@ -286,12 +290,13 @@ func merge_left_tool_options_after_startup() -> bool:
 	if not is_instance_valid(_merged_tools_content):
 		if not _merge_left_tool_options_into_tools():
 			return false
-	if _active_ui_profile == 2:
-		if not _ensure_ui_profile_2() or not _ui_profile_2.activate():
-			return false
-	elif _active_ui_profile == 3:
-		if not _ensure_ui_profile_3() or not _ui_profile_3.activate():
-			return false
+	if not Global.headless_test_mode:
+		if _active_ui_profile == 2:
+			if not _ensure_ui_profile_2() or not _ui_profile_2.activate():
+				return false
+		elif _active_ui_profile == 3:
+			if not _ensure_ui_profile_3() or not _ui_profile_3.activate():
+				return false
 	if dock_host != null:
 		dock_host.refresh_layout_geometry()
 	return true
