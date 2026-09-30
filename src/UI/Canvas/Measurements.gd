@@ -1,6 +1,10 @@
 extends Node2D
 
 const WIDTH := 2
+const LINE_MEASUREMENT_OFFSET_SCREEN := 18.0
+const LINE_MEASUREMENT_TICK_SCREEN := 8.0
+const LINE_MEASUREMENT_PADDING_SCREEN := 6.0
+const LINE_MEASUREMENT_WIDTH_SCREEN := 2.0
 
 var font: Font
 var line_color := Global.guide_color
@@ -8,6 +12,9 @@ var mode := Global.MeasurementMode.NONE
 var apparent_width: float = WIDTH
 var rect_bounds: Rect2i
 var text_server := TextServerManager.get_primary_interface()
+var line_measurement_visible := false
+var line_measurement_start := Vector2.ZERO
+var line_measurement_end := Vector2.ZERO
 
 @onready var canvas := get_parent() as Canvas
 
@@ -31,6 +38,8 @@ func _draw() -> void:
 			_draw_move_measurement()
 		_:
 			rect_bounds = Rect2i()
+	if line_measurement_visible:
+		_draw_line_measurement()
 
 
 func _input(event: InputEvent) -> void:
@@ -41,6 +50,86 @@ func _input(event: InputEvent) -> void:
 		update_measurement(Global.MeasurementMode.DISPLAY_RECT)
 	elif event is InputEventMouseMotion and mode == Global.MeasurementMode.DISPLAY_RECT:
 		update_measurement(Global.MeasurementMode.DISPLAY_RECT)
+
+
+func update_line_measurement(start_pos: Vector2, end_pos: Vector2) -> void:
+	line_measurement_start = start_pos
+	line_measurement_end = end_pos
+	line_measurement_visible = true
+	queue_redraw()
+
+
+func clear_line_measurement() -> void:
+	if not line_measurement_visible:
+		return
+	line_measurement_visible = false
+	queue_redraw()
+
+
+func _draw_line_measurement() -> void:
+	var line_delta := line_measurement_end - line_measurement_start
+	var line_length := line_delta.length()
+	if is_zero_approx(line_length):
+		return
+
+	var viewport_transform := get_viewport().canvas_transform
+	var canvas_zoom := viewport_transform.get_scale()
+	var viewport_rotation := viewport_transform.get_rotation()
+	var screen_delta := (line_delta * canvas_zoom).rotated(viewport_rotation)
+	if is_zero_approx(screen_delta.length()):
+		return
+
+	# Keep the dimension line visually above the dragged line in screen space.
+	var screen_direction := screen_delta.normalized()
+	var screen_normal := screen_direction.orthogonal()
+	if screen_normal.y > 0.0:
+		screen_normal = -screen_normal
+	var canvas_normal_per_screen_pixel := screen_normal.rotated(-viewport_rotation) / canvas_zoom
+	var offset := canvas_normal_per_screen_pixel * LINE_MEASUREMENT_OFFSET_SCREEN
+	var measure_start := line_measurement_start + offset
+	var measure_end := line_measurement_end + offset
+	var measure_center := (measure_start + measure_end) * 0.5
+
+	var font_size := Themes.get_font_size()
+	var length_px := roundi(line_length)
+	var label := text_server.format_number(str(length_px)) + "px"
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
+
+	# Leave a real gap in the dimension line for the upright label.
+	var half_label_extent_screen := (
+		(text_size.x * absf(screen_direction.x) + text_size.y * absf(screen_direction.y)) * 0.5
+		+ LINE_MEASUREMENT_PADDING_SCREEN
+	)
+	var screen_pixels_per_canvas_pixel := screen_delta.length() / line_length
+	var half_gap := half_label_extent_screen / screen_pixels_per_canvas_pixel
+	var line_direction := line_delta / line_length
+	var line_width := LINE_MEASUREMENT_WIDTH_SCREEN / maxf(absf(canvas_zoom.x), 0.001)
+	if half_gap < line_length * 0.5:
+		draw_line(measure_start, measure_center - line_direction * half_gap, line_color, line_width)
+		draw_line(measure_center + line_direction * half_gap, measure_end, line_color, line_width)
+
+	var tick_half := canvas_normal_per_screen_pixel * (LINE_MEASUREMENT_TICK_SCREEN * 0.5)
+	draw_line(measure_start - tick_half, measure_start + tick_half, line_color, line_width)
+	draw_line(measure_end - tick_half, measure_end + tick_half, line_color, line_width)
+
+	# Counter-transform only the label: position follows the line, glyphs stay upright on screen.
+	var label_screen_pos := (measure_center * canvas_zoom).rotated(viewport_rotation)
+	var label_pos := (
+		label_screen_pos
+		+ Vector2(-text_size.x * 0.5, font.get_ascent(font_size) - text_size.y * 0.5)
+	)
+	draw_set_transform(Vector2.ZERO, -viewport_rotation, Vector2.ONE / canvas_zoom)
+	draw_string(
+		font,
+		label_pos + Vector2.ONE,
+		label,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1.0,
+		font_size,
+		Color(0.0, 0.0, 0.0, 0.8)
+	)
+	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, line_color)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _prepare_cel_rect() -> void:
