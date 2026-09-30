@@ -1770,8 +1770,8 @@ func test_ui_profile_2_contract_keeps_primary_tools_inside_palette() -> void:
 			UIProfile2.is_primary_tool(tool_name),
 			"profile 2 should classify every configured primary tool as embedded",
 		)
-	check_false(
-		UIProfile2.is_primary_tool(&"ColorPicker"),
+	check_true(
+		not UIProfile2.is_primary_tool(&"ColorPicker"),
 		"non-primary tools must remain eligible for the top-right toolbar",
 	)
 
@@ -1790,8 +1790,8 @@ func test_ui_profile_3_contract_matches_procreate_entry_model() -> void:
 		UIProfile3.is_workspace_embedded_module(Builtins.PALETTE_ID),
 		"profile 3 should replace standalone Palette & Color with the color entry popup",
 	)
-	check_false(
-		UIProfile3.is_workspace_embedded_module(Builtins.PREVIEW_ID),
+	check_true(
+		not UIProfile3.is_workspace_embedded_module(Builtins.PREVIEW_ID),
 		"Preview remains a real Workspace panel in profile 3",
 	)
 	check_eq(
@@ -1834,7 +1834,9 @@ func test_profile_3_parks_tools_and_palette_and_keeps_normal_profiles_isolated()
 		WorkspaceSurface.Placement.NONE,
 		"profile 2 should park Tools",
 	)
-	check_false(store.has_layout_slot(3), "profile 3 should still be unused before first switch")
+	check_true(
+		not store.has_layout_slot(3), "profile 3 should still be unused before first switch"
+	)
 
 	check_true(controller.switch_profile(3), "profile 3 should activate")
 	check_eq(migration.get_ui_profile(), 3, "profile 3 should reach the implementation hook")
@@ -1866,24 +1868,26 @@ func test_profile_3_parks_tools_and_palette_and_keeps_normal_profiles_isolated()
 		UIProfile3.PREVIEW_RECT,
 		"profile 3 should move Preview to the top-left compact position",
 	)
-	check_false(
-		migration.is_panel_visible(Builtins.TOOLS_ID),
+	check_true(
+		not migration.is_panel_visible(Builtins.TOOLS_ID),
 		"Window visibility must report embedded Tools as hidden in profile 3",
 	)
-	check_false(
-		migration.is_panel_visible(Builtins.PALETTE_ID),
+	check_true(
+		not migration.is_panel_visible(Builtins.PALETTE_ID),
 		"Window visibility must report embedded Palette as hidden in profile 3",
 	)
-	check_false(
-		migration.set_panel_visible(Builtins.TOOLS_ID, true),
+	check_true(
+		not migration.set_panel_visible(Builtins.TOOLS_ID, true),
 		"profile 3 must reject reopening the standalone Tools panel",
 	)
-	check_false(
-		migration.set_panel_visible(Builtins.PALETTE_ID, true),
+	check_true(
+		not migration.set_panel_visible(Builtins.PALETTE_ID, true),
 		"profile 3 must reject reopening standalone Palette & Color",
 	)
 
-	check_false(store.has_layout_slot(4), "profile 4 should still be unused before first switch")
+	check_true(
+		not store.has_layout_slot(4), "profile 4 should still be unused before first switch"
+	)
 	check_true(
 		controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed"
 	)
