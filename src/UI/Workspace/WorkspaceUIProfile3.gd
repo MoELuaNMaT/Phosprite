@@ -24,7 +24,7 @@ const SELECTION_TOOLS: Array[StringName] = [
 const SHAPE_TOOLS: Array[StringName] = [
 	&"LineTool", &"CurveTool", &"RectangleTool", &"EllipseTool", &"IsometricBoxTool"
 ]
-const PREVIEW_RECT := Rect2(8.0, 8.0, 280.0, 160.0)
+const PREVIEW_RECT := Rect2(0.0, 0.0, 280.0, 160.0)
 const TOP_TOOL_SIZE := Vector2(28.0, 28.0)
 const MENU_TOOL_SIZE := Vector2(40.0, 40.0)
 const OPTIONS_WIDTH := 320.0
