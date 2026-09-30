@@ -172,3 +172,55 @@ func test_preview_footer_exposes_synced_grayscale_toggle() -> void:
 		"Global.greyscale_view = !Global.greyscale_view",
 		"the existing View menu must continue toggling the same shared grayscale state",
 	)
+
+
+func test_canvas_no_longer_renders_floating_tool_icons() -> void:
+	var main_scene := FileAccess.get_file_as_string("res://src/Main.tscn")
+	var main_source := FileAccess.get_file_as_string("res://src/Main.gd")
+	var canvas_source := FileAccess.get_file_as_string("res://src/UI/Canvas/Canvas.gd")
+	var preferences_source := FileAccess.get_file_as_string(
+		"res://src/Preferences/PreferencesDialog.gd"
+	)
+	var preferences_scene := FileAccess.get_file_as_string(
+		"res://src/Preferences/PreferencesDialog.tscn"
+	)
+	check_true(
+		not main_scene.contains('[node name="LeftCursor" type="Sprite2D"'),
+		"the main editor scene must not mount a floating left-tool cursor icon",
+	)
+	check_true(
+		not main_scene.contains('[node name="RightCursor" type="Sprite2D"'),
+		"the main editor scene must not mount a floating right-tool cursor icon",
+	)
+	check_true(
+		not main_source.contains("left_cursor.position = get_global_mouse_position()"),
+		"editor input must no longer move a floating left-tool icon beside the pointer",
+	)
+	check_true(
+		not main_source.contains("right_cursor.position = get_global_mouse_position()"),
+		"editor input must no longer move a floating right-tool icon beside the pointer",
+	)
+	check_true(
+		not canvas_source.contains("Global.control.left_cursor.visible"),
+		"Canvas must not toggle a left tool icon during pointer or touch interaction",
+	)
+	check_true(
+		not canvas_source.contains("Global.control.right_cursor.visible"),
+		"Canvas must not toggle a right tool icon during pointer or touch interaction",
+	)
+	check_true(
+		not preferences_source.contains('"show_left_tool_icon"'),
+		"Preferences must not expose a switch for the removed left tool icon",
+	)
+	check_true(
+		not preferences_source.contains('"show_right_tool_icon"'),
+		"Preferences must not expose a switch for the removed right tool icon",
+	)
+	check_true(
+		not preferences_scene.contains("Show left tool icon"),
+		"the removed left tool icon must not leave a dead Preferences row",
+	)
+	check_true(
+		not preferences_scene.contains("Show right tool icon"),
+		"the removed right tool icon must not leave a dead Preferences row",
+	)
