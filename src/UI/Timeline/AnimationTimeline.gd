@@ -1832,9 +1832,21 @@ func project_cel_removed(frame: int, layer: int) -> void:
 	cel_hbox.remove_child(cel_hbox.get_child(frame))
 
 
-func _on_layer_fx_pressed() -> void:
+func open_current_layer_effects() -> void:
+	var project := Global.current_project
+	if (
+		project == null
+		or project.current_layer < 0
+		or project.current_layer >= project.layers.size()
+		or project.layers[project.current_layer] is AudioLayer
+	):
+		return
 	layer_effect_settings.popup_centered_clamped()
 	Global.dialog_open(true)
+
+
+func _on_layer_fx_pressed() -> void:
+	open_current_layer_effects()
 
 
 func _on_cel_size_slider_value_changed(value: float) -> void:
