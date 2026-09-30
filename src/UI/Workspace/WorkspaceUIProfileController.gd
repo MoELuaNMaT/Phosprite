@@ -55,9 +55,10 @@ func switch_profile(profile_id: int) -> bool:
 		return false
 	var rollback_snapshot := store.capture_snapshot()
 	var seed_profile := previous_profile
-	# Profile 2 has a different module composition (the standalone Tools module is parked).
-	# Never let that implementation-specific snapshot become the first state of a normal profile.
-	if previous_profile == 2 and profile_id != 2 and store.has_layout_slot(1):
+	# Profiles 2 and 3 have implementation-specific module composition. Profile 2 parks
+	# standalone Tools; profile 3 parks Tools + Palette and pins Preview to its compact
+	# top-left presentation. Never seed a never-used slot from either special snapshot.
+	if previous_profile in [2, 3] and profile_id != previous_profile and store.has_layout_slot(1):
 		seed_profile = 1
 	var seed_snapshot := store.get_layout_slot_snapshot(seed_profile)
 	if seed_snapshot.is_empty():
