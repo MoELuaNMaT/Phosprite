@@ -454,6 +454,68 @@ func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void
 	)
 
 
+
+func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> void:
+	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
+	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	var timeline_source := FileAccess.get_file_as_string(TIMELINE_SOURCE)
+	check_has(
+		scene,
+		'[node name="LayerSettingsPanel" type="PanelContainer"',
+		"single-frame mode must expose a fixed layer settings panel",
+	)
+	check_has(
+		scene,
+		'[node name="LayerScroll" type="ScrollContainer" parent="MarginContainer/SingleFrameBody"]',
+		"layer settings must sit outside the horizontal layer scroll area",
+	)
+	check_has(
+		scene,
+		'[node name="OpacitySlider"',
+		"single-frame layer settings must expose opacity",
+	)
+	check_has(
+		scene,
+		'[node name="LayerStyle" type="Button"',
+		"single-frame layer settings must expose the layer style entry",
+	)
+	check_has(
+		strip_source,
+		"current_layer_name.text = layer.name",
+		"the fixed panel must follow the active layer name",
+	)
+	check_has(
+		strip_source,
+		"layer_opacity_slider.value = layer.opacity * 100.0",
+		"the opacity control must refresh from the active layer",
+	)
+	check_has(
+		strip_source,
+		"var layer := project.layers[project.current_layer]",
+		"single-frame settings must edit only the active layer",
+	)
+	check_has(
+		strip_source,
+		'project.undo_redo.create_action(\n\t\t\t"Change Layer Opacity"',
+		"single-frame opacity changes must remain undoable",
+	)
+	check_has(
+		strip_source,
+		"Global.animation_timeline.open_current_layer_effects()",
+		"layer style must reuse the existing layer effects dialog",
+	)
+	check_has(
+		timeline_source,
+		"func open_current_layer_effects() -> void:",
+		"AnimationTimeline must expose one shared current-layer effects entry point",
+	)
+	check_has(
+		timeline_source,
+		"project.layers[project.current_layer] is AudioLayer",
+		"the shared style entry must preserve the existing AudioLayer restriction",
+	)
+
+
 func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
 	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	var bracket_source := FileAccess.get_file_as_string(GROUP_BRACKET_SOURCE)
