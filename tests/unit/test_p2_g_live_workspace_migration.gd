@@ -1834,9 +1834,7 @@ func test_profile_3_parks_tools_and_palette_and_keeps_normal_profiles_isolated()
 		WorkspaceSurface.Placement.NONE,
 		"profile 2 should park Tools",
 	)
-	check_true(
-		not store.has_layout_slot(3), "profile 3 should still be unused before first switch"
-	)
+	check_true(not store.has_layout_slot(3), "profile 3 should still be unused before first switch")
 
 	check_true(controller.switch_profile(3), "profile 3 should activate")
 	check_eq(migration.get_ui_profile(), 3, "profile 3 should reach the implementation hook")
@@ -1885,9 +1883,7 @@ func test_profile_3_parks_tools_and_palette_and_keeps_normal_profiles_isolated()
 		"profile 3 must reject reopening standalone Palette & Color",
 	)
 
-	check_true(
-		not store.has_layout_slot(4), "profile 4 should still be unused before first switch"
-	)
+	check_true(not store.has_layout_slot(4), "profile 4 should still be unused before first switch")
 	check_true(
 		controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed"
 	)
