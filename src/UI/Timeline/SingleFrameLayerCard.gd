@@ -14,6 +14,7 @@ var _cel: BaseCel
 func _ready() -> void:
 	toggle_mode = true
 	pressed.connect(_on_pressed)
+	gui_input.connect(_on_gui_input)
 	if not Global.cel_switched.is_connected(_sync_selected):
 		Global.cel_switched.connect(_sync_selected)
 
@@ -68,6 +69,52 @@ func _on_pressed() -> void:
 	_project.selected_cels.clear()
 	_project.selected_cels.append([_project.current_frame, layer_index])
 	_project.change_cel(-1, layer_index)
+
+
+func _on_gui_input(event: InputEvent) -> void:
+	if (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_LEFT
+		and event.pressed
+		and event.double_click
+	):
+		_toggle_layer_visibility()
+
+
+func _toggle_layer_visibility() -> void:
+	if (
+		_project == null
+		or _project != Global.current_project
+		or not is_instance_valid(_layer)
+		or layer_index < 0
+		or layer_index >= _project.layers.size()
+		or _project.layers[layer_index] != _layer
+	):
+		return
+
+	Global.transform_content_confirmed.emit()
+	var project := _project
+	var layer := _layer
+	if Global.layer_visibility_undoable:
+		project.undo_redo.create_action("Change Layer Visibility")
+		project.undo_redo.add_do_property(layer, "visible", not layer.visible)
+		project.undo_redo.add_undo_property(layer, "visible", layer.visible)
+		project.undo_redo.add_do_property(Global.canvas, "update_all_layers", true)
+		project.undo_redo.add_undo_property(Global.canvas, "update_all_layers", true)
+		project.undo_redo.add_do_method(Global.canvas.queue_redraw)
+		project.undo_redo.add_undo_method(Global.canvas.queue_redraw)
+		if is_instance_valid(Global.animation_timeline):
+			project.undo_redo.add_do_method(Global.animation_timeline.update_global_layer_buttons)
+			project.undo_redo.add_undo_method(Global.animation_timeline.update_global_layer_buttons)
+		project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
+		project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
+		project.undo_redo.commit_action()
+	else:
+		layer.visible = not layer.visible
+		Global.canvas.update_all_layers = true
+		Global.canvas.queue_redraw()
+		if is_instance_valid(Global.animation_timeline):
+			Global.animation_timeline.update_global_layer_buttons()
 
 
 func _on_layer_name_changed() -> void:
