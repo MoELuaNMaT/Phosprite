@@ -11,7 +11,6 @@ const SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE := 32.0
 
 var layer_index := -1
 var frame_index := -1
-var selection_host: SingleFrameLayerStrip
 var _project: Project
 var _layer: BaseLayer
 var _cel: BaseCel
@@ -38,12 +37,9 @@ func _exit_tree() -> void:
 		Global.cel_switched.disconnect(_sync_selected)
 
 
-func setup(
-	project: Project, new_layer_index: int, new_frame_index: int, host: SingleFrameLayerStrip = null
-) -> void:
+func setup(project: Project, new_layer_index: int, new_frame_index: int) -> void:
 	_disconnect_bound_data()
 	_project = project
-	selection_host = host
 	layer_index = new_layer_index
 	frame_index = new_frame_index
 	if (
