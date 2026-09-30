@@ -45,20 +45,16 @@ var color_switch := $ScrollContainer/VerticalContainer/ColorButtons/ColorSwitch 
 @onready var average_color := %AverageColor as ColorRect
 @onready var expand_button: Button = $ScrollContainer/VerticalContainer/ExpandButton
 
-@onready
-var _mm_change_hue: Keychain.MouseMovementInputAction = (
+@onready var _mm_change_hue: Keychain.MouseMovementInputAction = (
 	Keychain.actions[&"mm_color_change_hue"] as Keychain.MouseMovementInputAction
 )
-@onready
-var _mm_change_sat: Keychain.MouseMovementInputAction = (
+@onready var _mm_change_sat: Keychain.MouseMovementInputAction = (
 	Keychain.actions[&"mm_color_change_saturation"] as Keychain.MouseMovementInputAction
 )
-@onready
-var _mm_change_value: Keychain.MouseMovementInputAction = (
+@onready var _mm_change_value: Keychain.MouseMovementInputAction = (
 	Keychain.actions[&"mm_color_change_value"] as Keychain.MouseMovementInputAction
 )
-@onready
-var _mm_change_alpha: Keychain.MouseMovementInputAction = (
+@onready var _mm_change_alpha: Keychain.MouseMovementInputAction = (
 	Keychain.actions[&"mm_color_change_alpha"] as Keychain.MouseMovementInputAction
 )
 
