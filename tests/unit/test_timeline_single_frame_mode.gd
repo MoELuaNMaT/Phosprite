@@ -433,7 +433,11 @@ func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void
 		"multi-select needs a temporary action bar"
 	)
 	check_has(scene, '[node name="ExitMultiSelect" type="Button"', "action menu must expose exit")
-	check_has(scene, '[node name="CreateFolder" type="Button"', "action menu must expose folder creation")
+	check_has(
+		scene,
+		'[node name="CreateFolder" type="Button"',
+		"action menu must expose folder creation"
+	)
 	check_has(scene, '[node name="MergeLayers" type="Button"', "action menu must expose layer merge")
 	check_has(scene, '[node name="DuplicateLayers" type="Button"', "action menu must expose duplicate")
 	check_has(
