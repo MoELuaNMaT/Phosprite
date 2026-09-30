@@ -203,9 +203,7 @@ func _on_layer_opacity_changed(value: float) -> void:
 	if is_equal_approx(layer.opacity, new_opacity):
 		return
 	if Global.layer_opacity_undoable:
-		project.undo_redo.create_action(
-			"Change Layer Opacity", UndoRedo.MergeMode.MERGE_ENDS
-		)
+		project.undo_redo.create_action("Change Layer Opacity", UndoRedo.MergeMode.MERGE_ENDS)
 		project.undo_redo.add_do_property(layer, "opacity", new_opacity)
 		project.undo_redo.add_undo_property(layer, "opacity", layer.opacity)
 		project.undo_redo.add_do_method(Global.canvas.queue_redraw)
