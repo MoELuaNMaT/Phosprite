@@ -276,8 +276,7 @@ static func _fit_preview_rect(available_size: Vector2, document_size: Vector2i) 
 	):
 		return Rect2()
 	var scale_factor := minf(
-		available_size.x / float(document_size.x),
-		available_size.y / float(document_size.y)
+		available_size.x / float(document_size.x), available_size.y / float(document_size.y)
 	)
 	var fitted_size := Vector2(document_size) * scale_factor
 	return Rect2((available_size - fitted_size) * 0.5, fitted_size)
