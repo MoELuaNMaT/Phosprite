@@ -330,7 +330,7 @@ func test_single_frame_strip_is_bound_to_explicit_project_before_rendering() -> 
 	)
 	check_has(
 		source,
-		"card.setup(project, layer_index, project.current_frame, self)",
+		"card.setup(project, layer_index, project.current_frame)",
 		"every layer card must receive the same explicit Project binding",
 	)
 	check_has(
