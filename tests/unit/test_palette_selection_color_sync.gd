@@ -26,7 +26,7 @@ func test_palette_index_never_overrides_active_color_mismatch() -> void:
 
 func test_palette_selection_requires_exact_color_equality() -> void:
 	var grid := _make_grid()
-	var near_red := Color(Color.RED)
+	var near_red := Color(1.0, 0.0, 0.0, 1.0)
 	near_red.r -= 0.0001
 	check_eq(
 		grid.call("_find_exact_color_index", near_red, -1),
