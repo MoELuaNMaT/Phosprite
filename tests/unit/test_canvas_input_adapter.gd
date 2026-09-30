@@ -281,10 +281,9 @@ func test_touch_tool_preview_follows_content_ownership_lifecycle() -> void:
 		"func should_draw_tool_indicator() -> bool:",
 		"Canvas must expose the touch-aware indicator visibility contract"
 	)
-	check_has(
-		canvas,
-		"_sync_tool_cursor_visibility(active)",
-		"the same touch lifecycle must drive the floating tool icon visibility"
+	check_true(
+		not ("_sync_tool_cursor_visibility" in canvas),
+		"touch preview ownership must no longer drive a floating tool icon"
 	)
 	check_has(
 		indicators,
