@@ -8,6 +8,8 @@ const STRIP_SOURCE := "res://src/UI/Timeline/SingleFrameLayerStrip.gd"
 const STRIP_SCENE := "res://src/UI/Timeline/SingleFrameLayerStrip.tscn"
 const CARD_SOURCE := "res://src/UI/Timeline/SingleFrameLayerCard.gd"
 const CARD_SCENE := "res://src/UI/Timeline/SingleFrameLayerCard.tscn"
+const GROUP_BRACKET_SOURCE := "res://src/UI/Timeline/SingleFrameLayerGroupBracket.gd"
+const GROUP_BRACKET_SCENE := "res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn"
 const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
 const APP_SHELL_SOURCE := "res://src/AppShell/AppShellController.gd"
@@ -328,7 +330,7 @@ func test_single_frame_strip_is_bound_to_explicit_project_before_rendering() -> 
 	)
 	check_has(
 		source,
-		"card.setup(project, layer_index, project.current_frame)",
+		"card.setup(project, layer_index, project.current_frame, self)",
 		"every layer card must receive the same explicit Project binding",
 	)
 	check_has(
@@ -339,53 +341,140 @@ func test_single_frame_strip_is_bound_to_explicit_project_before_rendering() -> 
 
 
 func test_single_frame_layer_selection_never_changes_the_current_frame() -> void:
-	var source := FileAccess.get_file_as_string(CARD_SOURCE)
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	check_has(
 		source,
-		"_project.selected_cels.append([_project.current_frame, layer_index])",
-		"single-frame card selection must remain bound to its explicit project's current frame",
+		"project.selected_cels.append([project.current_frame, layer_index])",
+		"single-frame card selection must remain bound to the current frame",
 	)
 	check_has(
 		source,
-		"_project.change_cel(-1, layer_index)",
-		"layer cards must change only the layer and preserve the active frame",
+		"project.change_cel(-1, layer_index)",
+		"single-frame taps must change only the layer and preserve the active frame",
 	)
 	check_has(
 		source,
-		"_project == Global.current_project",
+		"_bound_project == Global.current_project",
 		"stale cards from another project must never accept selection input",
 	)
 
-func test_single_frame_layer_double_click_toggles_visibility_undoably() -> void:
-	var source := FileAccess.get_file_as_string(CARD_SOURCE)
+
+func test_single_frame_layer_double_tap_toggles_visibility_undoably() -> void:
+	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	var card_source := FileAccess.get_file_as_string(CARD_SOURCE)
 	check_has(
-		source,
-		"gui_input.connect(_on_gui_input)",
-		"single-frame layer cards must listen for pointer double-click input",
+		strip_source,
+		"const DOUBLE_TAP_MSEC := 350",
+		"single-frame layer double tap must use the established bounded touch window",
 	)
 	check_has(
-		source,
-		"and event.double_click",
-		"single-frame layer cards must toggle visibility only on a double-click gesture",
+		strip_source,
+		"card.toggle_layer_visibility()",
+		"a resolved double tap must toggle the tapped layer visibility",
 	)
 	check_has(
-		source,
+		card_source,
 		'project.undo_redo.create_action("Change Layer Visibility")',
-		"double-click visibility changes must reuse the undoable layer visibility action",
+		"double-tap visibility changes must reuse the undoable layer visibility action",
 	)
 	check_has(
-		source,
+		card_source,
 		'project.undo_redo.add_do_property(layer, "visible", not layer.visible)',
-		"double-click must invert the target layer visibility",
+		"double tap must invert the target layer visibility",
 	)
 	check_has(
-		source,
+		card_source,
 		"Global.canvas.queue_redraw",
-		"double-click visibility changes must redraw the canvas immediately",
-	)
-	check_has(
-		source,
-		"_project == Global.current_project",
-		"stale single-frame cards must not mutate another project's layer visibility",
+		"double-tap visibility changes must redraw the canvas immediately",
 	)
 
+
+func test_single_frame_long_press_enters_multiselect_and_taps_toggle_layers() -> void:
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	var card_source := FileAccess.get_file_as_string(CARD_SOURCE)
+	check_has(
+		source,
+		"ProjectCardGestureResolver.gd",
+		"single-frame layers must reuse the established long-press gesture timing",
+	)
+	check_has(
+		source,
+		"set_multiselect_mode(true, layer_index)",
+		"long press must enter multi-select with the held layer selected",
+	)
+	check_has(
+		source,
+		"project.selected_cels.erase(frame_layer)",
+		"multi-select taps must remove an already-selected layer",
+	)
+	check_has(
+		source,
+		"project.selected_cels.append(frame_layer)",
+		"multi-select taps must add an unselected layer",
+	)
+	check_has(
+		source,
+		"if project.selected_cels.size() <= 1:",
+		"multi-select must preserve the non-empty selected_cels contract",
+	)
+	check_has(
+		card_source,
+		"pointer_cancel.emit(layer_index)",
+		"dragging beyond touch slop must cancel long-press/tap recognition so horizontal scroll still works",
+	)
+
+
+func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void:
+	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(scene, '[node name="MultiSelectBar" type="HBoxContainer"', "multi-select needs a temporary action bar")
+	check_has(scene, 'text = "Exit Multi-Select"', "action bar must expose exit")
+	check_has(scene, 'text = "Create Folder"', "action bar must expose folder creation")
+	check_has(scene, 'text = "Merge Layers"', "action bar must expose layer merge")
+	check_has(scene, 'text = "Duplicate"', "action bar must expose duplicate")
+	check_has(
+		source,
+		"Global.animation_timeline.flatten_layers(indices, false)",
+		"merge must reuse the existing undoable flatten-layers transaction",
+	)
+	check_has(
+		source,
+		'project.undo_redo.create_action("Add Layer")',
+		"multi-layer duplicate must remain undoable",
+	)
+
+
+func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
+	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	var bracket_source := FileAccess.get_file_as_string(GROUP_BRACKET_SOURCE)
+	var bracket_scene := FileAccess.get_file_as_string(GROUP_BRACKET_SCENE)
+	check_has(
+		strip_source,
+		"var folder := GroupLayer.new(project)",
+		"single-frame folders must reuse the existing GroupLayer project model",
+	)
+	check_has(
+		strip_source,
+		"project.move_layers.bind(indices, target_indices, folder_parents)",
+		"folder creation must gather selected sibling layers into one contiguous group",
+	)
+	check_has(
+		strip_source,
+		"layer.parent != common_parent",
+		"folder creation must reject selections that cross existing parent hierarchies",
+	)
+	check_has(
+		strip_source,
+		"if project.layers[layer_index] is GroupLayer:",
+		"GroupLayer itself must be represented by a bracket instead of a duplicate thumbnail card",
+	)
+	check_has(
+		bracket_scene,
+		"points = PackedVector2Array(0, 27, 0, 4, 1, 4, 1, 27)",
+		"folder range must use the same horizontal bracket visual language as animation Tags",
+	)
+	check_has(
+		bracket_source,
+		"label.text = group_layer.name",
+		"the folder bracket must display the real GroupLayer name",
+	)
