@@ -61,8 +61,6 @@ var _last_session_last_project := ""
 @onready var image_import_mode_dialog := $Dialogs/ImageImportModeDialog as ImageImportModeDialog
 @onready var export_dialog := $Dialogs/ExportDialog as ConfirmationDialog
 @onready var download_confirmation := $Dialogs/DownloadImageConfirmationDialog as ConfirmationDialog
-@onready var left_cursor: Sprite2D = $LeftCursor
-@onready var right_cursor: Sprite2D = $RightCursor
 @onready var image_request := $ImageRequest as HTTPRequest
 
 
@@ -360,8 +358,6 @@ func _input(event: InputEvent) -> void:
 		Global.canvas.queue_redraw()
 	if is_writing_text and event is InputEventKey and is_instance_valid(Global.main_viewport):
 		Global.main_viewport.get_child(0).push_input(event)
-	left_cursor.position = get_global_mouse_position() + Vector2(-32, 32)
-	right_cursor.position = get_global_mouse_position() + Vector2(32, 32)
 
 
 func _on_return_home_requested() -> void:
