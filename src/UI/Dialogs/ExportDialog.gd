@@ -262,7 +262,8 @@ func create_preview_rect() -> TextureRect:
 	var preview := TextureRect.new()
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# The display rect already owns aspect fitting; fill it exactly so image and checker share bounds.
+	preview.stretch_mode = TextureRect.STRETCH_SCALE
 	return preview
 
 
