@@ -427,7 +427,11 @@ func test_single_frame_long_press_enters_multiselect_and_taps_toggle_layers() ->
 func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void:
 	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
-	check_has(scene, '[node name="MultiSelectBar" type="HBoxContainer"', "multi-select needs a temporary action bar")
+	check_has(
+		scene,
+		'[node name="MultiSelectBar" type="HBoxContainer"',
+		"multi-select needs a temporary action bar"
+	)
 	check_has(scene, 'text = "Exit Multi-Select"', "action bar must expose exit")
 	check_has(scene, 'text = "Create Folder"', "action bar must expose folder creation")
 	check_has(scene, 'text = "Merge Layers"', "action bar must expose layer merge")
