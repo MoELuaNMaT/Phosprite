@@ -921,11 +921,10 @@ func update_hint_tooltips() -> void:
 		t.button_node.tooltip_text = t.generate_hint_tooltip()
 
 
+## Kept as a compatibility hook for extensions that called the old cursor-icon refresh.
+## Phosprite no longer renders tool icons next to the canvas pointer.
 func update_tool_cursors() -> void:
-	var left_tool: Tool = tools[_slots[MOUSE_BUTTON_LEFT].tool_node.name]
-	Global.control.left_cursor.texture = left_tool.cursor_icon
-	var right_tool: Tool = tools[_slots[MOUSE_BUTTON_RIGHT].tool_node.name]
-	Global.control.right_cursor.texture = right_tool.cursor_icon
+	return
 
 
 func is_position_inside_document(position: Vector2i) -> bool:
