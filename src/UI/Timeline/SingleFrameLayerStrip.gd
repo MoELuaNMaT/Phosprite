@@ -272,7 +272,11 @@ func _select_only_layer(layer_index: int) -> void:
 
 func _toggle_layer_in_multiselect(layer_index: int) -> void:
 	var project := _bound_project
-	if project == null or project != Global.current_project or not _is_valid_card_layer(layer_index):
+	if (
+		project == null
+		or project != Global.current_project
+		or not _is_valid_card_layer(layer_index)
+	):
 		return
 	Global.transform_content_confirmed.emit()
 	var frame_layer := [project.current_frame, layer_index]
