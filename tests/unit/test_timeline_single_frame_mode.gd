@@ -420,7 +420,7 @@ func test_single_frame_long_press_enters_multiselect_and_taps_toggle_layers() ->
 	check_has(
 		card_source,
 		"pointer_cancel.emit(layer_index)",
-		"dragging beyond touch slop must cancel long-press/tap recognition so horizontal scroll still works",
+		"drag past touch slop must cancel recognition so horizontal scrolling stays available",
 	)
 
 
