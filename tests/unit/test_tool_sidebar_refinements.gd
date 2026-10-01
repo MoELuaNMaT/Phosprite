@@ -83,8 +83,13 @@ func test_ui3_compact_tool_options_use_two_column_property_rows() -> void:
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_LABEL_WIDTH := 96.0",
+		"const COMPACT_OPTION_LABEL_WIDTH := 72.0",
 		"compact option rows need a bounded label column",
+	)
+	check_has(
+		source,
+		"const COMPACT_OPTION_CONTROL_WIDTH := 104.0",
+		"compact option controls must permit the floating panel to resize below its old width",
 	)
 	check_has(
 		source,
