@@ -55,8 +55,9 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_DRAG_END and _long_press_drag_started:
 		var palette_grid := get_parent() as Control
 		var pointer_position := get_viewport().get_mouse_position()
-		if is_instance_valid(palette_grid) and not palette_grid.get_global_rect().has_point(
-			pointer_position
+		if (
+			is_instance_valid(palette_grid)
+			and not palette_grid.get_global_rect().has_point(pointer_position)
 		):
 			dragged_outside.emit(index)
 		_long_press_drag_started = false
@@ -184,7 +185,10 @@ func _on_gui_input(event: InputEvent) -> void:
 		if event.is_pressed():
 			if (
 				not empty
-				and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT)
+				and (
+					event.button_index == MOUSE_BUTTON_LEFT
+					or event.button_index == MOUSE_BUTTON_RIGHT
+				)
 			):
 				_arm_long_press(event.button_index, event.position)
 			if DisplayServer.is_touchscreen_available() and show_left_highlight:
