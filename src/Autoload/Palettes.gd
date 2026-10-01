@@ -227,6 +227,14 @@ func _create_new_palette_from_current_palette(
 	var new_palette := current_palette.duplicate()
 	new_palette.name = palette_name
 	new_palette.comment = comment
+	if is_global:
+		new_palette.source_palette_name = ""
+	else:
+		new_palette.source_palette_name = (
+			current_palette.source_palette_name
+			if not current_palette.source_palette_name.is_empty()
+			else current_palette.name
+		)
 	new_palette.is_project_palette = false
 	new_palette.path = palettes_write_path.path_join(new_palette.name) + ".json"
 	undo_redo_add_palette(new_palette, is_global)
@@ -335,6 +343,7 @@ func current_palette_edit(
 		var palette_just_added := false
 		if not current_palette.is_project_palette:  # Create a local copy of the global palette
 			palette_to_edit = current_palette.duplicate()
+			palette_to_edit.source_palette_name = current_palette.name
 			palette_just_added = true
 		else:
 			# unparent palette so that it can be manipulated without consequences
@@ -354,6 +363,56 @@ func current_palette_edit(
 		undo_redo.add_do_method(Global.undo_or_redo.bind(false))
 		undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
 		undo_redo.commit_action()
+
+
+func get_palette_sync_target_name(palette: Palette = current_palette) -> String:
+	if not is_instance_valid(palette):
+		return ""
+	if not palette.source_palette_name.is_empty():
+		return palette.source_palette_name
+	return palette.name
+
+
+func is_palette_synced_to_global(palette: Palette = current_palette) -> bool:
+	if not is_instance_valid(palette) or not palette.is_project_palette:
+		return true
+	var target_name := get_palette_sync_target_name(palette)
+	if not palettes.has(target_name):
+		return false
+	var shared_palette := palettes[target_name]
+	if (
+		palette.comment != shared_palette.comment
+		or palette.width != shared_palette.width
+		or palette.height != shared_palette.height
+		or palette.colors.size() != shared_palette.colors.size()
+	):
+		return false
+	for index in palette.colors:
+		if not shared_palette.colors.has(index):
+			return false
+		if palette.colors[index].color != shared_palette.colors[index].color:
+			return false
+	return true
+
+
+func sync_project_palette_to_global(palette: Palette = current_palette) -> bool:
+	if not is_instance_valid(palette) or not palette.is_project_palette:
+		return false
+	var target_name := get_palette_sync_target_name(palette)
+	if target_name.is_empty():
+		return false
+	var shared_palette := palette.duplicate()
+	shared_palette.name = target_name
+	shared_palette.source_palette_name = ""
+	shared_palette.is_project_palette = false
+	shared_palette.path = palettes_write_path.path_join(target_name) + ".json"
+	save_palette(shared_palette)
+	palettes[target_name] = shared_palette
+	palette.source_palette_name = target_name
+	if is_instance_valid(Global.current_project):
+		Global.current_project.has_changed = true
+	new_palette_imported.emit()
+	return true
 
 
 ## Deletes palette but does not reselect

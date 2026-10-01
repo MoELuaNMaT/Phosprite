@@ -4,13 +4,23 @@ extends ColorRect
 signal pressed(mouse_button: int)
 signal double_clicked(mouse_button: int, position: Vector2)
 signal dropped(source_index: int, new_index: int)
+signal dragged_outside(index: int)
 
 const DEFAULT_COLOR := Color(0.0, 0.0, 0.0, 0.0)
+const LONG_PRESS_DRAG_SECONDS := 0.35
+const LONG_PRESS_MOVE_TOLERANCE := 8.0
 
 var index := -1
 var color_index := -1
 var show_left_highlight := false
 var show_right_highlight := false
+var _show_pending_empty_highlight := false
+var _long_press_token := 0
+var _pressed_button := -1
+var _press_position := Vector2.ZERO
+var _long_press_drag_started := false
+var _suppress_release_click := false
+var _press_moved := false
 var empty := true:
 	set(value):
 		empty = value
@@ -42,6 +52,14 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED:
 		if empty:
 			empty = true
+	elif what == NOTIFICATION_DRAG_END and _long_press_drag_started:
+		var palette_grid := get_parent() as Control
+		var pointer_position := get_viewport().get_mouse_position()
+		if is_instance_valid(palette_grid) and not palette_grid.get_global_rect().has_point(
+			pointer_position
+		):
+			dragged_outside.emit(index)
+		_long_press_drag_started = false
 
 
 func set_swatch_color(new_color: Color) -> void:
@@ -72,6 +90,8 @@ func _draw() -> void:
 		draw_rect(
 			Rect2(margin - Vector2.ONE, size - margin * 2 + Vector2(2, 2)), Color.WHITE, false, 1
 		)
+	if _show_pending_empty_highlight:
+		_draw_dashed_rect(Rect2(Vector2.ONE, size - Vector2(2, 2)), Color.WHITE)
 	if Global.show_pixel_indices:
 		var text := str(color_index + 1)
 		var font := Themes.get_font()
@@ -88,6 +108,30 @@ func _draw() -> void:
 			text_color.inverted()
 		)
 		draw_string(font, str_pos, text, HORIZONTAL_ALIGNMENT_RIGHT, -1, size.x / 2, text_color)
+
+
+func _draw_dashed_rect(rect: Rect2, line_color: Color) -> void:
+	_draw_dashed_segment(rect.position, Vector2(rect.end.x, rect.position.y), line_color)
+	_draw_dashed_segment(Vector2(rect.end.x, rect.position.y), rect.end, line_color)
+	_draw_dashed_segment(rect.end, Vector2(rect.position.x, rect.end.y), line_color)
+	_draw_dashed_segment(Vector2(rect.position.x, rect.end.y), rect.position, line_color)
+
+
+func _draw_dashed_segment(from: Vector2, to: Vector2, line_color: Color) -> void:
+	var segment_length := from.distance_to(to)
+	if segment_length <= 0.0:
+		return
+	var direction := (to - from) / segment_length
+	var cursor := 0.0
+	while cursor < segment_length:
+		var dash_end := minf(cursor + 3.0, segment_length)
+		draw_line(from + direction * cursor, from + direction * dash_end, line_color, 1.0)
+		cursor += 5.0
+
+
+func show_pending_empty_highlight(new_value: bool) -> void:
+	_show_pending_empty_highlight = new_value
+	queue_redraw()
 
 
 ## Enables drawing of highlights which indicate selected swatches
@@ -127,14 +171,60 @@ func _drop_data(_position: Vector2, data) -> void:
 
 
 func _on_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and _pressed_button != -1 and not _long_press_drag_started:
+		if event.position.distance_to(_press_position) > LONG_PRESS_MOVE_TOLERANCE:
+			_press_moved = true
+			_cancel_long_press()
+		return
 	if event is InputEventMouseButton:
 		if not get_global_rect().has_point(event.global_position):
 			return
 		if event.double_click and not empty:
 			double_clicked.emit(event.button_index, get_global_rect().position)
-		if event.is_released():
-			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
-				pressed.emit(event.button_index)
-		elif event.is_pressed():
+		if event.is_pressed():
+			if (
+				not empty
+				and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT)
+			):
+				_arm_long_press(event.button_index, event.position)
 			if DisplayServer.is_touchscreen_available() and show_left_highlight:
 				accept_event()
+		elif event.is_released():
+			var suppress_click := _suppress_release_click or _press_moved
+			_cancel_long_press()
+			_suppress_release_click = false
+			_press_moved = false
+			if suppress_click:
+				accept_event()
+				return
+			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+				pressed.emit(event.button_index)
+
+
+func _arm_long_press(mouse_button: int, position: Vector2) -> void:
+	_long_press_token += 1
+	var token := _long_press_token
+	_pressed_button = mouse_button
+	_press_position = position
+	_press_moved = false
+	get_tree().create_timer(LONG_PRESS_DRAG_SECONDS).timeout.connect(
+		_on_long_press_timeout.bind(token), CONNECT_ONE_SHOT
+	)
+
+
+func _on_long_press_timeout(token: int) -> void:
+	if token != _long_press_token or _pressed_button == -1 or empty:
+		return
+	_long_press_drag_started = true
+	_suppress_release_click = true
+	var drag_icon: PaletteSwatch = duplicate()
+	drag_icon.show_left_highlight = false
+	drag_icon.show_right_highlight = false
+	drag_icon._show_pending_empty_highlight = false
+	drag_icon.empty = false
+	force_drag(["Swatch", {source_index = index, long_press = true}], drag_icon)
+
+
+func _cancel_long_press() -> void:
+	_long_press_token += 1
+	_pressed_button = -1

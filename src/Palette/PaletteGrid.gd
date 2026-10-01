@@ -4,6 +4,7 @@ extends GridContainer
 signal swatch_pressed(mouse_button: int, index: int)
 signal swatch_double_clicked(mouse_button: int, index: int, position: Vector2)
 signal swatch_dropped(source_index: int, target_index: int)
+signal swatch_dragged_outside(index: int)
 
 const DEFAULT_SWATCH_SIZE := Vector2(26, 26)
 const MIN_SWATCH_SIZE := Vector2(8, 8)
@@ -21,6 +22,7 @@ var grid_locked := true:
 		else:
 			_on_resized()
 var swatch_size := DEFAULT_SWATCH_SIZE
+var pending_empty_palette_index := -1
 
 
 func _ready() -> void:
@@ -62,6 +64,7 @@ func setup_swatches() -> void:
 	for child in get_children():
 		child.queue_free()
 	swatches.clear()
+	pending_empty_palette_index = -1
 	for i in range(grid_size.x * grid_size.y):
 		var swatch := PaletteSwatch.new()
 		swatch.index = i
@@ -69,6 +72,7 @@ func setup_swatches() -> void:
 		swatch.pressed.connect(_on_palette_swatch_pressed.bind(i))
 		swatch.double_clicked.connect(_on_palette_swatch_double_clicked.bind(i))
 		swatch.dropped.connect(_on_palette_swatch_dropped)
+		swatch.dragged_outside.connect(_on_palette_swatch_dragged_outside.bind(i))
 		add_child(swatch)
 		swatches.push_back(swatch)
 
@@ -89,6 +93,7 @@ func init_swatch(swatch: PaletteSwatch) -> void:
 ## If current palette has [param color_info], then select the first slot that has it.
 ## This is helpful when we select color indirectly (e.g through colorpicker)
 func find_and_select_color(color_info: Dictionary, mouse_button: int) -> void:
+	clear_pending_empty_swatch()
 	var target_color: Color = color_info.get("color", Color(0, 0, 0, 0))
 	var palette_color_index: int = color_info.get("index", -1)
 	if not is_instance_valid(current_palette):
@@ -150,6 +155,23 @@ func unselect_swatch(mouse_button: int, palette_index: int) -> void:
 	var index := convert_palette_index_to_grid_index(palette_index)
 	if index >= 0 and index < swatches.size():
 		swatches[index].show_selected_highlight(false, mouse_button)
+
+
+func set_pending_empty_swatch(palette_index: int) -> void:
+	clear_pending_empty_swatch()
+	var index := convert_palette_index_to_grid_index(palette_index)
+	if index >= 0 and index < swatches.size() and swatches[index].empty:
+		pending_empty_palette_index = palette_index
+		swatches[index].show_pending_empty_highlight(true)
+
+
+func clear_pending_empty_swatch() -> void:
+	if pending_empty_palette_index == -1:
+		return
+	var index := convert_palette_index_to_grid_index(pending_empty_palette_index)
+	if index >= 0 and index < swatches.size():
+		swatches[index].show_pending_empty_highlight(false)
+	pending_empty_palette_index = -1
 
 
 func set_swatch_color(palette_index: int, color: Color) -> void:
@@ -221,3 +243,8 @@ func _on_palette_swatch_dropped(source_index: int, target_index: int) -> void:
 	var palette_source_index := convert_grid_index_to_palette_index(source_index)
 	var palette_target_index := convert_grid_index_to_palette_index(target_index)
 	swatch_dropped.emit(palette_source_index, palette_target_index)
+
+
+func _on_palette_swatch_dragged_outside(index: int) -> void:
+	var palette_index := convert_grid_index_to_palette_index(index)
+	swatch_dragged_outside.emit(palette_index)

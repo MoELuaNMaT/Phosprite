@@ -9,6 +9,7 @@ var palettes_id_name := {}
 
 var edited_swatch_index := -1
 var edited_swatch_color := Color.TRANSPARENT
+var pending_add_mouse_button := -1
 var sort_submenu := PopupMenu.new()
 
 var create_palette_dialog: ConfirmationDialog:
@@ -25,6 +26,7 @@ var edit_palette_dialog: ConfirmationDialog:
 			edit_palette_dialog.deleted.connect(_on_edit_palette_dialog_deleted)
 			edit_palette_dialog.exported.connect(_on_edit_palette_dialog_exported)
 			edit_palette_dialog.saved.connect(_on_edit_palette_dialog_saved)
+			edit_palette_dialog.sync_requested.connect(_on_edit_palette_dialog_sync_requested)
 			add_child(edit_palette_dialog)
 		return edit_palette_dialog
 
@@ -90,6 +92,7 @@ func _ready() -> void:
 func undo_redo_get_or_create_local_version(palette: Palette, undo_redo: UndoRedo) -> Palette:
 	if not palette.is_project_palette:
 		var project_palette = palette.duplicate()
+		project_palette.source_palette_name = palette.name
 		Palettes.undo_redo_add_palette(project_palette, false)
 		undo_redo.add_do_property(
 			palette_grid, "grid_window_origin", palette_grid.grid_window_origin
@@ -111,8 +114,17 @@ func setup_palettes_selector() -> void:
 	palettes_id_name.clear()
 	palette_select.clear()
 
+	var project := Global.current_project
+	var overridden_global_palettes := {}
+	if project:
+		for project_palette in project.palettes.values():
+			if not project_palette.source_palette_name.is_empty():
+				overridden_global_palettes[project_palette.source_palette_name] = true
+
 	var id := 0
 	for palette_name in Palettes.palettes:
+		if overridden_global_palettes.has(palette_name):
+			continue
 		# Add palette selector item
 		palette_select.add_item(Palettes.palettes[palette_name].name, id)
 
@@ -120,16 +132,16 @@ func setup_palettes_selector() -> void:
 		palettes_name_id[palette_name] = id
 		palettes_id_name[id] = palette_name
 		id += 1
-	var project := Global.current_project
 	if project:
 		if project.palettes.size() > 0:
 			palette_select.add_separator("")
 			id += 1
 		for palette_name in project.palettes:
 			# Add palette selector item
-			var disp_name := Palettes.get_name_without_suffix(
-				project.palettes[palette_name].name, true
-			)
+			var project_palette := project.palettes[palette_name]
+			var disp_name := project_palette.source_palette_name
+			if disp_name.is_empty():
+				disp_name = Palettes.get_name_without_suffix(project_palette.name, true)
 			palette_select.add_item("%s (project palette)" % disp_name, id)
 
 			# Map palette name to item id's and otherwise
@@ -149,13 +161,6 @@ func select_palette(palette_name: String) -> void:
 func redraw_current_palette() -> void:
 	if is_instance_valid(Palettes.current_palette):
 		Palettes.select_palette(Palettes.current_palette.name)
-		add_color_button.show()
-		delete_color_button.show()
-		sort_button.show()
-	else:
-		add_color_button.hide()
-		delete_color_button.hide()
-		sort_button.hide()
 
 
 func toggle_add_delete_buttons() -> void:
@@ -307,13 +312,11 @@ func _on_PaletteGrid_swatch_dropped(s_index: int, t_index: int) -> void:
 	var palette_in_focus := Palettes.current_palette
 	var palette_is_local := palette_in_focus.is_project_palette
 	if not palette_is_local:
-		# If palette is read only, make a local copy and create action.
-		if Global.global_palettes_readonly:
-			# Convert palette and create action
-			palette_in_focus = palette_in_focus.duplicate()
-			undo_redo.create_action(action_name)
-			Palettes.undo_redo_add_palette(palette_in_focus, false)
-			palette_is_local = true
+		palette_in_focus = palette_in_focus.duplicate()
+		palette_in_focus.source_palette_name = Palettes.current_palette.name
+		undo_redo.create_action(action_name)
+		Palettes.undo_redo_add_palette(palette_in_focus, false)
+		palette_is_local = true
 	else:
 		# It is a project palette, create action for it.
 		undo_redo.create_action(action_name)
@@ -351,19 +354,55 @@ func _on_PaletteGrid_swatch_dropped(s_index: int, t_index: int) -> void:
 
 func _on_PaletteGrid_swatch_pressed(mouse_button: int, index: int) -> void:
 	# NOTE: here index is relative to palette, not the grid
-	# Gets previously selected color index
-	var old_index := Palettes.current_palette_get_selected_color_index(mouse_button)
+	if not Palettes.is_any_palette_selected():
+		return
 	var is_empty_swatch = Palettes.current_palette.get_color(index) == null
-	if is_empty_swatch:  # Add colors with Left/Right Click
-		var new_color := Tools.get_assigned_color(mouse_button)
-		_current_palette_add_color(new_color, index)
-	else:
-		if Input.is_key_pressed(KEY_CTRL):  # Delete colors with Ctrl + Click
-			_current_palette_undo_redo_remove_color(index)
+	if is_empty_swatch:
+		if mouse_button != MOUSE_BUTTON_LEFT and mouse_button != MOUSE_BUTTON_RIGHT:
 			return
-	# Gets previously selected color index
+		var new_color := Tools.get_assigned_color(mouse_button)
+		# Empty cells only become an add target when the active color is not already in the palette.
+		if _palette_contains_color(new_color):
+			palette_grid.clear_pending_empty_swatch()
+			pending_add_mouse_button = -1
+			return
+		if (
+			palette_grid.pending_empty_palette_index == index
+			and pending_add_mouse_button == mouse_button
+		):
+			palette_grid.clear_pending_empty_swatch()
+			pending_add_mouse_button = -1
+			_current_palette_add_color(new_color, index)
+			palette_grid.find_and_select_color({"color": new_color}, mouse_button)
+		else:
+			palette_grid.set_pending_empty_swatch(index)
+			pending_add_mouse_button = mouse_button
+		return
+
+	palette_grid.clear_pending_empty_swatch()
+	pending_add_mouse_button = -1
+	var old_index := Palettes.current_palette_get_selected_color_index(mouse_button)
 	Palettes.current_palette_select_color(mouse_button, index)
 	palette_grid.select_swatch(mouse_button, index, old_index)
+
+
+func _palette_contains_color(color: Color) -> bool:
+	if not is_instance_valid(Palettes.current_palette):
+		return false
+	for palette_color in Palettes.current_palette.colors.values():
+		if palette_color.color == color:
+			return true
+	return false
+
+
+func _on_PaletteGrid_swatch_dragged_outside(index: int) -> void:
+	if not Palettes.is_any_palette_selected():
+		return
+	if Palettes.current_palette.get_color(index) == null:
+		return
+	palette_grid.clear_pending_empty_swatch()
+	pending_add_mouse_button = -1
+	_current_palette_undo_redo_remove_color(index)
 
 
 func _on_ColorPicker_color_changed(color: Color) -> void:
@@ -380,22 +419,15 @@ func _on_ColorPicker_color_changed(color: Color) -> void:
 			== Palettes.current_palette_get_selected_color_index(MOUSE_BUTTON_RIGHT)
 		):
 			Tools.assign_color(color, MOUSE_BUTTON_RIGHT)
-		Palettes.current_palette_set_color(edited_swatch_index, edited_swatch_color)
 
 
 func _on_colorpicker_visibility_changed() -> void:
-	# Abort if the palette's not local and palette conversion is disabled
-	if not Palettes.current_palette.is_project_palette and not Global.global_palettes_readonly:
-		return
 	var undo_redo := Global.current_project.undo_redo
 	if hidden_color_picker.get_picker().is_visible_in_tree():  # Editing started
 		undo_redo.create_action("Change swatch color")
 		var old_color := Palettes.current_palette_get_color(edited_swatch_index)
 		if not Palettes.current_palette.is_project_palette:
-			# Reset color on the original palette, and make a local copy instead
-			undo_redo.add_do_method(
-				Palettes.current_palette_set_color.bind(edited_swatch_index, old_color)
-			)
+			# Make a project-local copy before applying the edited color.
 			Palettes.copy_current_palette(false)
 		undo_redo.add_undo_method(
 			Palettes.current_palette_set_color.bind(edited_swatch_index, old_color)
@@ -448,6 +480,12 @@ func _new_palette_created() -> void:
 	redraw_current_palette()
 
 
+func _on_edit_palette_dialog_sync_requested() -> void:
+	if Palettes.sync_project_palette_to_global():
+		setup_palettes_selector()
+		redraw_current_palette()
+
+
 func _on_edit_palette_dialog_exported(path := "") -> void:
 	var image := Palettes.current_palette.convert_to_image()
 	if OS.has_feature("web"):
@@ -495,39 +533,29 @@ func _current_palette_add_color(color: Color, start_index := 0) -> void:
 			index = i
 			break
 	var undo_redo := Global.current_project.undo_redo
-	# Localize global palettes if possible
-	if palette_in_focus.is_project_palette or Global.global_palettes_readonly:
-		undo_redo.create_action("Add palette color")
-		palette_in_focus = undo_redo_get_or_create_local_version(palette_in_focus, undo_redo)
-		undo_redo.add_do_method(palette_in_focus.add_color.bind(color, start_index))
-		undo_redo.add_undo_method(palette_in_focus.remove_color.bind(index))
-		undo_redo.add_do_method(redraw_current_palette)
-		undo_redo.add_undo_method(redraw_current_palette)
-		undo_redo.add_do_method(toggle_add_delete_buttons)
-		undo_redo.add_undo_method(toggle_add_delete_buttons)
-		commit_undo()
-	else:  # Triggers when global palettes are writable
-		palette_in_focus.add_color(color, start_index)
-		redraw_current_palette()
-		toggle_add_delete_buttons()
+	# Palette edits are always project-local. The shared palette file changes only via Sync.
+	undo_redo.create_action("Add palette color")
+	palette_in_focus = undo_redo_get_or_create_local_version(palette_in_focus, undo_redo)
+	undo_redo.add_do_method(palette_in_focus.add_color.bind(color, start_index))
+	undo_redo.add_undo_method(palette_in_focus.remove_color.bind(index))
+	undo_redo.add_do_method(redraw_current_palette)
+	undo_redo.add_undo_method(redraw_current_palette)
+	undo_redo.add_do_method(toggle_add_delete_buttons)
+	undo_redo.add_undo_method(toggle_add_delete_buttons)
+	commit_undo()
 
 
 func _current_palette_undo_redo_remove_color(index := 0) -> void:
 	var old_color := Palettes.current_palette_get_color(index)
 	var palette_in_focus = Palettes.current_palette
 	var undo_redo := Global.current_project.undo_redo
-	# Localize global palettes if possible
-	if palette_in_focus.is_project_palette or Global.global_palettes_readonly:
-		undo_redo.create_action("Remove palette color")
-		palette_in_focus = undo_redo_get_or_create_local_version(palette_in_focus, undo_redo)
-		undo_redo.add_do_method(palette_in_focus.remove_color.bind(index))
-		undo_redo.add_undo_method(palette_in_focus.add_color.bind(old_color, index))
-		undo_redo.add_do_method(redraw_current_palette)
-		undo_redo.add_do_method(toggle_add_delete_buttons)
-		undo_redo.add_undo_method(redraw_current_palette)
-		undo_redo.add_undo_method(toggle_add_delete_buttons)
-		commit_undo()
-	else:  # Triggers when global palettes are writable
-		palette_in_focus.remove_color(index)
-		redraw_current_palette()
-		toggle_add_delete_buttons()
+	# Palette edits are always project-local. The shared palette file changes only via Sync.
+	undo_redo.create_action("Remove palette color")
+	palette_in_focus = undo_redo_get_or_create_local_version(palette_in_focus, undo_redo)
+	undo_redo.add_do_method(palette_in_focus.remove_color.bind(index))
+	undo_redo.add_undo_method(palette_in_focus.add_color.bind(old_color, index))
+	undo_redo.add_do_method(redraw_current_palette)
+	undo_redo.add_do_method(toggle_add_delete_buttons)
+	undo_redo.add_undo_method(redraw_current_palette)
+	undo_redo.add_undo_method(toggle_add_delete_buttons)
+	commit_undo()
