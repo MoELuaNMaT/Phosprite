@@ -14,13 +14,6 @@ var index := -1
 var color_index := -1
 var show_left_highlight := false
 var show_right_highlight := false
-var _show_pending_empty_highlight := false
-var _long_press_token := 0
-var _pressed_button := -1
-var _press_position := Vector2.ZERO
-var _long_press_drag_started := false
-var _suppress_release_click := false
-var _press_moved := false
 var empty := true:
 	set(value):
 		empty = value
@@ -29,6 +22,14 @@ var empty := true:
 			color = Global.control.theme.get_stylebox("disabled", "Button").bg_color
 		else:
 			mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+var _show_pending_empty_highlight := false
+var _long_press_token := 0
+var _pressed_button := -1
+var _press_position := Vector2.ZERO
+var _long_press_drag_started := false
+var _suppress_release_click := false
+var _press_moved := false
 
 
 func _init() -> void:
