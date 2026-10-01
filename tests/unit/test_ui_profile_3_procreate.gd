@@ -284,6 +284,11 @@ func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
 	)
 	check_has(
 		builtins,
+		"ui3_tool_options.minimum_size = Vector2(208.0, 104.0)",
+		"UI 3 Tool Options should remain usable while allowing a much smaller floating footprint",
+	)
+	check_has(
+		builtins,
 		"ui3_tool_options.preferred_size = Vector2(340.0, 260.0)",
 		"UI 3 Tool Options should default to a small floating-window footprint",
 	)
