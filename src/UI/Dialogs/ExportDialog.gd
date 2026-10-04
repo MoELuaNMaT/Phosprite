@@ -21,6 +21,7 @@ var image_exports: Array[Export.FileFormat] = [
 	Export.FileFormat.PNG,
 	Export.FileFormat.WEBP,
 	Export.FileFormat.JPEG,
+	Export.FileFormat.SVG,
 	Export.FileFormat.EXR,
 	Export.FileFormat.GIF,
 	Export.FileFormat.APNG,
@@ -31,7 +32,11 @@ var image_exports: Array[Export.FileFormat] = [
 	Export.FileFormat.WEBM,
 ]
 var spritesheet_exports: Array[Export.FileFormat] = [
-	Export.FileFormat.PNG, Export.FileFormat.WEBP, Export.FileFormat.JPEG, Export.FileFormat.EXR
+	Export.FileFormat.PNG,
+	Export.FileFormat.WEBP,
+	Export.FileFormat.JPEG,
+	Export.FileFormat.SVG,
+	Export.FileFormat.EXR,
 ]
 
 var _preview_images: Array[Export.ProcessedImage]
