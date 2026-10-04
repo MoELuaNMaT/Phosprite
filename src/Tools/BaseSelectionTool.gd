@@ -58,9 +58,9 @@ func _apply_ios_compact_options() -> void:
 
 
 func set_confirm_buttons_visibility() -> void:
+	await get_tree().process_frame
 	if not is_inside_tree():
 		return
-	await get_tree().process_frame
 	set_spinbox_values()
 	if OS.get_name() == "iOS":
 		_apply_ios_compact_options()
