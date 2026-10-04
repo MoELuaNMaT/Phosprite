@@ -146,11 +146,22 @@ func test_base_draw_uses_procedural_preview_and_real_hollow_square_stamp() -> vo
 	)
 
 
-func test_pencil_options_are_reduced_to_brush_size_and_opacity() -> void:
+func test_pencil_options_are_reduced_to_brush_size_opacity_and_dither() -> void:
 	var pencil_scene := FileAccess.get_file_as_string(PENCIL_SCENE)
 	var pencil_source := FileAccess.get_file_as_string(PENCIL_SOURCE)
 	check_has(pencil_scene, '[node name="Opacity"', "Pencil must expose an Opacity control")
 	check_has(pencil_scene, "max_value = 100.0", "Pencil opacity must use a 0-100 percent range")
+	check_has(pencil_scene, '[node name="Dither" type="CheckBox"', "Pencil must expose Dither")
+	check_has(
+		pencil_scene,
+		'[node name="Pattern" type="OptionButton" parent="DitherSettings/PatternRow"',
+		"Dither must expose an ordered-pattern selector",
+	)
+	check_has(
+		pencil_scene,
+		'[node name="Coverage" parent="DitherSettings"',
+		"Dither must expose a coverage percentage control",
+	)
 	for removed in ["Overwrite", "FillInside", "SpacingMode", 'name="Spacing"']:
 		check_true(
 			not pencil_scene.contains(removed),
@@ -170,6 +181,27 @@ func test_pencil_options_are_reduced_to_brush_size_and_opacity() -> void:
 		pencil_source,
 		'config["strength"] = _strength',
 		"Pencil opacity must persist through the existing strength channel",
+	)
+	check_has(
+		pencil_source,
+		"const DITHER_SIZES := [2, 4, 8, 16]",
+		"Pencil must offer stable Bayer matrix sizes",
+	)
+	for dither_key in ["dither_enabled", "dither_size", "dither_coverage"]:
+		check_has(
+			pencil_source,
+			'config["%s"]' % dither_key,
+			"Dither option must persist: %s" % dither_key,
+		)
+	check_has(
+		pencil_source,
+		"not _dither_allows_pixel(pos)",
+		"geometric Pencil stamps must skip pixels through the dither rule",
+	)
+	check_has(
+		pencil_source,
+		"_apply_dither_to_brush_image(effective_brush, src_rect, dst)",
+		"image brushes must use the same canvas-space dither rule",
 	)
 	for legacy_key in ["brush_density", "overwrite", "fill_inside", "spacing_mode", "spacing"]:
 		check_has(
