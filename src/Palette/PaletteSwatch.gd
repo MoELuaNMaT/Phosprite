@@ -4,6 +4,7 @@ extends ColorRect
 signal pressed(mouse_button: int)
 signal double_clicked(mouse_button: int, position: Vector2)
 signal dropped(source_index: int, new_index: int)
+signal dragged_outside(index: int)
 
 const DEFAULT_COLOR := Color(0.0, 0.0, 0.0, 0.0)
 const DRAG_OUTLINE_INSET_PX := 4
@@ -29,6 +30,9 @@ var empty := true:
 		else:
 			mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
+var _show_pending_empty_highlight := false
+var _drag_active := false
+
 
 func _init() -> void:
 	color = DEFAULT_COLOR
@@ -51,6 +55,15 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED:
 		if empty:
 			empty = true
+	elif what == NOTIFICATION_DRAG_END and _drag_active:
+		var palette_grid := get_parent() as Control
+		var pointer_position := get_viewport().get_mouse_position()
+		if (
+			is_instance_valid(palette_grid)
+			and not palette_grid.get_global_rect().has_point(pointer_position)
+		):
+			dragged_outside.emit(index)
+		_drag_active = false
 
 
 func set_swatch_color(new_color: Color) -> void:
@@ -82,6 +95,8 @@ func _draw() -> void:
 			Rect2(margin - Vector2.ONE, size - margin * 2 + Vector2(2, 2)), Color.WHITE, false, 1
 		)
 
+	if _show_pending_empty_highlight:
+		_draw_dragging_outline()
 	if show_dragging_outline and not empty:
 		_draw_dragging_outline()
 
@@ -127,6 +142,11 @@ func _draw_drag_dash(from: Vector2, to: Vector2) -> void:
 	draw_line(from, to, Color.WHITE, 1.0)
 
 
+func show_pending_empty_highlight(new_value: bool) -> void:
+	_show_pending_empty_highlight = new_value
+	queue_redraw()
+
+
 ## Enables drawing of highlights which indicate selected swatches
 func show_selected_highlight(new_value: bool, mouse_button: int) -> void:
 	if not empty:
@@ -150,7 +170,9 @@ func _get_drag_data(_position: Vector2) -> Variant:
 	drag_icon.show_left_highlight = false
 	drag_icon.show_right_highlight = false
 	drag_icon.show_dragging_outline = false
+	drag_icon._show_pending_empty_highlight = false
 	drag_icon.empty = false
+	_drag_active = true
 	set_drag_preview(drag_icon)
 	return ["Swatch", {source_index = index}]
 

@@ -1,7 +1,8 @@
 extends ConfirmationDialog
 
 ## Emitted when the user confirms their changes
-signal saved(name: String, comment: String, width: int, height: int)
+signal saved(name: String, comment: String, width: int, height: int, is_global: bool)
+signal sync_requested
 ## Emitted when the user deletes a palette
 signal deleted
 ## Emitted when the user exports a palette
@@ -9,6 +10,7 @@ signal exported(path: String)
 
 const EXPORT_ACTION := &"export"
 const DELETE_ACTION := &"delete"
+const SYNC_ACTION := &"sync"
 const BIN_ACTION := &"trash"
 
 # Keeps original size of edited palette
@@ -17,6 +19,7 @@ var origin_height := 0
 
 var old_name := ""
 var trash_button: Button
+var sync_button: Button
 var is_proj_palette := false
 
 @onready var name_input := $VBoxContainer/PaletteMetadata/Name
@@ -34,7 +37,10 @@ var is_proj_palette := false
 
 func _ready() -> void:
 	export_file_dialog.use_native_dialog = Global.use_native_file_dialogs
-	# Add delete and export buttons to edit palette dialog
+	# Normal edits stay project-local. Sync is the only path that updates the shared palette file.
+	type_checkbox.get_parent().hide()
+	sync_button = add_button("Sync", false, SYNC_ACTION)
+	sync_button.tooltip_text = "Overwrite the shared palette file with this project's palette."
 	add_button("Delete", false, DELETE_ACTION)
 	add_button("Export", false, EXPORT_ACTION)
 	trash_button = delete_confirmation.add_button("Move to Trash", false, BIN_ACTION)
@@ -43,9 +49,8 @@ func _ready() -> void:
 func open(current_palette: Palette) -> void:
 	if current_palette:
 		is_proj_palette = current_palette.is_project_palette
-		var type := "global" if current_palette.is_project_palette else "project wide"
-		type_checkbox.text = "Create a %s copy when confirming the dialog." % type
 		type_checkbox.button_pressed = false
+		refresh_sync_state(current_palette)
 		trash_button.visible = !current_palette.is_project_palette
 		path_input.visible = !current_palette.is_project_palette
 		$VBoxContainer/PaletteMetadata/PathLabel.visible = path_input.visible
@@ -94,21 +99,28 @@ func _on_EditPaletteDialog_visibility_changed() -> void:
 
 
 func _on_EditPaletteDialog_confirmed() -> void:
-	if type_checkbox.button_pressed:
-		is_proj_palette = !is_proj_palette
-	saved.emit(
-		name_input.text, comment_input.text, width_input.value, height_input.value, !is_proj_palette
-	)
+	saved.emit(name_input.text, comment_input.text, width_input.value, height_input.value, false)
 
 
 func _on_EditPaletteDialog_custom_action(action: StringName) -> void:
 	if action == DELETE_ACTION:
 		delete_confirmation.popup_centered_clamped()
+	elif action == SYNC_ACTION:
+		sync_requested.emit()
+		refresh_sync_state(Palettes.current_palette)
 	elif action == EXPORT_ACTION:
 		if OS.has_feature("web"):
 			exported.emit()
 		else:
 			export_file_dialog.popup_centered_clamped()
+
+
+func refresh_sync_state(current_palette: Palette) -> void:
+	if not is_instance_valid(sync_button):
+		return
+	sync_button.visible = is_instance_valid(current_palette) and current_palette.is_project_palette
+	if sync_button.visible:
+		sync_button.disabled = Palettes.is_palette_synced_to_global(current_palette)
 
 
 func _on_delete_confirmation_confirmed() -> void:

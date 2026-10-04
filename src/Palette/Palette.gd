@@ -17,6 +17,9 @@ var is_project_palette := false:
 		if value:
 			path = ""
 		is_project_palette = value
+## Name of the shared/global palette file this project palette was derived from.
+## Empty means this palette has no shared source yet.
+var source_palette_name := ""
 
 ## The width of the grid.
 var width := DEFAULT_WIDTH
@@ -85,6 +88,7 @@ func edit(new_name: String, new_width: int, new_height: int, new_comment: String
 func duplicate() -> Palette:
 	var new_palette := Palette.new(name, width, height, comment)
 	new_palette.set_color_data(colors)
+	new_palette.source_palette_name = source_palette_name
 	return new_palette
 
 
@@ -104,7 +108,13 @@ func get_color_data() -> Dictionary[int, PaletteColor]:
 
 
 func serialize() -> String:
-	var serialize_data := {"comment": comment, "colors": [], "width": width, "height": height}
+	var serialize_data := {
+		"comment": comment,
+		"colors": [],
+		"width": width,
+		"height": height,
+		"source_palette_name": source_palette_name,
+	}
 	for color in colors:
 		serialize_data.colors.push_back(colors[color].serialize())
 
@@ -144,6 +154,8 @@ func deserialize_from_dictionary(data: Dictionary) -> void:
 		width = data.width
 	if data.has("height"):
 		height = data.height
+	if data.has("source_palette_name"):
+		source_palette_name = data.source_palette_name
 	colors_max = width * height
 
 

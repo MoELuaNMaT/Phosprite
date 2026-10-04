@@ -34,6 +34,7 @@ layout_mode = 2
 layout_mode = 2
 
 [node name="AddColor" type="Button" parent="PaletteVBoxContainer/PaletteButtons" unique_id=1738955467 groups=["UIButtons"]]
+visible = false
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
@@ -58,6 +59,7 @@ size_flags_vertical = 0
 texture = ExtResource("2_j1lig")
 
 [node name="DeleteColor" type="Button" parent="PaletteVBoxContainer/PaletteButtons" unique_id=1984983129 groups=["UIButtons"]]
+visible = false
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
@@ -82,6 +84,7 @@ size_flags_vertical = 0
 texture = ExtResource("3_0e27e")
 
 [node name="Sort" type="MenuButton" parent="PaletteVBoxContainer/PaletteButtons" unique_id=1626175714 groups=["UIButtons"]]
+visible = false
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
@@ -107,6 +110,7 @@ size_flags_vertical = 0
 texture = ExtResource("4_hcsuy")
 
 [node name="LockGrid" type="Button" parent="PaletteVBoxContainer/PaletteButtons" unique_id=396920274 groups=["UIButtons"]]
+visible = false
 unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
@@ -214,5 +218,6 @@ layout_mode = 2
 [connection signal="pressed" from="PaletteVBoxContainer/PaletteButtons/AddPalette" to="." method="_on_AddPalette_pressed"]
 [connection signal="swatch_double_clicked" from="PaletteVBoxContainer/ScrollContainer/PaletteGrid" to="." method="_on_PaletteGrid_swatch_double_clicked"]
 [connection signal="swatch_dropped" from="PaletteVBoxContainer/ScrollContainer/PaletteGrid" to="." method="_on_PaletteGrid_swatch_dropped"]
+[connection signal="swatch_dragged_outside" from="PaletteVBoxContainer/ScrollContainer/PaletteGrid" to="." method="_on_PaletteGrid_swatch_dragged_outside"]
 [connection signal="swatch_pressed" from="PaletteVBoxContainer/ScrollContainer/PaletteGrid" to="." method="_on_PaletteGrid_swatch_pressed"]
 [connection signal="color_changed" from="HiddenColorPickerButton" to="." method="_on_ColorPicker_color_changed"]
