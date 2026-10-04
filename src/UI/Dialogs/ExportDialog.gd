@@ -37,6 +37,7 @@ var spritesheet_exports: Array[Export.FileFormat] = [
 var _preview_images: Array[Export.ProcessedImage]
 var _configured_project: Project
 var _profile_only := false
+var _is_initializing_export_settings := false
 
 @onready var tabs: TabBar = $VBoxContainer/TabBar
 @onready var previews: GridContainer = $"%Previews"
@@ -164,6 +165,22 @@ func show_tab() -> void:
 		get_tree().call_group("NotHTML5", "hide")
 	elif OS.get_name() == "Android":
 		get_tree().call_group("NotAndroid", "hide")
+
+
+func _set_project_export_settings(
+	directory_path: String, file_name: String, file_format: Export.FileFormat
+) -> void:
+	var project := _target_project()
+	var settings_changed := (
+		project.export_directory_path != directory_path
+		or project.file_name != file_name
+		or project.file_format != file_format
+	)
+	project.export_directory_path = directory_path
+	project.file_name = file_name
+	project.file_format = file_format
+	if settings_changed and not _is_initializing_export_settings:
+		project.has_changed = true
 
 
 func set_preview() -> void:
@@ -369,7 +386,7 @@ func _set_file_format_selector_suitable_file_formats(formats: Array[Export.FileF
 				"*" + Export.file_format_string(i), Export.file_format_description(i)
 			)
 	if needs_update:
-		project.file_format = formats[0]
+		_set_project_export_settings(project.export_directory_path, project.file_name, formats[0])
 	file_format_options.selected = file_format_options.get_item_index(project.file_format)
 	if OS.get_name() == "Android":
 		var file_ext_str := "*" + Export.file_format_string(project.file_format)
@@ -446,6 +463,7 @@ func set_export_progress_bar(value: float) -> void:
 
 
 func _on_about_to_popup() -> void:
+	_is_initializing_export_settings = true
 	get_ok_button().text = "Export"
 	Global.transform_content_confirmed.emit()
 	var project := _target_project()
@@ -453,14 +471,17 @@ func _on_about_to_popup() -> void:
 	if SHARE_SERVICE.is_share_export_platform():
 		# Destination is selected later in iOS Share Sheet. The Pixelorama exporter
 		# still needs a real writable directory, so point it at private staging.
-		project.export_directory_path = SHARE_SERVICE.STAGING_DIRECTORY
+		_set_project_export_settings(
+			SHARE_SERVICE.STAGING_DIRECTORY, project.file_name, project.file_format
+		)
 	elif _uses_bare_file_name() and project.export_directory_path.is_empty():
-		project.export_directory_path = "user://"
+		_set_project_export_settings("user://", project.file_name, project.file_format)
 
 	if project.export_directory_path.is_empty():
-		project.export_directory_path = Global.config_cache.get_value(
+		var default_directory_path: String = Global.config_cache.get_value(
 			"data", "current_dir", OS.get_system_dir(OS.SYSTEM_DIR_DESKTOP)
 		)
+		_set_project_export_settings(default_directory_path, project.file_name, project.file_format)
 
 	# If export already occurred - sets GUI to show previous settings
 	options_resize.value = Export.resize
@@ -475,6 +496,7 @@ func _on_about_to_popup() -> void:
 		path_dialog_popup.current_dir = project.export_directory_path
 	Export.cache_blended_frames(project)
 	show_tab()
+	_is_initializing_export_settings = false
 
 
 func _on_tab_bar_tab_changed(tab: Export.ExportTab) -> void:
@@ -631,11 +653,12 @@ func _on_path_line_edit_text_changed(new_text: String) -> void:
 	# Where the field holds a bare file name, its base dir is meaningless
 	# ("." for a plain name) and must not clobber the resolved export directory.
 	var project := _target_project()
+	var directory_path := project.export_directory_path
 	if not _uses_bare_file_name():
-		project.export_directory_path = new_text.get_base_dir()
-	project.file_name = new_text.get_file().get_basename()
+		directory_path = new_text.get_base_dir()
+	var file_name := new_text.get_file().get_basename()
 	var file_format := Export.get_file_format_from_extension(new_text.get_extension())
-	project.file_format = file_format
+	_set_project_export_settings(directory_path, file_name, file_format)
 	if not Export.is_single_file_format(_target_project()):
 		get_tree().set_group("ExportMultipleFilesOptions", "disabled", false)
 		get_tree().set_group("ExportMultipleFilesEditableOptions", "editable", true)
@@ -661,7 +684,8 @@ func _on_path_dialog_file_selected(path: String) -> void:
 
 func _on_path_dialog_dir_selected(dir: String) -> void:
 	directory_path_label.text = dir
-	_target_project().export_directory_path = dir
+	var project := _target_project()
+	_set_project_export_settings(dir, project.file_name, project.file_format)
 
 
 func _on_path_dialog_canceled() -> void:
