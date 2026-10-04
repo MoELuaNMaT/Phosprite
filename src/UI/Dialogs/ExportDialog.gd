@@ -160,7 +160,9 @@ func show_tab() -> void:
 			spritesheet_orientation.selected = _target_project().export_profile.orientation
 			spritesheet_lines_count.max_value = _target_project().export_profile.number_of_frames
 			spritesheet_lines_count.value = _target_project().export_profile.lines_count
-			spritesheet_layers_as_separate_files.disabled = !_target_project().export_profile.split_layers
+			spritesheet_layers_as_separate_files.disabled = !(
+				_target_project().export_profile.split_layers
+			)
 			get_tree().call_group("ExportSpritesheetOptions", "show")
 			_handle_orientation_ui()
 	set_preview()
@@ -433,7 +435,9 @@ func create_layer_list() -> void:
 
 func update_dimensions_label() -> void:
 	if _preview_images.size() > 0:
-		var new_size: Vector2i = _preview_images[0].image.get_size() * (_target_project().export_profile.resize / 100.0)
+		var new_size: Vector2i = (
+			_preview_images[0].image.get_size() * (_target_project().export_profile.resize / 100.0)
+		)
 		dimension_label.text = str(new_size.x, "×", new_size.y)
 
 
