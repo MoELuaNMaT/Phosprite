@@ -45,7 +45,11 @@ func test_compact_palette_header_hides_legacy_edit_buttons() -> void:
 		var tail := scene.substr(start)
 		var next_node := tail.find("\n[node ", 1)
 		var block := tail if next_node < 0 else tail.substr(0, next_node)
-		check_has(block, "visible = false", "%s must stay hidden in the compact palette header" % node_name)
+		check_has(
+			block,
+			"visible = false",
+			"%s must stay hidden in the compact palette header" % node_name
+		)
 
 
 func test_empty_slot_confirmation_and_drag_out_delete_are_shared_across_inputs() -> void:
