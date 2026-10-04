@@ -1,5 +1,7 @@
 extends BaseDrawTool
 
+const DITHER_SIZES := [2, 4, 8, 16]
+
 var _prev_mode := false
 var _last_position := Vector2i(Vector2.INF)
 var _changed := false
@@ -8,8 +10,6 @@ var _fill_inside := false
 var _fill_inside_rect := Rect2i()  ## The bounding box that surrounds the area that gets filled.
 var _draw_points := PackedVector2Array()
 var _old_spacing_mode := false  ## Needed to reset spacing mode in case we change it
-
-const DITHER_SIZES := [2, 4, 8, 16]
 
 var _dither_enabled := false
 var _dither_size := 4
