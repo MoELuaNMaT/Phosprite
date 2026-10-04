@@ -198,7 +198,10 @@ func _gui_input(event: InputEvent) -> void:
 				x_delta *= 0.1
 			var drag_delta := x_delta * drag_sensitivity
 			if show_progress:
-				ratio = get_meta("start_ratio") + drag_delta / size.x
+				# Keep accumulating drag distance even after the visible ratio reaches its bounds.
+				var start_ratio: float = get_meta("start_ratio")
+				var new_ratio := start_ratio + drag_delta / size.x
+				value = _start_value + (max_value - min_value) * (new_ratio - start_ratio)
 			else:
 				value = _start_value + drag_delta * step
 			# Snap when snap_by_default is true, do the opposite when Control is pressed
