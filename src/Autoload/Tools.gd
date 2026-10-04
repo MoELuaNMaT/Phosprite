@@ -17,6 +17,9 @@ const XY_LINE := Vector2(-0.70710677, 0.70710677)
 const X_MINUS_Y_LINE := Vector2(0.70710677, 0.70710677)
 const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
 
+var active_multi_state_tools := 0:
+	set(value):
+		active_multi_state_tools = clamp(value, 0, 2)
 var active_button := -1
 var picking_color_for := MOUSE_BUTTON_LEFT
 var horizontal_mirror := false

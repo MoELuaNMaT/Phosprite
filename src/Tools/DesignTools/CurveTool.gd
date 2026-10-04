@@ -147,6 +147,7 @@ func draw_start(pos: Vector2i) -> void:
 			button.disabled = true
 		_drawing = true
 		_current_state = SingleState.START
+		Tools.active_multi_state_tools += 1
 	# NOTE: _current_state of CHAINED mode is always SingleState.START so it will always pass this.
 	if _current_state == SingleState.START or _current_state == SingleState.END:
 		_curve.add_point(Vector2(pos) + Vector2(0.5, 0.5))
@@ -272,7 +273,9 @@ func _draw_shape() -> void:
 func _clear() -> void:
 	_curve.clear_points()
 	_fill_inside_rect = Rect2i()
-	_drawing = false
+	if _drawing:
+		Tools.active_multi_state_tools -= 1
+		_drawing = false
 	Global.canvas.previews_sprite.texture = null
 	_editing_out_control_point = false
 	Global.canvas.previews.queue_redraw()
