@@ -26,33 +26,33 @@ func test_palette_touch_routes_through_existing_primary_secondary_target() -> vo
 	)
 
 
-func test_palette_touch_add_delete_reuse_existing_panel_handlers() -> void:
+func test_palette_touch_uses_empty_slot_fill_and_drag_outside_delete() -> void:
 	var grid := FileAccess.get_file_as_string(PALETTE_GRID_SOURCE)
 	var panel := FileAccess.get_file_as_string(PALETTE_PANEL_SOURCE)
 	check_has(
 		grid,
-		"panel._on_AddColor_gui_input(event)",
-		"touch Add Color must reuse the existing add-color transaction path"
+		"swatch_pressed.emit(active_button, palette_index)",
+		"touch empty-slot taps must reuse the existing swatch press transaction path",
+	)
+	check_has(
+		panel,
+		"palette_grid.pending_empty_palette_index == index",
+		"the second tap on the same empty slot must confirm the pending color insertion",
+	)
+	check_has(
+		panel,
+		"_current_palette_add_color(new_color, index)",
+		"confirmed empty slots must add the active color through the undoable palette path",
 	)
 	check_has(
 		grid,
-		"panel._on_DeleteColor_gui_input(event)",
-		"touch Delete Color must reuse the existing delete-color transaction path"
+		"swatch_dragged_outside.emit(palette_index)",
+		"an acquired iPad reorder released outside the palette must request deletion",
 	)
 	check_has(
 		panel,
-		"Tools.get_assigned_color(event.button_index)",
-		"the shared Add Color handler must still resolve colors from the selected slot"
-	)
-	check_has(
-		panel,
-		"current_palette_get_selected_color_index(",
-		"the shared Delete Color handler must still query the existing selected-index model"
-	)
-	check_has(
-		panel,
-		"event.button_index",
-		"desktop Add/Delete must remain parameterized by the original pointer button"
+		"_current_palette_undo_redo_remove_color(index)",
+		"drag-out deletion must reuse the undoable palette removal path",
 	)
 
 
