@@ -10,6 +10,8 @@ var _mode := 0
 
 
 func _ready() -> void:
+	if OS.get_name() != "iOS":
+		_color_slot = 0 if tool_slot.button == MOUSE_BUTTON_LEFT else 1
 	super._ready()
 	if not Global.cel_switched.is_connected(_on_cel_switched):
 		Global.cel_switched.connect(_on_cel_switched)
