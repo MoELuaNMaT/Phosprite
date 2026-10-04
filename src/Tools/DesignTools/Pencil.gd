@@ -121,7 +121,7 @@ func set_config(config: Dictionary) -> void:
 	_dither_enabled = config.get("dither_enabled", _dither_enabled)
 	var configured_dither_size: int = config.get("dither_size", _dither_size)
 	_dither_size = configured_dither_size if configured_dither_size in DITHER_SIZES else 4
-	_dither_coverage = clampi(config.get("dither_coverage", _dither_coverage), 1, 100)
+	_dither_coverage = clampi(int(config.get("dither_coverage", _dither_coverage)), 1, 100)
 
 
 func update_config() -> void:
@@ -261,7 +261,7 @@ func _dither_allows_pixel(pos: Vector2i) -> bool:
 	var multiplier := 1
 	var current_size := size
 	while current_size > 1:
-		var half := current_size / 2
+		var half := current_size >> 1
 		var quadrant_x := 1 if x >= half else 0
 		var quadrant_y := 1 if y >= half else 0
 		var quadrant := 0
@@ -275,11 +275,15 @@ func _dither_allows_pixel(pos: Vector2i) -> bool:
 		y %= half
 		current_size = half
 	var cell_count := size * size
-	var visible_cells := clampi(roundi(cell_count * _dither_coverage / 100.0), 1, cell_count)
+	var visible_cells := clampi(
+		roundi(cell_count * _dither_coverage / 100.0), 1, cell_count
+	)
 	return threshold < visible_cells
 
 
-func _apply_dither_to_brush_image(brush_image: Image, src_rect: Rect2i, dst: Vector2i) -> Image:
+func _apply_dither_to_brush_image(
+	brush_image: Image, src_rect: Rect2i, dst: Vector2i
+) -> Image:
 	if not _dither_enabled or _dither_coverage >= 100:
 		return brush_image
 	var filtered := Image.new()
