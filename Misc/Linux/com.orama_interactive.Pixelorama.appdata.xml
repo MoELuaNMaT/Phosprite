@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright (c) 2019-present Orama Interactive and contributors -->
 <component type="desktop">
-  <id>com.orama_interactive.Pixelorama.desktop</id>
+  <id>com.orama_interactive.Pixelorama</id>
 
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
+  <launchable type="desktop-id">com.orama_interactive.Pixelorama.desktop</launchable>
 
   <name>Pixelorama</name>
-  <summary>Pixel Art & Animation</summary>
+  <summary>Pixel Art &amp; Animation</summary>
 
   <developer id="com.oramainteractive">
     <name>Orama Interactive</name>
@@ -75,7 +76,7 @@
   </screenshots>
 
   <releases>
-	<release version="1.2" date="2024-07-29"/>
+	<release version="1.2" date="2026-07-29"/>
 	<release version="1.1.10" date="2026-04-30"/>
 	<release version="1.1.9" date="2026-04-12"/>
 	<release version="1.1.8" date="2025-12-31"/>
