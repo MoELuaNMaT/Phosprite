@@ -95,8 +95,9 @@ func deserialize(data: Dictionary) -> void:
 		var raw_value = data[key]
 		var value = raw_value
 		if raw_value is String:
-			if default_value is String and not (
-				raw_value.begins_with('"') and raw_value.ends_with('"')
+			if (
+				default_value is String
+				and not (raw_value.begins_with('"') and raw_value.ends_with('"'))
 			):
 				value = raw_value
 			else:
