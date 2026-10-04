@@ -23,7 +23,7 @@ func test_serialize_shape_is_stable() -> void:
 	var palette := _make_palette()
 	var data: Dictionary = JSON.parse_string(palette.serialize())
 	check_true(data != null, "palette serialize() must produce valid JSON")
-	for key: String in ["comment", "colors", "width", "height"]:
+	for key: String in ["comment", "colors", "width", "height", "source_palette_name"]:
 		check_true(data.has(key), "serialized palette must keep the '%s' key" % key)
 	check_eq(data["width"], SAMPLE_W, "palette width must round-trip")
 	check_eq(data["height"], SAMPLE_H, "palette height must round-trip")
@@ -82,3 +82,15 @@ func test_add_and_remove_color_updates_sparse_map() -> void:
 
 	palette.remove_color(2)
 	check_true(not palette.colors.has(2), "remove_color must clear the slot")
+
+
+func test_source_palette_name_survives_round_trip() -> void:
+	var original := _make_palette()
+	original.source_palette_name = "Shared Source"
+	var restored := Palette.new()
+	restored.deserialize(original.serialize())
+	check_eq(
+		restored.source_palette_name,
+		"Shared Source",
+		"project palettes must retain the shared palette they can synchronize back to",
+	)
