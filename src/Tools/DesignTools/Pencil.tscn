@@ -20,4 +20,43 @@ allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
+[node name="Dither" type="CheckBox" parent="." index="7" unique_id=1867273411]
+layout_mode = 2
+size_flags_horizontal = 0
+tooltip_text = "Use an ordered dither pattern to skip pixels while drawing"
+mouse_default_cursor_shape = 2
+text = "Dither"
+
+[node name="DitherSettings" type="VBoxContainer" parent="." index="8" unique_id=1128140472]
+visible = false
+layout_mode = 2
+
+[node name="PatternRow" type="HBoxContainer" parent="DitherSettings" index="0" unique_id=1908512044]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DitherSettings/PatternRow" index="0" unique_id=2071427330]
+layout_mode = 2
+text = "Pattern:"
+
+[node name="Pattern" type="OptionButton" parent="DitherSettings/PatternRow" index="1" unique_id=1215489619]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+
+[node name="Coverage" parent="DitherSettings" index="1" unique_id=1625954405 instance=ExtResource("2")]
+layout_mode = 2
+focus_mode = 0
+min_value = 1.0
+max_value = 100.0
+value = 50.0
+prefix = "Coverage:"
+suffix = "%"
+show_progress = false
+allow_text_input = false
+show_drag_arrows = true
+show_arrows = false
+
 [connection signal="value_changed" from="Opacity" to="." method="_on_Opacity_value_changed"]
+[connection signal="toggled" from="Dither" to="." method="_on_Dither_toggled"]
+[connection signal="item_selected" from="DitherSettings/PatternRow/Pattern" to="." method="_on_DitherPattern_item_selected"]
+[connection signal="value_changed" from="DitherSettings/Coverage" to="." method="_on_DitherCoverage_value_changed"]
