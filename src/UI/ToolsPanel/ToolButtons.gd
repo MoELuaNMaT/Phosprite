@@ -35,8 +35,6 @@ const FAMILY_DISCLOSURE_INDICATOR_SIZE := 8.0
 const FAMILY_DISCLOSURE_INDICATOR_MARGIN := 1.0
 
 var pen_inverted := false
-## Fixes tools accidentally being switched through shortcuts when user types on a line edit.
-var _ignore_shortcuts := false
 ## Direct-touch taps are resolved here instead of depending on touch-to-mouse emulation.
 var _touch_tool_candidates: Dictionary = {}
 var _touch_ui_mode := false
@@ -78,9 +76,6 @@ static func is_ios_toolbar_removed_tool(tool_name: StringName) -> bool:
 
 
 func _ready() -> void:
-	# Ensure to only call _input() if the cursor is inside the main canvas viewport
-	Global.main_viewport.mouse_entered.connect(func(): _ignore_shortcuts = false)
-	Global.main_viewport.mouse_exited.connect(func(): _ignore_shortcuts = true)
 	if OS.get_name() == "iOS":
 		# Installation is transactional: until all seven runtime buttons exist, D1's normal
 		# toolbar remains untouched. Once installed, the six child buttons are moved out of
@@ -114,11 +109,10 @@ func _input(event: InputEvent) -> void:
 		_restore_pointer_tool_ui()
 	if not Global.can_draw:
 		return
+	if get_viewport().gui_get_focus_owner() is LineEdit:
+		return
 	if get_tree().current_scene.is_writing_text:
 		return
-	for action in ["undo", "redo"]:
-		if event.is_action_pressed(action):
-			return
 	var tool_activated := (
 		Input.is_action_pressed(&"activate_left_tool")
 		or Input.is_action_pressed(&"activate_right_tool")
@@ -146,7 +140,7 @@ func _input(event: InputEvent) -> void:
 			continue
 		var right_tool_shortcut := "right_" + t.shortcut + "_tool"
 		if not Global.single_tool_mode and InputMap.has_action(right_tool_shortcut):
-			if event.is_action_pressed(right_tool_shortcut, false, true) and not _ignore_shortcuts:
+			if event.is_action_pressed(right_tool_shortcut, false, true):
 				# Shortcut for right button (with Alt)
 				Tools.assign_tool(t.name, MOUSE_BUTTON_RIGHT)
 				Tools.prev_tool_names[MOUSE_BUTTON_RIGHT] = ""
@@ -161,11 +155,7 @@ func _input(event: InputEvent) -> void:
 
 		var quick_tool_shortcut := "quick_" + t.shortcut + "_tool"
 		if InputMap.has_action(quick_tool_shortcut) and not Tools.has_selection_tool():
-			if (
-				event.is_action_pressed(quick_tool_shortcut, false, true)
-				and not tool_activated
-				and not _ignore_shortcuts
-			):
+			if event.is_action_pressed(quick_tool_shortcut, false, true) and not tool_activated:
 				Tools.quick_assign_tool(t.name, MOUSE_BUTTON_LEFT)
 				Tools.quick_assign_tool(t.name, MOUSE_BUTTON_RIGHT)
 				return
