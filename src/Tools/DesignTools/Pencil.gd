@@ -275,15 +275,11 @@ func _dither_allows_pixel(pos: Vector2i) -> bool:
 		y %= half
 		current_size = half
 	var cell_count := size * size
-	var visible_cells := clampi(
-		roundi(cell_count * _dither_coverage / 100.0), 1, cell_count
-	)
+	var visible_cells := clampi(roundi(cell_count * _dither_coverage / 100.0), 1, cell_count)
 	return threshold < visible_cells
 
 
-func _apply_dither_to_brush_image(
-	brush_image: Image, src_rect: Rect2i, dst: Vector2i
-) -> Image:
+func _apply_dither_to_brush_image(brush_image: Image, src_rect: Rect2i, dst: Vector2i) -> Image:
 	if not _dither_enabled or _dither_coverage >= 100:
 		return brush_image
 	var filtered := Image.new()
