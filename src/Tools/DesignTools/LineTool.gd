@@ -55,6 +55,7 @@ func draw_start(pos: Vector2i) -> void:
 	_offset = pos
 	_dest = pos
 	_drawing = true
+	Global.canvas.measurements.update_line_measurement(_start, _dest)
 
 
 func draw_move(pos: Vector2i) -> void:
@@ -76,6 +77,7 @@ func draw_move(pos: Vector2i) -> void:
 			_start = _original_pos
 		cursor_text = d.text
 		_offset = pos
+		Global.canvas.measurements.update_line_measurement(_start, _dest)
 
 
 func draw_end(pos: Vector2i) -> void:
@@ -104,6 +106,7 @@ func _reset_tool() -> void:
 	_dest = Vector2.ZERO
 	_drawing = false
 	Global.canvas.previews_sprite.texture = null
+	Global.canvas.measurements.clear_line_measurement()
 	_displace_origin = false
 	cursor_text = ""
 
