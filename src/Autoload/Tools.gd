@@ -371,7 +371,7 @@ class Tool:
 class Slot:
 	var name: String
 	var kname: String
-	var tool_node: BaseTool = null
+	var tool_node: Node = null
 	var button: int
 	var color: Color
 
