@@ -31,7 +31,7 @@ func _ready() -> void:
 	_touch_cancel_button.pressed.connect(cancel_tool)
 	add_child(_touch_cancel_button)
 
- 
+
 func _exit_tree() -> void:
 	_clear()
 	super()
