@@ -180,7 +180,9 @@ some useful [b][SYSTEM OPTIONS][/b] are:
 					for frame in range(frame_number_1, frame_number_2 + 1):
 						project.selected_cels.append([frame, project.current_layer])
 						project.change_cel(frame)
-						project.export_profile.frame_current_tag = Export.ExportFrames.SELECTED_FRAMES
+						project.export_profile.frame_current_tag = (
+							Export.ExportFrames.SELECTED_FRAMES
+						)
 			elif next_arg.is_valid_int():
 				var frame_number := next_arg.to_int() - 1
 				frame_number = clampi(frame_number, 0, project.frames.size() - 1)
