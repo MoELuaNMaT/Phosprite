@@ -136,11 +136,11 @@ func show_tab() -> void:
 	get_tree().call_group("ExportSpritesheetOptions", "hide")
 	set_file_format_selector()
 	create_frame_tag_list()
-	frames_option_button.select(Export.frame_current_tag)
+	frames_option_button.select(_target_project().export_profile.frame_current_tag)
 	create_layer_list()
-	layers_option_button.select(Export.export_layers)
+	layers_option_button.select(_target_project().export_profile.export_layers)
 	var project := _target_project()
-	match Export.current_tab:
+	match _target_project().export_profile.current_tab:
 		Export.ExportTab.IMAGE:
 			Export.process_animation(project)
 			get_tree().call_group("ExportImageOptions", "show")
@@ -157,15 +157,15 @@ func show_tab() -> void:
 		Export.ExportTab.SPRITESHEET:
 			frame_timer.stop()
 			Export.process_spritesheet(project)
-			spritesheet_orientation.selected = Export.orientation
-			spritesheet_lines_count.max_value = Export.number_of_frames
-			spritesheet_lines_count.value = Export.lines_count
-			spritesheet_layers_as_separate_files.disabled = !Export.split_layers
+			spritesheet_orientation.selected = _target_project().export_profile.orientation
+			spritesheet_lines_count.max_value = _target_project().export_profile.number_of_frames
+			spritesheet_lines_count.value = _target_project().export_profile.lines_count
+			spritesheet_layers_as_separate_files.disabled = !_target_project().export_profile.split_layers
 			get_tree().call_group("ExportSpritesheetOptions", "show")
 			_handle_orientation_ui()
 	set_preview()
 	update_dimensions_label()
-	tabs.current_tab = Export.current_tab
+	tabs.current_tab = _target_project().export_profile.current_tab
 	if OS.get_name() == "Web":
 		get_tree().call_group("NotHTML5", "hide")
 	elif OS.get_name() == "Android":
@@ -194,7 +194,7 @@ func set_preview() -> void:
 		return
 	var preview_data := {
 		"exporter_id": _target_project().file_format,
-		"export_tab": Export.current_tab,
+		"export_tab": _target_project().export_profile.current_tab,
 		"preview_images": _preview_images,
 	}
 	about_to_preview.emit(preview_data)
@@ -360,7 +360,7 @@ func remove_previews() -> void:
 
 
 func set_file_format_selector() -> void:
-	match Export.current_tab:
+	match _target_project().export_profile.current_tab:
 		Export.ExportTab.IMAGE:
 			_set_file_format_selector_suitable_file_formats(image_exports)
 		Export.ExportTab.SPRITESHEET:
@@ -433,7 +433,7 @@ func create_layer_list() -> void:
 
 func update_dimensions_label() -> void:
 	if _preview_images.size() > 0:
-		var new_size: Vector2i = _preview_images[0].image.get_size() * (Export.resize / 100.0)
+		var new_size: Vector2i = _preview_images[0].image.get_size() * (_target_project().export_profile.resize / 100.0)
 		dimension_label.text = str(new_size.x, "×", new_size.y)
 
 
@@ -489,8 +489,8 @@ func _on_about_to_popup() -> void:
 		_set_project_export_settings(default_directory_path, project.file_name, project.file_format)
 
 	# If export already occurred - sets GUI to show previous settings
-	options_resize.value = Export.resize
-	options_interpolation.selected = Export.interpolation
+	options_resize.value = _target_project().export_profile.resize
+	options_interpolation.selected = _target_project().export_profile.interpolation
 	directory_path_label.text = project.export_directory_path
 	var file_ext := Export.file_format_string(project.file_format)
 	if _uses_bare_file_name():
@@ -505,25 +505,25 @@ func _on_about_to_popup() -> void:
 
 
 func _on_tab_bar_tab_changed(tab: Export.ExportTab) -> void:
-	Export.current_tab = tab
+	_target_project().export_profile.current_tab = tab
 	show_tab()
 
 
 func _on_orientation_item_selected(id: Export.Orientation) -> void:
-	Export.orientation = id
+	_target_project().export_profile.orientation = id
 	_handle_orientation_ui()
-	spritesheet_lines_count.value = Export.frames_divided_by_spritesheet_lines()
+	spritesheet_lines_count.value = Export.frames_divided_by_spritesheet_lines(_target_project())
 	Export.process_spritesheet(_target_project())
 	update_dimensions_label()
 	set_preview()
 
 
 func _handle_orientation_ui() -> void:
-	if Export.orientation == Export.Orientation.ROWS:
+	if _target_project().export_profile.orientation == Export.Orientation.ROWS:
 		spritesheet_lines_count_label.visible = true
 		spritesheet_lines_count.visible = true
 		spritesheet_lines_count_label.text = "Columns:"
-	elif Export.orientation == Export.Orientation.COLUMNS:
+	elif _target_project().export_profile.orientation == Export.Orientation.COLUMNS:
 		spritesheet_lines_count_label.visible = true
 		spritesheet_lines_count.visible = true
 		spritesheet_lines_count_label.text = "Rows:"
@@ -533,41 +533,41 @@ func _handle_orientation_ui() -> void:
 
 
 func _on_lines_count_value_changed(value: float) -> void:
-	Export.lines_count = value
+	_target_project().export_profile.lines_count = value
 	Export.process_spritesheet(_target_project())
 	update_dimensions_label()
 	set_preview()
 
 
 func _on_direction_item_selected(id: Export.AnimationDirection) -> void:
-	Export.direction = id
+	_target_project().export_profile.direction = id
 	preview_current_frame = 0
 	Export.process_data(_target_project())
 	set_preview()
-	spritesheet_lines_count.max_value = Export.number_of_frames
+	spritesheet_lines_count.max_value = _target_project().export_profile.number_of_frames
 	update_dimensions_label()
 
 
 func _on_repeat_count_changed(value: int) -> void:
-	Export.repeat_count = value
+	_target_project().export_profile.repeat_count = value
 	preview_current_frame = 0
 	Export.process_data(_target_project())
 	set_preview()
-	spritesheet_lines_count.max_value = Export.number_of_frames
+	spritesheet_lines_count.max_value = _target_project().export_profile.number_of_frames
 	update_dimensions_label()
 
 
 func _on_resize_value_changed(value: float) -> void:
-	Export.resize = value
+	_target_project().export_profile.resize = value
 	update_dimensions_label()
 
 
 func _on_quality_value_changed(value: float) -> void:
-	Export.save_quality = value / 100.0
+	_target_project().export_profile.save_quality = value / 100.0
 
 
 func _on_interpolation_item_selected(id: Image.Interpolation) -> void:
-	Export.interpolation = id
+	_target_project().export_profile.interpolation = id
 
 
 func _on_confirmed() -> void:
@@ -763,57 +763,57 @@ func _on_dialog_canceled() -> void:
 
 
 func _on_export_json_toggled(toggled_on: bool) -> void:
-	Export.export_json = toggled_on
+	_target_project().export_profile.export_json = toggled_on
 
 
 func _on_split_layers_toggled(toggled_on: bool) -> void:
-	Export.split_layers = toggled_on
-	spritesheet_layers_as_separate_files.disabled = !Export.split_layers
+	_target_project().export_profile.split_layers = toggled_on
+	spritesheet_layers_as_separate_files.disabled = !_target_project().export_profile.split_layers
 	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_layers_as_separate_files_toggled(toggled_on: bool) -> void:
-	Export.sheet_layers_as_separate_files = toggled_on
+	_target_project().export_profile.sheet_layers_as_separate_files = toggled_on
 	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_include_tags_in_filename_toggled(button_pressed: bool) -> void:
-	Export.include_tag_in_filename = button_pressed
+	_target_project().export_profile.include_tag_in_filename = button_pressed
 
 
 func _on_multiple_animations_directories_toggled(button_pressed: bool) -> void:
-	Export.new_dir_for_each_frame_tag = button_pressed
+	_target_project().export_profile.new_dir_for_each_frame_tag = button_pressed
 
 
 func _on_crop_image_option_selected(index: int) -> void:
-	Export.crop_mode = index as Export.CropMode
+	_target_project().export_profile.crop_mode = index as Export.CropMode
 	erase_outside_selection.disabled = index == Export.CropMode.SELECTION
 	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_clip_images_selection_toggled(toggled_on: bool) -> void:
-	Export.erase_unselected_area = toggled_on
+	_target_project().export_profile.erase_unselected_area = toggled_on
 	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_frames_item_selected(id: int) -> void:
-	Export.frame_current_tag = id
+	_target_project().export_profile.frame_current_tag = id
 	Export.process_data(_target_project())
 	set_preview()
-	spritesheet_lines_count.max_value = Export.number_of_frames
-	spritesheet_lines_count.value = Export.lines_count
+	spritesheet_lines_count.max_value = _target_project().export_profile.number_of_frames
+	spritesheet_lines_count.value = _target_project().export_profile.lines_count
 
 
 func _on_layers_item_selected(id: int) -> void:
-	Export.export_layers = id
+	_target_project().export_profile.export_layers = id
 	Export.cache_blended_frames(_target_project())
 	Export.process_data(_target_project())
 	set_preview()
 
 
 func _on_separator_character_text_changed(new_text: String) -> void:
-	Export.separator_character = new_text
+	_target_project().export_profile.separator_character = new_text

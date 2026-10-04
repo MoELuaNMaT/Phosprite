@@ -115,12 +115,26 @@ var cameras_zoom: PackedVector2Array = [
 ]
 var cameras_offset: PackedVector2Array = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
 
-# Export directory path and export file name
+# Export settings are owned by the project. Compatibility properties keep older
+# Phosprite code and extensions working while core export logic uses export_profile.
 var save_path := ""
 var project_uuid := ""
-var export_directory_path := ""
-var file_name := "untitled"
-var file_format := Export.FileFormat.PNG
+var export_profile := ExportProfile.new()
+var export_directory_path: String:
+	get:
+		return export_profile.export_directory_path
+	set(value):
+		export_profile.export_directory_path = value
+var file_name: String:
+	get:
+		return export_profile.file_name
+	set(value):
+		export_profile.file_name = value
+var file_format: Export.FileFormat:
+	get:
+		return export_profile.file_format
+	set(value):
+		export_profile.file_format = value
 var was_exported := false
 var export_overwrite := false
 var backup_path := ""
@@ -365,6 +379,7 @@ func serialize() -> Dictionary:
 		"export_directory_path": export_directory_path,
 		"export_file_name": file_name,
 		"export_file_format": file_format,
+		"export_profile": export_profile.serialize(),
 		"fps": fps,
 		"license": license,
 		"user_data": user_data,
@@ -583,13 +598,17 @@ func deserialize(dict: Dictionary, zip_reader: ZIPReader = null, file: FileAcces
 			var new_pos := y_symmetry_axis.points[point]
 			new_pos.x = floorf(x_symmetry_point / 2 + 1)
 			y_symmetry_axis.set_point_position(point, new_pos)
-	export_directory_path = dict.get("export_directory_path", export_directory_path)
+	var serialized_export_profile = dict.get("export_profile", {})
+	if serialized_export_profile is Dictionary and not serialized_export_profile.is_empty():
+		export_profile.deserialize(serialized_export_profile)
+	else:
+		export_directory_path = dict.get("export_directory_path", export_directory_path)
+		file_name = dict.get("export_file_name", file_name)
+		file_format = dict.get("export_file_format", file_format)
 	if not DirAccess.dir_exists_absolute(export_directory_path):
 		export_directory_path = ""
-	file_name = dict.get("export_file_name", file_name)
 	if file_name.is_empty() or file_name == "untitled":
 		file_name = name
-	file_format = dict.get("export_file_format", file_format)
 	fps = dict.get("fps", fps)
 	license = dict.get("license", license)
 	author_display_name = dict.get("author_display_name", "")
