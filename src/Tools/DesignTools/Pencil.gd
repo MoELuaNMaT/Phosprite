@@ -9,6 +9,12 @@ var _fill_inside_rect := Rect2i()  ## The bounding box that surrounds the area t
 var _draw_points := PackedVector2Array()
 var _old_spacing_mode := false  ## Needed to reset spacing mode in case we change it
 
+const DITHER_SIZES := [2, 4, 8, 16]
+
+var _dither_enabled := false
+var _dither_size := 4
+var _dither_coverage := 50
+
 
 class PencilOp:
 	extends Drawer.ColorOp
@@ -25,6 +31,15 @@ class PencilOp:
 
 func _init() -> void:
 	_drawer.color_op = PencilOp.new()
+
+
+func _ready() -> void:
+	super._ready()
+	var pattern: OptionButton = $DitherSettings/PatternRow/Pattern
+	if pattern.item_count == 0:
+		for size in DITHER_SIZES:
+			pattern.add_item("%d × %d" % [size, size])
+	update_config()
 
 
 func _on_Overwrite_toggled(button_pressed: bool) -> void:
@@ -53,6 +68,24 @@ func _on_Spacing_value_changed(value: Vector2) -> void:
 	save_config()
 
 
+func _on_Dither_toggled(button_pressed: bool) -> void:
+	_dither_enabled = button_pressed
+	update_config()
+	save_config()
+
+
+func _on_DitherPattern_item_selected(index: int) -> void:
+	if index < 0 or index >= DITHER_SIZES.size():
+		return
+	_dither_size = DITHER_SIZES[index]
+	save_config()
+
+
+func _on_DitherCoverage_value_changed(value: float) -> void:
+	_dither_coverage = clampi(roundi(value), 1, 100)
+	save_config()
+
+
 func _input(event: InputEvent) -> void:
 	super(event)
 	var overwrite_button: CheckBox = $Overwrite
@@ -73,6 +106,9 @@ func get_config() -> Dictionary:
 	config["fill_inside"] = _fill_inside
 	config["spacing_mode"] = _spacing_mode
 	config["spacing"] = _spacing
+	config["dither_enabled"] = _dither_enabled
+	config["dither_size"] = _dither_size
+	config["dither_coverage"] = _dither_coverage
 	return config
 
 
@@ -82,6 +118,10 @@ func set_config(config: Dictionary) -> void:
 	_fill_inside = config.get("fill_inside", _fill_inside)
 	_spacing_mode = config.get("spacing_mode", _spacing_mode)
 	_spacing = config.get("spacing", _spacing)
+	_dither_enabled = config.get("dither_enabled", _dither_enabled)
+	var configured_dither_size: int = config.get("dither_size", _dither_size)
+	_dither_size = configured_dither_size if configured_dither_size in DITHER_SIZES else 4
+	_dither_coverage = clampi(config.get("dither_coverage", _dither_coverage), 1, 100)
 
 
 func update_config() -> void:
@@ -91,6 +131,12 @@ func update_config() -> void:
 	$SpacingMode.button_pressed = _spacing_mode
 	$Spacing.visible = _spacing_mode
 	$Spacing.value = _spacing
+	$Dither.button_pressed = _dither_enabled
+	$DitherSettings.visible = _dither_enabled
+	var dither_index := DITHER_SIZES.find(_dither_size)
+	if dither_index >= 0 and $DitherSettings/PatternRow/Pattern.item_count > dither_index:
+		$DitherSettings/PatternRow/Pattern.select(dither_index)
+	$DitherSettings/DitherCoverage.value = _dither_coverage
 
 
 func draw_start(pos: Vector2i) -> void:
@@ -199,7 +245,57 @@ func draw_end(pos: Vector2i) -> void:
 	_spacing_mode = _old_spacing_mode
 
 
+func _set_pixel_no_cache(pos: Vector2i, ignore_mirroring := false) -> void:
+	if _dither_enabled and not Tools.is_placing_tiles() and not _dither_allows_pixel(pos):
+		return
+	super._set_pixel_no_cache(pos, ignore_mirroring)
+
+
+func _dither_allows_pixel(pos: Vector2i) -> bool:
+	if not _dither_enabled or _dither_coverage >= 100:
+		return true
+	var size := _dither_size
+	var x := ((pos.x % size) + size) % size
+	var y := ((pos.y % size) + size) % size
+	var threshold := 0
+	var multiplier := 1
+	var current_size := size
+	while current_size > 1:
+		var half := current_size / 2
+		var quadrant_x := 1 if x >= half else 0
+		var quadrant_y := 1 if y >= half else 0
+		var quadrant := 0
+		if quadrant_y == 0:
+			quadrant = 2 if quadrant_x == 1 else 0
+		else:
+			quadrant = 1 if quadrant_x == 1 else 3
+		threshold += quadrant * multiplier
+		multiplier *= 4
+		x %= half
+		y %= half
+		current_size = half
+	var cell_count := size * size
+	var visible_cells := clampi(roundi(cell_count * _dither_coverage / 100.0), 1, cell_count)
+	return threshold < visible_cells
+
+
+func _apply_dither_to_brush_image(brush_image: Image, src_rect: Rect2i, dst: Vector2i) -> Image:
+	if not _dither_enabled or _dither_coverage >= 100:
+		return brush_image
+	var filtered := Image.new()
+	filtered.copy_from(brush_image)
+	var end_x := src_rect.position.x + src_rect.size.x
+	var end_y := src_rect.position.y + src_rect.size.y
+	for y in range(src_rect.position.y, end_y):
+		for x in range(src_rect.position.x, end_x):
+			var canvas_pos := dst + Vector2i(x - src_rect.position.x, y - src_rect.position.y)
+			if not _dither_allows_pixel(canvas_pos):
+				filtered.set_pixel(x, y, Color.TRANSPARENT)
+	return filtered
+
+
 func _draw_brush_image(brush_image: Image, src_rect: Rect2i, dst: Vector2i) -> void:
+	brush_image = _apply_dither_to_brush_image(brush_image, src_rect, dst)
 	_changed = true
 	var images := _get_selected_draw_images()
 	if _overwrite:
