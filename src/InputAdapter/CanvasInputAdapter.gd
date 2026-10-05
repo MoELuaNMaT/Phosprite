@@ -15,7 +15,9 @@ const POINTER_IDENTITY_SINGLETON := &"PhospritePointerIdentity"
 const CANVAS_TOUCH_BLOCKER_GROUP := &"CanvasTouchBlockers"
 const PREFERENCE_SECTION := "preferences"
 const FINGER_POLICY_KEY := "finger_policy"
+const TWO_FINGER_ROTATION_KEY := "two_finger_rotation_enabled"
 const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
+const DEFAULT_TWO_FINGER_ROTATION_ENABLED := false
 const TWO_FINGER_EPSILON := 0.01
 const FINGER_LONG_PRESS_SECONDS := 0.45
 const FINGER_LONG_PRESS_SLOP_PX := 12.0
@@ -29,7 +31,9 @@ const TWO_FINGER_TAP_SLOP_PX := 10.0
 # and no incremental accumulation from the previous drag event.
 const NAVIGATION_PAN_DEAD_ZONE_PX := 0.75
 const NAVIGATION_PINCH_DEAD_ZONE_FRACTION := 0.005
-const TWO_FINGER_ROTATION_ENABLED := false
+# Optional rotation stays disabled by default. When enabled, a small path-independent angular
+# slop filters micro-jitter without changing the fixed-baseline pan/pinch behavior.
+const NAVIGATION_ROTATION_DEAD_ZONE_RADIANS := PI / 90.0
 
 static var _touch_color_sampler_requested := false
 
@@ -48,6 +52,7 @@ var _navigation_anchor_canvas := Vector2.ZERO
 var _navigation_camera_baseline_valid := false
 var _navigation_pan_active := false
 var _navigation_pinch_active := false
+var _navigation_rotation_enabled_for_pair := false
 var _two_finger_tap_ids := PackedInt32Array()
 var _two_finger_tap_released_ids := PackedInt32Array()
 var _two_finger_tap_started_ms := 0
@@ -56,6 +61,7 @@ var _two_finger_tap_valid := false
 var _last_navigation_centroid := Vector2.ZERO
 var _last_navigation_distance := 0.0
 var _finger_policy := DEFAULT_FINGER_POLICY
+var _two_finger_rotation_enabled := DEFAULT_TWO_FINGER_ROTATION_ENABLED
 var _initialized := false
 var _long_press_indicator_layer: CanvasLayer
 var _long_press_indicator: Node2D
@@ -74,6 +80,13 @@ func initialize() -> void:
 	)
 	if _finger_policy < FingerPolicy.UNRESTRICTED or _finger_policy > FingerPolicy.PENCIL_PRIORITY:
 		_finger_policy = DEFAULT_FINGER_POLICY
+	var configured_rotation: Variant = Global.config_cache.get_value(
+		PREFERENCE_SECTION, TWO_FINGER_ROTATION_KEY, DEFAULT_TWO_FINGER_ROTATION_ENABLED
+	)
+	if typeof(configured_rotation) == TYPE_BOOL:
+		_two_finger_rotation_enabled = bool(configured_rotation)
+	else:
+		_two_finger_rotation_enabled = DEFAULT_TWO_FINGER_ROTATION_ENABLED
 
 
 func is_enabled() -> bool:
@@ -110,7 +123,14 @@ func install_preferences_ui(scene_root: Node) -> void:
 	if not is_instance_valid(preferences_dialog):
 		return
 	var options := preferences_dialog.find_child("ToolOptions", true, false) as GridContainer
-	if not is_instance_valid(options) or options.has_node("FingerPolicyLabel"):
+	if not is_instance_valid(options):
+		return
+	_install_finger_policy_preference(options)
+	_install_two_finger_rotation_preference(options)
+
+
+func _install_finger_policy_preference(options: GridContainer) -> void:
+	if options.has_node("FingerPolicyLabel"):
 		return
 
 	var label := Label.new()
@@ -120,7 +140,7 @@ func install_preferences_ui(scene_root: Node) -> void:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	# Preferences uses a three-column grid after it inserts restore buttons. This spacer keeps
-	# the P1-B preference aligned while persisting through the same config cache as other prefs.
+	# the input preference aligned while persisting through the same config cache as other prefs.
 	var spacer := Control.new()
 	spacer.name = "FingerPolicySpacer"
 
@@ -142,6 +162,35 @@ func install_preferences_ui(scene_root: Node) -> void:
 	options.add_child(label)
 	options.add_child(spacer)
 	options.add_child(option)
+
+
+func _install_two_finger_rotation_preference(options: GridContainer) -> void:
+	if options.has_node("TwoFingerRotationLabel"):
+		return
+
+	var rotation_label := Label.new()
+	rotation_label.name = "TwoFingerRotationLabel"
+	rotation_label.text = "Two-finger canvas rotation"
+	rotation_label.tooltip_text = "Optional iPad gesture. Disabled by default."
+	rotation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var rotation_spacer := Control.new()
+	rotation_spacer.name = "TwoFingerRotationSpacer"
+
+	var rotation_toggle := CheckBox.new()
+	rotation_toggle.name = "TwoFingerRotationCheckBox"
+	rotation_toggle.text = "Enable"
+	rotation_toggle.button_pressed = _two_finger_rotation_enabled
+	rotation_toggle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	rotation_toggle.tooltip_text = (
+		"When enabled, a two-finger turn rotates the canvas around the same fixed point used by "
+		+ "pan and pinch. The setting is snapshotted when a new two-finger gesture begins."
+	)
+	rotation_toggle.toggled.connect(_on_two_finger_rotation_toggled)
+
+	options.add_child(rotation_label)
+	options.add_child(rotation_spacer)
+	options.add_child(rotation_toggle)
 
 
 func reset(canvas: Node2D) -> void:
@@ -267,16 +316,32 @@ static func navigation_offset_for_anchor(
 	return anchor_canvas - ((centroid - viewport_size * 0.5) / target_zoom).rotated(camera_angle)
 
 
+static func navigation_rotation_delta(
+	baseline_pair_angle: float, current_pair_angle: float, rotation_dead_zone_radians: float
+) -> float:
+	var pair_delta := wrapf(current_pair_angle - baseline_pair_angle, -PI, PI)
+	var dead_zone := maxf(rotation_dead_zone_radians, 0.0)
+	var magnitude := absf(pair_delta)
+	if magnitude <= dead_zone:
+		return 0.0
+	var direction := -1.0 if pair_delta < 0.0 else 1.0
+	return direction * (magnitude - dead_zone)
+
+
 static func navigation_target_angle(
 	baseline_camera_angle: float,
 	baseline_pair_angle: float,
 	current_pair_angle: float,
-	rotation_enabled: bool
+	rotation_enabled: bool,
+	rotation_dead_zone_radians: float = 0.0
 ) -> float:
 	if not rotation_enabled:
 		return baseline_camera_angle
-	var pair_delta := wrapf(current_pair_angle - baseline_pair_angle, -PI, PI)
-	return wrapf(baseline_camera_angle + pair_delta, -PI, PI)
+	var pair_delta := navigation_rotation_delta(
+		baseline_pair_angle, current_pair_angle, rotation_dead_zone_radians
+	)
+	# CanvasCamera's positive camera angle is the inverse of the raw screen-space pair turn.
+	return wrapf(baseline_camera_angle - pair_delta, -PI, PI)
 
 
 static func viewport_position_inside_size(
@@ -807,6 +872,7 @@ func _begin_navigation_pair(pair_ids: PackedInt32Array) -> void:
 	if not _touches.has(pair_ids[0]) or not _touches.has(pair_ids[1]):
 		return
 	_navigation_ids = PackedInt32Array([pair_ids[0], pair_ids[1]])
+	_navigation_rotation_enabled_for_pair = _two_finger_rotation_enabled
 	var geometry := _navigation_geometry()
 	_set_navigation_geometry_baseline(geometry)
 	_capture_navigation_camera_baseline()
@@ -975,7 +1041,8 @@ func _update_navigation() -> void:
 		_navigation_baseline_camera_angle,
 		_navigation_baseline_pair_angle,
 		float(geometry["angle"]),
-		TWO_FINGER_ROTATION_ENABLED
+		_navigation_rotation_enabled_for_pair,
+		NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
 	)
 	var target_zoom := navigation_zoom_from_ratio(
 		_navigation_baseline_zoom,
@@ -1035,6 +1102,7 @@ func _clear_navigation() -> void:
 	_navigation_camera_baseline_valid = false
 	_navigation_pan_active = false
 	_navigation_pinch_active = false
+	_navigation_rotation_enabled_for_pair = false
 	_last_navigation_centroid = Vector2.ZERO
 	_last_navigation_distance = 0.0
 
@@ -1070,6 +1138,14 @@ func _on_finger_policy_selected(index: int, option: OptionButton) -> void:
 	var error := Global.config_cache.save(Global.CONFIG_PATH)
 	if error != OK:
 		push_warning("Could not save finger input mode: %s" % error_string(error))
+
+
+func _on_two_finger_rotation_toggled(enabled: bool) -> void:
+	_two_finger_rotation_enabled = enabled
+	Global.config_cache.set_value(PREFERENCE_SECTION, TWO_FINGER_ROTATION_KEY, enabled)
+	var error := Global.config_cache.save(Global.CONFIG_PATH)
+	if error != OK:
+		push_warning("Could not save two-finger rotation preference: %s" % error_string(error))
 
 
 func _is_emulated_touch_mouse(event: InputEvent) -> bool:
