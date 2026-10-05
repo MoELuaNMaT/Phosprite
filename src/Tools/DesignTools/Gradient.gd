@@ -7,7 +7,7 @@ enum FillArea { AREA, COLORS, SELECTION }
 
 static var gradient_shader: Shader
 
-var gradient_shader_inc := load("uid://dj3bi0pycege2")
+var gradient_shader_inc := load("res://src/Shaders/Effects/Gradient.gdshaderinc")
 
 var _shape := Shape.LINEAR
 var _selected_dither_index := 0:

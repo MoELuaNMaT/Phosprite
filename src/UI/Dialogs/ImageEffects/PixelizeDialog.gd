@@ -1,7 +1,7 @@
 extends ImageEffect
 
 var pixel_size := Vector2i.ONE
-var shader_inc := load("uid://4vb4ufphdgi2")
+var shader_inc := load("res://src/Shaders/Effects/Pixelize.gdshaderinc")
 var shader: Shader
 
 

@@ -1,6 +1,6 @@
 extends ImageEffect
 
-var shader_inc := load("uid://c5t0262v2fi4v")
+var shader_inc := load("res://src/Shaders/Effects/Palettize.gdshaderinc")
 var shader: Shader
 
 

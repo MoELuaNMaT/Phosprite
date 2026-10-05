@@ -2,7 +2,7 @@ extends ImageEffect
 
 var levels := 2.0
 var dither := 0.0
-var shader_inc := load("uid://bbliuetkqn3dm")
+var shader_inc := load("res://src/Shaders/Effects/Posterize.gdshaderinc")
 var shader: Shader
 
 

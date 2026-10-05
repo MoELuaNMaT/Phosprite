@@ -1,6 +1,6 @@
 extends ImageEffect
 
-var shader_inc := load("uid://dbse7sufxr24y")
+var shader_inc := load("res://src/Shaders/Effects/GradientMap.gdshaderinc")
 var shader: Shader
 
 

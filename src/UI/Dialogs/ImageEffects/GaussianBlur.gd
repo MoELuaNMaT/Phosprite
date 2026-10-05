@@ -4,7 +4,7 @@ var blur_type := 0
 var blur_amount := 16
 var blur_radius := 1.0
 var blur_direction := Vector2.ONE
-var shader_inc := load("uid://cu0i8wdvus8m6")
+var shader_inc := load("res://src/Shaders/Effects/GaussianBlur.gdshaderinc")
 var shader: Shader
 
 

@@ -10,10 +10,12 @@ var _selection_rect_cache := Rect2i()
 
 func _init() -> void:
 	if invert_shader == null:
-		invert_shader = ShaderLoader.generate_texture_blit_shader(load("uid://fy5daqnx8jwr"))
+		invert_shader = ShaderLoader.generate_canvas_item_shader(
+			load("res://src/Shaders/Effects/Invert.gdshaderinc")
+		)
 	if outline_inline_shader == null:
-		outline_inline_shader = ShaderLoader.generate_texture_blit_shader(
-			load("uid://dnc7oours8vc0")
+		outline_inline_shader = ShaderLoader.generate_canvas_item_shader(
+			load("res://src/Shaders/Effects/OutlineInline.gdshaderinc")
 		)
 
 

@@ -2,7 +2,7 @@ extends ImageEffect
 
 enum Animate { HUE, SATURATION, VALUE }
 
-var shader_inc := load("uid://bph4225jfs3hc")
+var shader_inc := load("res://src/Shaders/Effects/HSV.gdshaderinc")
 var shader: Shader
 
 @onready var hue_slider := $VBoxContainer/HueSlider as ValueSlider

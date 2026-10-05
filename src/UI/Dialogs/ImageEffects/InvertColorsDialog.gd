@@ -5,7 +5,7 @@ var green := true
 var blue := true
 var alpha := false
 
-var shader_inc := load("uid://fy5daqnx8jwr")
+var shader_inc := load("res://src/Shaders/Effects/Invert.gdshaderinc")
 var shader: Shader
 
 

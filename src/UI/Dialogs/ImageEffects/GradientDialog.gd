@@ -3,7 +3,7 @@ extends ImageEffect
 enum { LINEAR, RADIAL, LINEAR_DITHERING, RADIAL_DITHERING }
 enum Animate { POSITION, SIZE, ANGLE, CENTER_X, CENTER_Y, RADIUS_X, RADIUS_Y }
 
-var shader_inc := load("uid://dj3bi0pycege2")
+var shader_inc := load("res://src/Shaders/Effects/Gradient.gdshaderinc")
 var shader: Shader
 var selected_dither_matrix := ShaderLoader.dither_matrices[0]
 

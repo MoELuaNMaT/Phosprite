@@ -10,7 +10,9 @@ var wrap_around := false
 
 
 func _ready() -> void:
-	shader = ShaderLoader.generate_texture_blit_shader(load("uid://ugcfg5hro2ec"))
+	shader = ShaderLoader.generate_texture_blit_shader(
+		load("res://src/Shaders/Effects/OffsetPixels.gdshaderinc")
+	)
 	super._ready()
 	# Set in the order of the Animate enum
 	animate_panel.add_float_property("Offset X", offset_sliders.get_sliders()[0])

@@ -1,6 +1,6 @@
 extends ImageEffect
 
-var shader_inc := load("uid://uo6litvr3dex")
+var shader_inc := load("res://src/Shaders/Effects/FlatToIsometric.gdshaderinc")
 var shader: Shader
 
 @onready var origin: ValueSlider = $VBoxContainer/Origin

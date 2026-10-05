@@ -6,7 +6,7 @@ var thickness := 1
 var pattern := 0
 var inside_image := false
 
-var shader_inc := load("uid://dnc7oours8vc0")
+var shader_inc := load("res://src/Shaders/Effects/OutlineInline.gdshaderinc")
 var shader: Shader
 
 @onready var outline_color := $VBoxContainer/OutlineOptions/OutlineColor as ColorPickerButton

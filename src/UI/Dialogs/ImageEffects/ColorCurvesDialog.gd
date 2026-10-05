@@ -2,7 +2,7 @@ extends ImageEffect
 
 enum Channel { RGB, RED, GREEN, BLUE, ALPHA, HUE, SATURATION, VALUE }
 
-var shader_inc := load("uid://cngtsyw8tyy0")
+var shader_inc := load("res://src/Shaders/Effects/ColorCurves.gdshaderinc")
 var shader: Shader
 
 var curves: Array[Curve]

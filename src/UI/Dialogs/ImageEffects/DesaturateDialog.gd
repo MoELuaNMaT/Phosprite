@@ -5,7 +5,7 @@ var green := true
 var blue := true
 var alpha := false
 
-var shader_inc := load("uid://l1rt2q7jthsm")
+var shader_inc := load("res://src/Shaders/Effects/Desaturate.gdshaderinc")
 var shader: Shader
 
 
