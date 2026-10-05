@@ -399,7 +399,7 @@ func test_native_bridge_only_supplies_pointer_identity() -> void:
 
 func test_ios_ci_builds_bridge_against_exact_godot_version() -> void:
 	var workflow := FileAccess.get_file_as_string(IOS_WORKFLOW_SOURCE)
-	check_has(workflow, "GODOT_VERSION: 4.6.3", "iOS bridge must follow the frozen Godot version")
+	check_has(workflow, "GODOT_VERSION: 4.7.2", "iOS bridge must follow the frozen Godot version")
 	check_has(
 		workflow,
 		'--branch "${GODOT_VERSION}-stable"',
