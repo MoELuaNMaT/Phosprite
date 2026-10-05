@@ -64,6 +64,7 @@ var selected_cels := [[0, 0]]  ## Array of Arrays of 2 integers (frame & layer)
 ## array just contains the indices of the layers in increasing order.
 ## See [method order_layers].
 var ordered_layers: Array[int] = [0]
+var next_keyframe_id := 0
 
 var animation_tags: Array[AnimationTag] = []:
 	set(value):
@@ -364,6 +365,7 @@ func serialize() -> Dictionary:
 		"tile_mode_y_basis_x": tiles.y_basis.x,
 		"tile_mode_y_basis_y": tiles.y_basis.y,
 		"layers": layer_data,
+		"next_keyframe_id": next_keyframe_id,
 		"tags": tag_data,
 		"guides": guide_data,
 		"symmetry_points": [x_symmetry_point, y_symmetry_point],
@@ -598,6 +600,7 @@ func deserialize(dict: Dictionary, zip_reader: ZIPReader = null, file: FileAcces
 			var new_pos := y_symmetry_axis.points[point]
 			new_pos.x = floorf(x_symmetry_point / 2 + 1)
 			y_symmetry_axis.set_point_position(point, new_pos)
+	next_keyframe_id = dict.get("next_keyframe_id", next_keyframe_id)
 	var serialized_export_profile = dict.get("export_profile", {})
 	if serialized_export_profile is Dictionary and not serialized_export_profile.is_empty():
 		export_profile.deserialize(serialized_export_profile)
