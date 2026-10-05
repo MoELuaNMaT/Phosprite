@@ -2,6 +2,13 @@ class_name LayerEffect
 extends AnimatableObject
 
 var name := ""
+var shader_or_include: Resource:
+	set(value):
+		shader_or_include = value
+		if shader_or_include is Shader:
+			shader = shader_or_include
+		elif shader_or_include is ShaderInclude:
+			shader = ShaderLoader.generate_texture_blit_shader(shader_or_include)
 var shader: Shader:
 	set(value):
 		shader = value
@@ -12,23 +19,26 @@ var enabled := true
 
 
 func _init(
-	_name := "", _shader: Shader = null, _category := "", _params: Dictionary[String, Variant] = {}
+	_name := "",
+	_shader_or_include: Resource = null,
+	_category := "",
+	_params: Dictionary[String, Variant] = {}
 ) -> void:
 	name = _name
-	shader = _shader
+	shader_or_include = _shader_or_include
 	category = _category
 	params = _params
 
 
 func duplicate() -> LayerEffect:
-	return LayerEffect.new(name, shader, category, params.duplicate())
+	return LayerEffect.new(name, shader_or_include, category, params.duplicate())
 
 
 func serialize() -> Dictionary:
 	return (
 		{
 			"name": name,
-			"shader_path": shader.resource_path,
+			"shader_path": shader_or_include.resource_path,
 			"enabled": enabled,
 		}
 		. merged(super())
@@ -40,9 +50,13 @@ func deserialize(dict: Dictionary) -> void:
 		name = dict["name"]
 	if dict.has("shader_path"):
 		var path: String = dict["shader_path"]
+		if not ResourceLoader.exists(path):
+			# To ensure compatibility with older pxo files.
+			if path.get_extension() == "gdshader":
+				path += "inc"
 		var shader_to_load := load(path)
-		if is_instance_valid(shader_to_load) and shader_to_load is Shader:
-			shader = shader_to_load
+		if is_instance_valid(shader_to_load):
+			shader_or_include = shader_to_load
 	if dict.has("enabled"):
 		enabled = dict["enabled"]
 	super(dict)
