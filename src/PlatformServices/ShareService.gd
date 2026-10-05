@@ -6,7 +6,7 @@ extends RefCounted
 ## encoding. On iOS the finished artifact is written into a short-lived directory
 ## under user:// and this service hands its absolute sandbox path to SharePlugin.
 ## No native implementation lives in Phosprite itself; the iOS build pins the
-## MIT-licensed godot-mobile-plugins/godot-share v5.2 binary.
+## MIT-licensed godot-mobile-plugins/godot-share v6.0 binary.
 
 const PLUGIN_SINGLETON_NAME := "SharePlugin"
 const STAGING_DIRECTORY := "user://.share_export"
