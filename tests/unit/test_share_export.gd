@@ -58,11 +58,11 @@ func test_share_export_hides_filesystem_destination_ui() -> void:
 
 func test_ios_ci_pins_share_plugin_release() -> void:
 	var workflow := FileAccess.get_file_as_string(IOS_WORKFLOW_SOURCE)
-	check_has(workflow, "SHARE_PLUGIN_VERSION: 5.2", "iOS CI must pin the Godot Share version")
+	check_has(workflow, 'SHARE_PLUGIN_VERSION: "6.0"', "iOS CI must pin the Godot Share version")
 	check_has(
 		workflow,
-		"3bcc46dd250532067345812bc03d3e43d4013f3ffe08354217225b0affedb77f",
-		"iOS CI must verify the published v5.2 release checksum"
+		"20d88bcd2b249b29845e20172b18c1732df2f39c43211a8ea8e705e9366b40b0",
+		"iOS CI must verify the published v6.0 release checksum"
 	)
 	check_has(workflow, "plugins/SharePlugin=true", "the iOS export preset must enable SharePlugin")
 	check_has(
@@ -80,10 +80,10 @@ func test_ios_ci_pins_share_plugin_release() -> void:
 func test_godot_share_mit_notice_is_retained() -> void:
 	check_file_exists(THIRD_PARTY_NOTICE, "the third-party license notice must be present")
 	var notice := FileAccess.get_file_as_string(THIRD_PARTY_NOTICE)
-	check_has(notice, "Godot Share Plugin v5.2", "the pinned dependency must be identified")
+	check_has(notice, "Godot Share Plugin v6.0", "the pinned dependency must be identified")
 	check_has(notice, "MIT", "the dependency license must be recorded")
 	check_has(
 		notice,
-		"Copyright (c) 2025 Godot Engine Community SDK Integrations",
+		"Copyright (c) 2025 Godot Mobile Plugins (https://github.com/godot-mobile-plugins)",
 		"the upstream copyright notice must be retained"
 	)

@@ -2,13 +2,13 @@
 
 Phosprite includes or downloads the following third-party component for its iOS build.
 
-## Godot Share Plugin v5.2
+## Godot Share Plugin v6.0
 
 Project: `godot-mobile-plugins/godot-share`
 
 License: MIT
 
-Copyright (c) 2025 Godot Engine Community SDK Integrations
+Copyright (c) 2025 Godot Mobile Plugins (https://github.com/godot-mobile-plugins)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,5 +28,5 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Phosprite's iOS CI downloads the pinned prebuilt `SharePlugin-iOS-v5.2.zip`
+Phosprite's iOS CI downloads the pinned prebuilt `SharePlugin-iOS-v6.0.zip`
 release artifact and verifies its SHA-256 before embedding it in the iOS build.
