@@ -24,6 +24,7 @@ var image_exports: Array[Export.FileFormat] = [
 	Export.FileFormat.SVG,
 	Export.FileFormat.EXR,
 	Export.FileFormat.GIF,
+	Export.FileFormat.ASE,
 	Export.FileFormat.APNG,
 	Export.FileFormat.MP4,
 	Export.FileFormat.AVI,
@@ -73,6 +74,7 @@ var path_button := $VBoxContainer/VSplitContainer/VBoxContainer/FilePath/PathBut
 @onready var export_progress_popup: Window = $ExportProgressBar
 @onready var export_progress_bar := %ProgressBar as ProgressBar
 @onready var frame_timer: Timer = $FrameTimer
+@onready var aseprite_convert_info: ConfirmationDialog = %AsepriteConvertInfo
 
 
 ## Whether the export path field holds a bare file name instead of a full path.
@@ -83,6 +85,7 @@ func _uses_bare_file_name() -> bool:
 
 
 func _ready() -> void:
+	aseprite_convert_info.confirmed.connect(_on_aseprite_convert_confirmed)
 	get_ok_button().size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	get_cancel_button().size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	crop_image_option.add_item("None", Export.CropMode.NONE)
@@ -579,6 +582,17 @@ func _on_confirmed() -> void:
 	if _profile_only:
 		gallery_profile_confirmed.emit(EXPORT_PROFILE.capture(project))
 		return
+	if project.export_profile.file_format == Export.FileFormat.ASE:
+		aseprite_convert_info.popup_centered_clamped()
+		return
+	await _run_export_and_emit(project)
+
+
+func _on_aseprite_convert_confirmed() -> void:
+	await _run_export_and_emit(_target_project())
+
+
+func _run_export_and_emit(project: Project) -> void:
 	var success := await export()
 	if _configured_project != null:
 		configured_export_finished.emit(success, project)

@@ -113,14 +113,27 @@ static func open_aseprite_file(path: String) -> bool:
 				previous_chunk_type = chunk_type
 			match chunk_type:
 				ChunkTypes.OLD_PALETTE_1, ChunkTypes.OLD_PALETTE_2:
+					# Aseprite still uses the old palette chunks for palettes without alpha.
 					var n_of_packets := ase_file.get_16()
+					var colors: PackedColorArray
 					for packet in n_of_packets:
-						var _n_entries_skip := ase_file.get_8()
-						var _n_of_colors := ase_file.get_8()
-						for color in number_of_colors:
-							var _red := ase_file.get_8()
-							var _green := ase_file.get_8()
-							var _blue := ase_file.get_8()
+						var entries_to_skip := ase_file.get_8()
+						for _skip in entries_to_skip:
+							colors.append(Color.TRANSPARENT)
+						var n_of_colors := ase_file.get_8()
+						if n_of_colors == 0:
+							n_of_colors = 256
+						for _color in n_of_colors:
+							var red := ase_file.get_8()
+							var green := ase_file.get_8()
+							var blue := ase_file.get_8()
+							colors.append(Color.from_rgba8(red, green, blue))
+					var palette_name := "Imported Palette %s" % palettes.size()
+					var correct_name := Palettes.get_valid_name(palette_name, new_project)
+					var palette := Palettes.fill_imported_palette_with_colors(correct_name, colors)
+					palette.is_project_palette = true
+					palettes[correct_name] = palette
+					project_current_palette_name = correct_name
 				ChunkTypes.LAYER:
 					var layer_flags := ase_file.get_16()
 					var layer_type := ase_file.get_16()
@@ -310,7 +323,6 @@ static func open_aseprite_file(path: String) -> bool:
 						var tag := AnimationTag.new(text, Color.WHITE, from_frame + 1, to_frame + 1)
 						new_project.animation_tags.append(tag)
 				ChunkTypes.PALETTE:
-					# TODO: Import palettes into Pixelorama once we support project palettes
 					var _palette_size := ase_file.get_32()
 					var first_index_to_change := ase_file.get_32()
 					var last_index_to_change := ase_file.get_32()
