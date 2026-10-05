@@ -199,8 +199,9 @@ func _on_PopupMenu_id_pressed(id: int) -> void:
 						project.layers[layer].link_cel.bind(s_cel, s_cel.link_set)
 					)
 					if s_cel.link_set.size() > 1:  # Skip copying content if not linked to another
+						var new_texture := ImageTexture.create_from_image(s_cel.get_image())
 						project.undo_redo.add_do_method(
-							s_cel.set_content.bind(s_cel.copy_content(), ImageTexture.new())
+							s_cel.set_content.bind(s_cel.copy_content(), new_texture)
 						)
 						project.undo_redo.add_undo_method(
 							s_cel.set_content.bind(s_cel.get_content(), s_cel.image_texture)
