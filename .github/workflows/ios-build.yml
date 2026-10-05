@@ -3,7 +3,7 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline ]
+    branches: [ main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2 ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GODOT_VERSION: 4.6.3
+  GODOT_VERSION: 4.7.2
   EXPORT_NAME: Phosprite
   SHARE_PLUGIN_VERSION: 5.2
   SHARE_PLUGIN_SHA256: 3bcc46dd250532067345812bc03d3e43d4013f3ffe08354217225b0affedb77f
@@ -31,7 +31,7 @@ jobs:
         with:
           submodules: true
 
-      # P1-B Pointer Identity 只补 Godot 4.6.3 尚未暴露给 GDScript 的 UITouch.type。
+      # P1-B Pointer Identity 只补 Godot 4.7.2 尚未暴露给 GDScript 的 UITouch.type。
       - name: Build pinned Pointer Identity plugin ✏️
         shell: bash
         run: |
@@ -75,8 +75,8 @@ jobs:
           chmod +x scripts/timeout
 
           # godot-ios-plugins 的旧 generate_headers.sh 仍写死 release_debug；
-          # Godot 4.6.3 已改为 editor/template_debug/template_release。
-          # 继续复用同一个 90 秒中断器，但直接使用 4.6.3 的 template_debug。
+          # Godot 4.7.2 已改为 editor/template_debug/template_release。
+          # 继续复用同一个 90 秒中断器，但直接使用 4.7.2 的 template_debug。
           (
             cd godot
             ../scripts/timeout scons platform=ios target=template_debug
