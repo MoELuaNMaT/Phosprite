@@ -3,12 +3,12 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2 ]
+    branches: [ master, main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2 ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
   pull_request:
-    branches: [ main, phosprite-main ]
+    branches: [ master, main, phosprite-main ]
   workflow_dispatch:
 
 concurrency:
