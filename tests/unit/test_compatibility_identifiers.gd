@@ -47,11 +47,18 @@ func test_gpl_empty_slot_write_and_read_sites_exist() -> void:
 	# palettes exported by Phosprite lose their empty slots when re-imported.
 	check_has(
 		src,
-		'var comment: String = "PixeloramaEmptySlot"',
-		"GPL export must write the empty-slot marker"
+		'const EMPTY_SLOT_TAG := "PixeloramaEmptySlot"',
+		"GPL empty-slot marker must keep the Pixelorama-compatible literal",
 	)
 	check_has(
-		src, 'color_data[3] == "PixeloramaEmptySlot"', "GPL import must match the empty-slot marker"
+		src,
+		"var comment: String = EMPTY_SLOT_TAG",
+		"GPL export must write the shared empty-slot marker",
+	)
+	check_has(
+		src,
+		"color_data[3] == EMPTY_SLOT_TAG",
+		"GPL import must match the same shared empty-slot marker",
 	)
 
 

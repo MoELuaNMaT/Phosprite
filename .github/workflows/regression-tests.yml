@@ -22,8 +22,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Must match the frozen Phosprite engine baseline (Godot 4.6.3).
-  GODOT_VERSION: 4.6.3
+  # Must match the current Phosprite engine baseline.
+  GODOT_VERSION: 4.7.1
   TEST_SCRIPT: res://tests/runner.gd
   TEST_FLAG: --phosprite-test-runner
 
@@ -32,7 +32,7 @@ jobs:
     name: Headless contract suite
     runs-on: ubuntu-latest
     container:
-      image: docker://barichello/godot-ci:4.6.3
+      image: docker://barichello/godot-ci:4.7.1
     steps:
       - name: Checkout
         uses: actions/checkout@v7

@@ -587,8 +587,10 @@ func export_processed_images(
 				var ase_error := AsepriteExporter.save_aseprite_file(project, export_paths[0])
 				if ase_error != OK:
 					Global.popup_error(
-						tr("File failed to save. Error code %s (%s)")
-						% [ase_error, error_string(ase_error)]
+						(
+							tr("File failed to save. Error code %s (%s)")
+							% [ase_error, error_string(ase_error)]
+						)
 					)
 					return false
 			else:
