@@ -233,9 +233,7 @@ func test_preview_grayscale_state_controls_preview_render_layer() -> void:
 	var source := FileAccess.get_file_as_string(
 		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
 	)
-	var shader := FileAccess.get_file_as_string(
-		"res://src/Shaders/GreyscaleTexture.gdshader"
-	)
+	var shader := FileAccess.get_file_as_string("res://src/Shaders/GreyscaleTexture.gdshader")
 	check_has(
 		scene,
 		'path="res://src/Shaders/GreyscaleTexture.gdshader"',
