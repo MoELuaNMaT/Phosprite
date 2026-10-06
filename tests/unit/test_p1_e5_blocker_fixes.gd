@@ -12,9 +12,11 @@ class FakeTimeline:
 
 func test_e5_fix_scripts_parse_cleanly() -> void:
 	for path in [MANAGER_SOURCE, PIXEL_CEL_SOURCE]:
-		var script := GDScript.new()
-		script.source_code = FileAccess.get_file_as_string(path)
-		check_eq(script.reload(), OK, "%s must compile after the E5 blocker fixes" % path)
+		var script: Script = load(path) as Script
+		check_true(
+			script != null and script.can_instantiate(),
+			"%s must load and remain instantiable after the E5 blocker fixes" % path,
+		)
 
 
 func test_adjacent_tag_edges_prefer_the_tag_body_under_the_finger() -> void:

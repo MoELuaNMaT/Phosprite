@@ -236,8 +236,13 @@ func test_long_press_targets_the_selected_color_slot() -> void:
 	)
 	check_has(
 		src,
-		"COLOR_SAMPLING.pick_color(Vector2i(canvas_position.floor()), target_button, mode)",
-		"the selected left/right target must reach the shared sampler explicitly"
+		"COLOR_SAMPLING.pick_color(",
+		"temporary picking must route through the shared sampler",
+	)
+	check_has(
+		src,
+		"_active_color_target_button(), mode",
+		"the selected left/right target must reach the shared sampler explicitly",
 	)
 	check_true(
 		not ("func _sample_primary_color" in src),
@@ -510,8 +515,8 @@ func test_color_picker_and_long_press_share_sampling_model() -> void:
 	)
 	check_has(
 		sampling,
-		"Tools.assign_color(color, target_button, false, palette_index)",
-		"shared sampling must update the requested color slot directly"
+		'sample["color"] as Color, target_button, false, int(sample.get("palette_index", -1))',
+		"shared sampling must update the requested color slot and preserve palette identity",
 	)
 	check_true(
 		not ("assign_tool" in sampling),
