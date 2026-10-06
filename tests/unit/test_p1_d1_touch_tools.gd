@@ -25,20 +25,20 @@ func test_color_picker_bypasses_long_press_arbitration() -> void:
 
 
 func test_canvas_touch_boundary_rejects_workspace_ui_before_ownership() -> void:
-	var viewport_rect := Rect2(100.0, 80.0, 640.0, 480.0)
+	var viewport_size := Vector2(640.0, 480.0)
 	check_true(
-		ADAPTER.screen_position_inside_rect(Vector2(120.0, 100.0), viewport_rect),
-		"touches inside Main Canvas geometry must remain eligible for canvas ownership"
+		ADAPTER.viewport_position_inside_size(Vector2(20.0, 20.0), viewport_size),
+		"touches inside Main Canvas local geometry must remain eligible for canvas ownership"
 	)
 	check_true(
-		not ADAPTER.screen_position_inside_rect(Vector2(80.0, 100.0), viewport_rect),
-		"touches in docked Workspace UI must be outside Main Canvas ownership"
+		not ADAPTER.viewport_position_inside_size(Vector2(-20.0, 20.0), viewport_size),
+		"touches outside Main Canvas local geometry must be rejected"
 	)
 
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	var begin_pos := src.find("func _begin_touch(")
 	var consume_pos := src.find("_consume_pointer_info(event.index)", begin_pos)
-	var boundary_pos := src.find("_screen_position_inside_main_viewport(event.position)", begin_pos)
+	var boundary_pos := src.find("_viewport_position_inside_main_viewport(event.position)", begin_pos)
 	var state_pos := src.find("_touches[event.index] = state", begin_pos)
 	check_true(begin_pos >= 0, "adapter must expose touch-begin arbitration")
 	check_true(

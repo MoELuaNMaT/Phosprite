@@ -9,6 +9,9 @@ on:
       - '**/*.md'
   pull_request:
     branches: [ master, main, phosprite-main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
 
 concurrency:
@@ -224,8 +227,7 @@ jobs:
           chmod +x ./Godot.app/Contents/MacOS/Godot
 
       - name: Import resources once 📦
-        continue-on-error: true
-        run: ./Godot.app/Contents/MacOS/Godot --headless -v --import
+        run: bash scripts/ci/godot_import_gate.sh ./Godot.app/Contents/MacOS/Godot
 
       - name: Export Xcode project 🔧
         run: |

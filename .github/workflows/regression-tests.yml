@@ -1,28 +1,35 @@
 name: Regression Tests 🧪
 
-# Runs the headless P0 contract suite (tests/runner.gd) on the frozen engine
-# version. This is a required gate: the P0 plan forbids starting iPad UX work
-# until the storage/identity contract is proven, so a red run here must block
-# the branch.
+# Runs the headless Phosprite contract suite on the pinned engine baseline.
+# Feature branches validate through pull_request so one commit does not create
+# duplicate push + PR runs. Long-lived product branches still validate on push.
 on:
   push:
-    branches-ignore:
-      - gh-pages
-      - l10n_master
+    branches:
+      - master
+      - main
+      - phosprite-main
+      - integration/phosprite-mainline
   pull_request:
+    branches:
+      - master
+      - main
+      - phosprite-main
     paths:
       - "src/**"
+      - "addons/**"
       - "tests/**"
       - "project.godot"
       - "export_presets.cfg"
+      - "scripts/ci/**"
       - ".github/workflows/regression-tests.yml"
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-tests
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  # Must match the current Phosprite engine baseline.
   GODOT_VERSION: 4.7.2
   TEST_SCRIPT: res://tests/runner.gd
   TEST_FLAG: --phosprite-test-runner
@@ -39,7 +46,6 @@ jobs:
         with:
           submodules: true
       - name: Import project resources
-        run: godot --headless --path . --import
+        run: bash scripts/ci/godot_import_gate.sh godot
       - name: Run contract suite
-        # The runner exits non-zero on any assertion failure, which fails the job.
         run: godot --headless --path . --script "${TEST_SCRIPT}" -- "${TEST_FLAG}"
