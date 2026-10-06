@@ -38,7 +38,9 @@ func test_canvas_touch_boundary_rejects_workspace_ui_before_ownership() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	var begin_pos := src.find("func _begin_touch(")
 	var consume_pos := src.find("_consume_pointer_info(event.index)", begin_pos)
-	var boundary_pos := src.find("_viewport_position_inside_main_viewport(event.position)", begin_pos)
+	var boundary_pos := src.find(
+		"_viewport_position_inside_main_viewport(event.position)", begin_pos
+	)
 	var state_pos := src.find("_touches[event.index] = state", begin_pos)
 	check_true(begin_pos >= 0, "adapter must expose touch-begin arbitration")
 	check_true(
