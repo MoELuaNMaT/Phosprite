@@ -386,6 +386,8 @@ func _on_PaletteGrid_swatch_pressed(mouse_button: int, index: int) -> void:
 			return
 		if (
 			palette_grid.pending_empty_palette_index == index
+			and palette_grid.pending_empty_mouse_button == mouse_button
+			and palette_grid.pending_empty_color == new_color
 			and pending_add_mouse_button == mouse_button
 		):
 			palette_grid.clear_pending_empty_swatch()
@@ -393,15 +395,16 @@ func _on_PaletteGrid_swatch_pressed(mouse_button: int, index: int) -> void:
 			_current_palette_add_color(new_color, index)
 			palette_grid.find_and_select_color({"color": new_color}, mouse_button)
 		else:
-			palette_grid.set_pending_empty_swatch(index)
+			palette_grid.set_pending_empty_swatch(index, mouse_button, new_color)
 			pending_add_mouse_button = mouse_button
 		return
 
 	palette_grid.clear_pending_empty_swatch()
 	pending_add_mouse_button = -1
-	var old_index := Palettes.current_palette_get_selected_color_index(mouse_button)
 	Palettes.current_palette_select_color(mouse_button, index)
-	palette_grid.select_swatch(mouse_button, index, old_index)
+	palette_grid.find_and_select_color(
+		{"color": Tools.get_assigned_color(mouse_button), "index": index}, mouse_button
+	)
 
 
 func _palette_contains_color(color: Color) -> bool:

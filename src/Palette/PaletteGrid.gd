@@ -30,8 +30,11 @@ var grid_locked := true:
 			_on_resized()
 var swatch_size := DEFAULT_SWATCH_SIZE
 var pending_empty_palette_index := -1
+var pending_empty_mouse_button := -1
+var pending_empty_color := Color.TRANSPARENT
 
 var _ios_touch_candidates: Dictionary = {}
+var _ios_touch_generation := 0
 var _ios_touch_ui_mode := false
 var _ios_last_tap_msec := -1
 var _ios_last_tap_palette_index := -1
@@ -77,6 +80,7 @@ func _gui_input(event: InputEvent) -> void:
 func select_palette(_new_palette_name: String) -> void:
 	var new_palette := Palettes.current_palette
 	if current_palette != new_palette:
+		clear_pending_empty_swatch()
 		current_palette = new_palette
 		grid_window_origin = Vector2.ZERO
 	resize_grid()
@@ -94,7 +98,6 @@ func setup_swatches() -> void:
 	for child in get_children():
 		child.queue_free()
 	swatches.clear()
-	pending_empty_palette_index = -1
 	for i in range(grid_size.x * grid_size.y):
 		var swatch := PaletteSwatch.new()
 		swatch.index = i
@@ -105,6 +108,7 @@ func setup_swatches() -> void:
 		swatch.dragged_outside.connect(_on_palette_swatch_dragged_outside.bind(i))
 		add_child(swatch)
 		swatches.push_back(swatch)
+	_restore_pending_empty_highlight()
 
 
 func init_swatch(swatch: PaletteSwatch) -> void:
@@ -126,16 +130,21 @@ func init_swatch(swatch: PaletteSwatch) -> void:
 ## when its Color value is exactly equal to the assigned color. An incoming palette index is only
 ## a preferred location for duplicate colors; it never overrides a color mismatch.
 func find_and_select_color(color_info: Dictionary, mouse_button: int) -> void:
-	clear_pending_empty_swatch()
 	if not is_instance_valid(current_palette):
 		return
 	var target_color: Color = color_info.get("color", Color(0, 0, 0, 0))
 	var preferred_index: int = color_info.get("index", -1)
 	var selected_index := Palettes.current_palette_get_selected_color_index(mouse_button)
+	if (
+		pending_empty_palette_index != -1
+		and pending_empty_mouse_button == mouse_button
+		and target_color != pending_empty_color
+	):
+		clear_pending_empty_swatch()
 	var matching_index := _find_exact_color_index(target_color, preferred_index)
 
-	if matching_index == selected_index:
-		return
+	# The visual state is derived from the current color every time. Do not trust a cached
+	# selected index because swatches can be rebuilt while that index remains unchanged.
 	if matching_index >= 0:
 		select_swatch(mouse_button, matching_index, selected_index)
 	else:
@@ -167,40 +176,61 @@ func _find_exact_color_index(target_color: Color, preferred_index := -1) -> int:
 
 
 ## Displays a left/right highlight over a swatch
-func select_swatch(mouse_button: int, palette_index: int, old_palette_index: int) -> void:
-	if not is_instance_valid(current_palette):
-		return
-	var index := convert_palette_index_to_grid_index(palette_index)
-	var old_index := convert_palette_index_to_grid_index(old_palette_index)
-	if index >= 0 and index < swatches.size():
-		# Remove highlight from old index swatch and add to index swatch
-		if old_index >= 0 and old_index < swatches.size():
-			# Old index could be undefined when no swatch was previously selected
-			swatches[old_index].show_selected_highlight(false, mouse_button)
-		swatches[index].show_selected_highlight(true, mouse_button)
+func select_swatch(mouse_button: int, palette_index: int, _old_palette_index: int) -> void:
+	_sync_selected_swatch(mouse_button, palette_index)
 
 
-func unselect_swatch(mouse_button: int, palette_index: int) -> void:
-	var index := convert_palette_index_to_grid_index(palette_index)
-	if index >= 0 and index < swatches.size():
-		swatches[index].show_selected_highlight(false, mouse_button)
+func unselect_swatch(mouse_button: int, _palette_index: int) -> void:
+	_sync_selected_swatch(mouse_button, -1)
 
 
-func set_pending_empty_swatch(palette_index: int) -> void:
+func _sync_selected_swatch(mouse_button: int, palette_index: int) -> void:
+	for grid_index in swatches.size():
+		var swatch := swatches[grid_index]
+		if not is_instance_valid(swatch):
+			continue
+		var swatch_palette_index := convert_grid_index_to_palette_index(grid_index)
+		swatch.show_selected_highlight(swatch_palette_index == palette_index, mouse_button)
+
+
+func set_pending_empty_swatch(
+	palette_index: int, mouse_button: int, active_color: Color
+) -> void:
 	clear_pending_empty_swatch()
 	var index := convert_palette_index_to_grid_index(palette_index)
 	if index >= 0 and index < swatches.size() and swatches[index].empty:
 		pending_empty_palette_index = palette_index
+		pending_empty_mouse_button = mouse_button
+		pending_empty_color = active_color
 		swatches[index].show_pending_empty_highlight(true)
 
 
 func clear_pending_empty_swatch() -> void:
-	if pending_empty_palette_index == -1:
+	if pending_empty_palette_index != -1:
+		var index := convert_palette_index_to_grid_index(pending_empty_palette_index)
+		if index >= 0 and index < swatches.size():
+			swatches[index].show_pending_empty_highlight(false)
+	_reset_pending_empty_state()
+
+
+func _restore_pending_empty_highlight() -> void:
+	if pending_empty_palette_index == -1 or not is_instance_valid(current_palette):
 		return
 	var index := convert_palette_index_to_grid_index(pending_empty_palette_index)
-	if index >= 0 and index < swatches.size():
-		swatches[index].show_pending_empty_highlight(false)
+	if (
+		index < 0
+		or index >= swatches.size()
+		or current_palette.get_color(pending_empty_palette_index) != null
+	):
+		_reset_pending_empty_state()
+		return
+	swatches[index].show_pending_empty_highlight(true)
+
+
+func _reset_pending_empty_state() -> void:
 	pending_empty_palette_index = -1
+	pending_empty_mouse_button = -1
+	pending_empty_color = Color.TRANSPARENT
 
 
 func set_swatch_color(palette_index: int, color: Color) -> void:
@@ -288,14 +318,21 @@ func _handle_ios_palette_touch(event: InputEventScreenTouch) -> bool:
 		var palette_index := -1
 		if action == &"swatch":
 			palette_index = _ios_palette_index_at(event.position)
+		_ios_touch_generation += 1
+		var generation := _ios_touch_generation
 		_ios_touch_candidates[event.index] = {
 			"action": action,
 			"origin": event.position,
+			"position": event.position,
 			"palette_index": palette_index,
 			"pressed_msec": Time.get_ticks_msec(),
+			"generation": generation,
 			"cancelled": false,
 			"reordering": false,
 		}
+		if action == &"swatch" and _ios_palette_index_has_color(palette_index):
+			var timer := get_tree().create_timer(float(IOS_TOUCH_REORDER_HOLD_MSEC) / 1000.0)
+			timer.timeout.connect(_try_begin_ios_reorder.bind(event.index, generation))
 		return true
 
 	if not _ios_touch_candidates.has(event.index):
@@ -343,29 +380,50 @@ func _handle_ios_palette_drag(event: InputEventScreenDrag) -> bool:
 	var candidate: Dictionary = _ios_touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
 		return true
+	candidate["position"] = event.position
 	var origin: Vector2 = candidate.get("origin", event.position)
 	var distance := origin.distance_to(event.position)
 	var action: StringName = candidate.get("action", &"")
 	if action != &"swatch":
 		if distance > IOS_TOUCH_TAP_SLOP_PX:
 			candidate["cancelled"] = true
-			_ios_touch_candidates[event.index] = candidate
+		_ios_touch_candidates[event.index] = candidate
 		return true
 	if bool(candidate.get("reordering", false)):
-		get_viewport().set_input_as_handled()
-		return true
-	var source_index: int = int(candidate.get("palette_index", -1))
-	var pressed_msec: int = int(candidate.get("pressed_msec", Time.get_ticks_msec()))
-	var held_msec := Time.get_ticks_msec() - pressed_msec
-	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC and _ios_palette_index_has_color(source_index):
-		candidate["reordering"] = true
 		_ios_touch_candidates[event.index] = candidate
 		get_viewport().set_input_as_handled()
 		return true
 	if distance > IOS_TOUCH_TAP_SLOP_PX:
 		candidate["cancelled"] = true
-		_ios_touch_candidates[event.index] = candidate
+	_ios_touch_candidates[event.index] = candidate
 	return true
+
+
+func _try_begin_ios_reorder(touch_id: int, generation: int) -> void:
+	if not _ios_touch_candidates.has(touch_id):
+		return
+	var candidate: Dictionary = _ios_touch_candidates[touch_id]
+	if (
+		int(candidate.get("generation", -1)) != generation
+		or bool(candidate.get("cancelled", false))
+		or bool(candidate.get("reordering", false))
+		or StringName(candidate.get("action", &"")) != &"swatch"
+	):
+		return
+	var origin: Vector2 = candidate.get("origin", Vector2.ZERO)
+	var position: Vector2 = candidate.get("position", origin)
+	if origin.distance_to(position) > IOS_TOUCH_TAP_SLOP_PX:
+		candidate["cancelled"] = true
+		_ios_touch_candidates[touch_id] = candidate
+		return
+	var source_index := int(candidate.get("palette_index", -1))
+	if not _ios_palette_index_has_color(source_index):
+		return
+	# Acquiring the reorder state before the first drag event lets the feedback helper
+	# lift a copy of the swatch under a stationary finger, so users can see that the
+	# long press succeeded before they start moving.
+	candidate["reordering"] = true
+	_ios_touch_candidates[touch_id] = candidate
 
 
 func _ios_palette_action_at(screen_position: Vector2) -> StringName:

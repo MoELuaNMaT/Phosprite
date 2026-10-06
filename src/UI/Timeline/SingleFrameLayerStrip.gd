@@ -139,6 +139,7 @@ func set_multiselect_mode(enabled: bool, initial_layer := -1) -> void:
 		project.selected_cels.append([project.current_frame, project.current_layer])
 		project.change_cel(-1, project.current_layer)
 	_update_multiselect_bar()
+	_sync_layer_settings()
 
 
 func _bind_project(project: Project) -> void:
@@ -377,6 +378,7 @@ func _select_only_layer(layer_index: int) -> void:
 	project.selected_cels.clear()
 	project.selected_cels.append([project.current_frame, layer_index])
 	project.change_cel(-1, layer_index)
+	_sync_layer_settings()
 
 
 func _toggle_layer_in_multiselect(layer_index: int) -> void:
@@ -400,6 +402,7 @@ func _toggle_layer_in_multiselect(layer_index: int) -> void:
 	else:
 		project.selected_cels.append(frame_layer)
 		project.change_cel(-1, layer_index)
+	_sync_layer_settings()
 
 
 func _is_layer_selected(layer_index: int) -> bool:
