@@ -233,18 +233,34 @@ func test_preview_grayscale_state_controls_preview_render_layer() -> void:
 	var source := FileAccess.get_file_as_string(
 		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
 	)
-	check_has(
-		scene,
-		'path="res://src/Shaders/Greyscale.gdshader"',
-		"Preview must use the same grayscale shader contract as the main Canvas",
+	var shader := FileAccess.get_file_as_string(
+		"res://src/Shaders/GreyscaleTexture.gdshader"
 	)
 	check_has(
 		scene,
-		'[node name="PreviewGreyscaleVision" type="ColorRect"',
-		"Preview needs its own grayscale render overlay inside its SubViewport",
+		'path="res://src/Shaders/GreyscaleTexture.gdshader"',
+		"Preview must grayscale the rendered SubViewport texture instead of screen-capturing inside it",
+	)
+	check_has(
+		scene,
+		'material = SubResource("ShaderMaterial_preview_greyscale")',
+		"Preview grayscale material must be attached to the SubViewportContainer output",
+	)
+	check_true(
+		not scene.contains('[node name="PreviewGreyscaleVision" type="ColorRect"'),
+		"Preview must not depend on an unreliable nested hint_screen_texture overlay",
+	)
+	check_has(
+		shader,
+		"texture(TEXTURE, UV)",
+		"Preview grayscale shader must sample the actual viewport texture",
+	)
+	check_true(
+		not shader.contains("hint_screen_texture"),
+		"Preview texture grayscale must not read from a nested screen back-buffer",
 	)
 	check_has(
 		source,
-		"grayscale_vision.visible = enabled",
-		"shared grayscale state must change Preview pixels as well as the main Canvas",
+		'preview_grayscale_material.set_shader_parameter(&"enabled", enabled)',
+		"shared grayscale state must directly toggle grayscale on the Preview output texture",
 	)

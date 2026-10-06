@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://b6l0yorq5b46r" path="res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://c546tskdu53j1" path="res://src/UI/Canvas/CanvasPreview.tscn" id="5"]
 [ext_resource type="Script" uid="uid://ctqrsfsbx4kwk" path="res://src/UI/Canvas/CanvasCamera.gd" id="5_ge2km"]
-[ext_resource type="Shader" uid="uid://bhgdieau4cr1b" path="res://src/Shaders/Greyscale.gdshader" id="10_greyscale"]
+[ext_resource type="Shader" path="res://src/Shaders/GreyscaleTexture.gdshader" id="10_greyscale"]
 [ext_resource type="Texture2D" uid="uid://c7smxwfa8826j" path="res://assets/graphics/timeline/play.png" id="6"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="8"]
 
@@ -23,6 +23,7 @@ shader_parameter/follow_scale = false
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_preview_greyscale"]
 shader = ExtResource("10_greyscale")
+shader_parameter/enabled = false
 
 [node name="CanvasPreviewContainer" type="PanelContainer" unique_id=1665289064 groups=["CanvasTouchBlockers"]]
 custom_minimum_size = Vector2(0, 110)
@@ -38,6 +39,7 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="PreviewViewportContainer" type="SubViewportContainer" parent="VBox/HBox" unique_id=573890257]
+material = SubResource("ShaderMaterial_preview_greyscale")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -57,19 +59,6 @@ document_checker_size = 8.0
 
 [node name="CanvasPreview" parent="VBox/HBox/PreviewViewportContainer/SubViewport" unique_id=2109276218 groups=["CanvasPreviews"] instance=ExtResource("5")]
 unique_name_in_owner = true
-
-[node name="GreyscaleLayer" type="CanvasLayer" parent="VBox/HBox/PreviewViewportContainer/SubViewport"]
-layer = 100
-
-[node name="PreviewGreyscaleVision" type="ColorRect" parent="VBox/HBox/PreviewViewportContainer/SubViewport/GreyscaleLayer"]
-visible = false
-material = SubResource("ShaderMaterial_preview_greyscale")
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = 40.0
-offset_bottom = 40.0
-mouse_filter = 2
 
 [node name="CameraPreview" type="Node2D" parent="VBox/HBox/PreviewViewportContainer/SubViewport" unique_id=177284600 groups=["CanvasCameras"]]
 unique_name_in_owner = true
