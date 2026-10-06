@@ -23,7 +23,7 @@ func test_adjacent_tag_edges_prefer_the_tag_body_under_the_finger() -> void:
 	var container := Control.new()
 	var tag_a := Control.new()
 	var tag_b := Control.new()
-	add_child(timeline)
+	tree.root.add_child(timeline)
 	timeline.tag_container = container
 	timeline.add_child(container)
 	container.add_child(tag_a)

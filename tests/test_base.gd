@@ -44,6 +44,13 @@ func check_true(condition: bool, message: String) -> void:
 		fail(message)
 
 
+## Fails unless [param condition] is false.
+func check_false(condition: bool, message: String) -> void:
+	_record_check()
+	if condition:
+		fail(message)
+
+
 ## Fails unless [param actual] equals [param expected].
 func check_eq(actual: Variant, expected: Variant, message: String) -> void:
 	_record_check()
