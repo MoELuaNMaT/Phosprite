@@ -20,7 +20,8 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var play_button := $"%PlayButton" as Button
 @onready var grayscale_button := $"%GrayscaleButton" as Button
 @onready var grayscale_vision := (
-	$VBox/HBox/PreviewViewportContainer/SubViewport/GreyscaleLayer/PreviewGreyscaleVision as ColorRect
+	$VBox/HBox/PreviewViewportContainer/SubViewport/GreyscaleLayer/PreviewGreyscaleVision
+	as ColorRect
 )
 @onready var start_frame := $"%StartFrame" as ValueSlider
 @onready var end_frame := $"%EndFrame" as ValueSlider

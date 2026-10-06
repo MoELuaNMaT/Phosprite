@@ -123,7 +123,6 @@ func test_long_press_color_ring_uses_screen_space_clockwise_progress_and_cancel_
 	)
 
 
-
 func test_long_press_color_ring_follows_input_state_machine() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	check_eq(
@@ -147,7 +146,9 @@ func test_long_press_color_ring_follows_input_state_machine() -> void:
 	)
 	var start_pending := src.find("func _start_pending_content")
 	var ring_gate := src.find("func _try_begin_long_press_indicator", start_pending)
-	check_true(start_pending >= 0 and ring_gate > start_pending, "adapter must expose delayed ring gating")
+	check_true(
+		start_pending >= 0 and ring_gate > start_pending, "adapter must expose delayed ring gating"
+	)
 	if start_pending >= 0 and ring_gate > start_pending:
 		var pending_body := src.substr(start_pending, ring_gate - start_pending)
 		check_true(
@@ -187,6 +188,7 @@ func test_long_press_color_ring_follows_input_state_machine() -> void:
 		"CanvasLayer.new()",
 		"the indicator must live in screen space instead of inheriting canvas transforms",
 	)
+
 
 func test_long_press_preview_sampling_has_no_palette_side_effect() -> void:
 	var sampling := FileAccess.get_file_as_string(COLOR_SAMPLING_SOURCE)

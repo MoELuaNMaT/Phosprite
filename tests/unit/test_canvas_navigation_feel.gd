@@ -152,7 +152,6 @@ func test_combined_pan_pinch_and_rotation_preserve_the_pair_anchor() -> void:
 	)
 
 
-
 func test_replacement_pair_resets_navigation_without_rotation() -> void:
 	var adapter := ADAPTER.new()
 	adapter._two_finger_rotation_enabled = true
@@ -184,6 +183,7 @@ func test_replacement_pair_resets_navigation_without_rotation() -> void:
 		"replacement pairs must remain pan/zoom only",
 	)
 
+
 func test_runtime_path_is_baseline_driven_and_has_no_touch_tween() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	check_has(src, "_navigation_anchor_canvas", "runtime must retain the fixed Canvas anchor")
@@ -204,7 +204,6 @@ func test_runtime_path_is_baseline_driven_and_has_no_touch_tween() -> void:
 		not ("Global.smooth_zoom" in src),
 		"continuous touch navigation must not add preference-driven smoothing latency"
 	)
-
 
 
 func test_canvas_rotation_is_hard_disabled_and_not_exposed() -> void:
@@ -228,4 +227,3 @@ func test_canvas_rotation_is_hard_disabled_and_not_exposed() -> void:
 		not ("\t_install_two_finger_rotation_preference(options)" in src),
 		"Preferences must no longer expose a control that can re-enable canvas rotation",
 	)
-

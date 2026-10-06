@@ -193,9 +193,7 @@ func _sync_selected_swatch(mouse_button: int, palette_index: int) -> void:
 		swatch.show_selected_highlight(swatch_palette_index == palette_index, mouse_button)
 
 
-func set_pending_empty_swatch(
-	palette_index: int, mouse_button: int, active_color: Color
-) -> void:
+func set_pending_empty_swatch(palette_index: int, mouse_button: int, active_color: Color) -> void:
 	clear_pending_empty_swatch()
 	var index := convert_palette_index_to_grid_index(palette_index)
 	if index >= 0 and index < swatches.size() and swatches[index].empty:
