@@ -180,3 +180,27 @@ func test_secondary_selection_and_drag_keep_existing_left_right_palette_model() 
 		"Tools.assign_color(color, mouse_button, true",
 		"Palette selection must keep the existing indexed-color assignment boundary"
 	)
+
+
+func test_palette_reorder_feedback_acquires_before_first_drag_event() -> void:
+	var src := FileAccess.get_file_as_string(PALETTE_GRID_SOURCE)
+	check_has(
+		src,
+		"create_timer(float(IOS_TOUCH_REORDER_HOLD_MSEC) / 1000.0)",
+		"holding a swatch must acquire reorder even while the finger stays stationary",
+	)
+	check_has(
+		src,
+		"_try_begin_ios_reorder.bind(event.index, generation)",
+		"the hold timer must be tied to the exact touch contact",
+	)
+	check_has(
+		src,
+		"func _try_begin_ios_reorder(touch_id: int, generation: int) -> void:",
+		"reorder acquisition must be separate from drag movement handling",
+	)
+	check_has(
+		src,
+		'candidate["reordering"] = true',
+		"the feedback helper must see reorder ownership before the first movement",
+	)

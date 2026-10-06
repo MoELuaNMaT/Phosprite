@@ -152,7 +152,8 @@ func test_combined_pan_pinch_and_rotation_preserve_the_pair_anchor() -> void:
 	)
 
 
-func test_replacement_pair_resets_c2_state_and_c3_rotation_baseline() -> void:
+
+func test_replacement_pair_resets_navigation_without_rotation() -> void:
 	var adapter := ADAPTER.new()
 	adapter._two_finger_rotation_enabled = true
 	adapter._touches = {
@@ -164,8 +165,8 @@ func test_replacement_pair_resets_c2_state_and_c3_rotation_baseline() -> void:
 	}
 	adapter._begin_navigation_pair(PackedInt32Array([1, 2]))
 	check_true(
-		adapter._navigation_rotation_enabled_for_pair,
-		"a pair must snapshot the optional rotation preference when it begins"
+		not adapter._navigation_rotation_enabled_for_pair,
+		"two-finger navigation must ignore any stale rotation preference",
 	)
 	adapter._navigation_pan_active = true
 	adapter._navigation_pinch_active = true
@@ -174,21 +175,14 @@ func test_replacement_pair_resets_c2_state_and_c3_rotation_baseline() -> void:
 	check_eq(
 		adapter._navigation_ids,
 		PackedInt32Array([1, 3]),
-		"replacement must establish a new navigation pair"
+		"replacement must establish a new navigation pair",
 	)
 	check_true(not adapter._navigation_pan_active, "replacement must reset pan acquisition")
 	check_true(not adapter._navigation_pinch_active, "replacement must reset pinch acquisition")
 	check_true(
-		adapter._navigation_rotation_enabled_for_pair,
-		"replacement must snapshot the current optional rotation preference again"
+		not adapter._navigation_rotation_enabled_for_pair,
+		"replacement pairs must remain pan/zoom only",
 	)
-	check_almost_eq(
-		adapter._navigation_baseline_pair_angle,
-		PI / 2.0,
-		0.00001,
-		"replacement must establish a fresh pair-angle baseline"
-	)
-
 
 func test_runtime_path_is_baseline_driven_and_has_no_touch_tween() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
@@ -212,34 +206,26 @@ func test_runtime_path_is_baseline_driven_and_has_no_touch_tween() -> void:
 	)
 
 
-func test_rotation_preference_is_persistent_and_pair_scoped() -> void:
+
+func test_canvas_rotation_is_hard_disabled_and_not_exposed() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	check_has(
 		src,
-		"TWO_FINGER_ROTATION_KEY",
-		"P1-C3 must persist the optional rotation preference through config_cache"
+		"_two_finger_rotation_enabled = false",
+		"legacy saved rotation preferences must be ignored during initialization",
 	)
 	check_has(
 		src,
-		"TwoFingerRotationCheckBox",
-		"P1-C3 must expose the optional rotation toggle in iPad preferences"
-	)
-	check_has(
-		src,
-		"_navigation_rotation_enabled_for_pair = _two_finger_rotation_enabled",
-		"rotation enablement must be snapshotted at pair begin to avoid mid-gesture mode jumps"
+		"_navigation_rotation_enabled_for_pair = false",
+		"every captured two-finger pair must explicitly disable rotation",
 	)
 	check_has(
 		src,
 		"_install_finger_policy_preference(options)",
-		"finger policy preference must install independently"
-	)
-	check_has(
-		src,
-		"_install_two_finger_rotation_preference(options)",
-		"rotation preference must install independently"
+		"the supported finger-input preference must remain available",
 	)
 	check_true(
-		not ('or options.has_node("FingerPolicyLabel")' in src),
-		"an existing finger-policy row must not block the rotation preference row"
+		not ("\t_install_two_finger_rotation_preference(options)" in src),
+		"Preferences must no longer expose a control that can re-enable canvas rotation",
 	)
+

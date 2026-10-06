@@ -224,3 +224,27 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 		not preferences_scene.contains("Show right tool icon"),
 		"the removed right tool icon must not leave a dead Preferences row",
 	)
+
+
+func test_preview_grayscale_state_controls_preview_render_layer() -> void:
+	var scene := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
+	)
+	var source := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
+	)
+	check_has(
+		scene,
+		'path="res://src/Shaders/Greyscale.gdshader"',
+		"Preview must use the same grayscale shader contract as the main Canvas",
+	)
+	check_has(
+		scene,
+		'[node name="PreviewGreyscaleVision" type="ColorRect"',
+		"Preview needs its own grayscale render overlay inside its SubViewport",
+	)
+	check_has(
+		source,
+		"grayscale_vision.visible = enabled",
+		"shared grayscale state must change Preview pixels as well as the main Canvas",
+	)

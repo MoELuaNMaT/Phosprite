@@ -71,3 +71,38 @@ func test_empty_slot_confirmation_and_drag_out_delete_are_shared_across_inputs()
 		"dragged_outside.emit(index)",
 		"mouse or trackpad native drag must emit the same deletion request when released outside",
 	)
+
+
+func test_empty_slot_confirmation_survives_same_color_sync_and_rebuild() -> void:
+	var grid := FileAccess.get_file_as_string(GRID_SOURCE)
+	var panel := FileAccess.get_file_as_string(PANEL_SOURCE)
+	check_has(
+		grid,
+		"var pending_empty_mouse_button := -1",
+		"pending empty-slot state must remember which color target initiated it",
+	)
+	check_has(
+		grid,
+		"var pending_empty_color := Color.TRANSPARENT",
+		"pending empty-slot state must snapshot the active color",
+	)
+	check_has(
+		grid,
+		"_restore_pending_empty_highlight()",
+		"rebuilding Palette swatches must restore a still-valid pending target",
+	)
+	check_has(
+		grid,
+		"target_color != pending_empty_color",
+		"same-color notifications must not silently clear an empty-slot confirmation",
+	)
+	check_has(
+		panel,
+		"palette_grid.set_pending_empty_swatch(index, mouse_button, new_color)",
+		"first tap must store the complete confirmation state",
+	)
+	check_has(
+		panel,
+		"palette_grid.pending_empty_color == new_color",
+		"second tap may add only the exact color that was originally confirmed",
+	)
