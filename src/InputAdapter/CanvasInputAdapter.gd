@@ -1061,13 +1061,9 @@ func _update_navigation() -> void:
 	if _navigation_pinch_active:
 		scale_ratio = navigation_scale_ratio(_navigation_baseline_distance, distance)
 
-	var target_angle := navigation_target_angle(
-		_navigation_baseline_camera_angle,
-		_navigation_baseline_pair_angle,
-		float(geometry["angle"]),
-		_navigation_rotation_enabled_for_pair,
-		NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
-	)
+	# Two-finger navigation is intentionally pan/zoom only. Keep the angle captured
+	# at gesture start instead of routing through the optional rotation math.
+	var target_angle := _navigation_baseline_camera_angle
 	var target_zoom := navigation_zoom_from_ratio(
 		_navigation_baseline_zoom,
 		scale_ratio,

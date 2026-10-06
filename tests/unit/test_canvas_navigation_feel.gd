@@ -220,6 +220,11 @@ func test_canvas_rotation_is_hard_disabled_and_not_exposed() -> void:
 	)
 	check_has(
 		src,
+		"var target_angle := _navigation_baseline_camera_angle",
+		"runtime navigation must preserve the captured Canvas angle without rotation math",
+	)
+	check_has(
+		src,
 		"_install_finger_policy_preference(options)",
 		"the supported finger-input preference must remain available",
 	)
