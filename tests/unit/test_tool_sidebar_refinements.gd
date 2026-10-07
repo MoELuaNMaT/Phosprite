@@ -76,9 +76,7 @@ func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_n
 
 func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 	var source := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
-	var pencil_scene := FileAccess.get_file_as_string(
-		"res://src/Tools/DesignTools/Pencil.tscn"
-	)
+	var pencil_scene := FileAccess.get_file_as_string("res://src/Tools/DesignTools/Pencil.tscn")
 	check_has(
 		source,
 		"func set_compact_option_layout(enabled: bool) -> void:",
@@ -128,6 +126,7 @@ func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 		not source.contains("COMPACT_OPTION_LABEL_STRETCH"),
 		"UI 3 must not keep the obsolete two-column label/control ratio",
 	)
+
 
 func test_crop_sidebar_has_no_configuration_and_applies_on_release() -> void:
 	var source := FileAccess.get_file_as_string(CROP_SOURCE)
