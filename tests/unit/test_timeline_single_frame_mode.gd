@@ -571,25 +571,31 @@ func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
 	)
 
 
-func test_value_slider_defaults_to_drag_only_configuration() -> void:
-	var source := FileAccess.get_file_as_string("res://src/UI/Nodes/Sliders/ValueSlider.gd")
+func test_drag_only_value_sliders_are_opt_in_at_touch_surfaces() -> void:
+	var slider_source := FileAccess.get_file_as_string("res://src/UI/Nodes/Sliders/ValueSlider.gd")
+	var tool_source := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
 	check_has(
-		source,
-		"@export var allow_text_input := false:",
-		"ValueSlider configuration controls must default to drag-only interaction",
+		slider_source,
+		"@export var allow_text_input := true",
+		"shared ValueSlider must retain its safe general-purpose text-input default",
 	)
 	check_has(
-		source,
-		"@export var show_drag_arrows := true",
-		"drag-only ValueSliders must advertise horizontal adjustment",
+		tool_source,
+		"slider.allow_text_input = false",
+		"Tool Options must explicitly opt sliders into drag-only interaction",
 	)
 	check_has(
-		source,
-		"@export var show_arrows := false:",
-		"drag-only ValueSliders must not expose increment/decrement arrow buttons by default",
+		tool_source,
+		"slider.show_drag_arrows = true",
+		"Tool Options must explicitly advertise horizontal drag adjustment",
 	)
 	check_has(
-		source,
-		"_line_edit.focus_mode = Control.FOCUS_ALL if allow_text_input else Control.FOCUS_NONE",
-		"runtime text-input opt-in or opt-out must update the hidden editor focus contract",
+		tool_source,
+		"slider.show_arrows = false",
+		"Tool Options must explicitly hide increment/decrement arrows",
+	)
+	check_has(
+		FileAccess.get_file_as_string(STRIP_SCENE),
+		"allow_text_input = false",
+		"single-frame opacity must explicitly opt into drag-only interaction",
 	)
