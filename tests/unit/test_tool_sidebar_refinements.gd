@@ -74,8 +74,11 @@ func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_n
 	)
 
 
-func test_ui3_compact_tool_options_use_adaptive_two_column_property_rows() -> void:
+func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 	var source := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
+	var pencil_scene := FileAccess.get_file_as_string(
+		"res://src/Tools/DesignTools/Pencil.tscn"
+	)
 	check_has(
 		source,
 		"func set_compact_option_layout(enabled: bool) -> void:",
@@ -83,55 +86,48 @@ func test_ui3_compact_tool_options_use_adaptive_two_column_property_rows() -> vo
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_LABEL_MIN_WIDTH := 36.0",
-		"compact labels need a small floor instead of a fixed wide name column",
-	)
-	check_has(
-		source,
 		"const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0",
-		"compact controls need a usable floor while leaving room for label compression",
+		"vertical compact controls need a small usable width floor",
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_LABEL_STRETCH := 0.7",
-		"the label column must participate in adaptive width allocation",
+		"columns = 1",
+		"UI 3 compact options must use one vertical column",
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_CONTROL_STRETCH := 1.3",
-		"the control column should receive more of the remaining width",
+		"title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT",
+		"option names must sit above controls instead of forming a left-hand name column",
 	)
 	check_has(
 		source,
-		"columns = 2",
-		"compact options must preserve aligned label/control rows",
+		"title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART",
+		"long option names must wrap rather than widening the floating panel",
 	)
 	check_has(
 		source,
-		"title.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
-		"compact labels must shrink and expand with the floating panel",
+		"func _apply_compact_nested_grid_layout(root: Node) -> void:",
+		"nested property grids must also participate in the UI 3 vertical layout",
 	)
 	check_has(
 		source,
-		"title_label.clip_text = true",
-		"long option names must not force the shared label column wider",
+		"grid.columns = 1",
+		"nested property grids must collapse to one column in UI 3",
 	)
 	check_has(
 		source,
-		"title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS",
-		"compressed option names should fail gracefully with an ellipsis",
+		"_restore_compact_nested_grid_layout()",
+		"leaving UI 3 must restore nested grid column counts",
 	)
 	check_has(
-		source,
-		"control.size_flags_stretch_ratio = COMPACT_OPTION_CONTROL_STRETCH",
-		"compact controls must keep priority over labels as the panel narrows",
+		pencil_scene,
+		'[node name="PatternRow" type="VBoxContainer"',
+		"Pencil dither pattern name and selector must stack vertically",
 	)
-	check_has(
-		source,
-		'state["clip_text"] = label.clip_text',
-		"leaving UI 3 must restore the original label clipping behavior",
+	check_true(
+		not source.contains("COMPACT_OPTION_LABEL_STRETCH"),
+		"UI 3 must not keep the obsolete two-column label/control ratio",
 	)
-
 
 func test_crop_sidebar_has_no_configuration_and_applies_on_release() -> void:
 	var source := FileAccess.get_file_as_string(CROP_SOURCE)
