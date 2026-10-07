@@ -31,7 +31,7 @@ text = "Dither"
 visible = false
 layout_mode = 2
 
-[node name="PatternRow" type="HBoxContainer" parent="DitherSettings" index="0" unique_id=1908512044]
+[node name="PatternRow" type="VBoxContainer" parent="DitherSettings" index="0" unique_id=1908512044]
 layout_mode = 2
 
 [node name="Label" type="Label" parent="DitherSettings/PatternRow" index="0" unique_id=2071427330]
