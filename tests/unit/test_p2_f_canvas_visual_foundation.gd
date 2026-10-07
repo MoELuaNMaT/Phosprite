@@ -227,9 +227,7 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 
 
 func test_preview_grayscale_state_controls_preview_render_layer() -> void:
-	var preview_source := FileAccess.get_file_as_string(
-		"res://src/UI/Canvas/CanvasPreview.gd"
-	)
+	var preview_source := FileAccess.get_file_as_string("res://src/UI/Canvas/CanvasPreview.gd")
 	var blend_shader := FileAccess.get_file_as_string("res://src/Shaders/BlendLayers.gdshader")
 	check_has(
 		blend_shader,
