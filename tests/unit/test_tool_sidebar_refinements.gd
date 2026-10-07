@@ -129,6 +129,7 @@ func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 		"Pencil dither pattern name and selector must stack vertically",
 	)
 
+
 func test_crop_sidebar_has_no_configuration_and_applies_on_release() -> void:
 	var source := FileAccess.get_file_as_string(CROP_SOURCE)
 	check_has(
