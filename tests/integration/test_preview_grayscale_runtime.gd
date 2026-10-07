@@ -10,6 +10,8 @@ func test_live_preview_instances_receive_shared_grayscale_state() -> void:
 	if previews.is_empty():
 		return
 
+	Global.greyscale_view = false
+	await tree.process_frame
 	Global.greyscale_view = true
 	await tree.process_frame
 

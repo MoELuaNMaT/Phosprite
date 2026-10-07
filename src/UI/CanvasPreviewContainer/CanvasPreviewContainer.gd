@@ -19,14 +19,16 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var camera := $"%CameraPreview" as CanvasCamera
 @onready var play_button := $"%PlayButton" as Button
 @onready var grayscale_button := $"%GrayscaleButton" as Button
-@onready var preview_grayscale_material := preview_viewport_container.material as ShaderMaterial
 @onready var start_frame := $"%StartFrame" as ValueSlider
 @onready var end_frame := $"%EndFrame" as ValueSlider
 
 
-func _ready() -> void:
+func _enter_tree() -> void:
 	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
 		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+
+
+func _ready() -> void:
 	_on_greyscale_view_changed(Global.greyscale_view)
 
 
@@ -185,9 +187,6 @@ func _on_GrayscaleButton_toggled(button_pressed: bool) -> void:
 func _on_greyscale_view_changed(enabled: bool) -> void:
 	if is_instance_valid(grayscale_button):
 		grayscale_button.set_pressed_no_signal(enabled)
-	if is_instance_valid(preview_grayscale_material):
-		preview_grayscale_material.set_shader_parameter(&"enabled", enabled)
-		preview_viewport_container.queue_redraw()
 
 
 func _on_PlayButton_toggled(button_pressed: bool) -> void:

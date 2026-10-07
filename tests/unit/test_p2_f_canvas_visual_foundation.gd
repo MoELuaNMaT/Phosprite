@@ -228,6 +228,10 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 
 func test_preview_grayscale_state_controls_preview_render_layer() -> void:
 	var preview_source := FileAccess.get_file_as_string("res://src/UI/Canvas/CanvasPreview.gd")
+	var container_source := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
+	)
+	var global_source := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
 	var blend_shader := FileAccess.get_file_as_string("res://src/Shaders/BlendLayers.gdshader")
 	check_has(
 		blend_shader,
@@ -236,18 +240,23 @@ func test_preview_grayscale_state_controls_preview_render_layer() -> void:
 	)
 	check_has(
 		blend_shader,
-		"if (greyscale_view)",
-		"the final composited Preview color must enter the grayscale branch",
+		"result_color.rgb = vec3(luminance);",
+		"Preview grayscale must replace the final RGB output",
 	)
 	check_has(
-		blend_shader,
-		"result_color.rgb = vec3(luminance);",
-		"Preview grayscale must replace the final RGB output rather than relying on viewport post-processing",
+		global_source,
+		'(canvas.material as ShaderMaterial).set_shader_parameter(&"greyscale_view", value)',
+		"the shared Canvas compositing material must receive the global grayscale state",
+	)
+	check_has(
+		preview_source,
+		"func _enter_tree() -> void:",
+		"CanvasPreview must reconnect shared state after Workspace reparenting",
 	)
 	check_has(
 		preview_source,
 		"Global.greyscale_view_changed.connect(_on_greyscale_view_changed)",
-		"CanvasPreview itself must observe the shared grayscale state",
+		"CanvasPreview must observe grayscale state on every tree entry",
 	)
 	check_has(
 		preview_source,
@@ -255,12 +264,7 @@ func test_preview_grayscale_state_controls_preview_render_layer() -> void:
 		"animated Preview frames must switch grayscale together with the main Canvas",
 	)
 	check_has(
-		preview_source,
-		'(Global.canvas.material as ShaderMaterial).set_shader_parameter(&"greyscale_view", enabled)',
-		"the current-frame Preview material shared with Canvas must receive the same grayscale state",
-	)
-	check_has(
-		preview_source,
-		'(material as ShaderMaterial).set_shader_parameter(&"greyscale_view", enabled)',
-		"whichever material CanvasPreview is currently drawing with must be updated immediately",
+		container_source,
+		"func _enter_tree() -> void:",
+		"the Preview footer must reconnect its UI synchronization after Workspace reparenting",
 	)

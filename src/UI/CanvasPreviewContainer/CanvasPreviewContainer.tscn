@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://b6l0yorq5b46r" path="res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://c546tskdu53j1" path="res://src/UI/Canvas/CanvasPreview.tscn" id="5"]
 [ext_resource type="Script" uid="uid://ctqrsfsbx4kwk" path="res://src/UI/Canvas/CanvasCamera.gd" id="5_ge2km"]
-[ext_resource type="Shader" path="res://src/Shaders/GreyscaleTexture.gdshader" id="10_greyscale"]
 [ext_resource type="Texture2D" uid="uid://c7smxwfa8826j" path="res://assets/graphics/timeline/play.png" id="6"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="8"]
 
@@ -21,10 +20,6 @@ shader_parameter/rect_size = Vector2(0, 0)
 shader_parameter/follow_movement = false
 shader_parameter/follow_scale = false
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_preview_greyscale"]
-shader = ExtResource("10_greyscale")
-shader_parameter/enabled = false
-
 [node name="CanvasPreviewContainer" type="PanelContainer" unique_id=1665289064 groups=["CanvasTouchBlockers"]]
 custom_minimum_size = Vector2(0, 110)
 offset_right = 328.0
@@ -39,7 +34,6 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="PreviewViewportContainer" type="SubViewportContainer" parent="VBox/HBox" unique_id=573890257]
-material = SubResource("ShaderMaterial_preview_greyscale")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

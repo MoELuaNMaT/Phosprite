@@ -656,6 +656,8 @@ var greyscale_view := false:
 			var greyscale_vision := control.find_child("GreyscaleVision", true, false) as ColorRect
 			if is_instance_valid(greyscale_vision):
 				greyscale_vision.visible = value
+		if is_instance_valid(canvas) and canvas.material is ShaderMaterial:
+			(canvas.material as ShaderMaterial).set_shader_parameter(&"greyscale_view", value)
 		if (
 			is_instance_valid(top_menu_container)
 			and is_instance_valid(top_menu_container.view_menu)
