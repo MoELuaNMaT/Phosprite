@@ -404,8 +404,7 @@ func _rebuild_compact_option_layout() -> void:
 		var title_state := _horizontal_child_state.get(title, {}) as Dictionary
 		var title_minimum := title_state.get("minimum", title.custom_minimum_size) as Vector2
 		title.custom_minimum_size = Vector2(
-			COMPACT_OPTION_LABEL_MIN_WIDTH,
-			maxf(title_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
+			COMPACT_OPTION_LABEL_MIN_WIDTH, maxf(title_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
 		)
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -419,9 +418,7 @@ func _rebuild_compact_option_layout() -> void:
 			title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 		var control_state := _horizontal_child_state.get(control, {}) as Dictionary
-		var control_minimum := (
-			control_state.get("minimum", control.custom_minimum_size) as Vector2
-		)
+		var control_minimum := control_state.get("minimum", control.custom_minimum_size) as Vector2
 		control.custom_minimum_size = Vector2(
 			maxf(control_minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
 			maxf(control_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
