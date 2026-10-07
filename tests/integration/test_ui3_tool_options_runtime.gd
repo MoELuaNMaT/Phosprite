@@ -12,12 +12,31 @@ func teardown() -> void:
 
 func test_ui3_compact_layout_survives_live_pencil_tool() -> void:
 	var tool := await _spawn_tool("Pencil")
+	var original_order := _child_names(tool)
 	tool.set_compact_option_layout(true)
 	await tree.process_frame
 	check_eq(tool.columns, 1, "live Pencil Tool Options must survive UI3 vertical compaction")
+	check_eq(
+		_child_names(tool),
+		original_order,
+		"UI3 compact must preserve Pencil child order while the Container is live",
+	)
+	for _refresh in 8:
+		tool.set_compact_option_layout(true)
+		await tree.process_frame
+	check_eq(
+		_child_names(tool),
+		original_order,
+		"repeated UI3 refreshes must never reorder live Pencil controls",
+	)
 	tool.set_compact_option_layout(false)
 	await tree.process_frame
 	check_eq(tool.columns, 1, "Pencil Tool Options must restore its original single-column layout")
+	check_eq(
+		_child_names(tool),
+		original_order,
+		"leaving UI3 compact must restore styling without moving Pencil controls",
+	)
 
 
 func test_ui3_compact_layout_survives_nested_gradient_grid() -> void:
@@ -43,3 +62,10 @@ func _spawn_tool(tool_name: String) -> BaseTool:
 	tree.root.add_child(tool)
 	await tree.process_frame
 	return tool
+
+
+func _child_names(tool: BaseTool) -> PackedStringArray:
+	var names := PackedStringArray()
+	for child in tool.get_children():
+		names.append(child.name)
+	return names
