@@ -1,5 +1,6 @@
 extends "res://tests/test_base.gd"
 
+
 func test_live_preview_instances_receive_shared_grayscale_state() -> void:
 	check_true(tree != null, "integration suite should receive the SceneTree")
 	if tree == null:
