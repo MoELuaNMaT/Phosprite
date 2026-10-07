@@ -11,6 +11,7 @@ uniform sampler2DArray layers : filter_nearest;
 uniform sampler2D metadata : filter_nearest;
 uniform bool origin_x_positive = true;
 uniform bool origin_y_positive = true;
+uniform bool greyscale_view = false;
 
 // Conversion functions from
 // https://gist.github.com/unitycoder/aaf94ddfe040ec2da93b58d3c65ab9d9
@@ -244,6 +245,10 @@ void fragment() {
 		layer_color.a *= prev_layer_color.a * step(0.5, clipping_mask) + 1.0 * step(clipping_mask, 0.5);
 		layer_color.a = border_trim(layer_color, uv);
 		result_color = blend(current_blend_mode, layer_color, result_color, current_opacity);
+	}
+	if (greyscale_view) {
+		float luminance = dot(result_color.rgb, vec3(0.2126, 0.7152, 0.0722));
+		result_color.rgb = vec3(luminance);
 	}
 	COLOR = result_color;
 }

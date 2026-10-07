@@ -227,38 +227,42 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 
 
 func test_preview_grayscale_state_controls_preview_render_layer() -> void:
-	var scene := FileAccess.get_file_as_string(
-		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
+	var preview_source := FileAccess.get_file_as_string(
+		"res://src/UI/Canvas/CanvasPreview.gd"
 	)
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
-	)
-	var shader := FileAccess.get_file_as_string("res://src/Shaders/GreyscaleTexture.gdshader")
+	var blend_shader := FileAccess.get_file_as_string("res://src/Shaders/BlendLayers.gdshader")
 	check_has(
-		scene,
-		'path="res://src/Shaders/GreyscaleTexture.gdshader"',
-		"Preview must grayscale the rendered SubViewport texture instead of screen-capturing inside it",
+		blend_shader,
+		"uniform bool greyscale_view = false;",
+		"Preview grayscale must be implemented in the actual layer-compositing shader",
 	)
 	check_has(
-		scene,
-		'material = SubResource("ShaderMaterial_preview_greyscale")',
-		"Preview grayscale material must be attached to the SubViewportContainer output",
-	)
-	check_true(
-		not scene.contains('[node name="PreviewGreyscaleVision" type="ColorRect"'),
-		"Preview must not depend on an unreliable nested hint_screen_texture overlay",
+		blend_shader,
+		"if (greyscale_view)",
+		"the final composited Preview color must enter the grayscale branch",
 	)
 	check_has(
-		shader,
-		"texture(TEXTURE, UV)",
-		"Preview grayscale shader must sample the actual viewport texture",
-	)
-	check_true(
-		not shader.contains("hint_screen_texture"),
-		"Preview texture grayscale must not read from a nested screen back-buffer",
+		blend_shader,
+		"result_color.rgb = vec3(luminance);",
+		"Preview grayscale must replace the final RGB output rather than relying on viewport post-processing",
 	)
 	check_has(
-		source,
-		'preview_grayscale_material.set_shader_parameter(&"enabled", enabled)',
-		"shared grayscale state must directly toggle grayscale on the Preview output texture",
+		preview_source,
+		"Global.greyscale_view_changed.connect(_on_greyscale_view_changed)",
+		"CanvasPreview itself must observe the shared grayscale state",
+	)
+	check_has(
+		preview_source,
+		'animation_material.set_shader_parameter(&"greyscale_view", enabled)',
+		"animated Preview frames must switch grayscale together with the main Canvas",
+	)
+	check_has(
+		preview_source,
+		'(Global.canvas.material as ShaderMaterial).set_shader_parameter(&"greyscale_view", enabled)',
+		"the current-frame Preview material shared with Canvas must receive the same grayscale state",
+	)
+	check_has(
+		preview_source,
+		'(material as ShaderMaterial).set_shader_parameter(&"greyscale_view", enabled)',
+		"whichever material CanvasPreview is currently drawing with must be updated immediately",
 	)
