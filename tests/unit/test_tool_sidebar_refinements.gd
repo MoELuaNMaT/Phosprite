@@ -74,7 +74,7 @@ func test_all_selection_tools_share_four_exclusive_mode_buttons_and_magic_wand_n
 	)
 
 
-func test_ui3_compact_tool_options_use_two_column_property_rows() -> void:
+func test_ui3_compact_tool_options_use_adaptive_two_column_property_rows() -> void:
 	var source := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
 	check_has(
 		source,
@@ -83,33 +83,53 @@ func test_ui3_compact_tool_options_use_two_column_property_rows() -> void:
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_LABEL_WIDTH := 72.0",
-		"compact option rows need a bounded label column",
+		"const COMPACT_OPTION_LABEL_MIN_WIDTH := 36.0",
+		"compact labels need a small floor instead of a fixed wide name column",
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_CONTROL_WIDTH := 104.0",
-		"compact option controls must permit the floating panel to resize below its old width",
+		"const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0",
+		"compact controls need a usable floor while leaving room for label compression",
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_ROW_HEIGHT := 28.0",
-		"compact option rows need a consistent minimum height",
+		"const COMPACT_OPTION_LABEL_STRETCH := 0.7",
+		"the label column must participate in adaptive width allocation",
+	)
+	check_has(
+		source,
+		"const COMPACT_OPTION_CONTROL_STRETCH := 1.3",
+		"the control column should receive more of the remaining width",
 	)
 	check_has(
 		source,
 		"columns = 2",
-		"compact options must be laid out as label/control rows instead of N horizontal columns",
+		"compact options must preserve aligned label/control rows",
 	)
 	check_has(
 		source,
-		"title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT",
-		"compact labels should align consistently next to their controls",
+		"title.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
+		"compact labels must shrink and expand with the floating panel",
 	)
 	check_has(
 		source,
-		"control.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
-		"compact controls must consume the remaining row width instead of forcing horizontal scroll",
+		"title_label.clip_text = true",
+		"long option names must not force the shared label column wider",
+	)
+	check_has(
+		source,
+		"title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS",
+		"compressed option names should fail gracefully with an ellipsis",
+	)
+	check_has(
+		source,
+		"control.size_flags_stretch_ratio = COMPACT_OPTION_CONTROL_STRETCH",
+		"compact controls must keep priority over labels as the panel narrows",
+	)
+	check_has(
+		source,
+		'state["clip_text"] = label.clip_text',
+		"leaving UI 3 must restore the original label clipping behavior",
 	)
 
 

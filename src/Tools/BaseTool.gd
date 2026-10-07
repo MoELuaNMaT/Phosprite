@@ -3,8 +3,10 @@ extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
 const MODE_BUTTON_MIN_WIDTH := 112.0
-const COMPACT_OPTION_LABEL_WIDTH := 72.0
-const COMPACT_OPTION_CONTROL_WIDTH := 104.0
+const COMPACT_OPTION_LABEL_MIN_WIDTH := 36.0
+const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0
+const COMPACT_OPTION_LABEL_STRETCH := 0.7
+const COMPACT_OPTION_CONTROL_STRETCH := 1.3
 const COMPACT_OPTION_ROW_HEIGHT := 28.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
@@ -227,6 +229,7 @@ func _capture_horizontal_option_layout() -> void:
 		var state := {
 			"horizontal": control.size_flags_horizontal,
 			"vertical": control.size_flags_vertical,
+			"stretch_ratio": control.size_flags_stretch_ratio,
 			"minimum": control.custom_minimum_size,
 		}
 		if control is Label:
@@ -234,6 +237,8 @@ func _capture_horizontal_option_layout() -> void:
 			state["horizontal_alignment"] = label.horizontal_alignment
 			state["vertical_alignment"] = label.vertical_alignment
 			state["autowrap_mode"] = label.autowrap_mode
+			state["clip_text"] = label.clip_text
+			state["text_overrun_behavior"] = label.text_overrun_behavior
 		_horizontal_child_state[control] = state
 		if control != color_rect and control != $Label:
 			var callback := Callable(self, "_on_horizontal_child_visibility_changed")
@@ -258,6 +263,7 @@ func _restore_vertical_option_layout() -> void:
 		var state := _horizontal_child_state.get(control, {}) as Dictionary
 		control.size_flags_horizontal = int(state.get("horizontal", Control.SIZE_FILL))
 		control.size_flags_vertical = int(state.get("vertical", Control.SIZE_FILL))
+		control.size_flags_stretch_ratio = float(state.get("stretch_ratio", 1.0))
 		control.custom_minimum_size = state.get("minimum", control.custom_minimum_size)
 		if control is Label:
 			var label := control as Label
@@ -266,6 +272,10 @@ func _restore_vertical_option_layout() -> void:
 			)
 			label.vertical_alignment = int(state.get("vertical_alignment", VERTICAL_ALIGNMENT_TOP))
 			label.autowrap_mode = int(state.get("autowrap_mode", TextServer.AUTOWRAP_OFF))
+			label.clip_text = bool(state.get("clip_text", false))
+			label.text_overrun_behavior = int(
+				state.get("text_overrun_behavior", TextServer.OVERRUN_NO_TRIMMING)
+			)
 	if is_instance_valid(color_rect):
 		color_rect.visible = true
 	_horizontal_child_state.clear()
@@ -391,23 +401,34 @@ func _rebuild_compact_option_layout() -> void:
 			spacer.visible = true
 			title = spacer
 
+		var title_state := _horizontal_child_state.get(title, {}) as Dictionary
+		var title_minimum := title_state.get("minimum", title.custom_minimum_size) as Vector2
 		title.custom_minimum_size = Vector2(
-			COMPACT_OPTION_LABEL_WIDTH, maxf(title.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+			COMPACT_OPTION_LABEL_MIN_WIDTH,
+			maxf(title_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
 		)
-		title.size_flags_horizontal = Control.SIZE_FILL
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		title.size_flags_stretch_ratio = COMPACT_OPTION_LABEL_STRETCH
 		if title is Label:
 			var title_label := title as Label
 			title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+			title_label.clip_text = true
+			title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
+		var control_state := _horizontal_child_state.get(control, {}) as Dictionary
+		var control_minimum := (
+			control_state.get("minimum", control.custom_minimum_size) as Vector2
+		)
 		control.custom_minimum_size = Vector2(
-			maxf(control.custom_minimum_size.x, COMPACT_OPTION_CONTROL_WIDTH),
-			maxf(control.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+			maxf(control_minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
+			maxf(control_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
 		)
 		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		control.size_flags_stretch_ratio = COMPACT_OPTION_CONTROL_STRETCH
 
 		move_child(title, position)
 		position += 1
