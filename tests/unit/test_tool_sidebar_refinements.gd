@@ -94,39 +94,40 @@ func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 	)
 	check_has(
 		source,
-		"title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT",
+		"label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT",
 		"option names must sit above controls instead of forming a left-hand name column",
 	)
 	check_has(
 		source,
-		"title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART",
+		"label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART",
 		"long option names must wrap rather than widening the floating panel",
 	)
 	check_has(
 		source,
-		"func _apply_compact_nested_grid_layout(root: Node) -> void:",
-		"nested property grids must also participate in the UI 3 vertical layout",
+		"func _apply_compact_direct_grid_layout() -> void:",
+		"only direct property grids should be compacted at runtime",
+	)
+	check_true(
+		not source.contains("_apply_compact_nested_grid_layout"),
+		"UI 3 must not recursively mutate internal grids inside compound controls",
+	)
+	var compact_start := source.find("func _rebuild_compact_option_layout() -> void:")
+	var compact_end := source.find("\n\nfunc _format_option_label", compact_start)
+	var compact_source := source.substr(compact_start, compact_end - compact_start)
+	check_true(
+		not compact_source.contains("move_child("),
+		"compact refresh must never reorder live Container children",
 	)
 	check_has(
 		source,
-		"grid.columns = 1",
-		"nested property grids must collapse to one column in UI 3",
-	)
-	check_has(
-		source,
-		"_restore_compact_nested_grid_layout()",
-		"leaving UI 3 must restore nested grid column counts",
+		"_restore_vertical_option_layout(false)",
+		"leaving compact mode must restore styling without reordering children",
 	)
 	check_has(
 		pencil_scene,
 		'[node name="PatternRow" type="VBoxContainer"',
 		"Pencil dither pattern name and selector must stack vertically",
 	)
-	check_true(
-		not source.contains("COMPACT_OPTION_LABEL_STRETCH"),
-		"UI 3 must not keep the obsolete two-column label/control ratio",
-	)
-
 
 func test_crop_sidebar_has_no_configuration_and_applies_on_release() -> void:
 	var source := FileAccess.get_file_as_string(CROP_SOURCE)
