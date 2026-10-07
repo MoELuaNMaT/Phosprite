@@ -25,20 +25,22 @@ func test_color_picker_bypasses_long_press_arbitration() -> void:
 
 
 func test_canvas_touch_boundary_rejects_workspace_ui_before_ownership() -> void:
-	var viewport_rect := Rect2(100.0, 80.0, 640.0, 480.0)
+	var viewport_size := Vector2(640.0, 480.0)
 	check_true(
-		ADAPTER.screen_position_inside_rect(Vector2(120.0, 100.0), viewport_rect),
-		"touches inside Main Canvas geometry must remain eligible for canvas ownership"
+		ADAPTER.viewport_position_inside_size(Vector2(20.0, 20.0), viewport_size),
+		"touches inside Main Canvas local geometry must remain eligible for canvas ownership"
 	)
 	check_true(
-		not ADAPTER.screen_position_inside_rect(Vector2(80.0, 100.0), viewport_rect),
-		"touches in docked Workspace UI must be outside Main Canvas ownership"
+		not ADAPTER.viewport_position_inside_size(Vector2(-20.0, 20.0), viewport_size),
+		"touches outside Main Canvas local geometry must be rejected"
 	)
 
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	var begin_pos := src.find("func _begin_touch(")
 	var consume_pos := src.find("_consume_pointer_info(event.index)", begin_pos)
-	var boundary_pos := src.find("_screen_position_inside_main_viewport(event.position)", begin_pos)
+	var boundary_pos := src.find(
+		"_viewport_position_inside_main_viewport(event.position)", begin_pos
+	)
 	var state_pos := src.find("_touches[event.index] = state", begin_pos)
 	check_true(begin_pos >= 0, "adapter must expose touch-begin arbitration")
 	check_true(
@@ -125,20 +127,45 @@ func test_long_press_color_ring_uses_screen_space_clockwise_progress_and_cancel_
 
 func test_long_press_color_ring_follows_input_state_machine() -> void:
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
-	check_has(
-		src,
-		"const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2",
-		"pre-acquisition cancellation must use the requested 0.2 second rewind"
+	check_eq(
+		ADAPTER.FINGER_LONG_PRESS_INDICATOR_DELAY_SECONDS,
+		0.18,
+		"the ring must stay hidden during quick taps and ordinary stroke starts",
+	)
+	check_true(
+		ADAPTER.FINGER_LONG_PRESS_INDICATOR_DELAY_SECONDS < ADAPTER.FINGER_LONG_PRESS_SECONDS,
+		"visual feedback must begin before the actual long-press acquisition completes",
 	)
 	check_has(
 		src,
-		"_begin_long_press_indicator(canvas, screen_position)",
-		"pending long press must create the ring at the initial finger contact"
+		"create_timer(FINGER_LONG_PRESS_INDICATOR_DELAY_SECONDS)",
+		"ring creation must be delayed instead of happening on touch down",
+	)
+	check_has(
+		src,
+		"_try_begin_long_press_indicator.bind(canvas, touch_id, generation)",
+		"the delayed ring must remain bound to the exact held contact",
+	)
+	var start_pending := src.find("func _start_pending_content")
+	var ring_gate := src.find("func _try_begin_long_press_indicator", start_pending)
+	check_true(
+		start_pending >= 0 and ring_gate > start_pending, "adapter must expose delayed ring gating"
+	)
+	if start_pending >= 0 and ring_gate > start_pending:
+		var pending_body := src.substr(start_pending, ring_gate - start_pending)
+		check_true(
+			not ("_begin_long_press_indicator(canvas" in pending_body),
+			"touch down must not immediately render the long-press ring",
+		)
+	check_has(
+		src,
+		"const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2",
+		"pre-acquisition cancellation must keep the 0.2 second rewind",
 	)
 	check_has(
 		src,
 		"_cancel_long_press_indicator()\n\t\t\t\t_start_content",
-		"moving past long-press slop must cancel the ring before normal drawing begins"
+		"moving past long-press slop must cancel the ring before normal drawing begins",
 	)
 	var success_sequence := (
 		"_sample_active_color(canvas, current, COLOR_SAMPLING.TOP_COLOR)"
@@ -147,7 +174,7 @@ func test_long_press_color_ring_follows_input_state_machine() -> void:
 	check_has(
 		src,
 		success_sequence,
-		"successful acquisition must sample first and then complete the ring using that color"
+		"successful acquisition must sample first and then complete the ring using that color",
 	)
 	var active_sequence := (
 		"_sample_active_color(canvas, event.position, COLOR_SAMPLING.TOP_COLOR)"
@@ -156,12 +183,12 @@ func test_long_press_color_ring_follows_input_state_machine() -> void:
 	check_has(
 		src,
 		active_sequence,
-		"after acquisition the full ring must follow the finger and current sampled color"
+		"after acquisition the full ring must follow the finger and sampled color",
 	)
 	check_has(
 		src,
 		"CanvasLayer.new()",
-		"the indicator must live in screen space instead of inheriting canvas zoom and rotation"
+		"the indicator must live in screen space instead of inheriting canvas transforms",
 	)
 
 
@@ -209,8 +236,13 @@ func test_long_press_targets_the_selected_color_slot() -> void:
 	)
 	check_has(
 		src,
-		"COLOR_SAMPLING.pick_color(Vector2i(canvas_position.floor()), target_button, mode)",
-		"the selected left/right target must reach the shared sampler explicitly"
+		"COLOR_SAMPLING.pick_color(",
+		"temporary picking must route through the shared sampler",
+	)
+	check_has(
+		src,
+		"_active_color_target_button(), mode",
+		"the selected left/right target must reach the shared sampler explicitly",
 	)
 	check_true(
 		not ("func _sample_primary_color" in src),
@@ -230,6 +262,11 @@ func test_long_press_timer_is_bound_to_exact_touch_contact() -> void:
 		src,
 		"_try_begin_long_press.bind(canvas, touch_id, generation)",
 		"the delayed timeout must capture the exact contact generation"
+	)
+	check_has(
+		src,
+		"_try_begin_long_press_indicator.bind(canvas, touch_id, generation)",
+		"the shorter visual-delay timer must capture the same touch generation",
 	)
 	check_has(
 		src,
@@ -478,8 +515,8 @@ func test_color_picker_and_long_press_share_sampling_model() -> void:
 	)
 	check_has(
 		sampling,
-		"Tools.assign_color(color, target_button, false, palette_index)",
-		"shared sampling must update the requested color slot directly"
+		'sample["color"] as Color, target_button, false, int(sample.get("palette_index", -1))',
+		"shared sampling must update the requested color slot and preserve palette identity",
 	)
 	check_true(
 		not ("assign_tool" in sampling),

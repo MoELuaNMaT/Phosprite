@@ -23,9 +23,12 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var end_frame := $"%EndFrame" as ValueSlider
 
 
-func _ready() -> void:
+func _enter_tree() -> void:
 	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
 		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+
+
+func _ready() -> void:
 	_on_greyscale_view_changed(Global.greyscale_view)
 
 

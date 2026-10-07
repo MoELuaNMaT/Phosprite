@@ -224,3 +224,47 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 		not preferences_scene.contains("Show right tool icon"),
 		"the removed right tool icon must not leave a dead Preferences row",
 	)
+
+
+func test_preview_grayscale_state_controls_preview_render_layer() -> void:
+	var preview_source := FileAccess.get_file_as_string("res://src/UI/Canvas/CanvasPreview.gd")
+	var container_source := FileAccess.get_file_as_string(
+		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
+	)
+	var global_source := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
+	var blend_shader := FileAccess.get_file_as_string("res://src/Shaders/BlendLayers.gdshader")
+	check_has(
+		blend_shader,
+		"uniform bool greyscale_view = false;",
+		"Preview grayscale must be implemented in the actual layer-compositing shader",
+	)
+	check_has(
+		blend_shader,
+		"result_color.rgb = vec3(luminance);",
+		"Preview grayscale must replace the final RGB output",
+	)
+	check_has(
+		global_source,
+		'(canvas.material as ShaderMaterial).set_shader_parameter(&"greyscale_view", value)',
+		"the shared Canvas compositing material must receive the global grayscale state",
+	)
+	check_has(
+		preview_source,
+		"func _enter_tree() -> void:",
+		"CanvasPreview must reconnect shared state after Workspace reparenting",
+	)
+	check_has(
+		preview_source,
+		"Global.greyscale_view_changed.connect(_on_greyscale_view_changed)",
+		"CanvasPreview must observe grayscale state on every tree entry",
+	)
+	check_has(
+		preview_source,
+		'animation_material.set_shader_parameter(&"greyscale_view", enabled)',
+		"animated Preview frames must switch grayscale together with the main Canvas",
+	)
+	check_has(
+		container_source,
+		"func _enter_tree() -> void:",
+		"the Preview footer must reconnect its UI synchronization after Workspace reparenting",
+	)

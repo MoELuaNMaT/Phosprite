@@ -86,7 +86,7 @@ func test_snapshot_round_trip_preserves_all_workspace_placements() -> void:
 	var preview: WorkspaceModule = manager.get_instance(Builtins.PREVIEW_ID)
 	var palette: WorkspaceModule = manager.get_instance(Builtins.PALETTE_ID)
 	var extra: WorkspaceModule = manager.get_instance(&"test.extra")
-	var snapshot := store.capture_snapshot()
+	var snapshot: Dictionary = store.capture_snapshot()
 
 	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, Rect2(50.0, 50.0, 360.0, 260.0)),
@@ -131,7 +131,7 @@ func test_snapshot_round_trip_preserves_all_workspace_placements() -> void:
 		Surface.Placement.COLLAPSED,
 		"extra should return to collapsed"
 	)
-	var restore := surface.get_restore_state(&"test.extra")
+	var restore: Dictionary = surface.get_restore_state(&"test.extra")
 	check_eq(
 		int(restore.get("zone", DockLayout.DockZone.NONE)),
 		DockLayout.DockZone.RIGHT,
@@ -169,7 +169,7 @@ func test_snapshot_round_trip_preserves_region_fill_dock_semantics() -> void:
 		host.layout.is_module_region_fill(Builtins.PREVIEW_ID),
 		"Region Fill should be active before capture",
 	)
-	var snapshot := store.capture_snapshot()
+	var snapshot: Dictionary = store.capture_snapshot()
 
 	check_true(
 		(
@@ -205,7 +205,7 @@ func test_none_state_clears_existing_placement_and_unknown_modules_are_ignored()
 	var workspace := _make_workspace()
 	var surface = workspace["surface"]
 	var store = workspace["store"]
-	var snapshot := store.capture_snapshot()
+	var snapshot: Dictionary = store.capture_snapshot()
 	var modules: Array = snapshot["modules"]
 	(
 		modules
@@ -315,7 +315,7 @@ func test_future_schema_is_rejected_without_mutating_current_layout() -> void:
 		surface.dock_module(Builtins.PREVIEW_ID, DockLayout.DockZone.LEFT),
 		"Preview should start docked"
 	)
-	var unsupported := store.capture_snapshot()
+	var unsupported: Dictionary = store.capture_snapshot()
 	unsupported["schema_version"] = Store.SCHEMA_VERSION + 1
 	check_true(not store.apply_snapshot(unsupported), "future schema must be rejected")
 	check_eq(

@@ -577,18 +577,18 @@ func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
 	check_true(tools_definition != null, "Tools definition must exist")
 	check_eq(
 		tools_definition.minimum_size.x,
-		104.0,
-		"Tools sidebar should shrink to the two compact tool/config columns",
+		168.0,
+		"Tools minimum width must fit the 40 px tool palette plus 128 px options column",
 	)
 	check_eq(
 		tools_definition.preferred_size.x,
-		108.0,
-		"Tools sidebar should default to the compact no-horizontal-scroll width",
+		176.0,
+		"Tools preferred width should keep the merged tool/options layout compact",
 	)
 	check_eq(
 		tools_definition.maximum_size.x,
-		120.0,
-		"Tools sidebar should remain narrow instead of regaining large side padding",
+		260.0,
+		"Tools should remain resizable without restoring the old wide sidebar default",
 	)
 	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
 	check_has(
@@ -1668,11 +1668,13 @@ func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_out
 
 	var canvas_source := FileAccess.get_file_as_string("res://src/UI/Canvas/Canvas.gd")
 	check_true(
-		(
-			canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_LEFT)")
-			and canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_RIGHT)")
-		),
-		"cursor tool icons must disappear outside the document for ordinary tools"
+		not canvas_source.contains("cursor_icon"),
+		"Main Canvas must not restore the removed floating tool cursor icons",
+	)
+	check_has(
+		tools_source,
+		"Phosprite no longer renders tool icons next to the canvas pointer.",
+		"Tools must keep the removed canvas-tool-icon contract explicit",
 	)
 
 	var adapter_source := FileAccess.get_file_as_string(

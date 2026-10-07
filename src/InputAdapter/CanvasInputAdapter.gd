@@ -20,6 +20,7 @@ const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const DEFAULT_TWO_FINGER_ROTATION_ENABLED := false
 const TWO_FINGER_EPSILON := 0.01
 const FINGER_LONG_PRESS_SECONDS := 0.45
+const FINGER_LONG_PRESS_INDICATOR_DELAY_SECONDS := 0.18
 const FINGER_LONG_PRESS_SLOP_PX := 12.0
 const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2
 const LONG_PRESS_INDICATOR_CANVAS_LAYER := 100
@@ -80,13 +81,8 @@ func initialize() -> void:
 	)
 	if _finger_policy < FingerPolicy.UNRESTRICTED or _finger_policy > FingerPolicy.PENCIL_PRIORITY:
 		_finger_policy = DEFAULT_FINGER_POLICY
-	var configured_rotation: Variant = Global.config_cache.get_value(
-		PREFERENCE_SECTION, TWO_FINGER_ROTATION_KEY, DEFAULT_TWO_FINGER_ROTATION_ENABLED
-	)
-	if typeof(configured_rotation) == TYPE_BOOL:
-		_two_finger_rotation_enabled = bool(configured_rotation)
-	else:
-		_two_finger_rotation_enabled = DEFAULT_TWO_FINGER_ROTATION_ENABLED
+	# Canvas rotation is intentionally disabled. Ignore any legacy saved preference.
+	_two_finger_rotation_enabled = false
 
 
 func is_enabled() -> bool:
@@ -126,7 +122,6 @@ func install_preferences_ui(scene_root: Node) -> void:
 	if not is_instance_valid(options):
 		return
 	_install_finger_policy_preference(options)
-	_install_two_finger_rotation_preference(options)
 
 
 func _install_finger_policy_preference(options: GridContainer) -> void:
@@ -573,10 +568,38 @@ func _start_pending_content(canvas: Node2D, touch_id: int, screen_position: Vect
 	state["direct_color_pick"] = false
 	state["content_origin"] = screen_position
 	_touches[touch_id] = state
-	_begin_long_press_indicator(canvas, screen_position)
 	var generation := int(state.get("generation", -1))
+	var indicator_timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_INDICATOR_DELAY_SECONDS)
+	indicator_timer.timeout.connect(
+		_try_begin_long_press_indicator.bind(canvas, touch_id, generation)
+	)
 	var timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_SECONDS)
 	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id, generation))
+
+
+func _try_begin_long_press_indicator(canvas: Node2D, touch_id: int, generation: int) -> void:
+	if not is_instance_valid(canvas) or _content_touch_id != touch_id or not _touches.has(touch_id):
+		return
+	if _pencil_touch_id != -1 or _navigation_ids.size() == 2:
+		return
+	var state: Dictionary = _touches[touch_id]
+	if int(state.get("generation", -1)) != generation:
+		return
+	if (
+		int(state["kind"]) != PointerKind.DIRECT
+		or bool(state["suppressed"])
+		or not bool(state.get("content_pending", false))
+	):
+		return
+	var origin := Vector2(state["content_origin"])
+	var current := Vector2(state["position"])
+	if long_press_motion_exceeds_slop(origin, current):
+		return
+	var remaining_seconds := maxf(
+		FINGER_LONG_PRESS_SECONDS - FINGER_LONG_PRESS_INDICATOR_DELAY_SECONDS, 0.01
+	)
+	_begin_long_press_indicator(canvas, origin, remaining_seconds)
+	_update_long_press_indicator_pending(canvas, current)
 
 
 func _try_begin_long_press(canvas: Node2D, touch_id: int, generation: int) -> void:
@@ -754,15 +777,15 @@ func _ensure_long_press_indicator(canvas: Node2D) -> void:
 	_long_press_indicator_layer.add_child(_long_press_indicator)
 
 
-func _begin_long_press_indicator(canvas: Node2D, viewport_position: Vector2) -> void:
+func _begin_long_press_indicator(
+	canvas: Node2D, viewport_position: Vector2, duration_seconds: float
+) -> void:
 	_ensure_long_press_indicator(canvas)
 	if not is_instance_valid(_long_press_indicator):
 		return
 	var initial_color := Tools.get_assigned_color(_active_color_target_button())
 	var target_color := _peek_active_color(canvas, viewport_position, COLOR_SAMPLING.TOP_COLOR)
-	_long_press_indicator.begin(
-		viewport_position, initial_color, target_color, FINGER_LONG_PRESS_SECONDS
-	)
+	_long_press_indicator.begin(viewport_position, initial_color, target_color, duration_seconds)
 
 
 func _update_long_press_indicator_pending(canvas: Node2D, viewport_position: Vector2) -> void:
@@ -872,7 +895,8 @@ func _begin_navigation_pair(pair_ids: PackedInt32Array) -> void:
 	if not _touches.has(pair_ids[0]) or not _touches.has(pair_ids[1]):
 		return
 	_navigation_ids = PackedInt32Array([pair_ids[0], pair_ids[1]])
-	_navigation_rotation_enabled_for_pair = _two_finger_rotation_enabled
+	# Two-finger navigation is pan/zoom only. Rotation is not an available gesture.
+	_navigation_rotation_enabled_for_pair = false
 	var geometry := _navigation_geometry()
 	_set_navigation_geometry_baseline(geometry)
 	_capture_navigation_camera_baseline()
@@ -1037,13 +1061,9 @@ func _update_navigation() -> void:
 	if _navigation_pinch_active:
 		scale_ratio = navigation_scale_ratio(_navigation_baseline_distance, distance)
 
-	var target_angle := navigation_target_angle(
-		_navigation_baseline_camera_angle,
-		_navigation_baseline_pair_angle,
-		float(geometry["angle"]),
-		_navigation_rotation_enabled_for_pair,
-		NAVIGATION_ROTATION_DEAD_ZONE_RADIANS
-	)
+	# Two-finger navigation is intentionally pan/zoom only. Keep the angle captured
+	# at gesture start instead of routing through the optional rotation math.
+	var target_angle := _navigation_baseline_camera_angle
 	var target_zoom := navigation_zoom_from_ratio(
 		_navigation_baseline_zoom,
 		scale_ratio,

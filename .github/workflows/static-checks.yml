@@ -1,20 +1,29 @@
 name: Static Checks 📊
+
 on:
   push:
-    branches-ignore:
-      - gh-pages
-      - l10n_master
+    branches:
+      - master
+      - main
+      - phosprite-main
+      - integration/phosprite-mainline
   pull_request:
+    branches:
+      - master
+      - main
+      - phosprite-main
     paths:
       - "addons/**"
       - "src/**"
       - "tests/**"
       - "project.godot"
       - "export_presets.cfg"
+      - "scripts/ci/**"
       - ".github/workflows/**"
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-static
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

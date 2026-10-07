@@ -3,12 +3,15 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ master, main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2 ]
+    branches: [ master, main, phosprite-main, integration/phosprite-mainline ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
   pull_request:
     branches: [ master, main, phosprite-main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
 
 concurrency:
@@ -224,8 +227,7 @@ jobs:
           chmod +x ./Godot.app/Contents/MacOS/Godot
 
       - name: Import resources once 📦
-        continue-on-error: true
-        run: ./Godot.app/Contents/MacOS/Godot --headless -v --import
+        run: bash scripts/ci/godot_import_gate.sh ./Godot.app/Contents/MacOS/Godot
 
       - name: Export Xcode project 🔧
         run: |

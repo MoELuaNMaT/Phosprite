@@ -554,3 +554,12 @@ func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
 		"group_bracket_lane.size = layer_content.size",
 		"folder brackets must overlay the card lane without changing saved Timeline height",
 	)
+
+
+func test_single_frame_selection_refreshes_layer_settings_immediately() -> void:
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(
+		source,
+		"project.change_cel(-1, layer_index)\n\t_sync_layer_settings()",
+		"selecting a layer card must update its name and settings in the same selection path",
+	)

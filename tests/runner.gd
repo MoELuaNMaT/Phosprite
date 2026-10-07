@@ -150,6 +150,12 @@ func _run_suite(script_path: String) -> void:
 		_failed_files.append(script_path)
 		return
 
+	if not script.can_instantiate():
+		push_error("Test script failed to compile and cannot be instantiated: %s" % script_path)
+		_total_failures += 1
+		_failed_files.append(script_path)
+		return
+
 	var suite: Object = script.new()
 	if suite == null:
 		push_error("Failed to instantiate test script: %s" % script_path)

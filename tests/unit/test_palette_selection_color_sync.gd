@@ -72,3 +72,21 @@ func test_color_change_path_clears_selection_when_no_exact_match_exists() -> voi
 		not source.contains("target_color.to_html() == swatches[color_ind].color.to_html()"),
 		"8-bit HTML equality must not substitute for exact Color equality",
 	)
+
+
+func test_exact_selection_visual_is_reapplied_after_swatch_rebuild() -> void:
+	var source := FileAccess.get_file_as_string(PALETTE_GRID_SOURCE)
+	check_has(
+		source,
+		"func _sync_selected_swatch(mouse_button: int, palette_index: int) -> void:",
+		"Palette selection must have one authoritative visual synchronization path",
+	)
+	check_has(
+		source,
+		"swatch.show_selected_highlight(swatch_palette_index == palette_index, mouse_button)",
+		"every visible swatch must be recalculated from the exact matching palette index",
+	)
+	check_true(
+		not source.contains("if matching_index == selected_index:\n\t\treturn"),
+		"a cached selected index must not suppress redraw after Palette swatches are rebuilt",
+	)
