@@ -475,6 +475,21 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 	check_has(
 		scene,
+		"allow_text_input = false",
+		"single-frame opacity must not enter numeric text editing on tap",
+	)
+	check_has(
+		scene,
+		"show_drag_arrows = true",
+		"single-frame opacity must advertise horizontal drag adjustment",
+	)
+	check_has(
+		scene,
+		"show_arrows = false",
+		"single-frame opacity must remove increment/decrement arrow buttons",
+	)
+	check_has(
+		scene,
 		'[node name="LayerStyle" type="Button"',
 		"single-frame layer settings must expose the layer style entry",
 	)
@@ -553,4 +568,28 @@ func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
 		strip_source,
 		"group_bracket_lane.size = layer_content.size",
 		"folder brackets must overlay the card lane without changing saved Timeline height",
+	)
+
+
+func test_value_slider_defaults_to_drag_only_configuration() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Nodes/Sliders/ValueSlider.gd")
+	check_has(
+		source,
+		"@export var allow_text_input := false:",
+		"ValueSlider configuration controls must default to drag-only interaction",
+	)
+	check_has(
+		source,
+		"@export var show_drag_arrows := true",
+		"drag-only ValueSliders must advertise horizontal adjustment",
+	)
+	check_has(
+		source,
+		"@export var show_arrows := false:",
+		"drag-only ValueSliders must not expose increment/decrement arrow buttons by default",
+	)
+	check_has(
+		source,
+		"_line_edit.focus_mode = Control.FOCUS_ALL if allow_text_input else Control.FOCUS_NONE",
+		"runtime text-input opt-in or opt-out must update the hidden editor focus contract",
 	)
