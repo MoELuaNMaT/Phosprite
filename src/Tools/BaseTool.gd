@@ -36,7 +36,7 @@ var _compact_option_layout := false
 var _horizontal_child_state: Dictionary = {}
 var _horizontal_original_order: Array[Node] = []
 var _horizontal_spacers: Dictionary = {}
-var _compact_nested_grid_columns: Dictionary = {}
+var _compact_direct_grid_columns: Dictionary = {}
 @onready var color_rect := $ColorRect as ColorRect
 
 
@@ -182,7 +182,6 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 func set_compact_option_layout(enabled: bool) -> void:
 	if _compact_option_layout == enabled:
 		if enabled:
-			_apply_compact_nested_grid_layout(self)
 			_rebuild_compact_option_layout()
 		return
 	if enabled and _horizontal_option_layout:
@@ -190,11 +189,11 @@ func set_compact_option_layout(enabled: bool) -> void:
 	_compact_option_layout = enabled
 	if enabled:
 		_capture_horizontal_option_layout()
-		_apply_compact_nested_grid_layout(self)
+		_apply_compact_direct_grid_layout()
 		_rebuild_compact_option_layout()
 	else:
-		_restore_compact_nested_grid_layout()
-		_restore_vertical_option_layout()
+		_restore_compact_direct_grid_layout()
+		_restore_vertical_option_layout(false)
 
 
 func is_compact_option_layout() -> bool:
@@ -213,7 +212,7 @@ func set_horizontal_option_layout(enabled: bool) -> void:
 		_capture_horizontal_option_layout()
 		_rebuild_horizontal_option_layout()
 	else:
-		_restore_vertical_option_layout()
+		_restore_vertical_option_layout(true)
 
 
 func is_horizontal_option_layout() -> bool:
@@ -251,7 +250,7 @@ func _capture_horizontal_option_layout() -> void:
 	columns = 1
 
 
-func _restore_vertical_option_layout() -> void:
+func _restore_vertical_option_layout(restore_order: bool) -> void:
 	for spacer in _horizontal_spacers.values():
 		if is_instance_valid(spacer):
 			spacer.queue_free()
@@ -260,7 +259,8 @@ func _restore_vertical_option_layout() -> void:
 	for child in _horizontal_original_order:
 		if not is_instance_valid(child):
 			continue
-		move_child(child, get_child_count() - 1)
+		if restore_order:
+			move_child(child, get_child_count() - 1)
 		var control := child as Control
 		var state := _horizontal_child_state.get(control, {}) as Dictionary
 		control.size_flags_horizontal = int(state.get("horizontal", Control.SIZE_FILL))
@@ -357,91 +357,56 @@ func _rebuild_horizontal_option_layout() -> void:
 		position += 1
 
 
-func _apply_compact_nested_grid_layout(root: Node) -> void:
-	for child in root.get_children():
-		if child is GridContainer and child != self:
-			var grid := child as GridContainer
-			if not _compact_nested_grid_columns.has(grid):
-				_compact_nested_grid_columns[grid] = grid.columns
-			grid.columns = 1
-		if child is Container:
-			_apply_compact_nested_grid_layout(child)
+func _apply_compact_direct_grid_layout() -> void:
+	for child in get_children():
+		if child is not GridContainer:
+			continue
+		var grid := child as GridContainer
+		if not _compact_direct_grid_columns.has(grid):
+			_compact_direct_grid_columns[grid] = grid.columns
+		grid.columns = 1
 
 
-func _restore_compact_nested_grid_layout() -> void:
-	for raw_grid: Variant in _compact_nested_grid_columns:
+func _restore_compact_direct_grid_layout() -> void:
+	for raw_grid: Variant in _compact_direct_grid_columns:
 		var grid := raw_grid as GridContainer
 		if is_instance_valid(grid):
-			grid.columns = int(_compact_nested_grid_columns[raw_grid])
-	_compact_nested_grid_columns.clear()
+			grid.columns = int(_compact_direct_grid_columns[raw_grid])
+	_compact_direct_grid_columns.clear()
 
 
 func _rebuild_compact_option_layout() -> void:
 	if not _compact_option_layout:
 		return
 	var header := $Label as Control
-	var candidates: Array[Control] = []
-	for child in _horizontal_original_order:
-		if (
-			not is_instance_valid(child)
-			or child == color_rect
-			or child == header
-			or not (child as Control).visible
-		):
-			continue
-		candidates.append(child as Control)
-
-	var groups: Array[Dictionary] = []
-	var index := 0
-	while index < candidates.size():
-		var node := candidates[index]
-		if node is Label and index + 1 < candidates.size() and candidates[index + 1] is not Label:
-			groups.append({"title": node, "control": candidates[index + 1]})
-			index += 2
-		else:
-			groups.append({"title": null, "control": node})
-			index += 1
-
-	for spacer in _horizontal_spacers.values():
-		if is_instance_valid(spacer):
-			spacer.visible = false
-
 	columns = 1
-	var position := 0
-	for group in groups:
-		var control := group["control"] as Control
-		var title := group["title"] as Control
-		if title != null:
-			var title_state := _horizontal_child_state.get(title, {}) as Dictionary
-			var title_minimum := title_state.get("minimum", title.custom_minimum_size) as Vector2
-			title.custom_minimum_size = Vector2(
-				0.0, maxf(title_minimum.y, COMPACT_OPTION_LABEL_HEIGHT)
+	for child in _horizontal_original_order:
+		if not is_instance_valid(child) or child == color_rect or child == header:
+			continue
+		var control := child as Control
+		var state := _horizontal_child_state.get(control, {}) as Dictionary
+		var original_minimum := state.get("minimum", control.custom_minimum_size) as Vector2
+		if control is Label:
+			var label := control as Label
+			label.custom_minimum_size = Vector2(
+				0.0, maxf(original_minimum.y, COMPACT_OPTION_LABEL_HEIGHT)
 			)
-			title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			title.size_flags_stretch_ratio = 1.0
-			if title is Label:
-				var title_label := title as Label
-				title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-				title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				title_label.clip_text = false
-				title_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-			move_child(title, position)
-			position += 1
-
-		var control_state := _horizontal_child_state.get(control, {}) as Dictionary
-		var control_minimum := control_state.get("minimum", control.custom_minimum_size) as Vector2
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			label.size_flags_stretch_ratio = 1.0
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			label.clip_text = false
+			label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+			continue
 		control.custom_minimum_size = Vector2(
-			maxf(control_minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
-			maxf(control_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
+			maxf(original_minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
+			maxf(original_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
 		)
 		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		control.size_flags_stretch_ratio = 1.0
-		move_child(control, position)
-		position += 1
-
 
 func _format_option_label(raw_text: String) -> String:
 	return _strip_option_colon(raw_text)
