@@ -408,6 +408,7 @@ func _rebuild_compact_option_layout() -> void:
 		control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		control.size_flags_stretch_ratio = 1.0
 
+
 func _format_option_label(raw_text: String) -> String:
 	return _strip_option_colon(raw_text)
 
