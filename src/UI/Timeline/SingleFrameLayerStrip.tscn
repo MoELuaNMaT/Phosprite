@@ -57,6 +57,9 @@ layout_mode = 2
 focus_mode = 0
 value = 100.0
 prefix = "Opacity:"
+allow_text_input = false
+show_drag_arrows = true
+show_arrows = false
 
 [node name="LayerStyle" type="Button" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn" groups=["UIButtons"]]
 unique_name_in_owner = true
