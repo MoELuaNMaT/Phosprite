@@ -48,19 +48,12 @@ const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
 ## range. False will hide it, which is good for values that can be any number.
 @export var show_progress := true
 ## If false, clicking never enters text editing; horizontal dragging remains available.
-@export var allow_text_input := false:
-	set(value):
-		allow_text_input = value
-		if is_instance_valid(_line_edit):
-			_line_edit.focus_mode = Control.FOCUS_ALL if allow_text_input else Control.FOCUS_NONE
-			if not allow_text_input and state == TYPING:
-				_confirm_text()
-				_line_edit.release_focus()
+@export var allow_text_input := true
 ## Draws the read-only value as "< value >" to advertise horizontal drag adjustment.
-@export var show_drag_arrows := true
+@export var show_drag_arrows := false
 ## Multiplier applied to pointer drag distance. Values below 1.0 make drag adjustment slower.
 @export_range(0.05, 2.0, 0.05) var drag_sensitivity := 1.0
-@export var show_arrows := false:
+@export var show_arrows := true:
 	set(v):
 		show_arrows = v
 		if not _line_edit:
