@@ -120,8 +120,25 @@ func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 	)
 	check_has(
 		source,
-		"_restore_vertical_option_layout(false)",
-		"leaving compact mode must restore styling without reordering children",
+		"_restore_compact_option_layout()",
+		"leaving UI3 must restore its own style state without touching the horizontal layout",
+	)
+	check_has(
+		source,
+		"var _compact_child_state: Dictionary = {}",
+		"UI3 needs a private snapshot independent of the horizontal option layout",
+	)
+	var setter_start := source.find("func set_compact_option_layout(enabled: bool) -> void:")
+	var setter_end := source.find("\n\nfunc is_compact_option_layout", setter_start)
+	var compact_setter := source.substr(setter_start, setter_end - setter_start)
+	check_true(
+		not compact_setter.contains("_capture_horizontal_option_layout()"),
+		"UI3 must not register horizontal visibility observers during project startup",
+	)
+	check_has(
+		compact_setter,
+		"if _compact_option_layout == enabled:\n\t\treturn",
+		"repeat refreshes must not restyle live Tool Options children",
 	)
 	check_has(
 		pencil_scene,
