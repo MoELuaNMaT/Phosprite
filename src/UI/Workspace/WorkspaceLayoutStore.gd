@@ -496,6 +496,8 @@ func _flush_queued_autosave() -> void:
 
 
 func _read_active_layout_slot() -> int:
+	if OS.get_cmdline_user_args().has("--phosprite-managed-ui3-smoke"):
+		return 3
 	if config_cache == null:
 		return 1
 	var slot := int(config_cache.get_value(CONFIG_SECTION, CONFIG_ACTIVE_SLOT_KEY, 1))

@@ -24,7 +24,7 @@ const FALLBACK_NAME := "untitled"
 ## Whether project files are allocated by the app instead of being chosen by the
 ## user through a file system dialog.
 static func uses_managed_project_storage() -> bool:
-	return OS.get_name() == "iOS"
+	return OS.get_name() == "iOS" or OS.get_cmdline_user_args().has("--phosprite-managed-ui3-smoke")
 
 
 ## Creates the managed project directory when it is missing. Callers must report a

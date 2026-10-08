@@ -128,6 +128,14 @@ func _make_controller(fixture: Dictionary) -> WorkspaceUIProfileController:
 	return controller
 
 
+func test_profile_3_uses_supported_button_properties() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	check_true(
+		not source.contains(".icon_max_width"),
+		"Godot 4.7 Button has no icon_max_width property; assigning it aborts UI3 toolbar creation",
+	)
+
+
 func test_profile_3_contract_matches_procreate_taskbar() -> void:
 	check_eq(UIProfile3.BRUSH_TOOL, &"Pencil", "profile 3 brush entry must use Pencil")
 	check_eq(UIProfile3.ERASER_TOOL, &"Eraser", "profile 3 eraser entry must use Eraser")

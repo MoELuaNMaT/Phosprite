@@ -328,6 +328,57 @@ func _ready() -> void:
 	Global.pixelorama_has_loaded = true
 	Global.pixelorama_opened.emit()
 	print("Time Phosprite took to open: %sms" % Time.get_ticks_msec())
+	if OS.get_cmdline_user_args().has("--phosprite-managed-ui3-smoke"):
+		_run_managed_ui3_smoke.call_deferred()
+
+
+func _run_managed_ui3_smoke() -> void:
+	# Unlike tests/runner.gd, do not set Global.headless_test_mode: this
+	# exercises the real UI3 startup and P3 gallery-to-editor transitions.
+	await get_tree().process_frame
+	if not is_instance_valid(app_shell_controller) or not app_shell_controller.is_gallery():
+		_fail_managed_ui3_smoke("startup did not enter the managed gallery")
+		return
+	if not app_shell_controller.create_new_project(Vector2i(32, 32)):
+		_fail_managed_ui3_smoke("creating a project did not enter the editor")
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if app_shell_controller.is_gallery() or Global.current_project == null:
+		_fail_managed_ui3_smoke("new project did not activate")
+		return
+	var ui3 := find_child("WorkspaceUIProfile3", true, false) as WorkspaceUIProfile3
+	if ui3 == null or not ui3.active:
+		_fail_managed_ui3_smoke("UI3 profile was not activated")
+		return
+	if not is_instance_valid(ui3._taskbar) or ui3._taskbar.get_child_count() < 3:
+		_fail_managed_ui3_smoke("UI3 taskbar did not create all primary buttons")
+		return
+	if not is_instance_valid(ui3.left_tool_options):
+		_fail_managed_ui3_smoke("UI3 tool options did not initialize")
+		return
+	var saved_path := Global.current_project.save_path
+	if saved_path.is_empty():
+		_fail_managed_ui3_smoke("new project was not saved")
+		return
+	if not app_shell_controller.return_home():
+		_fail_managed_ui3_smoke("could not return to gallery")
+		return
+	if not app_shell_controller.open_project_path(saved_path):
+		_fail_managed_ui3_smoke("could not reopen the project from gallery")
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if app_shell_controller.is_gallery() or Global.current_project.save_path != saved_path:
+		_fail_managed_ui3_smoke("existing project did not activate")
+		return
+	print("[MANAGED-UI3-SMOKE] PASS")
+	get_tree().quit(0)
+
+
+func _fail_managed_ui3_smoke(reason: String) -> void:
+	push_error("[MANAGED-UI3-SMOKE] FAIL: " + reason)
+	get_tree().quit(1)
 
 
 func _on_gallery_export_projects_requested(paths: PackedStringArray) -> void:
@@ -523,7 +574,7 @@ func _show_splash_screen() -> void:
 func _handle_cmdline_arguments() -> void:
 	# Under the headless regression runner the command line carries `--script
 	# res://tests/runner.gd`, which is not a project file to open. Skip entirely.
-	if Global.headless_test_mode:
+	if Global.headless_test_mode or OS.get_cmdline_user_args().has("--phosprite-managed-ui3-smoke"):
 		return
 	var args := OS.get_cmdline_args()
 	var working_directory := ""

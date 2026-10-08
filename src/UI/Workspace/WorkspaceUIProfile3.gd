@@ -280,7 +280,6 @@ func _make_toolbar_proxy(source: BaseButton) -> Button:
 	button.flat = true
 	button.toggle_mode = true
 	button.expand_icon = true
-	button.icon_max_width = int(TASK_BUTTON_SIZE.x - 8.0)
 	button.tooltip_text = source.tooltip_text
 	button.icon = _source_icon(source)
 	button.pressed.connect(_on_toolbar_tool_pressed.bind(button, source))
@@ -297,7 +296,6 @@ func _make_primary_button(tool_name: StringName, tooltip: String) -> Button:
 	button.toggle_mode = true
 	button.tooltip_text = tooltip
 	button.expand_icon = true
-	button.icon_max_width = int(TASK_BUTTON_SIZE.x - 8.0)
 	if Tools.tools.has(String(tool_name)):
 		var tool: Tools.Tool = Tools.tools[String(tool_name)]
 		button.icon = tool.icon
@@ -514,7 +512,6 @@ func _refresh_family_row(current: StringName) -> void:
 		button.flat = true
 		button.toggle_mode = true
 		button.expand_icon = true
-		button.icon_max_width = int(FAMILY_BUTTON_SIZE.y - 8.0)
 		button.icon = tool.icon
 		button.tooltip_text = tr(tool.display_name)
 		var selected := tool_name == current
