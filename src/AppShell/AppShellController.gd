@@ -14,6 +14,7 @@ const RecoveryStore := preload("res://src/ProjectLibrary/ProjectRecoveryStore.gd
 const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 const ProjectImportServiceScript := preload("res://src/ProjectLibrary/ProjectImportService.gd")
 const CanvasSizeResolverScript := preload("res://src/ProjectLibrary/CanvasSizeResolver.gd")
+const EditorEntryTrace := preload("res://src/AppShell/EditorEntryTrace.gd")
 
 const MODE_TRANSITION_DURATION := 0.16
 const MODE_TRANSITION_OFFSET := 10.0
@@ -40,6 +41,7 @@ var _editor_base_position := Vector2.ZERO
 var _gallery_base_position := Vector2.ZERO
 var _editor_base_instance_id := 0
 var _gallery_base_instance_id := 0
+var _editor_entry_generation := 0
 
 
 func configure(
@@ -85,6 +87,12 @@ func configure(
 func startup() -> void:
 	if managed_mode:
 		show_gallery(true, true)
+		var interrupted_phase := EditorEntryTrace.consume_interrupted_phase()
+		if not interrupted_phase.is_empty():
+			Global.popup_error(
+				"Previous editor entry stopped at: %s. " % interrupted_phase
+				+ "Please report this checkpoint and the iPad crash log."
+			)
 	else:
 		_set_mode(Mode.EDITOR, false)
 
@@ -116,6 +124,7 @@ func return_home() -> bool:
 
 
 func open_project_path(path: String) -> bool:
+	EditorEntryTrace.record("01_open_requested")
 	if not managed_mode:
 		OpenSave.handle_loading_file(path)
 		return true
@@ -280,6 +289,7 @@ func _connect_import_dialogs() -> void:
 
 
 func create_new_project(canvas_size: Vector2i) -> bool:
+	EditorEntryTrace.record("01_new_requested")
 	if not managed_mode or not is_instance_valid(save_coordinator):
 		return false
 	if not ProjectFactoryScript.is_canvas_size_supported(canvas_size):
@@ -303,6 +313,7 @@ func create_new_project(canvas_size: Vector2i) -> bool:
 		_rollback_uncommitted_project(project, target_path)
 		return false
 
+	EditorEntryTrace.record("02_new_saved")
 	if not _activate_managed_editor_project(project):
 		_rollback_uncommitted_project(project, target_path)
 		return false
@@ -512,7 +523,9 @@ func _on_recovery_canceled() -> void:
 
 
 func _open_formal_project(path: String) -> bool:
+	EditorEntryTrace.record("02_before_deserialize")
 	var project := OpenSave.open_pxo_file(path)
+	EditorEntryTrace.record("03_after_deserialize")
 	if (
 		project == null
 		or _normalized_path(project.save_path) != _normalized_path(path)
@@ -524,6 +537,7 @@ func _open_formal_project(path: String) -> bool:
 
 
 func _activate_managed_editor_project(project: Project) -> bool:
+	EditorEntryTrace.record("04_activation_begin")
 	if project == null:
 		return false
 	var target_index := Global.projects.find(project)
@@ -535,6 +549,7 @@ func _activate_managed_editor_project(project: Project) -> bool:
 		if Global.current_project_index != target_index:
 			return false
 
+	EditorEntryTrace.record("05_project_selected")
 	# P3 managed storage has one Editor project at a time. Keep the Gallery-only
 	# sentinel/previous saved project out of the active runtime so legacy Pixelorama
 	# tabs cannot leak a second "untitled" document into the editor.
@@ -559,6 +574,7 @@ func _activate_managed_editor_project(project: Project) -> bool:
 			Global.tabs.remove_tab(index)
 		other.remove()
 	Global.tabs.set_block_signals(false)
+	EditorEntryTrace.record("06_old_projects_pruned")
 
 	var final_index := Global.projects.find(project)
 	if final_index < 0:
@@ -566,6 +582,7 @@ func _activate_managed_editor_project(project: Project) -> bool:
 	if final_index < Global.tabs.tab_count:
 		Global.tabs.current_tab = final_index
 	Global.current_project_index = final_index
+	EditorEntryTrace.record("07_activation_complete")
 	return Global.projects.size() == 1 and Global.current_project == project
 
 
@@ -579,6 +596,8 @@ func _find_open_project(path: String) -> int:
 
 
 func _set_mode(next_mode: Mode, animate := true) -> void:
+	if managed_mode and next_mode == Mode.EDITOR:
+		EditorEntryTrace.record("08_before_editor_visible")
 	mode = next_mode
 	if is_instance_valid(_mode_tween):
 		_mode_tween.kill()
@@ -587,6 +606,8 @@ func _set_mode(next_mode: Mode, animate := true) -> void:
 		editor_root.visible = mode == Mode.EDITOR
 		editor_root.modulate = Color.WHITE
 		editor_root.position = _editor_base_position
+	if managed_mode and next_mode == Mode.EDITOR:
+		EditorEntryTrace.record("09_editor_visible")
 	if is_instance_valid(gallery_root):
 		gallery_root.visible = mode == Mode.GALLERY
 		gallery_root.modulate = Color.WHITE
@@ -609,6 +630,16 @@ func _set_mode(next_mode: Mode, animate := true) -> void:
 		gallery_root.set_interaction_locked(&"mode_transition", false)
 
 	mode_changed.emit(mode)
+	if managed_mode and next_mode == Mode.EDITOR:
+		_editor_entry_generation += 1
+		_confirm_editor_stable_after_delay.call_deferred(_editor_entry_generation)
+
+
+func _confirm_editor_stable_after_delay(generation: int) -> void:
+	await get_tree().create_timer(1.0).timeout
+	if generation != _editor_entry_generation or mode != Mode.EDITOR:
+		return
+	EditorEntryTrace.record(EditorEntryTrace.STABLE)
 
 
 func _finish_mode_transition(expected_mode: Mode) -> void:
