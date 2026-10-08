@@ -36,13 +36,13 @@ var pending_import_path := ""
 var pending_import_image: Image
 var pending_import_enter_editor := true
 var pending_new_project_purpose := NewProjectPurpose.NONE
+var diagnostic_mode := EditorEntryTrace.load_test_mode()
 var _mode_tween: Tween
 var _editor_base_position := Vector2.ZERO
 var _gallery_base_position := Vector2.ZERO
 var _editor_base_instance_id := 0
 var _gallery_base_instance_id := 0
 var _editor_entry_generation := 0
-var diagnostic_mode := EditorEntryTrace.load_test_mode()
 var _diagnostic_visibility: Array[Dictionary] = []
 var _diagnostic_viewport: SubViewport
 var _diagnostic_viewport_update_mode := SubViewport.UPDATE_ALWAYS
