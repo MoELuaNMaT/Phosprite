@@ -129,9 +129,7 @@ func _make_controller(fixture: Dictionary) -> WorkspaceUIProfileController:
 
 
 func test_profile_3_uses_supported_button_properties() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_true(
 		not source.contains(".icon_max_width"),
 		"Godot 4.7 Button has no icon_max_width property; assigning it aborts UI3 toolbar creation",
