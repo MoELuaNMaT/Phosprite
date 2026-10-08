@@ -74,6 +74,42 @@ func test_ui3_compact_layout_survives_nested_gradient_grid() -> void:
 	check_eq(options.columns, 2, "nested Gradient properties must restore their original columns")
 
 
+func test_stacked_tool_options_are_built_before_scene_entry() -> void:
+	var definition: Tools.Tool = Tools.tools["Pencil"]
+	var tool := definition.instantiate_scene() as BaseTool
+	tool.name = "Pencil"
+	var slot := Tools.Slot.new("Left tool")
+	slot.button = MOUSE_BUTTON_LEFT
+	slot.color = Color.BLACK
+	tool.tool_slot = slot
+	_spawned_tools.append(tool)
+	tool.prepare_stacked_option_layout()
+	var original_order := _child_names(tool)
+	check_true(
+		tool.get_node_or_null("OpacityOptionLabel") is Label,
+		"stacked opacity label should exist before the tool enters the tree",
+	)
+	tree.root.add_child(tool)
+	await tree.process_frame
+	check_eq(
+		_child_names(tool),
+		original_order,
+		"BaseTool._ready must not insert or reorder live options after preparation",
+	)
+	tool.prepare_stacked_option_layout()
+	check_eq(
+		_child_names(tool), original_order, "preparing already prepared options must be a no-op"
+	)
+	var source := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
+	var set_pos := source.find("func set_tool(")
+	var prepare_pos := source.find("tool_options.prepare_stacked_option_layout()", set_pos)
+	var attach_pos := source.find("panel.add_child(slot.tool_node)", set_pos)
+	check_true(
+		prepare_pos > set_pos and attach_pos > prepare_pos,
+		"runtime Tools.set_tool must prepare option children before attaching the live panel",
+	)
+
+
 func _spawn_tool(tool_name: String) -> BaseTool:
 	var definition: Tools.Tool = Tools.tools[tool_name]
 	var tool := definition.instantiate_scene() as BaseTool
@@ -82,6 +118,7 @@ func _spawn_tool(tool_name: String) -> BaseTool:
 	slot.button = MOUSE_BUTTON_LEFT
 	slot.color = Color.BLACK
 	tool.tool_slot = slot
+	tool.prepare_stacked_option_layout()
 	_spawned_tools.append(tool)
 	tree.root.add_child(tool)
 	await tree.process_frame
