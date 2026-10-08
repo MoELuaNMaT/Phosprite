@@ -549,6 +549,11 @@ func set_tool(tool_name: String, button: int) -> void:
 	node.tool_slot = slot
 	slot.tool_node = node
 	slot.button = button
+	# Option labels insert/reorder children. Prepare them while the scene is
+	# detached, not inside BaseTool._ready() during live editor startup.
+	var tool_options := node as BaseTool
+	if tool_options != null:
+		tool_options.prepare_stacked_option_layout()
 	if tool_name == "CurveTool":
 		write_curve_activation_phase("slot_%d:add_child_begin" % button)
 	panel.add_child(slot.tool_node)
