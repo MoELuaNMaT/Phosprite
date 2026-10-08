@@ -15,6 +15,9 @@ const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
 const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
+const IOS_EDITOR_DIAGNOSTIC_OVERLAY := preload(
+	"res://src/AppShell/EditorDiagnosticOverlay.gd"
+)
 const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
 const PROJECT_EXPORT_COORDINATOR := preload("res://src/ProjectLibrary/ProjectExportCoordinator.gd")
 const TOUCH_UI_BEHAVIOR := preload("res://src/InputAdapter/TouchUIBehavior.gd")
@@ -35,6 +38,7 @@ var splash_dialog: AcceptDialog:
 		return splash_dialog
 var project_save_coordinator: ProjectSaveCoordinator
 var app_shell_controller: AppShellController
+var ios_editor_diagnostic_overlay: CanvasLayer
 var ios_document_bridge: IOSDocumentBridge
 var project_export_coordinator: ProjectExportCoordinator
 var touch_ui_behavior: TouchUIBehavior
@@ -264,6 +268,10 @@ func _ready() -> void:
 		image_import_mode_dialog
 	)
 	if managed_storage:
+		ios_editor_diagnostic_overlay = IOS_EDITOR_DIAGNOSTIC_OVERLAY.new()
+		add_child(ios_editor_diagnostic_overlay)
+		ios_editor_diagnostic_overlay.setup(app_shell_controller)
+	if managed_storage:
 		project_export_coordinator = PROJECT_EXPORT_COORDINATOR.new()
 		project_export_coordinator.configure(export_dialog)
 		add_child(project_export_coordinator)
@@ -371,6 +379,32 @@ func _run_managed_ui3_smoke() -> void:
 	await get_tree().process_frame
 	if app_shell_controller.is_gallery() or Global.current_project.save_path != saved_path:
 		_fail_managed_ui3_smoke("existing project did not activate")
+		return
+	# All six isolation settings must be reversible across Gallery/editor entries.
+	for diag_mode in range(1, 7):
+		if not app_shell_controller.return_home():
+			_fail_managed_ui3_smoke("could not return home before isolation " + str(diag_mode))
+			return
+		app_shell_controller.set_diagnostic_mode(diag_mode)
+		if not app_shell_controller.open_project_path(saved_path):
+			_fail_managed_ui3_smoke("could not enter isolation mode " + str(diag_mode))
+			return
+		await get_tree().process_frame
+		await get_tree().process_frame
+		if app_shell_controller.is_gallery():
+			_fail_managed_ui3_smoke("isolation unexpectedly stayed in Gallery")
+			return
+		var editor_ui := editor_root.get_node_or_null(^"UI") as Control
+		if diag_mode == 5 and (editor_ui == null or editor_ui.visible):
+			_fail_managed_ui3_smoke("empty editor isolation did not hide content")
+			return
+	if not app_shell_controller.return_home():
+		_fail_managed_ui3_smoke("could not leave isolated editor")
+		return
+	app_shell_controller.set_diagnostic_mode(0)
+	var restored_ui := editor_root.get_node_or_null(^"UI") as Control
+	if restored_ui == null or not restored_ui.visible:
+		_fail_managed_ui3_smoke("diagnostic isolation did not restore editor UI")
 		return
 	print("[MANAGED-UI3-SMOKE] PASS")
 	get_tree().quit(0)
