@@ -571,7 +571,7 @@ func _show_splash_screen() -> void:
 func _handle_cmdline_arguments() -> void:
 	# Under the headless regression runner the command line carries `--script
 	# res://tests/runner.gd`, which is not a project file to open. Skip entirely.
-	if Global.headless_test_mode:
+	if Global.headless_test_mode or OS.get_cmdline_user_args().has("--phosprite-managed-ui3-smoke"):
 		return
 	var args := OS.get_cmdline_args()
 	var working_directory := ""
