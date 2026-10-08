@@ -351,6 +351,9 @@ func _run_managed_ui3_smoke() -> void:
 	if ui3 == null or not ui3.active:
 		_fail_managed_ui3_smoke("UI3 profile was not activated")
 		return
+	if not is_instance_valid(ui3._taskbar) or ui3._taskbar.get_child_count() < 3:
+		_fail_managed_ui3_smoke("UI3 taskbar did not create all primary buttons")
+		return
 	if not is_instance_valid(ui3.left_tool_options):
 		_fail_managed_ui3_smoke("UI3 tool options did not initialize")
 		return
