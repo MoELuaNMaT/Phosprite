@@ -15,9 +15,7 @@ const SPLASH_DIALOG_SCENE_PATH := "res://src/UI/Dialogs/SplashDialog.tscn"
 const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const PROJECT_SAVE_COORDINATOR := preload("res://src/ProjectLibrary/ProjectSaveCoordinator.gd")
 const APP_SHELL_CONTROLLER := preload("res://src/AppShell/AppShellController.gd")
-const IOS_EDITOR_DIAGNOSTIC_OVERLAY := preload(
-	"res://src/AppShell/EditorDiagnosticOverlay.gd"
-)
+const IOS_EDITOR_DIAGNOSTIC_OVERLAY := preload("res://src/AppShell/EditorDiagnosticOverlay.gd")
 const IOS_DOCUMENT_BRIDGE := preload("res://src/PlatformServices/IOSDocumentBridge.gd")
 const PROJECT_EXPORT_COORDINATOR := preload("res://src/ProjectLibrary/ProjectExportCoordinator.gd")
 const TOUCH_UI_BEHAVIOR := preload("res://src/InputAdapter/TouchUIBehavior.gd")
