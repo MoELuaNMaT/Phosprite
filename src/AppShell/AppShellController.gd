@@ -629,7 +629,9 @@ func _prepare_diagnostic_editor() -> void:
 				for child in Global.main_viewport.get_children():
 					if child is SubViewport:
 						_diagnostic_viewport = child as SubViewport
-						_diagnostic_viewport_update_mode = _diagnostic_viewport.render_target_update_mode
+						_diagnostic_viewport_update_mode = (
+							_diagnostic_viewport.render_target_update_mode
+						)
 						_diagnostic_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 						break
 		4:  # Workspace overlays only; keep the Canvas rendered.
@@ -638,7 +640,9 @@ func _prepare_diagnostic_editor() -> void:
 		5:  # The bare editor shell, with no normal UI or canvas rendering.
 			_diagnostic_hide(editor_root.get_node_or_null(^"UI"))
 			_diagnostic_hide(editor_root.get_node_or_null(^"TopMenuContainer"))
-	EditorEntryTrace.record("08_isolation_applied_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode])
+	EditorEntryTrace.record(
+		"08_isolation_applied_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode]
+	)
 
 
 func _restore_diagnostic_editor() -> void:
@@ -654,7 +658,9 @@ func _restore_diagnostic_editor() -> void:
 
 func _set_mode(next_mode: Mode, animate := true) -> void:
 	if managed_mode and next_mode == Mode.EDITOR:
-		EditorEntryTrace.record("08_before_editor_visible_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode])
+		EditorEntryTrace.record(
+			"08_before_editor_visible_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode]
+		)
 		_prepare_diagnostic_editor()
 		if diagnostic_mode == 6:
 			animate = false
