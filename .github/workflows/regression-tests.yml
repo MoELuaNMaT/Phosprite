@@ -56,6 +56,16 @@ jobs:
             echo "::error::Actual editor startup emitted GDScript errors"
             exit 1
           fi
+      - name: Exercise actual UI3 gallery and project transitions
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=KILL 75s godot --headless --path . -- --phosprite-managed-ui3-smoke 2>&1 | tee /tmp/phosprite-managed-ui3-smoke.log
+          grep -F '[MANAGED-UI3-SMOKE] PASS' /tmp/phosprite-managed-ui3-smoke.log
+          if grep -E 'SCRIPT ERROR:|ERROR: Failed to load script' /tmp/phosprite-managed-ui3-smoke.log; then
+            echo "::error::Managed UI3 gallery smoke produced GDScript errors"
+            exit 1
+          fi
       - name: Run contract suite
         # The runner exits non-zero on any assertion failure, which fails the job.
         run: godot --headless --path . --script "${TEST_SCRIPT}" -- "${TEST_FLAG}"
