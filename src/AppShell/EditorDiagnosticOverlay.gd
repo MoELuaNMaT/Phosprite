@@ -115,10 +115,13 @@ func _refresh(_mode: int = -1) -> void:
 		if lines[i].contains("INTERRUPTED: "):
 			last_interrupted = lines[i].get_slice("INTERRUPTED: ", 1)
 			break
-	_status.text = "上次中断：%s | 当前：%s" % [
-		last_interrupted,
-		"项目库" if shell.is_gallery() else "编辑器",
-	]
+	_status.text = (
+		"上次中断：%s | 当前：%s"
+		% [
+			last_interrupted,
+			"项目库" if shell.is_gallery() else "编辑器",
+		]
+	)
 	_home_button.disabled = shell.is_gallery()
 
 
