@@ -38,8 +38,24 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
-      - name: Import project resources
-        run: godot --headless --path . --import
+      - name: Import project resources and validate scripts
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --import 2>&1 | tee /tmp/phosprite-godot-import.log
+          if grep -E 'SCRIPT ERROR: (Parse Error|Compile Error)|ERROR: Failed to load script' /tmp/phosprite-godot-import.log; then
+            echo "::error::GDScript compile or load errors detected during Godot import"
+            exit 1
+          fi
+      - name: Smoke test the actual editor entry point
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=KILL 40s godot --headless --path . --quit-after 120 2>&1 | tee /tmp/phosprite-editor-startup.log
+          if grep -E 'SCRIPT ERROR:|ERROR: Failed to load script' /tmp/phosprite-editor-startup.log; then
+            echo "::error::Actual editor startup emitted GDScript errors"
+            exit 1
+          fi
       - name: Run contract suite
         # The runner exits non-zero on any assertion failure, which fails the job.
         run: godot --headless --path . --script "${TEST_SCRIPT}" -- "${TEST_FLAG}"

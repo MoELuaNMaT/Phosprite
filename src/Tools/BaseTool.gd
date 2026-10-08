@@ -41,6 +41,7 @@ var _compact_direct_grid_columns: Dictionary = {}
 var _compact_child_state: Dictionary = {}
 var _compact_original_columns := 1
 var _compact_original_color_visible := true
+var _stacked_option_layout_prepared := false
 @onready var color_rect := $ColorRect as ColorRect
 
 
@@ -51,8 +52,17 @@ func _ready() -> void:
 	else:
 		color_rect.color = Global.right_tool_color
 	$Label.text = Tools.tools[name].display_name
-	_apply_stacked_option_layout(self)
+	# Runtime tools prepare their option labels before entering the scene tree.
+	# Keep this fallback for scenes created outside Tools.set_tool().
+	prepare_stacked_option_layout()
 	load_config()
+
+
+func prepare_stacked_option_layout() -> void:
+	if _stacked_option_layout_prepared:
+		return
+	_stacked_option_layout_prepared = true
+	_apply_stacked_option_layout(self)
 
 
 func _apply_stacked_option_layout(root: Node) -> void:
