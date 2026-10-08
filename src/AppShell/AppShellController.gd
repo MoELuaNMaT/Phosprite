@@ -90,8 +90,10 @@ func startup() -> void:
 		var interrupted_phase := EditorEntryTrace.consume_interrupted_phase()
 		if not interrupted_phase.is_empty():
 			Global.popup_error(
-				"Previous editor entry stopped at: %s. " % interrupted_phase
-				+ "Please report this checkpoint and the iPad crash log."
+				(
+					"Previous editor entry stopped at: %s. " % interrupted_phase
+					+ "Please report this checkpoint and the iPad crash log."
+				)
 			)
 	else:
 		_set_mode(Mode.EDITOR, false)
