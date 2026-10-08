@@ -108,6 +108,9 @@ func test_stacked_tool_options_are_built_before_scene_entry() -> void:
 		prepare_pos > set_pos and attach_pos > prepare_pos,
 		"runtime Tools.set_tool must prepare option children before attaching the live panel",
 	)
+	tool.queue_free()
+	_spawned_tools.erase(tool)
+	await tree.process_frame
 
 
 func _spawn_tool(tool_name: String) -> BaseTool:
