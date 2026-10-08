@@ -37,6 +37,10 @@ var _horizontal_child_state: Dictionary = {}
 var _horizontal_original_order: Array[Node] = []
 var _horizontal_spacers: Dictionary = {}
 var _compact_direct_grid_columns: Dictionary = {}
+# UI3 styling must not reuse the horizontal layout's order or visibility watchers.
+var _compact_child_state: Dictionary = {}
+var _compact_original_columns := 1
+var _compact_original_color_visible := true
 @onready var color_rect := $ColorRect as ColorRect
 
 
@@ -181,19 +185,19 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 
 func set_compact_option_layout(enabled: bool) -> void:
 	if _compact_option_layout == enabled:
-		if enabled:
-			_rebuild_compact_option_layout()
 		return
 	if enabled and _horizontal_option_layout:
 		set_horizontal_option_layout(false)
 	_compact_option_layout = enabled
 	if enabled:
-		_capture_horizontal_option_layout()
+		_compact_original_columns = columns
+		_compact_original_color_visible = color_rect.visible
+		color_rect.visible = false
 		_apply_compact_direct_grid_layout()
 		_rebuild_compact_option_layout()
 	else:
 		_restore_compact_direct_grid_layout()
-		_restore_vertical_option_layout(false)
+		_restore_compact_option_layout()
 
 
 func is_compact_option_layout() -> bool:
@@ -285,9 +289,7 @@ func _restore_vertical_option_layout(restore_order: bool) -> void:
 
 
 func _on_horizontal_child_visibility_changed() -> void:
-	if _compact_option_layout:
-		_rebuild_compact_option_layout.call_deferred()
-	elif _horizontal_option_layout:
+	if _horizontal_option_layout:
 		_rebuild_horizontal_option_layout.call_deferred()
 
 
@@ -378,35 +380,71 @@ func _restore_compact_direct_grid_layout() -> void:
 func _rebuild_compact_option_layout() -> void:
 	if not _compact_option_layout:
 		return
-	var header := $Label as Control
+	# Every tool scene already has a single-column root. Apply each style once.
+	# Never move children or attach visibility observers to a live tool.
 	columns = 1
-	for child in _horizontal_original_order:
-		if not is_instance_valid(child) or child == color_rect or child == header:
+	var header := $Label as Control
+	for child in get_children():
+		if child is not Control or child == color_rect or child == header:
 			continue
 		var control := child as Control
-		var state := _horizontal_child_state.get(control, {}) as Dictionary
-		var original_minimum := state.get("minimum", control.custom_minimum_size) as Vector2
+		if not _compact_child_state.has(control):
+			var state := {
+				"horizontal": control.size_flags_horizontal,
+				"vertical": control.size_flags_vertical,
+				"stretch_ratio": control.size_flags_stretch_ratio,
+				"minimum": control.custom_minimum_size,
+			}
+			if control is Label:
+				var label := control as Label
+				state["horizontal_alignment"] = label.horizontal_alignment
+				state["vertical_alignment"] = label.vertical_alignment
+				state["autowrap_mode"] = label.autowrap_mode
+				state["clip_text"] = label.clip_text
+				state["text_overrun_behavior"] = label.text_overrun_behavior
+			_compact_child_state[control] = state
+		var original := _compact_child_state[control] as Dictionary
+		var minimum := original["minimum"] as Vector2
 		if control is Label:
 			var label := control as Label
-			label.custom_minimum_size = Vector2(
-				0.0, maxf(original_minimum.y, COMPACT_OPTION_LABEL_HEIGHT)
-			)
+			label.custom_minimum_size = Vector2(0.0, maxf(minimum.y, COMPACT_OPTION_LABEL_HEIGHT))
 			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			label.size_flags_stretch_ratio = 1.0
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			label.clip_text = false
 			label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+		else:
+			control.custom_minimum_size = Vector2(
+				maxf(minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
+				maxf(minimum.y, COMPACT_OPTION_ROW_HEIGHT)
+			)
+			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+
+func _restore_compact_option_layout() -> void:
+	for raw_control: Variant in _compact_child_state:
+		var control := raw_control as Control
+		if not is_instance_valid(control):
 			continue
-		control.custom_minimum_size = Vector2(
-			maxf(original_minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
-			maxf(original_minimum.y, COMPACT_OPTION_ROW_HEIGHT)
-		)
-		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		control.size_flags_stretch_ratio = 1.0
+		var state := _compact_child_state[raw_control] as Dictionary
+		control.size_flags_horizontal = int(state["horizontal"])
+		control.size_flags_vertical = int(state["vertical"])
+		control.size_flags_stretch_ratio = float(state["stretch_ratio"])
+		control.custom_minimum_size = state["minimum"] as Vector2
+		if control is Label:
+			var label := control as Label
+			label.horizontal_alignment = int(state["horizontal_alignment"])
+			label.vertical_alignment = int(state["vertical_alignment"])
+			label.autowrap_mode = int(state["autowrap_mode"])
+			label.clip_text = bool(state["clip_text"])
+			label.text_overrun_behavior = int(state["text_overrun_behavior"])
+	_compact_child_state.clear()
+	columns = _compact_original_columns
+	if is_instance_valid(color_rect):
+		color_rect.visible = _compact_original_color_visible
 
 
 func _format_option_label(raw_text: String) -> String:
