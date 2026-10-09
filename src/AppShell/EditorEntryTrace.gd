@@ -32,6 +32,7 @@ const MODE_LABELS := [
 	"No Value Sliders",
 	"No Option Labels",
 	"No Compact Styling",
+	"Legacy Selection Mode Buttons",
 ]
 
 
