@@ -68,6 +68,7 @@ var _palette_content: Control
 var _original_left_options_state: Dictionary = {}
 var _compacted_tool: BaseTool
 var _last_active_tool := &""
+var _diagnostic_compact_options_disabled := false
 
 
 static func is_primary_tool(tool_name: StringName) -> bool:
@@ -466,13 +467,23 @@ func _on_color_button_pressed() -> void:
 	_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
 
 
+## Comparatively disable UI3 compact layout without losing live tool controls.
+## Used only for iPad first-frame isolation; the standard path is unchanged.
+func set_diagnostic_compact_options_disabled(disabled: bool) -> void:
+	if _diagnostic_compact_options_disabled == disabled:
+		return
+	_diagnostic_compact_options_disabled = disabled
+	if active:
+		_set_current_options_compact(not disabled)
+
+
 func _refresh_config_panel() -> void:
 	if not active or not _ensure_options_module() or not is_instance_valid(_options_host):
 		return
 	var current := _current_left_tool_name()
 	_options_module.set_header_title_override("Tool Options · %s" % _tool_display_name(current))
 	_refresh_family_row(current)
-	_set_current_options_compact(true)
+	_set_current_options_compact(not _diagnostic_compact_options_disabled)
 	_reparent_left_options(_options_host)
 
 	var has_options := _has_left_tool_options()
