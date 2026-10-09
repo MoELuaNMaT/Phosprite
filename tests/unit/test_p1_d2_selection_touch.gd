@@ -349,10 +349,12 @@ func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_toler
 		"control.visible = keep",
 		"iPad must hide unrelated transform and duplicate header controls",
 	)
-	check_true(
-		not base_scene.contains(
-			'[node name="SafeModeButtons" type="VBoxContainer" parent="." index="4"]\nvisible = false'
-		),
+	var hidden_row := (
+		'[node name="SafeModeButtons" type="VBoxContainer" parent="." index="4"]\nvisible = false'
+	)
+	check_eq(
+		base_scene.find(hidden_row),
+		-1,
 		"safe iPad mode buttons must be visible from scene instantiation, not initially hidden",
 	)
 	check_has(
