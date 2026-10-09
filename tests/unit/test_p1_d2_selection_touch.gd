@@ -274,7 +274,7 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 
 
-func test_ios_selection_options_use_safe_dropdown_with_magic_wand_tolerance() -> void:
+func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_tolerance() -> void:
 	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
 	var base_scene := FileAccess.get_file_as_string(BASE_SELECTION_SCENE)
 	check_has(
@@ -282,14 +282,43 @@ func test_ios_selection_options_use_safe_dropdown_with_magic_wand_tolerance() ->
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"Modes"]',
-		"iPad selection tools must show the existing dropdown, not the crashing four-button group",
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"SafeModeButtons"]',
+		"iPad selection tools must show the independent four-button controls, not legacy ButtonGroup",
+
 	)
 	check_has(
 		base_scene,
 		'[connection signal="item_selected" from="Modes" to="." method="_on_modes_item_selected"]',
-		"selection dropdown must remain connected to the existing four-mode handler",
+		"the existing dropdown remains wired as an internal mode state owner",
 	)
+	check_has(
+		base_src,
+		"for button_root in [$ModeButtons, $SafeModeButtons]:",
+		"both desktop and iPad selection buttons must mirror the same active mode",
+	)
+	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
+		check_has(
+			base_scene,
+			'[node name="%s" type="Button" parent="SafeModeButtons"' % button_name,
+			"iPad must expose a separate %s selection button" % button_name,
+		)
+		check_has(
+			base_scene,
+			'[connection signal="pressed" from="SafeModeButtons/%s"' % button_name,
+			"each iPad button must route through the existing selection mode handler",
+		)
+	var start := base_scene.find('[node name="SafeModeButtons"')
+	var end := base_scene.find('[connection signal="pressed" from="ConfirmButtons/ConfirmButton"')
+	check_true(
+		start >= 0 and end > start,
+		"the iPad four-button group must have a distinct, bounded scene subtree",
+	)
+	if start >= 0 and end > start:
+		check_true(
+			not base_scene.substr(start, end - start).contains("button_group ="),
+			"iPad controls must never inherit the crashing native ButtonGroup",
+		)
+
 	check_has(
 		base_src,
 		"func _on_modes_item_selected(index: int) -> void:",
@@ -299,7 +328,7 @@ func test_ios_selection_options_use_safe_dropdown_with_magic_wand_tolerance() ->
 		not base_src.contains(
 			'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]'
 		),
-		"iPad startup must never reactivate the crashing four-button selection group",
+		"iPad startup must never reactivate the old grouped selection button subtree",
 	)
 	check_has(
 		base_src,
@@ -309,7 +338,7 @@ func test_ios_selection_options_use_safe_dropdown_with_magic_wand_tolerance() ->
 	check_has(
 		base_src,
 		'visible_controls.append(&"ToleranceSlider")',
-		"Magic Wand should retain Tolerance beneath the shared selection mode dropdown",
+		"Magic Wand should retain Tolerance below its shared four selection buttons",
 	)
 	check_has(
 		base_src,
