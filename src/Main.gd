@@ -363,6 +363,16 @@ func _run_managed_ui3_smoke() -> void:
 	if not is_instance_valid(ui3.left_tool_options):
 		_fail_managed_ui3_smoke("UI3 tool options did not initialize")
 		return
+	# iPad floating modules must not use the shadowed custom StyleBox/text draw path.
+	if (
+		not WorkspaceModule.use_safe_floating_chrome("iOS", &"floating")
+		or not WorkspaceModule.use_safe_floating_chrome("iOS", &"peek")
+		or not WorkspaceModule.use_safe_floating_chrome("iOS", &"collapsed")
+		or WorkspaceModule.use_safe_floating_chrome("iOS", &"docked")
+		or WorkspaceModule.use_safe_floating_chrome("Linux", &"floating")
+	):
+		_fail_managed_ui3_smoke("iPad safe floating chrome platform guard is invalid")
+		return
 	var saved_path := Global.current_project.save_path
 	if saved_path.is_empty():
 		_fail_managed_ui3_smoke("new project was not saved")
