@@ -720,7 +720,7 @@ func _diagnostic_hide_tool_control_types(root: Node, sliders: bool) -> void:
 	var stack: Array[Node] = [root]
 	var hidden := 0
 	while not stack.is_empty():
-		var child := stack.pop_back()
+		var child: Node = stack.pop_back()
 		if child != root:
 			var selected: bool = (
 				(child is ValueSlider or child is ValueSliderV2) if sliders else child is Label
