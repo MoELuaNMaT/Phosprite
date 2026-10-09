@@ -292,7 +292,7 @@ func test_ios_selection_options_use_safe_dropdown_with_legacy_button_diagnostic(
 	)
 	check_has(
 		base_src,
-		'if _ios_legacy_mode_buttons:',
+		"if _ios_legacy_mode_buttons:",
 		"old selection ButtonGroup may only return through the explicit diagnostic override",
 	)
 	check_has(
@@ -302,12 +302,12 @@ func test_ios_selection_options_use_safe_dropdown_with_legacy_button_diagnostic(
 	)
 	check_has(
 		base_src,
-		'func set_ios_legacy_mode_buttons(enabled: bool) -> void:',
+		"func set_ios_legacy_mode_buttons(enabled: bool) -> void:",
 		"diagnostic-only legacy selection control should be reversible",
 	)
 	check_has(
 		base_src,
-		'func _on_modes_item_selected(index: int) -> void:',
+		"func _on_modes_item_selected(index: int) -> void:",
 		"the dropdown must remain connected to the existing selection mode handler",
 	)
 	check_has(
