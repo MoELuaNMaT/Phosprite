@@ -389,7 +389,7 @@ func _run_managed_ui3_smoke() -> void:
 		_fail_managed_ui3_smoke("existing project did not activate")
 		return
 	# All six isolation settings must be reversible across Gallery/editor entries.
-	for diag_mode in range(1, 13):
+	for diag_mode in range(1, 18):
 		if not app_shell_controller.return_home():
 			_fail_managed_ui3_smoke("could not return home before isolation " + str(diag_mode))
 			return
