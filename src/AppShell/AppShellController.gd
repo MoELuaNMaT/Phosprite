@@ -47,6 +47,7 @@ var _diagnostic_visibility: Array[Dictionary] = []
 var _diagnostic_viewport: SubViewport
 var _diagnostic_viewport_update_mode := SubViewport.UPDATE_ALWAYS
 var _diagnostic_draw_states: Array[Dictionary] = []
+var _diagnostic_compact_profile: WorkspaceUIProfile3
 
 
 func configure(
@@ -673,6 +674,83 @@ func _diagnostic_no_floating_draw() -> void:
 		EditorEntryTrace.note("CUSTOM_DRAW_OFF " + String(module.name))
 
 
+func _diagnostic_tool_options_content() -> Control:
+	var module := _diagnostic_workspace_module(&"ui3_tool_options")
+	if module == null:
+		return null
+	var content := module.get_content()
+	if content == null:
+		EditorEntryTrace.note("OPTIONS_CONTENT_MISSING")
+	return content
+
+
+func _diagnostic_tool_options_scroll() -> ScrollContainer:
+	var content := _diagnostic_tool_options_content()
+	if content == null:
+		return null
+	var options_host := content.get_node_or_null(^"OptionsHost")
+	if options_host == null:
+		EditorEntryTrace.note("OPTIONS_HOST_MISSING")
+		return null
+	for child in options_host.get_children():
+		if child is ScrollContainer:
+			EditorEntryTrace.note("OPTIONS_SCROLL_FOUND " + String(child.name))
+			return child as ScrollContainer
+	EditorEntryTrace.note("OPTIONS_SCROLL_MISSING")
+	return null
+
+
+func _diagnostic_active_tool_options() -> BaseTool:
+	var scroll := _diagnostic_tool_options_scroll()
+	if scroll == null:
+		return null
+	var panel := scroll.get_node_or_null(^"LeftPanelContainer")
+	if panel == null or panel.get_child_count() == 0:
+		EditorEntryTrace.note("ACTIVE_TOOL_PANEL_MISSING")
+		return null
+	var tool := panel.get_child(panel.get_child_count() - 1) as BaseTool
+	if tool != null:
+		EditorEntryTrace.note("ACTIVE_TOOL " + String(tool.name))
+	return tool
+
+
+func _diagnostic_hide_tool_control_types(root: Node, sliders: bool) -> void:
+	if root == null:
+		return
+	var stack: Array[Node] = [root]
+	var hidden := 0
+	while not stack.is_empty():
+		var child := stack.pop_back()
+		if child != root:
+			var selected := (
+				(child is ValueSlider or child is ValueSliderV2)
+				if sliders
+				else child is Label
+			)
+			if selected:
+				_diagnostic_hide(child)
+				hidden += 1
+				continue
+		for subchild in child.get_children():
+			stack.append(subchild)
+	EditorEntryTrace.note(
+		"TOOL_CONTROLS_HIDDEN kind=%s count=%d" % ["sliders" if sliders else "labels", hidden]
+	)
+
+
+func _diagnostic_disable_compact_options() -> void:
+	var profile := (
+		editor_root.get_node_or_null(^"UI/WorkspaceEditorMigration/WorkspaceUIProfile3")
+		as WorkspaceUIProfile3
+	)
+	if profile == null:
+		EditorEntryTrace.note("UI3_PROFILE_MISSING")
+		return
+	_diagnostic_compact_profile = profile
+	profile.set_diagnostic_compact_options_disabled(true)
+	EditorEntryTrace.note("TOOL_COMPACT_OPTIONS_DISABLED")
+
+
 func _prepare_diagnostic_editor() -> void:
 	_restore_diagnostic_editor()
 	match diagnostic_mode:
@@ -730,12 +808,29 @@ func _prepare_diagnostic_editor() -> void:
 				var module := _diagnostic_workspace_module(module_id)
 				if module != null:
 					_diagnostic_hide(module.get_content())
+		18:  # Hide just the OptionsHost and its entire subtree.
+			var content := _diagnostic_tool_options_content()
+			if content != null:
+				_diagnostic_hide(content.get_node_or_null(^"OptionsHost"))
+		19:  # Hide only the reparented ScrollContainer.
+			_diagnostic_hide(_diagnostic_tool_options_scroll())
+		20:  # Keep scroller visible; hide its active BaseTool content.
+			_diagnostic_hide(_diagnostic_active_tool_options())
+		21:  # Leave labels and controls visible, except live ValueSliders.
+			_diagnostic_hide_tool_control_types(_diagnostic_active_tool_options(), true)
+		22:  # Leave sliders visible, hide all labels of the active BaseTool.
+			_diagnostic_hide_tool_control_types(_diagnostic_active_tool_options(), false)
+		23:  # Disable compact label/sliders layout while preserving working tool options.
+			_diagnostic_disable_compact_options()
 	EditorEntryTrace.record(
 		"08_isolation_applied_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode]
 	)
 
 
 func _restore_diagnostic_editor() -> void:
+	if is_instance_valid(_diagnostic_compact_profile):
+		_diagnostic_compact_profile.set_diagnostic_compact_options_disabled(false)
+	_diagnostic_compact_profile = null
 	if is_instance_valid(_diagnostic_viewport):
 		_diagnostic_viewport.render_target_update_mode = _diagnostic_viewport_update_mode
 	_diagnostic_viewport = null
