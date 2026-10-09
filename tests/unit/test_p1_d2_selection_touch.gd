@@ -369,6 +369,7 @@ func test_ios_four_mode_buttons_have_visible_instantiated_controls() -> void:
 			check_eq(button.button_pressed, index == 2, "only the selected mode is pressed")
 	tool.free()
 
+
 func test_crop_options_are_hidden_and_drag_release_applies_crop() -> void:
 	var src := FileAccess.get_file_as_string(CROP_TOOL_SOURCE)
 	check_has(
