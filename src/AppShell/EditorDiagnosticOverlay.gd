@@ -118,6 +118,18 @@ func _localized_mode_name(mode: int) -> String:
 			return "16 禁用浮动窗口自定义绘制"
 		17:
 			return "17 隐藏所有浮动窗口内容，保留边框"
+		18:
+			return "18 关闭 OptionsHost"
+		19:
+			return "19 关闭配置滚动容器"
+		20:
+			return "20 关闭当前工具配置"
+		21:
+			return "21 仅隐藏参数滑块"
+		22:
+			return "22 仅隐藏参数标签"
+		23:
+			return "23 取消 Tool Options 紧凑布局"
 	return "未知模式"
 
 
