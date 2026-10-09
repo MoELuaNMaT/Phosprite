@@ -613,9 +613,7 @@ func _diagnostic_hide(node: Node) -> void:
 		return
 	var item := node as CanvasItem
 	_diagnostic_visibility.append({"item": item, "visible": item.visible})
-	EditorEntryTrace.note(
-		"HIDE %s visible_before=%s" % [String(item.name), str(item.visible)]
-	)
+	EditorEntryTrace.note("HIDE %s visible_before=%s" % [String(item.name), str(item.visible)])
 	item.visible = false
 
 
@@ -628,7 +626,7 @@ func _diagnostic_workspace_module(module_id: StringName) -> WorkspaceModule:
 	if module == null:
 		EditorEntryTrace.note("MODULE_MISSING: " + String(module_id))
 	else:
-		EditorEntryTrace.note(
+		var info := (
 			"MODULE %s state=%s parent=%s visible=%s"
 			% [
 				String(module_id),
@@ -637,6 +635,7 @@ func _diagnostic_workspace_module(module_id: StringName) -> WorkspaceModule:
 				str(module.visible),
 			]
 		)
+		EditorEntryTrace.note(info)
 	return module
 
 
@@ -647,9 +646,9 @@ func _diagnostic_disable_preview_viewport() -> void:
 	var content := preview.get_content()
 	if content == null:
 		return
-	var viewport := content.get_node_or_null(
-		^"VBox/HBox/PreviewViewportContainer/SubViewport"
-	) as SubViewport
+	var viewport := (
+		content.get_node_or_null(^"VBox/HBox/PreviewViewportContainer/SubViewport") as SubViewport
+	)
 	if viewport == null:
 		EditorEntryTrace.note("PREVIEW_SUBVIEWPORT_MISSING")
 		return
@@ -668,9 +667,7 @@ func _diagnostic_no_floating_draw() -> void:
 		if not child is WorkspaceModule:
 			continue
 		var module := child as WorkspaceModule
-		_diagnostic_draw_states.append(
-			{"module": module, "old": module.diagnostic_no_custom_draw}
-		)
+		_diagnostic_draw_states.append({"module": module, "old": module.diagnostic_no_custom_draw})
 		module.diagnostic_no_custom_draw = true
 		module.queue_redraw()
 		EditorEntryTrace.note("CUSTOM_DRAW_OFF " + String(module.name))
