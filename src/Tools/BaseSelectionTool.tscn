@@ -55,7 +55,6 @@ text = "Mode:"
 # iPad's four mode buttons are deliberately independent of ButtonGroup.
 # The original desktop group remains in ModeButtons, but stays hidden on iOS.
 [node name="SafeModeButtons" type="VBoxContainer" parent="." index="4"]
-visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
