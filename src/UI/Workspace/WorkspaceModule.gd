@@ -34,6 +34,7 @@ const IOS_FLOATING_CHROME_MAX_DIMENSION := 16384.0
 var definition: WorkspaceModuleDefinition
 var content: Control
 var lifecycle_state := LifecycleState.CREATED
+var diagnostic_no_custom_draw := false
 
 var _context: Dictionary = {}
 var _host: Control
@@ -50,7 +51,6 @@ var _header_accessory: Control
 var _header_title_override := ""
 var _ios_header_layer: Node2D
 var _ios_header_label: Label
-var diagnostic_no_custom_draw := false
 
 
 func _ready() -> void:
