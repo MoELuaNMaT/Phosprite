@@ -31,6 +31,10 @@ var _skip_slider_logic := false
 
 
 func _ready() -> void:
+	# The iPad row must be enabled before the first editor draw; the desktop
+	# must never display both the safe row and the legacy grouped buttons.
+	if OS.get_name() != "iOS":
+		$SafeModeButtons.hide()
 	super()
 	algorithm_option_button.add_item("Nearest neighbor")
 	algorithm_option_button.add_item("cleanEdge", DrawingAlgos.RotationAlgorithm.CLEANEDGE)
@@ -46,17 +50,24 @@ func _ready() -> void:
 	_apply_ios_compact_options()
 
 
-func _apply_ios_compact_options() -> void:
-	if OS.get_name() != "iOS":
+func _apply_ios_compact_options(force_ios := false) -> void:
+	if OS.get_name() != "iOS" and not force_ios:
+		$SafeModeButtons.hide()
 		return
-	# Keep the four direct-action buttons but avoid the legacy grouped button
-	# subtree, which reproduces an iPad native crash when first shown in UI3.
-	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"SafeModeButtons"]
-	if name == &"MagicWand":
-		visible_controls.append(&"ToleranceSlider")
+	# Explicitly set both alternatives, so visibility never depends on an
+	# inherited scene's saved hidden state or a compact-layout snapshot.
+	$ModeButtons.hide()
+	$Modes.hide()
+	$SafeModeButtons.show()
 	for child in get_children():
-		if child is Control:
-			(child as Control).visible = StringName(child.name) in visible_controls
+		if child is not Control:
+			continue
+		var control := child as Control
+		var keep := (
+			control.name in [&"ColorRect", &"ModeLabel", &"SafeModeButtons"]
+			or (control.name == &"ToleranceSlider" and name == &"MagicWand")
+		)
+		control.visible = keep
 
 
 func set_confirm_buttons_visibility() -> void:
