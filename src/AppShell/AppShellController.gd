@@ -46,6 +46,7 @@ var _editor_entry_generation := 0
 var _diagnostic_visibility: Array[Dictionary] = []
 var _diagnostic_viewport: SubViewport
 var _diagnostic_viewport_update_mode := SubViewport.UPDATE_ALWAYS
+var _diagnostic_draw_states: Array[Dictionary] = []
 
 
 func configure(
@@ -608,19 +609,78 @@ func set_diagnostic_mode(next_mode: int) -> void:
 
 func _diagnostic_hide(node: Node) -> void:
 	if not is_instance_valid(node) or not node is CanvasItem:
+		EditorEntryTrace.note("HIDE_TARGET_MISSING")
 		return
 	var item := node as CanvasItem
 	_diagnostic_visibility.append({"item": item, "visible": item.visible})
+	EditorEntryTrace.note(
+		"HIDE %s visible_before=%s" % [String(item.name), str(item.visible)]
+	)
 	item.visible = false
+
+
+func _diagnostic_workspace_module(module_id: StringName) -> WorkspaceModule:
+	var manager := editor_root.get_node_or_null(^"UI/WorkspaceManager") as WorkspaceModuleManager
+	if manager == null:
+		EditorEntryTrace.note("MANAGER_MISSING: UI/WorkspaceManager")
+		return null
+	var module := manager.get_instance(module_id)
+	if module == null:
+		EditorEntryTrace.note("MODULE_MISSING: " + String(module_id))
+	else:
+		EditorEntryTrace.note(
+			"MODULE %s state=%s parent=%s visible=%s"
+			% [
+				String(module_id),
+				str(module.get_lifecycle_state()),
+				String(module.get_parent().name) if module.get_parent() != null else "none",
+				str(module.visible),
+			]
+		)
+	return module
+
+
+func _diagnostic_disable_preview_viewport() -> void:
+	var preview := _diagnostic_workspace_module(&"preview")
+	if preview == null:
+		return
+	var content := preview.get_content()
+	if content == null:
+		return
+	var viewport := content.get_node_or_null(
+		^"VBox/HBox/PreviewViewportContainer/SubViewport"
+	) as SubViewport
+	if viewport == null:
+		EditorEntryTrace.note("PREVIEW_SUBVIEWPORT_MISSING")
+		return
+	_diagnostic_viewport = viewport
+	_diagnostic_viewport_update_mode = viewport.render_target_update_mode
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	EditorEntryTrace.note("PREVIEW_SUBVIEWPORT_DISABLED")
+
+
+func _diagnostic_no_floating_draw() -> void:
+	var layer := editor_root.get_node_or_null(^"UI/WorkspaceDockHost/WorkspaceFloatingLayer")
+	if layer == null:
+		EditorEntryTrace.note("FLOATING_LAYER_MISSING")
+		return
+	for child in layer.get_children():
+		if not child is WorkspaceModule:
+			continue
+		var module := child as WorkspaceModule
+		_diagnostic_draw_states.append(
+			{"module": module, "old": module.diagnostic_no_custom_draw}
+		)
+		module.diagnostic_no_custom_draw = true
+		module.queue_redraw()
+		EditorEntryTrace.note("CUSTOM_DRAW_OFF " + String(module.name))
 
 
 func _prepare_diagnostic_editor() -> void:
 	_restore_diagnostic_editor()
 	match diagnostic_mode:
-		1:  # Preview workspace module.
-			var manager := editor_root.get_node_or_null(^"UI/WorkspaceModuleManager")
-			if manager is WorkspaceModuleManager:
-				_diagnostic_hide(manager.get_instance(&"preview"))
+		1:  # Hide actual Preview module, not the wrong manager path.
+			_diagnostic_hide(_diagnostic_workspace_module(&"preview"))
 		2:  # Timeline, leaving canvas and UI3 toolbar intact.
 			_diagnostic_hide(Global.animation_timeline)
 		3:  # Disable SubViewport rendering as well as hiding its container.
@@ -644,23 +704,35 @@ func _prepare_diagnostic_editor() -> void:
 			_diagnostic_hide(editor_root.get_node_or_null(^"UI/WorkspaceDockHost"))
 		8:  # Leave Workspace windows visible and disable taskbar only.
 			_diagnostic_hide(editor_root.find_child("UIProfile3Taskbar", true, false))
-		9:  # Isolate UI3 Tool Options, keep other Workspace modules visible.
-			var manager := editor_root.get_node_or_null(^"UI/WorkspaceModuleManager")
-			if manager is WorkspaceModuleManager:
-				_diagnostic_hide(manager.get_instance(&"ui3_tool_options"))
+		9:  # Isolate real UI3 Tool Options module.
+			_diagnostic_hide(_diagnostic_workspace_module(&"ui3_tool_options"))
 		10:  # All floating modules (Preview and Tool Options).
 			_diagnostic_hide(
 				editor_root.get_node_or_null(^"UI/WorkspaceDockHost/WorkspaceFloatingLayer")
 			)
 		11:  # Bottom Timeline wrapper including its header.
-			var manager := editor_root.get_node_or_null(^"UI/WorkspaceModuleManager")
-			if manager is WorkspaceModuleManager:
-				_diagnostic_hide(manager.get_instance(&"animation_timeline"))
+			_diagnostic_hide(_diagnostic_workspace_module(&"animation_timeline"))
 		12:  # Only docked zones, leave floating modules visible.
 			var host := editor_root.get_node_or_null(^"UI/WorkspaceDockHost")
 			if is_instance_valid(host):
 				for zone in ["TopDock", "LeftDock", "RightDock", "BottomDock"]:
 					_diagnostic_hide(host.get_node_or_null(NodePath(zone)))
+		13:  # Two independent floating modules, but leave layer visible.
+			_diagnostic_hide(_diagnostic_workspace_module(&"preview"))
+			_diagnostic_hide(_diagnostic_workspace_module(&"ui3_tool_options"))
+		14:  # Leave Preview wrapper visible, disable its GPU SubViewport.
+			_diagnostic_disable_preview_viewport()
+		15:  # Keep Tool Options wrapper and title, hide options controls.
+			var module := _diagnostic_workspace_module(&"ui3_tool_options")
+			if module != null:
+				_diagnostic_hide(module.get_content())
+		16:  # Keep contents visible, disable all custom floating wrapper drawing.
+			_diagnostic_no_floating_draw()
+		17:  # Hide contents of both floating modules, keep window chrome visible.
+			for module_id in [&"preview", &"ui3_tool_options"]:
+				var module := _diagnostic_workspace_module(module_id)
+				if module != null:
+					_diagnostic_hide(module.get_content())
 	EditorEntryTrace.record(
 		"08_isolation_applied_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode]
 	)
@@ -675,6 +747,12 @@ func _restore_diagnostic_editor() -> void:
 		if is_instance_valid(item):
 			item.visible = bool(state["visible"])
 	_diagnostic_visibility.clear()
+	for state in _diagnostic_draw_states:
+		var module := state["module"] as WorkspaceModule
+		if is_instance_valid(module):
+			module.diagnostic_no_custom_draw = bool(state["old"])
+			module.queue_redraw()
+	_diagnostic_draw_states.clear()
 
 
 func _set_mode(next_mode: Mode, animate := true) -> void:
