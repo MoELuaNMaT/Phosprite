@@ -108,6 +108,16 @@ func _localized_mode_name(mode: int) -> String:
 			return "11 只关闭 Timeline 整体窗口"
 		12:
 			return "12 关闭停靠窗口，保留浮动窗口"
+		13:
+			return "13 只关闭 Preview 和 Tool Options"
+		14:
+			return "14 只停用 Preview 内部渲染"
+		15:
+			return "15 只隐藏 Tool Options 配置内容"
+		16:
+			return "16 禁用浮动窗口自定义绘制"
+		17:
+			return "17 隐藏所有浮动窗口内容，保留边框"
 	return "未知模式"
 
 
