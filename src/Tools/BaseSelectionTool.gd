@@ -30,11 +30,45 @@ var _skip_slider_logic := false
 @onready var shear_slider := $Shear as ValueSlider
 
 
+## Tools.set_tool() calls this before the tool enters the scene tree.
+## Create the iPad buttons here instead of serializing new children into a
+## multi-level inherited PackedScene, where their parent can disappear.
+func prepare_stacked_option_layout() -> void:
+	if OS.get_name() == "iOS":
+		_ensure_ios_mode_buttons()
+	super.prepare_stacked_option_layout()
+
+
+func _ensure_ios_mode_buttons() -> VBoxContainer:
+	var existing := get_node_or_null(^"SafeModeButtons") as VBoxContainer
+	if existing != null:
+		return existing
+	var column := VBoxContainer.new()
+	column.name = &"SafeModeButtons"
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override(&"separation", 2)
+	var names := ["Replace", "Add", "Subtract", "Intersect"]
+	for index in 4:
+		var button := Button.new()
+		button.name = StringName(names[index])
+		button.text = names[index]
+		button.custom_minimum_size = Vector2(72, 28)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_NONE
+		button.toggle_mode = true
+		button.clip_text = true
+		button.pressed.connect(_on_mode_button_pressed.bind(index))
+		column.add_child(button)
+	add_child(column)
+	move_child(column, $ModeLabel.get_index() + 1)
+	return column
+
+
 func _ready() -> void:
-	# The iPad row must be enabled before the first editor draw; the desktop
-	# must never display both the safe row and the legacy grouped buttons.
-	if OS.get_name() != "iOS":
-		$SafeModeButtons.hide()
+	# Tools normally creates this row before scene entry; handle other
+	# construction paths before the first selection options are displayed.
+	if OS.get_name() == "iOS":
+		_ensure_ios_mode_buttons()
 	super()
 	algorithm_option_button.add_item("Nearest neighbor")
 	algorithm_option_button.add_item("cleanEdge", DrawingAlgos.RotationAlgorithm.CLEANEDGE)
@@ -52,13 +86,12 @@ func _ready() -> void:
 
 func _apply_ios_compact_options(force_ios := false) -> void:
 	if OS.get_name() != "iOS" and not force_ios:
-		$SafeModeButtons.hide()
 		return
-	# Explicitly set both alternatives, so visibility never depends on an
-	# inherited scene's saved hidden state or a compact-layout snapshot.
+	var safe_buttons := _ensure_ios_mode_buttons()
+	# The old grouped buttons remain desktop-only.
 	$ModeButtons.hide()
 	$Modes.hide()
-	$SafeModeButtons.show()
+	safe_buttons.show()
 	for child in get_children():
 		if child is not Control:
 			continue
@@ -95,7 +128,11 @@ func refresh_options() -> void:
 
 
 func _sync_mode_buttons() -> void:
-	for button_root in [$ModeButtons, $SafeModeButtons]:
+	var roots: Array[Node] = [$ModeButtons]
+	var safe_buttons := get_node_or_null(^"SafeModeButtons")
+	if safe_buttons != null:
+		roots.append(safe_buttons)
+	for button_root in roots:
 		for index in button_root.get_child_count():
 			var button := button_root.get_child(index) as BaseButton
 			if button != null:
