@@ -388,7 +388,7 @@ func _run_managed_ui3_smoke() -> void:
 	if app_shell_controller.is_gallery() or Global.current_project.save_path != saved_path:
 		_fail_managed_ui3_smoke("existing project did not activate")
 		return
-	# All six isolation settings must be reversible across Gallery/editor entries.
+	# All seventeen settings must remain reversible across Gallery/editor entries.
 	for diag_mode in range(1, 18):
 		if not app_shell_controller.return_home():
 			_fail_managed_ui3_smoke("could not return home before isolation " + str(diag_mode))
@@ -406,6 +406,21 @@ func _run_managed_ui3_smoke() -> void:
 		if diag_mode == 5 and (editor_ui == null or editor_ui.visible):
 			_fail_managed_ui3_smoke("empty editor isolation did not hide content")
 			return
+		var live_manager := editor_root.get_node_or_null(^"UI/WorkspaceManager")
+		if not live_manager is WorkspaceModuleManager:
+			_fail_managed_ui3_smoke("WorkspaceManager lookup failed")
+			return
+		if diag_mode == 1 or diag_mode == 11:
+			var module_id := &"preview" if diag_mode == 1 else &"animation_timeline"
+			var hidden_module := live_manager.get_instance(module_id) as WorkspaceModule
+			if hidden_module == null or hidden_module.visible:
+				_fail_managed_ui3_smoke("diagnostic module not actually hidden: " + String(module_id))
+				return
+		if diag_mode == 9 or diag_mode == 13:
+			var options := live_manager.get_instance(&"ui3_tool_options") as WorkspaceModule
+			if options != null and options.visible:
+				_fail_managed_ui3_smoke("Tool Options not actually hidden in isolation")
+				return
 	if not app_shell_controller.return_home():
 		_fail_managed_ui3_smoke("could not leave isolated editor")
 		return
