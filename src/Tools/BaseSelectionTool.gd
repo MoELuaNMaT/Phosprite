@@ -49,9 +49,9 @@ func _ready() -> void:
 func _apply_ios_compact_options() -> void:
 	if OS.get_name() != "iOS":
 		return
-	# The four ButtonGroup-backed controls crash native iPad startup when visible in UI3.
-	# Reuse the existing four-mode OptionButton and its connected selection handler.
-	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"Modes"]
+	# Keep the four direct-action buttons but avoid the legacy grouped button
+	# subtree, which reproduces an iPad native crash when first shown in UI3.
+	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"SafeModeButtons"]
 	if name == &"MagicWand":
 		visible_controls.append(&"ToleranceSlider")
 	for child in get_children():
@@ -84,10 +84,11 @@ func refresh_options() -> void:
 
 
 func _sync_mode_buttons() -> void:
-	for index in $ModeButtons.get_child_count():
-		var button := $ModeButtons.get_child(index) as BaseButton
-		if button != null:
-			button.set_pressed_no_signal(index == _mode_selected)
+	for button_root in [$ModeButtons, $SafeModeButtons]:
+		for index in button_root.get_child_count():
+			var button := button_root.get_child(index) as BaseButton
+			if button != null:
+				button.set_pressed_no_signal(index == _mode_selected)
 
 
 func get_config() -> Dictionary:
