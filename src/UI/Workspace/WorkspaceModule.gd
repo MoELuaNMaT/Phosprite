@@ -29,6 +29,7 @@ const INTERACTION_TARGET_SIZE := 28.0
 const RESIZE_EDGE_HIT_SIZE := 18.0
 const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
 const MIN_HEADER_DRAG_WIDTH := 96.0
+const IOS_FLOATING_CHROME_MAX_DIMENSION := 16384.0
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -47,6 +48,13 @@ var _position_adjustment_enabled := true
 var _header_accessory_layer: Node2D
 var _header_accessory: Control
 var _header_title_override := ""
+var _ios_header_layer: Node2D
+var _ios_header_label: Label
+
+
+func _ready() -> void:
+	if OS.get_name() == "iOS":
+		_ensure_ios_header_label()
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -173,6 +181,7 @@ func set_header_title_override(title: String) -> void:
 	if _header_title_override == title:
 		return
 	_header_title_override = title
+	_sync_ios_header_label()
 	queue_redraw()
 
 
@@ -372,6 +381,7 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		add_theme_constant_override(&"margin_right", padding)
 		add_theme_constant_override(&"margin_bottom", bottom_margin)
 	_layout_header_accessory()
+	_sync_ios_header_label()
 	queue_redraw()
 
 
@@ -381,6 +391,9 @@ func get_visual_state() -> StringName:
 
 func _draw() -> void:
 	if _visual_theme == null:
+		return
+	if use_safe_floating_chrome(OS.get_name(), _visual_state):
+		_draw_ios_safe_floating_chrome()
 		return
 	var module_style := _visual_theme.get_module_style(_visual_state)
 	var header_style := _visual_theme.get_header_style(_visual_state)
@@ -429,6 +442,75 @@ func _draw() -> void:
 	_draw_resize_affordance()
 
 
+## Native iPad workaround: the first visible Workspace frame previously rendered
+## multiple shadowed StyleBoxFlat windows and direct Font canvas commands in
+## floating wrappers. Use basic finite rectangles and normal Label text instead.
+## Keep the desktop Workspace visuals unchanged.
+static func use_safe_floating_chrome(platform: String, state: StringName) -> bool:
+	return platform == "iOS" and state in [&"floating", &"peek", &"collapsed"]
+
+
+func _draw_ios_safe_floating_chrome() -> void:
+	var width := size.x
+	var height := get_header_height() if _content_collapsed else size.y
+	if not is_finite(width) or not is_finite(height) or width <= 0.0 or height <= 0.0:
+		return
+	width = minf(width, IOS_FLOATING_CHROME_MAX_DIMENSION)
+	height = minf(height, IOS_FLOATING_CHROME_MAX_DIMENSION)
+	var header_height := minf(get_header_height(), height)
+	var rect := Rect2(Vector2.ZERO, Vector2(width, height))
+	draw_rect(rect, _visual_theme.elevated_color)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(width, header_height)), _visual_theme.header_color)
+	draw_rect(rect, _visual_theme.border_color, false, 1.0)
+	draw_line(
+		Vector2(0.0, header_height), Vector2(width, header_height), _visual_theme.border_color, 1.0
+	)
+	_draw_collapse_affordance()
+	_draw_resize_affordance()
+
+
+func _ensure_ios_header_label() -> void:
+	if is_instance_valid(_ios_header_label):
+		return
+	_ios_header_layer = Node2D.new()
+	_ios_header_layer.name = &"SafeFloatingHeaderLayer"
+	add_child(_ios_header_layer)
+	_ios_header_label = Label.new()
+	_ios_header_label.name = &"SafeFloatingHeaderLabel"
+	_ios_header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ios_header_label.clip_text = true
+	_ios_header_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_ios_header_layer.add_child(_ios_header_label)
+	_sync_ios_header_label()
+
+
+func _sync_ios_header_label() -> void:
+	if not is_instance_valid(_ios_header_label):
+		return
+	_ios_header_label.visible = use_safe_floating_chrome(OS.get_name(), _visual_state)
+	if not _ios_header_label.visible:
+		return
+	var title := _header_title_override
+	if title.is_empty():
+		title = definition.get_resolved_display_name() if definition != null else String(name)
+	_ios_header_label.text = title
+	var padding := 6.0 if _visual_theme == null else _visual_theme.CONTENT_PADDING
+	var header_height := get_header_height()
+	var width := maxf(0.0, size.x - (padding + 1.0) * 2.0)
+	if _visual_theme != null:
+		width -= _get_header_actions_width()
+		if is_instance_valid(_header_accessory):
+			width -= _header_accessory.size.x + padding
+		_ios_header_label.add_theme_color_override(&"font_color", _visual_theme.text_color)
+		_ios_header_label.add_theme_font_size_override(
+			&"font_size", _visual_theme.default_font_size
+		)
+		if is_instance_valid(_visual_theme.default_font):
+			_ios_header_label.add_theme_font_override(&"font", _visual_theme.default_font)
+	_ios_header_label.position = Vector2(padding + 1.0, 0.0)
+	_ios_header_label.size = Vector2(maxf(0.0, width), header_height)
+
+
 func _get_header_actions_width() -> float:
 	var width := 0.0
 	if definition != null and definition.can_collapse:
@@ -465,6 +547,7 @@ func _layout_header_accessory() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_layout_header_accessory()
+		_sync_ios_header_label()
 		queue_redraw()
 
 
