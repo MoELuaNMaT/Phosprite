@@ -15,6 +15,12 @@ const MODE_LABELS := [
 	"No Workspace Chrome",
 	"Empty Editor Shell",
 	"No Transition Animation",
+	"No DockHost Only",
+	"No UI3 Taskbar Only",
+	"No UI3 Tool Options",
+	"No Floating Windows",
+	"No Timeline Module",
+	"No Docked Windows",
 ]
 
 
