@@ -282,8 +282,18 @@ func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_toler
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"SafeModeButtons"]',
-		"iPad selection tools must show the independent four-button controls, not legacy ButtonGroup",
+		"func _apply_ios_compact_options(force_ios := false) -> void:",
+		"iPad selection options must provide an independently testable visibility path",
+	)
+	check_has(
+		base_src,
+		"$SafeModeButtons.show()",
+		"iPad must explicitly show the independent selection buttons",
+	)
+	check_has(
+		base_src,
+		"$SafeModeButtons.hide()",
+		"desktop must hide iPad-only selection buttons",
 	)
 	check_has(
 		base_scene,
@@ -331,18 +341,19 @@ func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_toler
 	)
 	check_has(
 		base_src,
-		'if name == &"MagicWand":',
-		"Magic Wand should only add its tolerance control to the shared selection options",
+		'control.name == &"ToleranceSlider" and name == &"MagicWand"',
+		"Magic Wand must retain its tolerance setting on iPad",
 	)
 	check_has(
 		base_src,
-		'visible_controls.append(&"ToleranceSlider")',
-		"Magic Wand should retain Tolerance below its shared four selection buttons",
+		"control.visible = keep",
+		"iPad must hide unrelated transform and duplicate header controls",
 	)
-	check_has(
-		base_src,
-		"(child as Control).visible = StringName(child.name) in visible_controls",
-		"transform-only controls and the duplicate tool name should stay hidden on iOS",
+	check_true(
+		not base_scene.contains(
+			'[node name="SafeModeButtons" type="VBoxContainer" parent="." index="4"]\nvisible = false'
+		),
+		"safe iPad mode buttons must be visible from scene instantiation, not initially hidden",
 	)
 	check_has(
 		base_src,
@@ -376,6 +387,44 @@ func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_toler
 		not wand_scene.contains('[node name="ModeButtons"'),
 		"Magic Wand must inherit shared mode buttons instead of owning a private copy",
 	)
+
+
+func test_ios_four_mode_buttons_have_visible_instantiated_controls() -> void:
+	# Inspect actual inherited PackedScene controls, not just text patterns.
+	var scene := load("res://src/Tools/SelectionTools/RectSelect.tscn") as PackedScene
+	check_true(scene != null, "RectSelect PackedScene must be loadable")
+	if scene == null:
+		return
+	var tool := scene.instantiate() as BaseSelectionTool
+	check_true(tool != null, "RectSelect must inherit BaseSelectionTool")
+	if tool == null:
+		return
+	var safe := tool.get_node_or_null(^"SafeModeButtons") as VBoxContainer
+	check_true(safe != null, "safe four-button row must exist in instantiated RectSelect")
+	if safe == null:
+		tool.free()
+		return
+	check_true(safe.visible, "new mode buttons must start visible, not hidden in the scene")
+	tool._apply_ios_compact_options(true)
+	check_true(safe.visible, "iOS visibility policy must keep the safe button row visible")
+	check_eq(safe.get_child_count(), 4, "iPad must have four mode buttons")
+	check_true(not tool.get_node(^"ModeButtons").visible, "old grouped controls stay hidden")
+	check_true(not tool.get_node(^"Modes").visible, "dropdown stays hidden on iPad")
+	for index in 4:
+		var button := safe.get_child(index) as Button
+		check_true(button != null, "each iPad selection mode must be a Button")
+		if button == null:
+			continue
+		check_true(button.visible, "each iPad selection mode button must be visible")
+		check_true(button.button_group == null, "iPad mode buttons must not use ButtonGroup")
+		check_true(button.custom_minimum_size.y >= 28.0, "mode buttons need usable height")
+	tool._mode_selected = BaseSelectionTool.Mode.SUBTRACT
+	tool._sync_mode_buttons()
+	for index in 4:
+		var button := safe.get_child(index) as Button
+		if button != null:
+			check_eq(button.button_pressed, index == 2, "only the selected mode is pressed")
+	tool.free()
 
 
 func test_crop_options_are_hidden_and_drag_release_applies_crop() -> void:
