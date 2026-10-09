@@ -649,7 +649,9 @@ func _prepare_diagnostic_editor() -> void:
 			if manager is WorkspaceModuleManager:
 				_diagnostic_hide(manager.get_instance(&"ui3_tool_options"))
 		10:  # All floating modules (Preview and Tool Options).
-			_diagnostic_hide(editor_root.get_node_or_null(^"UI/WorkspaceDockHost/WorkspaceFloatingLayer"))
+			_diagnostic_hide(
+				editor_root.get_node_or_null(^"UI/WorkspaceDockHost/WorkspaceFloatingLayer")
+			)
 		11:  # Bottom Timeline wrapper including its header.
 			var manager := editor_root.get_node_or_null(^"UI/WorkspaceModuleManager")
 			if manager is WorkspaceModuleManager:
