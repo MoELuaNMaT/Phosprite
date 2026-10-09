@@ -130,6 +130,8 @@ func _localized_mode_name(mode: int) -> String:
 			return "22 仅隐藏参数标签"
 		23:
 			return "23 取消 Tool Options 紧凑布局"
+		24:
+			return "24 重新启用选区四按钮（对照）"
 	return "未知模式"
 
 
