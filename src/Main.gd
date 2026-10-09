@@ -388,8 +388,8 @@ func _run_managed_ui3_smoke() -> void:
 	if app_shell_controller.is_gallery() or Global.current_project.save_path != saved_path:
 		_fail_managed_ui3_smoke("existing project did not activate")
 		return
-	# All seventeen settings must remain reversible across Gallery/editor entries.
-	for diag_mode in range(1, 18):
+	# All twenty-three settings must remain reversible across Gallery/editor entries.
+	for diag_mode in range(1, 24):
 		if not app_shell_controller.return_home():
 			_fail_managed_ui3_smoke("could not return home before isolation " + str(diag_mode))
 			return
