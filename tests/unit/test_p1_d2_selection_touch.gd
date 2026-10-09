@@ -307,7 +307,7 @@ func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_toler
 			"each iPad button must route through the existing selection mode handler",
 		)
 	var start := base_scene.find('[node name="SafeModeButtons"')
-	var end := base_scene.find('[connection signal="pressed" from="ConfirmButtons/ConfirmButton"')
+	var end := base_scene.find('[node name="Modes" type="OptionButton"', start)
 	check_true(
 		start >= 0 and end > start,
 		"the iPad four-button group must have a distinct, bounded scene subtree",
