@@ -640,6 +640,25 @@ func _prepare_diagnostic_editor() -> void:
 		5:  # The bare editor shell, with no normal UI or canvas rendering.
 			_diagnostic_hide(editor_root.get_node_or_null(^"UI"))
 			_diagnostic_hide(editor_root.get_node_or_null(^"TopMenuContainer"))
+		7:  # Keep taskbar visible, disable all Workspace windows.
+			_diagnostic_hide(editor_root.get_node_or_null(^"UI/WorkspaceDockHost"))
+		8:  # Leave Workspace windows visible and disable taskbar only.
+			_diagnostic_hide(editor_root.find_child("UIProfile3Taskbar", true, false))
+		9:  # Isolate UI3 Tool Options, keep other Workspace modules visible.
+			var manager := editor_root.get_node_or_null(^"UI/WorkspaceModuleManager")
+			if manager is WorkspaceModuleManager:
+				_diagnostic_hide(manager.get_instance(&"ui3_tool_options"))
+		10:  # All floating modules (Preview and Tool Options).
+			_diagnostic_hide(editor_root.get_node_or_null(^"UI/WorkspaceDockHost/WorkspaceFloatingLayer"))
+		11:  # Bottom Timeline wrapper including its header.
+			var manager := editor_root.get_node_or_null(^"UI/WorkspaceModuleManager")
+			if manager is WorkspaceModuleManager:
+				_diagnostic_hide(manager.get_instance(&"animation_timeline"))
+		12:  # Only docked zones, leave floating modules visible.
+			var host := editor_root.get_node_or_null(^"UI/WorkspaceDockHost")
+			if is_instance_valid(host):
+				for zone in ["TopDock", "LeftDock", "RightDock", "BottomDock"]:
+					_diagnostic_hide(host.get_node_or_null(NodePath(zone)))
 	EditorEntryTrace.record(
 		"08_isolation_applied_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode]
 	)
