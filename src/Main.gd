@@ -414,7 +414,9 @@ func _run_managed_ui3_smoke() -> void:
 			var module_id := &"preview" if diag_mode == 1 else &"animation_timeline"
 			var hidden_module := live_manager.get_instance(module_id) as WorkspaceModule
 			if hidden_module == null or hidden_module.visible:
-				_fail_managed_ui3_smoke("diagnostic module not actually hidden: " + String(module_id))
+				_fail_managed_ui3_smoke(
+					"diagnostic module not actually hidden: " + String(module_id)
+				)
 				return
 		if diag_mode == 9 or diag_mode == 13:
 			var options := live_manager.get_instance(&"ui3_tool_options") as WorkspaceModule
