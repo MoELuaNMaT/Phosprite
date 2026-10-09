@@ -463,10 +463,7 @@ func _draw_ios_safe_floating_chrome() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(width, header_height)), _visual_theme.header_color)
 	draw_rect(rect, _visual_theme.border_color, false, 1.0)
 	draw_line(
-		Vector2(0.0, header_height),
-		Vector2(width, header_height),
-		_visual_theme.border_color,
-		1.0
+		Vector2(0.0, header_height), Vector2(width, header_height), _visual_theme.border_color, 1.0
 	)
 	_draw_collapse_affordance()
 	_draw_resize_affordance()
@@ -505,7 +502,9 @@ func _sync_ios_header_label() -> void:
 		if is_instance_valid(_header_accessory):
 			width -= _header_accessory.size.x + padding
 		_ios_header_label.add_theme_color_override(&"font_color", _visual_theme.text_color)
-		_ios_header_label.add_theme_font_size_override(&"font_size", _visual_theme.default_font_size)
+		_ios_header_label.add_theme_font_size_override(
+			&"font_size", _visual_theme.default_font_size
+		)
 		if is_instance_valid(_visual_theme.default_font):
 			_ios_header_label.add_theme_font_override(&"font", _visual_theme.default_font)
 	_ios_header_label.position = Vector2(padding + 1.0, 0.0)
