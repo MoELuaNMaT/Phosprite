@@ -21,6 +21,11 @@ const MODE_LABELS := [
 	"No Floating Windows",
 	"No Timeline Module",
 	"No Docked Windows",
+	"No Preview and Tool Options",
+	"No Preview Viewport",
+	"No Tool Options Content",
+	"No Floating Custom Draw",
+	"No Floating Module Content",
 ]
 
 
@@ -62,6 +67,12 @@ static func save_test_mode(mode: int) -> void:
 	config.save(SETTINGS_PATH)
 	if OS.get_name() == "iOS":
 		_append_report("MODE: " + MODE_LABELS[clampi(mode, 0, MODE_LABELS.size() - 1)])
+
+
+## Diagnostic facts must not override the last editor-entry checkpoint.
+static func note(message: String) -> void:
+	if OS.get_name() == "iOS":
+		_append_report("INFO: " + message)
 
 
 static func recent_report() -> String:
