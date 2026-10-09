@@ -48,6 +48,7 @@ var _diagnostic_viewport: SubViewport
 var _diagnostic_viewport_update_mode := SubViewport.UPDATE_ALWAYS
 var _diagnostic_draw_states: Array[Dictionary] = []
 var _diagnostic_compact_profile: WorkspaceUIProfile3
+var _diagnostic_legacy_selection: BaseSelectionTool
 
 
 func configure(
@@ -820,12 +821,23 @@ func _prepare_diagnostic_editor() -> void:
 			_diagnostic_hide_tool_control_types(_diagnostic_active_tool_options(), false)
 		23:  # Disable compact label/sliders layout while preserving working tool options.
 			_diagnostic_disable_compact_options()
+		24:  # A/B against the former iPad four-button selection layout.
+			var tool := _diagnostic_active_tool_options()
+			if tool is BaseSelectionTool:
+				_diagnostic_legacy_selection = tool
+				_diagnostic_legacy_selection.set_ios_legacy_mode_buttons(true)
+				EditorEntryTrace.note("LEGACY_SELECTION_MODE_BUTTONS_ENABLED")
+			else:
+				EditorEntryTrace.note("LEGACY_SELECTION_TOOL_MISSING")
 	EditorEntryTrace.record(
 		"08_isolation_applied_%s" % EditorEntryTrace.MODE_LABELS[diagnostic_mode]
 	)
 
 
 func _restore_diagnostic_editor() -> void:
+	if is_instance_valid(_diagnostic_legacy_selection):
+		_diagnostic_legacy_selection.set_ios_legacy_mode_buttons(false)
+	_diagnostic_legacy_selection = null
 	if is_instance_valid(_diagnostic_compact_profile):
 		_diagnostic_compact_profile.set_diagnostic_compact_options_disabled(false)
 	_diagnostic_compact_profile = null
