@@ -96,6 +96,18 @@ func _localized_mode_name(mode: int) -> String:
 			return "5 仅显示空编辑器"
 		6:
 			return "6 关闭界面过渡动画"
+		7:
+			return "7 只关闭 WorkspaceDockHost"
+		8:
+			return "8 只关闭 UI3 顶部工具栏"
+		9:
+			return "9 只关闭 Tool Options"
+		10:
+			return "10 关闭所有浮动窗口"
+		11:
+			return "11 只关闭 Timeline 整体窗口"
+		12:
+			return "12 关闭停靠窗口，保留浮动窗口"
 	return "未知模式"
 
 
