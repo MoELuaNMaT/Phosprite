@@ -50,6 +50,7 @@ var _header_accessory: Control
 var _header_title_override := ""
 var _ios_header_layer: Node2D
 var _ios_header_label: Label
+var diagnostic_no_custom_draw := false
 
 
 func _ready() -> void:
@@ -390,7 +391,7 @@ func get_visual_state() -> StringName:
 
 
 func _draw() -> void:
-	if _visual_theme == null:
+	if diagnostic_no_custom_draw or _visual_theme == null:
 		return
 	if use_safe_floating_chrome(OS.get_name(), _visual_state):
 		_draw_ios_safe_floating_chrome()
