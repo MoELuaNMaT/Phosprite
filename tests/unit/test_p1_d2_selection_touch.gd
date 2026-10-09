@@ -284,7 +284,6 @@ func test_ios_selection_options_use_ungrouped_four_buttons_with_magic_wand_toler
 		base_src,
 		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"SafeModeButtons"]',
 		"iPad selection tools must show the independent four-button controls, not legacy ButtonGroup",
-
 	)
 	check_has(
 		base_scene,
