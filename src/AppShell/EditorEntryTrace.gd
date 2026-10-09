@@ -26,6 +26,12 @@ const MODE_LABELS := [
 	"No Tool Options Content",
 	"No Floating Custom Draw",
 	"No Floating Module Content",
+	"No Options Host",
+	"No Options ScrollContainer",
+	"No Active Tool Controls",
+	"No Value Sliders",
+	"No Option Labels",
+	"No Compact Styling",
 ]
 
 
