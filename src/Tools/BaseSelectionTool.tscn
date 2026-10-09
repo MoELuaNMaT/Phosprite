@@ -54,12 +54,12 @@ text = "Mode:"
 
 # iPad's four mode buttons are deliberately independent of ButtonGroup.
 # The original desktop group remains in ModeButtons, but stays hidden on iOS.
-[node name="SafeModeButtons" type="VBoxContainer" parent="." index="4"]
+[node name="SafeModeButtons" type="VBoxContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="Replace" type="Button" parent="SafeModeButtons" index="0"]
+[node name="Replace" type="Button" parent="SafeModeButtons"]
 custom_minimum_size = Vector2(72, 28)
 layout_mode = 2
 toggle_mode = true
@@ -67,21 +67,21 @@ button_pressed = true
 text = "Replace"
 clip_text = true
 
-[node name="Add" type="Button" parent="SafeModeButtons" index="1"]
+[node name="Add" type="Button" parent="SafeModeButtons"]
 custom_minimum_size = Vector2(72, 28)
 layout_mode = 2
 toggle_mode = true
 text = "Add"
 clip_text = true
 
-[node name="Subtract" type="Button" parent="SafeModeButtons" index="2"]
+[node name="Subtract" type="Button" parent="SafeModeButtons"]
 custom_minimum_size = Vector2(72, 28)
 layout_mode = 2
 toggle_mode = true
 text = "Subtract"
 clip_text = true
 
-[node name="Intersect" type="Button" parent="SafeModeButtons" index="3"]
+[node name="Intersect" type="Button" parent="SafeModeButtons"]
 custom_minimum_size = Vector2(72, 28)
 layout_mode = 2
 toggle_mode = true
