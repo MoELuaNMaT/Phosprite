@@ -19,7 +19,8 @@ const TWO_FINGER_ROTATION_KEY := "two_finger_rotation_enabled"
 const DEFAULT_FINGER_POLICY := FingerPolicy.PENCIL_PRIORITY
 const DEFAULT_TWO_FINGER_ROTATION_ENABLED := false
 const TWO_FINGER_EPSILON := 0.01
-const FINGER_LONG_PRESS_SECONDS := 0.45
+const FINGER_LONG_PRESS_ANIMATION_DELAY_SECONDS := 0.4
+const FINGER_LONG_PRESS_SECONDS := 0.5
 const FINGER_LONG_PRESS_SLOP_PX := 12.0
 const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2
 const LONG_PRESS_INDICATOR_CANVAS_LAYER := 100
@@ -573,36 +574,49 @@ func _start_pending_content(canvas: Node2D, touch_id: int, screen_position: Vect
 	state["direct_color_pick"] = false
 	state["content_origin"] = screen_position
 	_touches[touch_id] = state
-	_begin_long_press_indicator(canvas, screen_position)
 	var generation := int(state.get("generation", -1))
+	var animation_timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_ANIMATION_DELAY_SECONDS)
+	animation_timer.timeout.connect(_try_begin_long_press_indicator.bind(canvas, touch_id, generation))
 	var timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_SECONDS)
 	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id, generation))
 
 
-func _try_begin_long_press(canvas: Node2D, touch_id: int, generation: int) -> void:
-	if not is_instance_valid(canvas) or _content_touch_id != touch_id or not _touches.has(touch_id):
-		return
-	if _pencil_touch_id != -1 or _navigation_ids.size() == 2:
+func _try_begin_long_press_indicator(canvas: Node2D, touch_id: int, generation: int) -> void:
+	if not _is_pending_long_press_valid(canvas, touch_id, generation):
 		return
 	var state: Dictionary = _touches[touch_id]
-	if int(state.get("generation", -1)) != generation:
+	_begin_long_press_indicator(canvas, Vector2(state["position"]))
+
+
+func _try_begin_long_press(canvas: Node2D, touch_id: int, generation: int) -> void:
+	if not _is_pending_long_press_valid(canvas, touch_id, generation):
 		return
+	var state: Dictionary = _touches[touch_id]
+	state["content_pending"] = false
+	state["long_press_pick"] = true
+	_touches[touch_id] = state
+	canvas.set_adapter_tool_preview_active(false)
+	_sample_active_color(canvas, Vector2(state["position"]), COLOR_SAMPLING.TOP_COLOR)
+	_activate_long_press_indicator(Vector2(state["position"]))
+
+
+func _is_pending_long_press_valid(canvas: Node2D, touch_id: int, generation: int) -> bool:
+	if not is_instance_valid(canvas) or _content_touch_id != touch_id or not _touches.has(touch_id):
+		return false
+	if _pencil_touch_id != -1 or _navigation_ids.size() == 2:
+		return false
+	var state: Dictionary = _touches[touch_id]
+	if int(state.get("generation", -1)) != generation:
+		return false
 	if (
 		int(state["kind"]) != PointerKind.DIRECT
 		or bool(state["suppressed"])
 		or not bool(state.get("content_pending", false))
 	):
-		return
+		return false
 	var origin := Vector2(state["content_origin"])
 	var current := Vector2(state["position"])
-	if long_press_motion_exceeds_slop(origin, current):
-		return
-	state["content_pending"] = false
-	state["long_press_pick"] = true
-	_touches[touch_id] = state
-	canvas.set_adapter_tool_preview_active(false)
-	_sample_active_color(canvas, current, COLOR_SAMPLING.TOP_COLOR)
-	_activate_long_press_indicator(current)
+	return not long_press_motion_exceeds_slop(origin, current)
 
 
 func _start_direct_color_pick(
@@ -761,7 +775,10 @@ func _begin_long_press_indicator(canvas: Node2D, viewport_position: Vector2) -> 
 	var initial_color := Tools.get_assigned_color(_active_color_target_button())
 	var target_color := _peek_active_color(canvas, viewport_position, COLOR_SAMPLING.TOP_COLOR)
 	_long_press_indicator.begin(
-		viewport_position, initial_color, target_color, FINGER_LONG_PRESS_SECONDS
+		viewport_position,
+		initial_color,
+		target_color,
+		FINGER_LONG_PRESS_SECONDS - FINGER_LONG_PRESS_ANIMATION_DELAY_SECONDS
 	)
 
 
