@@ -1,7 +1,6 @@
 extends PanelContainer
 
 const NAVIGATION := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
-const PREVIEW_GREYSCALE_SHADER := preload("res://src/Shaders/PreviewGreyscale.gdshader")
 
 var _preview_touches: Dictionary = {}
 var _navigation_ids := PackedInt32Array()
@@ -13,7 +12,6 @@ var _baseline_angle := 0.0
 var _anchor_canvas := Vector2.ZERO
 var _pan_active := false
 var _pinch_active := false
-var _greyscale_material: ShaderMaterial
 
 @onready
 var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
@@ -25,11 +23,14 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var end_frame := $"%EndFrame" as ValueSlider
 
 
-func _ready() -> void:
-	_greyscale_material = ShaderMaterial.new()
-	_greyscale_material.shader = PREVIEW_GREYSCALE_SHADER
+func _enter_tree() -> void:
 	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
 		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+	# _ready() is not guaranteed to run when UI3 reuses and reparents the Preview.
+	_on_greyscale_view_changed(Global.greyscale_view)
+
+
+func _ready() -> void:
 	_on_greyscale_view_changed(Global.greyscale_view)
 
 
@@ -188,10 +189,6 @@ func _on_GrayscaleButton_toggled(button_pressed: bool) -> void:
 func _on_greyscale_view_changed(enabled: bool) -> void:
 	if is_instance_valid(grayscale_button):
 		grayscale_button.set_pressed_no_signal(enabled)
-	if is_instance_valid(preview_viewport_container):
-		# Filter the final SubViewport texture, not its screen back-buffer.
-		# Keeping the material absent in color mode preserves the original rendering.
-		preview_viewport_container.material = _greyscale_material if enabled else null
 
 
 func _on_PlayButton_toggled(button_pressed: bool) -> void:
