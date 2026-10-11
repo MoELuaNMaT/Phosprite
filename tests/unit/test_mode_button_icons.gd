@@ -31,7 +31,9 @@ func _check_mode_buttons(scene_path: String, expected: Dictionary) -> void:
 			"mode icon must be horizontally centered: " + path
 		)
 		check_true(button.expand_icon, "mode icon must fit compact Tool Options: " + path)
-		check_true(not button.tooltip_text.is_empty(), "mode must retain accessible tooltip: " + path)
+		check_true(
+			not button.tooltip_text.is_empty(), "mode must retain accessible tooltip: " + path
+		)
 		check_true(button.toggle_mode, "mode must remain toggleable: " + path)
 		check_true(button.button_group != null, "mode group must stay exclusive: " + path)
 		check_true(
