@@ -576,7 +576,9 @@ func _start_pending_content(canvas: Node2D, touch_id: int, screen_position: Vect
 	_touches[touch_id] = state
 	var generation := int(state.get("generation", -1))
 	var animation_timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_ANIMATION_DELAY_SECONDS)
-	animation_timer.timeout.connect(_try_begin_long_press_indicator.bind(canvas, touch_id, generation))
+	animation_timer.timeout.connect(
+		_try_begin_long_press_indicator.bind(canvas, touch_id, generation)
+	)
 	var timer := canvas.get_tree().create_timer(FINGER_LONG_PRESS_SECONDS)
 	timer.timeout.connect(_try_begin_long_press.bind(canvas, touch_id, generation))
 
