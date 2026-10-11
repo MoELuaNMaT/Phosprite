@@ -234,6 +234,7 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 		"the removed right tool icon must not leave a dead Preferences row",
 	)
 
+
 func test_greyscale_state_controls_actual_preview_compositing() -> void:
 	var preview_source := FileAccess.get_file_as_string("res://src/UI/Canvas/CanvasPreview.gd")
 	var global_source := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
