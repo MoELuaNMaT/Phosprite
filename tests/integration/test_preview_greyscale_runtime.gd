@@ -10,9 +10,9 @@ func test_preview_and_canvas_toggle_greyscale_together() -> void:
 	tree.root.add_child(preview)
 	await tree.process_frame
 
-	var viewport_container := preview.get_node_or_null(
-		"VBox/HBox/PreviewViewportContainer"
-	) as SubViewportContainer
+	var viewport_container := (
+		preview.get_node_or_null("VBox/HBox/PreviewViewportContainer") as SubViewportContainer
+	)
 	var button := preview.get_node_or_null("%GrayscaleButton") as Button
 	var main_overlay := (
 		Global.main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision")
@@ -73,9 +73,9 @@ func test_preview_and_canvas_toggle_greyscale_together() -> void:
 	var reopened := PREVIEW_SCENE.instantiate() as PanelContainer
 	tree.root.add_child(reopened)
 	await tree.process_frame
-	var reopened_container := reopened.get_node_or_null(
-		"VBox/HBox/PreviewViewportContainer"
-	) as SubViewportContainer
+	var reopened_container := (
+		reopened.get_node_or_null("VBox/HBox/PreviewViewportContainer") as SubViewportContainer
+	)
 	check_true(
 		reopened_container != null and reopened_container.material is ShaderMaterial,
 		"Reopened Preview must restore actual greyscale filtering"
