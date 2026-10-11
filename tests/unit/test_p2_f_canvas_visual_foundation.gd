@@ -154,8 +154,18 @@ func test_preview_footer_exposes_synced_grayscale_toggle() -> void:
 	)
 	check_has(
 		global_source,
-		'control.find_child("GreyscaleVision", true, false)',
-		"the shared grayscale state must still control the existing canvas grayscale overlay",
+		'main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision")',
+		"the shared grayscale state must target Main Canvas instead of an arbitrary Preview",
+	)
+	check_has(
+		preview_scene,
+		'[node name="GreyscaleVision" type="ColorRect"',
+		"Preview must include its own greyscale shader overlay",
+	)
+	check_has(
+		preview_source,
+		"greyscale_overlay.visible = enabled",
+		"the shared state must change the Preview rendering, not just its button",
 	)
 	check_has(
 		global_source,
