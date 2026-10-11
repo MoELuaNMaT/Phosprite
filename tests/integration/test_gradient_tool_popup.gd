@@ -26,7 +26,9 @@ func test_gradient_preview_shares_live_editor_and_preserves_configuration() -> v
 	check_eq(preview.custom_minimum_size, Vector2(42, 42), "the entry has a square minimum size")
 	check_eq(preview_texture.fill_from, Vector2(0, 1), "gradient begins at bottom left")
 	check_eq(preview_texture.fill_to, Vector2(1, 0), "gradient ends at top right")
-	check_true(preview_texture.gradient == editor.gradient, "preview and tool use the same gradient")
+	check_true(
+		preview_texture.gradient == editor.gradient, "preview and tool use the same gradient"
+	)
 
 	var custom_gradient := Gradient.new()
 	custom_gradient.add_point(0.5, Color.RED)
@@ -40,9 +42,7 @@ func test_gradient_preview_shares_live_editor_and_preserves_configuration() -> v
 	tool.set_compact_option_layout(true)
 	await tree.process_frame
 	check_true(preview.icon == preview_texture, "UI3 compaction preserves preview texture")
-	check_true(
-		editor.get_parent() == popup.get_node("PopupMargin"), "UI3 does not move the editor"
-	)
+	check_true(editor.get_parent() == popup.get_node("PopupMargin"), "UI3 does not move the editor")
 	tool.set_compact_option_layout(false)
 
 
