@@ -81,19 +81,23 @@ func test_bucket_fill_area_icon_mapping() -> void:
 		}
 	)
 
+
 func test_mode_buttons_keep_square_geometry_in_wide_column() -> void:
 	var cases := {
-		"res://src/Tools/BaseSelectionTool.tscn": [
+		"res://src/Tools/BaseSelectionTool.tscn":
+		[
 			"ModeButtons/Replace",
 			"ModeButtons/Add",
 			"ModeButtons/Subtract",
 			"ModeButtons/Intersect",
 		],
-		"res://src/Tools/UtilityTools/ColorPicker.tscn": [
+		"res://src/Tools/UtilityTools/ColorPicker.tscn":
+		[
 			"ColorPicker/ExtractModeButtons/TopColor",
 			"ColorPicker/ExtractModeButtons/CurrentLayer",
 		],
-		"res://src/Tools/DesignTools/Bucket.tscn": [
+		"res://src/Tools/DesignTools/Bucket.tscn":
+		[
 			"FillAreaOptions/SimilarArea",
 			"FillAreaOptions/SimilarColors",
 			"FillAreaOptions/WholeSelection",
@@ -114,7 +118,9 @@ func test_mode_buttons_keep_square_geometry_in_wide_column() -> void:
 		await tree.process_frame
 		for button in buttons:
 			check_almost_eq(
-				button.size.x, button.size.y, 0.01,
+				button.size.x,
+				button.size.y,
+				0.01,
 				"icon mode buttons must remain square in a wide UI3 Tool Options column"
 			)
 			check_true(
