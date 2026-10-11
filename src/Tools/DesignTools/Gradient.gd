@@ -73,8 +73,12 @@ func _on_gradient_preview_button_pressed() -> void:
 	popup_pos.x += roundi(button_rect.size.x) + 8
 	if popup_pos.x + popup_size.x > roundi(viewport_size.x) - 8:
 		popup_pos.x = roundi(button_rect.position.x) - popup_size.x - 8
-	popup_pos.x = clampi(popup_pos.x, 8, maxi(8, roundi(viewport_size.x) - popup_size.x - 8))
-	popup_pos.y = clampi(popup_pos.y, 8, maxi(8, roundi(viewport_size.y) - popup_size.y - 8))
+	popup_pos.x = clampi(
+		popup_pos.x, 8, maxi(8, roundi(viewport_size.x) - popup_size.x - 8)
+	)
+	popup_pos.y = clampi(
+		popup_pos.y, 8, maxi(8, roundi(viewport_size.y) - popup_size.y - 8)
+	)
 	gradient_popup.popup_on_parent(Rect2i(popup_pos, popup_size))
 
 
