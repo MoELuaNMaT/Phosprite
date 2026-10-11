@@ -87,25 +87,6 @@ texture = ExtResource("6")
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Mode" type="HBoxContainer" parent="VBox/Animation/VBoxContainer" unique_id=2086290509]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="VBox/Animation/VBoxContainer/Mode" unique_id=1920647195]
-layout_mode = 2
-text = "Animation mode:"
-
-[node name="OptionButton" type="OptionButton" parent="VBox/Animation/VBoxContainer/Mode" unique_id=646642218]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_default_cursor_shape = 2
-clip_text = true
-selected = 0
-item_count = 2
-popup/item_0/text = "All frames"
-popup/item_0/id = 0
-popup/item_1/text = "Current frame as spritesheet"
-popup/item_1/id = 1
-
 [node name="GrayscaleButton" type="Button" parent="VBox/Animation" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 32)
@@ -203,7 +184,6 @@ prefix = "End frame:"
 [connection signal="mouse_exited" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_exited"]
 [connection signal="toggled" from="VBox/Animation/PlayButton" to="." method="_on_PlayButton_toggled"]
 [connection signal="toggled" from="VBox/Animation/GrayscaleButton" to="." method="_on_GrayscaleButton_toggled"]
-[connection signal="item_selected" from="VBox/Animation/VBoxContainer/Mode/OptionButton" to="." method="_on_OptionButton_item_selected"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/HFrames" to="." method="_on_HFrames_value_changed"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/VFrames" to="." method="_on_VFrames_value_changed"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/StartFrame" to="." method="_on_StartFrame_value_changed"]
