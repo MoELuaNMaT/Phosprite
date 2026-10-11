@@ -1,85 +1,113 @@
 extends "res://tests/test_base.gd"
 
 const PREVIEW_SCENE := preload("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn")
-const PREVIEW_SHADER := "res://src/Shaders/PreviewGreyscale.gdshader"
+const BLEND_SHADER := "res://src/Shaders/BlendLayers.gdshader"
 
 
 func test_preview_and_canvas_toggle_greyscale_together() -> void:
-	var previous_state := Global.greyscale_view
+	var original_state := Global.greyscale_view
 	var preview := PREVIEW_SCENE.instantiate() as PanelContainer
 	tree.root.add_child(preview)
 	await tree.process_frame
 
-	var viewport_container := (
-		preview.get_node_or_null("VBox/HBox/PreviewViewportContainer") as SubViewportContainer
-	)
 	var button := preview.get_node_or_null("%GrayscaleButton") as Button
+	var image_node := preview.get_node_or_null("%CanvasPreview") as Node2D
 	var main_overlay := (
 		Global.main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision")
 		as ColorRect
 	)
-	check_true(viewport_container != null, "Preview must have a SubViewportContainer")
-	check_true(main_overlay != null, "Canvas must keep its screen greyscale layer")
-	check_true(button != null, "Preview must keep its greyscale toggle")
-	if viewport_container == null or main_overlay == null or button == null:
+	check_true(button != null, "Preview must have a grayscale button")
+	check_true(image_node != null, "Preview must have a composited image renderer")
+	check_true(main_overlay != null, "Canvas must have a grayscale overlay")
+	if button == null or image_node == null or main_overlay == null:
 		preview.queue_free()
 		return
 
-	var preview_shader_source := FileAccess.get_file_as_string(PREVIEW_SHADER)
-	check_has(
-		preview_shader_source,
-		"texture(TEXTURE, UV)",
-		"Preview must filter its rendered texture, not read the screen"
-	)
-	check_true(
-		not ("hint_screen_texture" in preview_shader_source),
-		"Preview must not depend on the SubViewport screen back-buffer"
-	)
-	var global_src := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
-	check_true(
-		not ('control.find_child("GreyscaleVision"' in global_src),
-		"global greyscale must target Main Canvas independently of Preview order"
+	var main_material := Global.canvas.material as ShaderMaterial
+	var animation_material := image_node.get("animation_material") as ShaderMaterial
+	check_true(main_material != null, "Canvas must have a compositing shader")
+	check_true(animation_material != null, "Animated Preview must have a compositing shader")
+	if main_material == null or animation_material == null:
+		preview.queue_free()
+		return
+	check_eq(
+		animation_material.shader.resource_path,
+		BLEND_SHADER,
+		"Preview must render animated frames with the grayscale-aware shader"
 	)
 
 	Global.greyscale_view = false
 	await tree.process_frame
-	check_true(viewport_container.material == null, "Preview color mode must be unfiltered")
 	check_true(not main_overlay.visible, "Canvas must start in color mode")
+	check_true(
+		not bool(main_material.get_shader_parameter(&"greyscale_view")),
+		"Canvas shader must start in color mode"
+	)
+	check_true(
+		not bool(animation_material.get_shader_parameter(&"greyscale_view")),
+		"Animated Preview must start in color mode"
+	)
+
 	button.button_pressed = true
 	await tree.process_frame
-	check_true(Global.greyscale_view, "Preview button must change the shared state")
-	var preview_material := viewport_container.material as ShaderMaterial
-	check_true(preview_material != null, "Preview must filter the composited image in greyscale")
-	if preview_material != null:
-		check_eq(
-			preview_material.shader.resource_path,
-			PREVIEW_SHADER,
-			"Preview must use the texture-sampling greyscale shader"
-		)
-	check_true(main_overlay.visible, "Canvas image must enter greyscale mode")
+	check_true(Global.greyscale_view, "Preview button must update global state")
+	check_true(main_overlay.visible, "Canvas must enter grayscale mode")
+	check_true(
+		bool(main_material.get_shader_parameter(&"greyscale_view")),
+		"Canvas compositing must enter grayscale mode"
+	)
+	check_true(
+		bool(animation_material.get_shader_parameter(&"greyscale_view")),
+		"Animated Preview compositing must enter grayscale mode"
+	)
 
 	Global.greyscale_view = false
 	await tree.process_frame
-	check_true(viewport_container.material == null, "Preview must restore original color rendering")
-	check_true(not main_overlay.visible, "Canvas must return to color")
-	check_true(not button.button_pressed, "Preview button must follow shared state")
+	check_true(not button.button_pressed, "Preview button must return to color mode")
+	check_true(
+		not bool(animation_material.get_shader_parameter(&"greyscale_view")),
+		"Animated Preview must return to color mode"
+	)
+
+	# UI3 reparents the same module; _ready() is not called a second time.
+	var holder := Control.new()
+	tree.root.add_child(holder)
+	preview.reparent(holder)
+	await tree.process_frame
+	check_true(
+		Global.greyscale_view_changed.is_connected(
+			Callable(preview, "_on_greyscale_view_changed")
+		),
+		"Preview toggle must reconnect when UI3 reparents the module"
+	)
+	check_true(
+		Global.greyscale_view_changed.is_connected(
+			Callable(image_node, "_on_greyscale_view_changed")
+		),
+		"Preview renderer must reconnect when UI3 reparents the module"
+	)
 	Global.greyscale_view = true
 	await tree.process_frame
-	check_true(viewport_container.material is ShaderMaterial, "View menu must filter Preview")
-	check_true(button.button_pressed, "View menu must update Preview button")
+	check_true(button.button_pressed, "Preview button must follow state after reparenting")
+	check_true(
+		bool(animation_material.get_shader_parameter(&"greyscale_view")),
+		"Preview renderer must follow state after reparenting"
+	)
 
-	preview.queue_free()
+	holder.queue_free()
 	await tree.process_frame
 	var reopened := PREVIEW_SCENE.instantiate() as PanelContainer
 	tree.root.add_child(reopened)
 	await tree.process_frame
-	var reopened_container := (
-		reopened.get_node_or_null("VBox/HBox/PreviewViewportContainer") as SubViewportContainer
-	)
+	var reopened_image := reopened.get_node_or_null("%CanvasPreview") as Node2D
+	var reopened_material: ShaderMaterial = null
+	if reopened_image != null:
+		reopened_material = reopened_image.get("animation_material") as ShaderMaterial
 	check_true(
-		reopened_container != null and reopened_container.material is ShaderMaterial,
-		"Reopened Preview must restore actual greyscale filtering"
+		reopened_material != null
+		and bool(reopened_material.get_shader_parameter(&"greyscale_view")),
+		"Reopened Preview must restore grayscale rendering"
 	)
 	reopened.queue_free()
-	Global.greyscale_view = previous_state
+	Global.greyscale_view = original_state
 	await tree.process_frame
