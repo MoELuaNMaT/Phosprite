@@ -284,6 +284,45 @@ jobs:
           path: ./build/ios/${{ env.EXPORT_NAME }}-unsigned.ipa
           if-no-files-found: error
 
+      # Preserve the original unsigned IPA and provide a second package for AltServer/AltStore.
+      # AltServer still replaces this ad-hoc signature with a device-specific Apple ID signature.
+      - name: Package AltServer compatibility IPA (ad-hoc signed) 📱
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ./build/ios
+          APP_PATH="${EXPORT_NAME}.xcarchive/Products/Applications/${EXPORT_NAME}.app"
+          test -d "${APP_PATH}"
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "${APP_PATH}" Payload/
+          SIGN_APP="Payload/${EXPORT_NAME}.app"
+          rm -rf "${SIGN_APP}/_CodeSignature"
+
+          # Sign embedded executable libraries before sealing the outer app.
+          if test -d "${SIGN_APP}/Frameworks"; then
+            while IFS= read -r -d '' library; do
+              codesign --force --sign - --timestamp=none "${library}"
+              codesign --verify --strict --verbose=2 "${library}"
+            done < <(find "${SIGN_APP}/Frameworks" -type f \( -name '*.dylib' -o -name '*.so' \) -print0)
+          fi
+          codesign --force --sign - --timestamp=none "${SIGN_APP}"
+          codesign --verify --deep --strict --verbose=2 "${SIGN_APP}"
+          test -f "${SIGN_APP}/_CodeSignature/CodeResources"
+
+          zip -qry "${EXPORT_NAME}-altserver.ipa" Payload
+          unzip -t "${EXPORT_NAME}-altserver.ipa" >/dev/null
+          unzip -l "${EXPORT_NAME}-altserver.ipa" | grep -q 'Payload/Phosprite.app/_CodeSignature/CodeResources'
+          rm -rf Payload
+          ls -la "${EXPORT_NAME}-altserver.ipa"
+
+      - name: Upload AltServer-compatible IPA artifact 📤
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EXPORT_NAME }}-ios-altserver-adhoc
+          path: ./build/ios/${{ env.EXPORT_NAME }}-altserver.ipa
+          if-no-files-found: error
+
       - name: Upload Xcode project artifact 🚀
         uses: actions/upload-artifact@v4
         with:
