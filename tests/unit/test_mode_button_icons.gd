@@ -112,6 +112,7 @@ func test_mode_buttons_keep_square_geometry_in_wide_column() -> void:
 		var buttons: Array[Button] = []
 		for path: String in cases[scene_path]:
 			var button := options.get_node(path) as Button
+			button.owner = null
 			button.get_parent().remove_child(button)
 			wide_column.add_child(button)
 			buttons.append(button)
