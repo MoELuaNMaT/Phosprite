@@ -54,11 +54,6 @@ func _ready() -> void:
 	_refresh_gradient_preview()
 
 
-func _exit_tree() -> void:
-	if is_instance_valid(gradient_popup):
-		gradient_popup.hide()
-
-
 func _refresh_gradient_preview() -> void:
 	# Use the actual gradient resource, including its interpolation and alpha values.
 	_preview_gradient_texture.gradient = gradient_edit.gradient
