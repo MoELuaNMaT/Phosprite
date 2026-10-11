@@ -28,7 +28,11 @@ var _drawing := false
 var _displace_origin := false
 var _selection_tex: ImageTexture
 
-@onready var gradient_edit: GradientEditNode = $GradientEdit
+var _preview_gradient_texture := GradientTexture2D.new()
+
+@onready var gradient_edit: GradientEditNode = $GradientPopup/PopupMargin/GradientEdit
+@onready var gradient_preview_button: Button = $GradientPreviewButton
+@onready var gradient_popup: PopupPanel = $GradientPopup
 @onready var shape_option_button: OptionButton = %ShapeOptionButton
 @onready var dithering_option_button: OptionButton = %DitheringOptionButton
 @onready var repeat_option_button: OptionButton = %RepeatOptionButton
@@ -43,6 +47,40 @@ func _ready() -> void:
 	for matrix in ShaderLoader.dither_matrices:
 		dithering_option_button.add_item(matrix.name)
 	super()
+	_preview_gradient_texture.width = 64
+	_preview_gradient_texture.height = 64
+	_preview_gradient_texture.fill_from = Vector2(0.0, 1.0)
+	_preview_gradient_texture.fill_to = Vector2(1.0, 0.0)
+	_refresh_gradient_preview()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(gradient_popup):
+		gradient_popup.hide()
+
+
+func _refresh_gradient_preview() -> void:
+	# Use the actual gradient resource, including its interpolation and alpha values.
+	_preview_gradient_texture.gradient = gradient_edit.gradient
+	gradient_preview_button.icon = _preview_gradient_texture
+	gradient_preview_button.queue_redraw()
+
+
+func _on_gradient_preview_button_pressed() -> void:
+	# Keep the editor within the main window on iPad and desktop.
+	var viewport_size := get_viewport().get_visible_rect().size
+	var popup_size := Vector2i(
+		mini(460, maxi(1, roundi(viewport_size.x) - 16)),
+		mini(180, maxi(1, roundi(viewport_size.y) - 16))
+	)
+	var button_rect := gradient_preview_button.get_global_rect()
+	var popup_pos := Vector2i(button_rect.position)
+	popup_pos.x += roundi(button_rect.size.x) + 8
+	if popup_pos.x + popup_size.x > roundi(viewport_size.x) - 8:
+		popup_pos.x = roundi(button_rect.position.x) - popup_size.x - 8
+	popup_pos.x = clampi(popup_pos.x, 8, maxi(8, roundi(viewport_size.x) - popup_size.x - 8))
+	popup_pos.y = clampi(popup_pos.y, 8, maxi(8, roundi(viewport_size.y) - popup_size.y - 8))
+	gradient_popup.popup_on_parent(Rect2i(popup_pos, popup_size))
 
 
 func _input(event: InputEvent) -> void:
@@ -270,6 +308,7 @@ func _set_bit(
 
 
 func _on_gradient_edit_updated(_gradient: Gradient, _cc: bool) -> void:
+	_refresh_gradient_preview()
 	update_config()
 	save_config()
 
