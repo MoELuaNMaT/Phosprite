@@ -19,6 +19,9 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var camera := $"%CameraPreview" as CanvasCamera
 @onready var play_button := $"%PlayButton" as Button
 @onready var grayscale_button := $"%GrayscaleButton" as Button
+@onready var greyscale_overlay := (
+	$VBox/HBox/PreviewViewportContainer/SubViewport/CanvasLayer/GreyscaleVision as ColorRect
+)
 @onready var start_frame := $"%StartFrame" as ValueSlider
 @onready var end_frame := $"%EndFrame" as ValueSlider
 
@@ -184,6 +187,8 @@ func _on_GrayscaleButton_toggled(button_pressed: bool) -> void:
 func _on_greyscale_view_changed(enabled: bool) -> void:
 	if is_instance_valid(grayscale_button):
 		grayscale_button.set_pressed_no_signal(enabled)
+	if is_instance_valid(greyscale_overlay):
+		greyscale_overlay.visible = enabled
 
 
 func _on_PlayButton_toggled(button_pressed: bool) -> void:
