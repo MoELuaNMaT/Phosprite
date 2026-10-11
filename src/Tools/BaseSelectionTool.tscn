@@ -67,8 +67,9 @@ layout_mode = 2
 alignment = 1
 
 [node name="Replace" type="Button" parent="ModeButtons" index="0"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_modes")
@@ -80,8 +81,9 @@ text = ""
 clip_text = true
 
 [node name="Add" type="Button" parent="ModeButtons" index="1"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
 icon = ExtResource("mdi_vector_union")
@@ -92,8 +94,9 @@ text = ""
 clip_text = true
 
 [node name="Subtract" type="Button" parent="ModeButtons" index="2"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
 icon = ExtResource("mdi_selection_remove")
@@ -104,8 +107,9 @@ text = ""
 clip_text = true
 
 [node name="Intersect" type="Button" parent="ModeButtons" index="3"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
 icon = ExtResource("mdi_vector_intersection")

@@ -3,6 +3,7 @@ extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
 const MODE_BUTTON_MIN_WIDTH := 112.0
+const MODE_ICON_BUTTON_SIZE := 32.0
 const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0
 const COMPACT_OPTION_LABEL_HEIGHT := 20.0
 const COMPACT_OPTION_ROW_HEIGHT := 28.0
@@ -127,6 +128,13 @@ func _configure_sidebar_label(label: Label) -> void:
 
 
 func _configure_sidebar_button(button: Button) -> void:
+	# Icon-only mode buttons should not inherit the wide text-button minimum.
+	# The shrink flag prevents VBox containers from stretching them horizontally.
+	if button.button_group != null and button.icon != null and button.text.is_empty():
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		button.custom_minimum_size = Vector2.ONE * MODE_ICON_BUTTON_SIZE
+		button.clip_text = true
+		return
 	if button.button_group != null:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.clip_text = false

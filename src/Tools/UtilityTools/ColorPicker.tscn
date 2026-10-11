@@ -53,8 +53,9 @@ layout_mode = 2
 alignment = 1
 
 [node name="TopColor" type="Button" parent="ColorPicker/ExtractModeButtons" index="0"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_extract")
@@ -66,8 +67,9 @@ text = ""
 clip_text = true
 
 [node name="CurrentLayer" type="Button" parent="ColorPicker/ExtractModeButtons" index="1"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 toggle_mode = true
 button_group = SubResource("ButtonGroup_extract")
 icon = ExtResource("mdi_layers")

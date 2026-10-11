@@ -50,8 +50,9 @@ size_flags_horizontal = 3
 alignment = 1
 
 [node name="SimilarArea" type="Button" parent="FillAreaOptions"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_pressed = true
@@ -63,8 +64,9 @@ tooltip_text = "Similar area — fill contiguous region"
 text = ""
 
 [node name="SimilarColors" type="Button" parent="FillAreaOptions"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_fill_area")
@@ -75,8 +77,9 @@ tooltip_text = "Similar colors — fill matching colors"
 text = ""
 
 [node name="WholeSelection" type="Button" parent="FillAreaOptions"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_fill_area")
