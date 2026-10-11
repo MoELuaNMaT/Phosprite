@@ -5,6 +5,10 @@
 [ext_resource type="Script" uid="uid://dvxi2qxovndmf" path="res://src/Tools/DesignTools/Bucket.gd" id="3"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="4_1pngp"]
 
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/selection-search.svg" id="mdi_selection_search"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/palette-swatch.svg" id="mdi_palette_swatch"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/select-all.svg" id="mdi_select_all"]
+
 [sub_resource type="StyleBoxFlat" id="1"]
 bg_color = Color(1, 1, 1, 1)
 border_color = Color(1, 1, 1, 1)
@@ -46,26 +50,41 @@ size_flags_horizontal = 3
 alignment = 1
 
 [node name="SimilarArea" type="Button" parent="FillAreaOptions"]
+custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_fill_area")
-text = "Similar area"
+icon = ExtResource("mdi_selection_search")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Similar area — fill contiguous region"
+text = ""
 
 [node name="SimilarColors" type="Button" parent="FillAreaOptions"]
+custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_fill_area")
-text = "Similar colors"
+icon = ExtResource("mdi_palette_swatch")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Similar colors — fill matching colors"
+text = ""
 
 [node name="WholeSelection" type="Button" parent="FillAreaOptions"]
+custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_fill_area")
-text = "Whole selection"
+icon = ExtResource("mdi_select_all")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Whole selection — fill selection"
+text = ""
 
 [node name="MergeAreaOptions" type="CheckBox" parent="." index="4" unique_id=218009629]
 layout_mode = 2

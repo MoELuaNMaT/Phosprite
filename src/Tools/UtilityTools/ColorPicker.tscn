@@ -3,6 +3,9 @@
 [ext_resource type="PackedScene" uid="uid://ctfgfelg0sho8" path="res://src/Tools/BaseTool.tscn" id="1"]
 [ext_resource type="Script" uid="uid://bt6mnsibfgh81" path="res://src/Tools/UtilityTools/ColorPicker.gd" id="2"]
 
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/layers-triple.svg" id="mdi_layers_triple"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/layers.svg" id="mdi_layers"]
+
 [sub_resource type="ButtonGroup" id="ButtonGroup_extract"]
 allow_unpress = false
 
@@ -55,7 +58,11 @@ layout_mode = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_extract")
-text = "Top Color"
+icon = ExtResource("mdi_layers_triple")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Top Color — sample visible composite"
+text = ""
 clip_text = true
 
 [node name="CurrentLayer" type="Button" parent="ColorPicker/ExtractModeButtons" index="1"]
@@ -63,7 +70,11 @@ custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_extract")
-text = "Current Layer"
+icon = ExtResource("mdi_layers")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Current Layer — sample active layer"
+text = ""
 clip_text = true
 
 [connection signal="item_selected" from="ColorPicker/Options" to="." method="_on_Options_item_selected"]

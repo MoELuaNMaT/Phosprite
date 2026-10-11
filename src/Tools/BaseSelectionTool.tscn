@@ -7,6 +7,11 @@
 [ext_resource type="Texture2D" uid="uid://bnc78807k1xjv" path="res://assets/graphics/misc/close.png" id="4_ad04n"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="6_2bdjf"]
 
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/selection.svg" id="mdi_selection"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/vector-union.svg" id="mdi_vector_union"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/selection-remove.svg" id="mdi_selection_remove"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/vector-intersection.svg" id="mdi_vector_intersection"]
+
 [sub_resource type="ButtonGroup" id="ButtonGroup_modes"]
 allow_unpress = false
 
@@ -67,7 +72,11 @@ layout_mode = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_modes")
-text = "Replace"
+icon = ExtResource("mdi_selection")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Replace selection"
+text = ""
 clip_text = true
 
 [node name="Add" type="Button" parent="ModeButtons" index="1"]
@@ -75,7 +84,11 @@ custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
-text = "Add"
+icon = ExtResource("mdi_vector_union")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Add to selection"
+text = ""
 clip_text = true
 
 [node name="Subtract" type="Button" parent="ModeButtons" index="2"]
@@ -83,7 +96,11 @@ custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
-text = "Subtract"
+icon = ExtResource("mdi_selection_remove")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Subtract from selection"
+text = ""
 clip_text = true
 
 [node name="Intersect" type="Button" parent="ModeButtons" index="3"]
@@ -91,7 +108,11 @@ custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
-text = "Intersect"
+icon = ExtResource("mdi_vector_intersection")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Intersect selections"
+text = ""
 clip_text = true
 
 [node name="Algorithm" type="OptionButton" parent="." index="6" unique_id=915163476]
