@@ -89,7 +89,8 @@ func test_twist_cannot_rotate_ipad_canvas() -> void:
 		"two-finger navigation must never rotate the canvas"
 	)
 	check_has(
-		update_code, "_navigation_baseline_camera_angle",
+		update_code,
+		"_navigation_baseline_camera_angle",
 		"pan and pinch must retain a fixed camera angle"
 	)
 
@@ -123,8 +124,10 @@ func test_replacement_pair_resets_navigation_baseline() -> void:
 	var adapter := ADAPTER.new()
 	adapter._touches = {
 		1: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2.ZERO, "suppressed": false},
-		2: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(10.0, 0.0), "suppressed": false},
-		3: {"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(0.0, 20.0), "suppressed": false},
+		2:
+		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(10.0, 0.0), "suppressed": false},
+		3:
+		{"kind": ADAPTER.PointerKind.DIRECT, "position": Vector2(0.0, 20.0), "suppressed": false},
 	}
 	adapter._begin_navigation_pair(PackedInt32Array([1, 2]))
 	adapter._navigation_pan_active = true
@@ -132,13 +135,16 @@ func test_replacement_pair_resets_navigation_baseline() -> void:
 	adapter._touches.erase(2)
 	adapter._rebase_navigation()
 	check_eq(
-		adapter._navigation_ids, PackedInt32Array([1, 3]),
+		adapter._navigation_ids,
+		PackedInt32Array([1, 3]),
 		"replacement must establish a new navigation pair"
 	)
 	check_true(not adapter._navigation_pan_active, "replacement must reset pan acquisition")
 	check_true(not adapter._navigation_pinch_active, "replacement must reset pinch acquisition")
 	check_almost_eq(
-		adapter._navigation_baseline_distance, 20.0, 0.00001,
+		adapter._navigation_baseline_distance,
+		20.0,
+		0.00001,
 		"replacement must establish a fresh pair-distance baseline"
 	)
 
@@ -176,6 +182,7 @@ func test_legacy_rotation_preference_is_not_read_or_exposed() -> void:
 		"disabled rotation must not be exposed as a user setting"
 	)
 	check_has(
-		src, "_install_finger_policy_preference(options)",
+		src,
+		"_install_finger_policy_preference(options)",
 		"finger drawing policy must remain available"
 	)
