@@ -19,7 +19,9 @@ func test_gradient_preview_shares_live_editor_and_preserves_configuration() -> v
 	check_true(preview_texture != null, "gradient entry must use a generated gradient texture")
 	if preview_texture == null:
 		return
-	check_true(editor.get_parent() == popup.get_node("PopupMargin"), "the full editor lives in the popup")
+	check_true(
+		editor.get_parent() == popup.get_node("PopupMargin"), "the full editor lives in the popup"
+	)
 	check_true(not popup.visible, "the editor starts closed")
 	check_eq(preview.custom_minimum_size, Vector2(42, 42), "the entry has a square minimum size")
 	check_eq(preview_texture.fill_from, Vector2(0, 1), "gradient begins at bottom left")
@@ -38,7 +40,9 @@ func test_gradient_preview_shares_live_editor_and_preserves_configuration() -> v
 	tool.set_compact_option_layout(true)
 	await tree.process_frame
 	check_true(preview.icon == preview_texture, "UI3 compaction preserves preview texture")
-	check_true(editor.get_parent() == popup.get_node("PopupMargin"), "UI3 does not move the editor")
+	check_true(
+		editor.get_parent() == popup.get_node("PopupMargin"), "UI3 does not move the editor"
+	)
 	tool.set_compact_option_layout(false)
 
 
