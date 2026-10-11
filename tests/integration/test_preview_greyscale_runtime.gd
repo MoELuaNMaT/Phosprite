@@ -75,9 +75,7 @@ func test_preview_and_canvas_toggle_greyscale_together() -> void:
 	preview.reparent(holder)
 	await tree.process_frame
 	check_true(
-		Global.greyscale_view_changed.is_connected(
-			Callable(preview, "_on_greyscale_view_changed")
-		),
+		Global.greyscale_view_changed.is_connected(Callable(preview, "_on_greyscale_view_changed")),
 		"Preview toggle must reconnect when UI3 reparents the module"
 	)
 	check_true(
@@ -104,8 +102,10 @@ func test_preview_and_canvas_toggle_greyscale_together() -> void:
 	if reopened_image != null:
 		reopened_material = reopened_image.get("animation_material") as ShaderMaterial
 	check_true(
-		reopened_material != null
-		and bool(reopened_material.get_shader_parameter(&"greyscale_view")),
+		(
+			reopened_material != null
+			and bool(reopened_material.get_shader_parameter(&"greyscale_view"))
+		),
 		"Reopened Preview must restore grayscale rendering"
 	)
 	reopened.queue_free()
