@@ -25,9 +25,28 @@ var frame_index := 0:
 @onready var transparent_checker = get_parent().get_node("TransparentChecker") as ColorRect
 
 
+func _enter_tree() -> void:
+	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
+		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+
+
 func _ready() -> void:
 	Global.cel_switched.connect(_cel_switched)
 	material = Global.canvas.material
+	_on_greyscale_view_changed(Global.greyscale_view)
+
+
+func _exit_tree() -> void:
+	if Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
+		Global.greyscale_view_changed.disconnect(_on_greyscale_view_changed)
+
+
+func _on_greyscale_view_changed(enabled: bool) -> void:
+	if is_instance_valid(animation_material):
+		animation_material.set_shader_parameter(&"greyscale_view", enabled)
+	if material is ShaderMaterial:
+		(material as ShaderMaterial).set_shader_parameter(&"greyscale_view", enabled)
+	queue_redraw()
 
 
 func _draw() -> void:
