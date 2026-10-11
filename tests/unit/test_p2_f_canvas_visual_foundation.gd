@@ -157,14 +157,14 @@ func test_preview_footer_exposes_synced_grayscale_toggle() -> void:
 		'main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision")',
 		"the shared grayscale state must target Main Canvas instead of an arbitrary Preview",
 	)
-	check_has(
-		preview_source,
-		"preview_viewport_container.material = _greyscale_material if enabled else null",
-		"Preview must filter its rendered texture and restore color without a material",
-	)
 	check_true(
 		not ('[node name="GreyscaleVision"' in preview_scene),
-		"Preview must not use a second screen-copy overlay inside its SubViewport",
+		"Preview must not use a screen-copy layer inside its SubViewport",
+	)
+	check_has(
+		preview_source,
+		"func _enter_tree() -> void:",
+		"Preview button must reconnect when UI3 reparents the module",
 	)
 	check_has(
 		global_source,
@@ -232,4 +232,34 @@ func test_canvas_no_longer_renders_floating_tool_icons() -> void:
 	check_true(
 		not preferences_scene.contains("Show right tool icon"),
 		"the removed right tool icon must not leave a dead Preferences row",
+	)
+
+func test_greyscale_state_controls_actual_preview_compositing() -> void:
+	var preview_source := FileAccess.get_file_as_string("res://src/UI/Canvas/CanvasPreview.gd")
+	var global_source := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
+	var blend_shader := FileAccess.get_file_as_string("res://src/Shaders/BlendLayers.gdshader")
+	check_has(
+		blend_shader,
+		"uniform bool greyscale_view = false;",
+		"Preview must use a greyscale-aware layer compositing shader"
+	)
+	check_has(
+		blend_shader,
+		"result_color.rgb = vec3(luminance);",
+		"the final composited image must become greyscale"
+	)
+	check_has(
+		global_source,
+		'(canvas.material as ShaderMaterial).set_shader_parameter(&"greyscale_view", value)',
+		"the shared Canvas material must get the global grey state"
+	)
+	check_has(
+		preview_source,
+		"func _enter_tree() -> void:",
+		"Preview image must reconnect after UI3 reparenting"
+	)
+	check_has(
+		preview_source,
+		'animation_material.set_shader_parameter(&"greyscale_view", enabled)',
+		"animated Preview must use the same grey state"
 	)
