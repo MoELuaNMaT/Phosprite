@@ -10,8 +10,13 @@ offset_right = 138.0
 offset_bottom = 105.0
 script = ExtResource("2_ie0t5")
 
-[node name="GradientEdit" parent="." index="2" unique_id=308571157 instance=ExtResource("3_ed0sv")]
+[node name="GradientPreviewButton" type="Button" parent="." index="2" unique_id=1523400107]
+custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "Edit gradient"
+mouse_default_cursor_shape = 2
+expand_icon = true
 
 [node name="GradientOptions" type="GridContainer" parent="." index="3" unique_id=244793747]
 layout_mode = 2
@@ -107,7 +112,26 @@ stretch_margin_right = 3
 stretch_margin_bottom = 3
 script = ExtResource("4_ie0t5")
 
-[connection signal="updated" from="GradientEdit" to="." method="_on_gradient_edit_updated"]
+[node name="GradientPopup" type="PopupPanel" parent="." index="4" unique_id=1523400108]
+size = Vector2i(460, 180)
+
+[node name="PopupMargin" type="MarginContainer" parent="GradientPopup" unique_id=1523400109]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+
+[node name="GradientEdit" parent="GradientPopup/PopupMargin" index="0" unique_id=308571157 instance=ExtResource("3_ed0sv")]
+custom_minimum_size = Vector2(300, 115)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[connection signal="pressed" from="GradientPreviewButton" to="." method="_on_gradient_preview_button_pressed"]
+[connection signal="updated" from="GradientPopup/PopupMargin/GradientEdit" to="." method="_on_gradient_edit_updated"]
 [connection signal="item_selected" from="GradientOptions/ShapeOptionButton" to="." method="_on_shape_option_button_item_selected"]
 [connection signal="item_selected" from="GradientOptions/DitheringOptionButton" to="." method="_on_dithering_option_button_item_selected"]
 [connection signal="item_selected" from="GradientOptions/RepeatOptionButton" to="." method="_on_repeat_option_button_item_selected"]
