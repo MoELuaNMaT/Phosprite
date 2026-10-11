@@ -654,7 +654,8 @@ var greyscale_view := false:
 		greyscale_view = value
 		if is_instance_valid(main_viewport):
 			var greyscale_vision := (
-				main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision") as ColorRect
+				main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision")
+				as ColorRect
 			)
 			if is_instance_valid(greyscale_vision):
 				greyscale_vision.visible = value
