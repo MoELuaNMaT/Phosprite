@@ -12,10 +12,18 @@ func test_preview_and_canvas_toggle_greyscale_together() -> void:
 
 	var overlay := preview.get_node_or_null(GREYSCALE_NODE) as ColorRect
 	var button := preview.get_node_or_null("%GrayscaleButton") as Button
-	var main_overlay := Global.control.find_child("GreyscaleVision", true, false) as ColorRect
+	var main_overlay := (
+		Global.main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision")
+		as ColorRect
+	)
 	check_true(overlay != null, "Preview must own a greyscale rendering layer")
 	check_true(main_overlay != null, "Canvas must own a greyscale rendering layer")
 	check_true(button != null, "Preview must keep its greyscale toggle")
+	var global_src := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
+	check_true(
+		not ('control.find_child("GreyscaleVision"' in global_src),
+		"global greyscale must target Main Canvas independently of Preview order"
+	)
 	if overlay == null or main_overlay == null or button == null:
 		preview.queue_free()
 		return
