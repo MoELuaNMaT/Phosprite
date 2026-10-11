@@ -111,3 +111,29 @@ func test_preview_and_canvas_toggle_greyscale_together() -> void:
 	reopened.queue_free()
 	Global.greyscale_view = original_state
 	await tree.process_frame
+
+
+func test_preview_animation_mode_selector_is_removed() -> void:
+	var preview := PREVIEW_SCENE.instantiate() as PanelContainer
+	tree.root.add_child(preview)
+	await tree.process_frame
+	var mode_selector := preview.get_node_or_null("VBox/Animation/VBoxContainer/Mode")
+	var spritesheet_options := (
+		preview.get_node_or_null("VBox/Animation/VBoxContainer/Options") as Control
+	)
+	var play_button := preview.get_node_or_null("%PlayButton") as Button
+	var grayscale_button := preview.get_node_or_null("%GrayscaleButton") as Button
+	var preview_renderer := preview.get_node_or_null("%CanvasPreview") as Node2D
+	check_true(mode_selector == null, "Preview must not show the animation mode selector")
+	check_true(
+		spritesheet_options != null and not spritesheet_options.visible,
+		"unused spritesheet settings must remain hidden"
+	)
+	check_true(play_button != null, "Preview must retain the animation play button")
+	check_true(grayscale_button != null, "Preview must retain the grayscale button")
+	check_true(
+		preview_renderer != null and int(preview_renderer.get("mode")) == 0,
+		"Preview must continue to use the normal timeline mode"
+	)
+	preview.queue_free()
+	await tree.process_frame
