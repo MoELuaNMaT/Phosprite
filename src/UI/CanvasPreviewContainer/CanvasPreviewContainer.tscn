@@ -2,7 +2,6 @@
 
 [ext_resource type="PackedScene" uid="uid://3pmb60gpst7b" path="res://src/UI/Nodes/TransparentChecker.tscn" id="1"]
 [ext_resource type="Shader" uid="uid://c50kmfvf635kb" path="res://src/Shaders/TransparentChecker.gdshader" id="2"]
-[ext_resource type="Shader" uid="uid://bhgdieau4cr1b" path="res://src/Shaders/Greyscale.gdshader" id="9"]
 [ext_resource type="Script" uid="uid://b6l0yorq5b46r" path="res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://c546tskdu53j1" path="res://src/UI/Canvas/CanvasPreview.tscn" id="5"]
 [ext_resource type="Script" uid="uid://ctqrsfsbx4kwk" path="res://src/UI/Canvas/CanvasCamera.gd" id="5_ge2km"]
@@ -20,9 +19,6 @@ shader_parameter/scale = Vector2(0, 0)
 shader_parameter/rect_size = Vector2(0, 0)
 shader_parameter/follow_movement = false
 shader_parameter/follow_scale = false
-
-[sub_resource type="ShaderMaterial" id="PreviewGreyscaleMaterial"]
-shader = ExtResource("9")
 
 [node name="CanvasPreviewContainer" type="PanelContainer" unique_id=1665289064 groups=["CanvasTouchBlockers"]]
 custom_minimum_size = Vector2(0, 110)
@@ -62,16 +58,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 script = ExtResource("5_ge2km")
 index = 2
-
-[node name="CanvasLayer" type="CanvasLayer" parent="VBox/HBox/PreviewViewportContainer/SubViewport"]
-
-[node name="GreyscaleVision" type="ColorRect" parent="VBox/HBox/PreviewViewportContainer/SubViewport/CanvasLayer"]
-visible = false
-material = SubResource("PreviewGreyscaleMaterial")
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
 
 [node name="Animation" type="HBoxContainer" parent="VBox" unique_id=1328469717]
 layout_mode = 2
