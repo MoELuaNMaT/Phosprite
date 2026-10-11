@@ -28,6 +28,8 @@ var frame_index := 0:
 func _enter_tree() -> void:
 	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
 		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+	# Reuse the active state if UI3 moved this node while it was disconnected.
+	_on_greyscale_view_changed(Global.greyscale_view)
 
 
 func _ready() -> void:
