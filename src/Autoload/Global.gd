@@ -652,8 +652,10 @@ var greyscale_view := false:
 		if value == greyscale_view:
 			return
 		greyscale_view = value
-		if is_instance_valid(control):
-			var greyscale_vision := control.find_child("GreyscaleVision", true, false) as ColorRect
+		if is_instance_valid(main_viewport):
+			var greyscale_vision := (
+				main_viewport.get_node_or_null("SubViewport/CanvasLayer/GreyscaleVision") as ColorRect
+			)
 			if is_instance_valid(greyscale_vision):
 				greyscale_vision.visible = value
 		if (
