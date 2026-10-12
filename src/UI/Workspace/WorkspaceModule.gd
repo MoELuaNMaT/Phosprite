@@ -328,10 +328,11 @@ func get_resize_edges(local_point: Vector2) -> int:
 	if not get_visual_rect().has_point(local_point):
 		return ResizeEdge.NONE
 	var edges := ResizeEdge.NONE
-	if local_point.x <= RESIZE_EDGE_HIT_SIZE:
-		edges |= ResizeEdge.LEFT
-	elif local_point.x >= size.x - RESIZE_EDGE_HIT_SIZE:
-		edges |= ResizeEdge.RIGHT
+	if definition == null or not definition.is_horizontal_resize_locked():
+		if local_point.x <= RESIZE_EDGE_HIT_SIZE:
+			edges |= ResizeEdge.LEFT
+		elif local_point.x >= size.x - RESIZE_EDGE_HIT_SIZE:
+			edges |= ResizeEdge.RIGHT
 	if local_point.y <= TOP_RESIZE_EDGE_HIT_SIZE:
 		edges |= ResizeEdge.TOP
 	elif local_point.y >= size.y - RESIZE_EDGE_HIT_SIZE:

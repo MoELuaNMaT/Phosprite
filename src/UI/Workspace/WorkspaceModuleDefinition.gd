@@ -65,6 +65,10 @@ func get_constrained_size(requested_size: Vector2) -> Vector2:
 	return constrained
 
 
+func is_horizontal_resize_locked() -> bool:
+	return maximum_size.x > 0.0 and is_equal_approx(minimum_size.x, maximum_size.x)
+
+
 func get_constrained_preferred_size() -> Vector2:
 	return get_constrained_size(preferred_size)
 

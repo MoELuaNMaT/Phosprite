@@ -439,6 +439,9 @@ func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int
 	if module == null or module.is_content_collapsed():
 		return WorkspaceModule.ResizeEdge.NONE
 	var hit := WorkspaceModule.RESIZE_EDGE_HIT_SIZE
+	var horizontal_locked := (
+		module.definition != null and module.definition.is_horizontal_resize_locked()
+	)
 	var zone := dock_host.layout.get_module_zone(module_id)
 	var region_fill := dock_host.layout.is_module_region_fill(module_id)
 	var edges := WorkspaceModule.ResizeEdge.NONE
@@ -446,20 +449,20 @@ func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int
 		WorkspaceDockLayout.DockZone.BOTTOM:
 			if local_point.y <= hit:
 				edges |= WorkspaceModule.ResizeEdge.TOP
-			if not region_fill and local_point.x >= module.size.x - hit:
+			if not horizontal_locked and not region_fill and local_point.x >= module.size.x - hit:
 				edges |= WorkspaceModule.ResizeEdge.RIGHT
 		WorkspaceDockLayout.DockZone.TOP:
 			if local_point.y >= module.size.y - hit:
 				edges |= WorkspaceModule.ResizeEdge.BOTTOM
-			if not region_fill and local_point.x >= module.size.x - hit:
+			if not horizontal_locked and not region_fill and local_point.x >= module.size.x - hit:
 				edges |= WorkspaceModule.ResizeEdge.RIGHT
 		WorkspaceDockLayout.DockZone.LEFT:
-			if local_point.x >= module.size.x - hit:
+			if not horizontal_locked and local_point.x >= module.size.x - hit:
 				edges |= WorkspaceModule.ResizeEdge.RIGHT
 			if not region_fill and local_point.y >= module.size.y - hit:
 				edges |= WorkspaceModule.ResizeEdge.BOTTOM
 		WorkspaceDockLayout.DockZone.RIGHT:
-			if local_point.x <= hit:
+			if not horizontal_locked and local_point.x <= hit:
 				edges |= WorkspaceModule.ResizeEdge.LEFT
 			if not region_fill and local_point.y >= module.size.y - hit:
 				edges |= WorkspaceModule.ResizeEdge.BOTTOM

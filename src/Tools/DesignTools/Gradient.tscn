@@ -11,7 +11,7 @@ offset_bottom = 105.0
 script = ExtResource("2_ie0t5")
 
 [node name="GradientPreviewButton" type="Button" parent="." index="2" unique_id=1523400107]
-custom_minimum_size = Vector2(42, 42)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
 tooltip_text = "Edit gradient"
@@ -28,10 +28,11 @@ columns = 1
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Shape:"
+autowrap_mode = 2
 
 [node name="ShapeOptionButton" type="Button" parent="GradientOptions" index="1" unique_id=2126698017 groups=["gradient_common"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(42, 42)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
@@ -39,10 +40,11 @@ mouse_default_cursor_shape = 2
 [node name="DitheringLabel" type="Label" parent="GradientOptions" index="2" unique_id=272014290 groups=["gradient_common"]]
 layout_mode = 2
 text = "Dithering pattern:"
+autowrap_mode = 2
 
 [node name="DitheringOptionButton" type="Button" parent="GradientOptions" index="3" unique_id=733272890 groups=["gradient_common"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(42, 42)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
@@ -50,10 +52,11 @@ mouse_default_cursor_shape = 2
 [node name="RepeatLabel" type="Label" parent="GradientOptions" index="4" unique_id=951411977 groups=["gradient_common"]]
 layout_mode = 2
 text = "Repeat:"
+autowrap_mode = 2
 
 [node name="RepeatOptionButton" type="Button" parent="GradientOptions" index="5" unique_id=895875958 groups=["gradient_common"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(42, 42)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
@@ -63,10 +66,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 text = "Fill area:"
+autowrap_mode = 2
 
 [node name="FillAreaOptions" type="Button" parent="GradientOptions" index="7" unique_id=248210037]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(42, 42)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
@@ -75,6 +79,7 @@ mouse_default_cursor_shape = 2
 unique_name_in_owner = true
 layout_mode = 2
 text = "Tolerance:"
+autowrap_mode = 2
 
 [node name="ToleranceSlider" type="TextureProgressBar" parent="GradientOptions" index="9" unique_id=771107859]
 unique_name_in_owner = true
