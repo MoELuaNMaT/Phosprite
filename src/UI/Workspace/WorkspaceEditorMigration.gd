@@ -22,7 +22,10 @@ const UI_PROFILE_3_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile3
 const UI_PROFILE_3_LAYOUT_VERSION := 1
 const WORKSPACE_SIDE_MARGIN := 8.0
 const TOOL_PALETTE_WIDTH := 40.0
-const TOOL_OPTIONS_WIDTH := 128.0
+# Four 32px selection mode buttons stack vertically in a 72px options column.
+const TOOL_OPTIONS_WIDTH := 72.0
+# Palette 40px + options 72px + separator and workspace interior padding.
+const UI1_TOOLS_FIXED_WIDTH := 136.0
 
 const DEFAULT_LAYOUT := [
 	{
@@ -78,6 +81,7 @@ var _left_tool_options: ScrollContainer
 var _merged_tools_content: HBoxContainer
 var _merged_tools_separator: VSeparator
 var _left_tool_options_state: Dictionary = {}
+var _ui1_tools_original_widths: Dictionary = {}
 var _tools_palette_state: Dictionary = {}
 var _palette_color_root: VBoxContainer
 var _palette_color_separator: HSeparator
@@ -161,6 +165,7 @@ func activate_ui_profile(profile_id: int) -> bool:
 	if _active_ui_profile == 3 and profile_id != 3 and is_instance_valid(_ui_profile_3):
 		_ui_profile_3.deactivate()
 	_active_ui_profile = profile_id
+	_configure_ui1_tools_fixed_width(profile_id == 1)
 	if profile_id == 2 and is_instance_valid(_merged_tools_content):
 		if Global.headless_test_mode:
 			return true
@@ -408,6 +413,8 @@ func _migrate_live_editor() -> bool:
 	legacy_container.set_process(false)
 	live = true
 	_active_ui_profile = layout_store.get_active_layout_slot()
+	# Apply the UI1 width rule *before* loading any previously saved wider layout.
+	_configure_ui1_tools_fixed_width(_active_ui_profile == 1)
 
 	var saved_ids := _saved_layout_ids()
 	var restored := layout_store.restore_current_layout()
@@ -640,6 +647,44 @@ func _update_top_edge_snap_band() -> void:
 		return
 	var menu_height := maxf(0.0, top_menu.size.y)
 	dock_host.set_top_edge_snap_band(-(_project_tabs_height + menu_height), menu_height)
+
+
+func _configure_ui1_tools_fixed_width(enabled: bool) -> void:
+	if manager == null:
+		return
+	var tools_definition := manager.get_definition(Builtins.TOOLS_ID)
+	if tools_definition == null:
+		return
+	if enabled:
+		if _ui1_tools_original_widths.is_empty():
+			_ui1_tools_original_widths = {
+				"minimum": tools_definition.minimum_size.x,
+				"preferred": tools_definition.preferred_size.x,
+				"maximum": tools_definition.maximum_size.x,
+			}
+		tools_definition.minimum_size.x = UI1_TOOLS_FIXED_WIDTH
+		tools_definition.preferred_size.x = UI1_TOOLS_FIXED_WIDTH
+		tools_definition.maximum_size.x = UI1_TOOLS_FIXED_WIDTH
+	elif not _ui1_tools_original_widths.is_empty():
+		tools_definition.minimum_size.x = float(_ui1_tools_original_widths["minimum"])
+		tools_definition.preferred_size.x = float(_ui1_tools_original_widths["preferred"])
+		tools_definition.maximum_size.x = float(_ui1_tools_original_widths["maximum"])
+		return
+	else:
+		return
+
+	if surface == null or dock_host == null:
+		return
+	var placement := surface.get_module_placement(Builtins.TOOLS_ID)
+	if placement == WorkspaceSurface.Placement.DOCKED:
+		var current_size := dock_host.layout.get_module_size(Builtins.TOOLS_ID)
+		current_size.x = UI1_TOOLS_FIXED_WIDTH
+		dock_host.set_module_size(Builtins.TOOLS_ID, current_size)
+	elif placement == WorkspaceSurface.Placement.FLOATING:
+		var current_rect := surface.get_floating_rect(Builtins.TOOLS_ID)
+		if current_rect.has_area():
+			current_rect.size.x = UI1_TOOLS_FIXED_WIDTH
+			surface.set_floating_rect(Builtins.TOOLS_ID, current_rect)
 
 
 func _merge_left_tool_options_into_tools() -> bool:

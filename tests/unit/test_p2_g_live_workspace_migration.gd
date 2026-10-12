@@ -598,6 +598,73 @@ func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
 	)
 
 
+func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles_resizable(
+) -> void:
+	var manager := Manager.new()
+	check_true(Builtins.register_defaults(manager), "Workspace definitions must register")
+	var tools := manager.get_definition(Builtins.TOOLS_ID)
+	var original_minimum := tools.minimum_size.x
+	var original_preferred := tools.preferred_size.x
+	var original_maximum := tools.maximum_size.x
+	var migration := Migration.new()
+	migration.manager = manager
+	migration._configure_ui1_tools_fixed_width(true)
+	check_eq(
+		tools.minimum_size.x,
+		Migration.UI1_TOOLS_FIXED_WIDTH,
+		"UI1 Tools minimum width matches the narrow fixed sidebar",
+	)
+	check_eq(
+		tools.preferred_size.x,
+		Migration.UI1_TOOLS_FIXED_WIDTH,
+		"UI1 Tools preferred width is fixed"
+	)
+	check_eq(
+		tools.maximum_size.x, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 Tools maximum width is fixed"
+	)
+	check_true(tools.is_horizontal_resize_locked(), "UI1 disables horizontal resize affordances")
+	check_eq(
+		tools.get_constrained_size(Vector2(400.0, 350.0)).x,
+		Migration.UI1_TOOLS_FIXED_WIDTH,
+		"old saved wide widths must be clamped when restoring UI1",
+	)
+	migration._configure_ui1_tools_fixed_width(false)
+	check_eq(tools.minimum_size.x, original_minimum, "UI2/UI3 minimum width is untouched")
+	check_eq(tools.preferred_size.x, original_preferred, "UI2/UI3 preferred width is untouched")
+	check_eq(tools.maximum_size.x, original_maximum, "UI2/UI3 maximum width is untouched")
+	check_true(
+		not tools.is_horizontal_resize_locked(), "other profiles still allow horizontal resize"
+	)
+	migration.free()
+	manager.free()
+
+
+func test_ui1_floating_tools_width_lock_still_allows_vertical_resize_hit_target() -> void:
+	var definition := WorkspaceModuleDefinition.new()
+	definition.module_id = &"test_fixed_width"
+	definition.uses_external_content = true
+	definition.minimum_size = Vector2(136.0, 80.0)
+	definition.preferred_size = Vector2(136.0, 160.0)
+	definition.maximum_size = Vector2(136.0, 0.0)
+	var module := WorkspaceModule.new()
+	var content := Control.new()
+	check_true(module.configure_existing(definition, content), "module must adopt content")
+	module.size = Vector2(136.0, 160.0)
+	module.apply_visual_theme(VisualTheme.new(), &"floating")
+	var hit_left := module.get_resize_edges(Vector2(2.0, 80.0))
+	var hit_right := module.get_resize_edges(Vector2(134.0, 80.0))
+	check_eq(hit_left, WorkspaceModule.ResizeEdge.NONE, "left edge cannot resize fixed UI1 width")
+	check_eq(hit_right, WorkspaceModule.ResizeEdge.NONE, "right edge cannot resize fixed UI1 width")
+	var hit_bottom := module.get_resize_edges(Vector2(68.0, 158.0))
+	check_true(
+		(hit_bottom & WorkspaceModule.ResizeEdge.BOTTOM) != 0,
+		"bottom edge remains available to resize the toolbar height",
+	)
+	module.release_external_content()
+	module.free()
+	content.free()
+
+
 func test_tools_scene_is_configured_to_fill_workspace_width() -> void:
 	var packed := load("res://src/UI/ToolsPanel/Tools.tscn") as PackedScene
 	check_true(packed != null, "Tools scene should load")
