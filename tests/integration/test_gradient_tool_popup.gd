@@ -25,7 +25,9 @@ func test_gradient_preview_shares_live_editor_and_preserves_configuration() -> v
 		editor.get_parent() == popup.get_node("PopupMargin"), "the full editor lives in the popup"
 	)
 	check_true(not popup.visible, "the editor starts closed")
-	check_eq(preview.custom_minimum_size, Vector2(32, 32), "the preview matches selection mode buttons")
+	check_eq(
+		preview.custom_minimum_size, Vector2(32, 32), "the preview matches selection mode buttons"
+	)
 	check_eq(preview_texture.fill_from, Vector2(0, 1), "gradient begins at bottom left")
 	check_eq(preview_texture.fill_to, Vector2(1, 0), "gradient ends at top right")
 	check_true(
@@ -73,7 +75,9 @@ func test_gradient_icon_modes_are_stacked_and_keep_saved_values() -> void:
 		check_true(button != null, "mode selectors use icon buttons: " + name)
 		if button == null:
 			continue
-		check_eq(button.custom_minimum_size, Vector2(32, 32), "mode buttons match 32px selection buttons")
+		check_eq(
+			button.custom_minimum_size, Vector2(32, 32), "mode buttons match 32px selection buttons"
+		)
 		check_true(button.icon != null, "selected mode has a visible icon")
 		check_true(button.text.is_empty(), "mode selection uses no dropdown text")
 	check_eq(tool._mode_icons("shape").size(), 2, "shape has two choices")
@@ -113,6 +117,8 @@ func test_gradient_icon_modes_are_stacked_and_keep_saved_values() -> void:
 	await tree.process_frame
 	check_eq(tool.get_node("GradientOptions").columns, 1, "UI3 keeps stacked options")
 	check_eq(
-		tool.shape_option_button.custom_minimum_size, Vector2(32, 32), "UI3 preserves compact square buttons"
+		tool.shape_option_button.custom_minimum_size,
+		Vector2(32, 32),
+		"UI3 preserves compact square buttons"
 	)
 	tool.set_compact_option_layout(false)

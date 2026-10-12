@@ -598,8 +598,8 @@ func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
 	)
 
 
-
-func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles_resizable() -> void:
+func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles_resizable(
+) -> void:
 	var manager := Manager.new()
 	check_true(Builtins.register_defaults(manager), "Workspace definitions must register")
 	var tools := manager.get_definition(Builtins.TOOLS_ID)
@@ -614,8 +614,14 @@ func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles
 		Migration.UI1_TOOLS_FIXED_WIDTH,
 		"UI1 Tools minimum width matches the narrow fixed sidebar",
 	)
-	check_eq(tools.preferred_size.x, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 Tools preferred width is fixed")
-	check_eq(tools.maximum_size.x, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 Tools maximum width is fixed")
+	check_eq(
+		tools.preferred_size.x,
+		Migration.UI1_TOOLS_FIXED_WIDTH,
+		"UI1 Tools preferred width is fixed"
+	)
+	check_eq(
+		tools.maximum_size.x, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 Tools maximum width is fixed"
+	)
 	check_true(tools.is_horizontal_resize_locked(), "UI1 disables horizontal resize affordances")
 	check_eq(
 		tools.get_constrained_size(Vector2(400.0, 350.0)).x,
@@ -626,7 +632,9 @@ func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles
 	check_eq(tools.minimum_size.x, original_minimum, "UI2/UI3 minimum width is untouched")
 	check_eq(tools.preferred_size.x, original_preferred, "UI2/UI3 preferred width is untouched")
 	check_eq(tools.maximum_size.x, original_maximum, "UI2/UI3 maximum width is untouched")
-	check_true(not tools.is_horizontal_resize_locked(), "other profiles still allow horizontal resize")
+	check_true(
+		not tools.is_horizontal_resize_locked(), "other profiles still allow horizontal resize"
+	)
 	migration.free()
 	manager.free()
 
