@@ -4,7 +4,7 @@ extends Node
 ## Aseprite-like U-shaped workspace. Reuses all live editor widgets; only their
 ## Workspace placements, resize rules and presentation change in UI4.
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
-const LEFT_WIDTH := 248.0
+const LEFT_WIDTH := 176.0
 const RIGHT_WIDTH := 136.0
 const TIMELINE_HEIGHT := 224.0
 const PREVIEW_OFFSET := Vector2(18.0, 18.0)
@@ -17,8 +17,8 @@ var surface: WorkspaceSurface
 var active := false
 
 var _tools_width_state: Dictionary = {}
+var _palette_width_state: Dictionary = {}
 var _module_position_states: Dictionary = {}
-var _module_collapse_states: Dictionary = {}
 var _palette_stretch_state := Vector2(-1.0, -1.0)
 var _palette_root: Control
 var _palette_content: Control
@@ -65,14 +65,9 @@ func deactivate() -> void:
 		var module := surface.manager.get_instance(module_id) if surface != null else null
 		if module != null:
 			module.set_position_adjustment_enabled(bool(_module_position_states[id_variant]))
-	for id_variant in _module_collapse_states:
-		var module_id := id_variant as StringName
-		var definition := surface.manager.get_definition(module_id) if surface != null else null
-		if definition != null:
-			definition.can_collapse = bool(_module_collapse_states[id_variant])
 	_module_position_states.clear()
-	_module_collapse_states.clear()
 	_restore_tools_width()
+	_restore_palette_width()
 
 
 func refresh_after_tools_ready() -> bool:
@@ -115,7 +110,10 @@ func apply_initial_workspace() -> bool:
 			preview_size = current.size
 	var bounds := surface.get_floating_bounds()
 	var target := Rect2(
-		Vector2(bounds.end.x - preview_size.x, bounds.position.y) - Vector2(PREVIEW_OFFSET.x, -PREVIEW_OFFSET.y),
+		Vector2(
+			bounds.end.x - preview_size.x - PREVIEW_OFFSET.x,
+			bounds.position.y + PREVIEW_OFFSET.y
+		),
 		preview_size
 	)
 	if placement == WorkspaceSurface.Placement.FLOATING:
@@ -125,6 +123,17 @@ func apply_initial_workspace() -> bool:
 
 func _configure_fixed_layout() -> void:
 	var manager := surface.manager
+	var palette_definition := manager.get_definition(Builtins.PALETTE_ID)
+	if palette_definition != null:
+		if _palette_width_state.is_empty():
+			_palette_width_state = {
+				"minimum": palette_definition.minimum_size.x,
+				"preferred": palette_definition.preferred_size.x,
+				"maximum": palette_definition.maximum_size.x,
+			}
+		palette_definition.minimum_size.x = 156.0
+		palette_definition.preferred_size.x = LEFT_WIDTH
+		palette_definition.maximum_size.x = 440.0
 	var tools_definition := manager.get_definition(Builtins.TOOLS_ID)
 	if tools_definition != null:
 		if _tools_width_state.is_empty():
@@ -146,11 +155,6 @@ func _configure_fixed_layout() -> void:
 		}
 	)
 	for module_id in [Builtins.PALETTE_ID, Builtins.TOOLS_ID, Builtins.TIMELINE_ID]:
-		var definition := manager.get_definition(module_id)
-		if definition != null:
-			if not _module_collapse_states.has(module_id):
-				_module_collapse_states[module_id] = definition.can_collapse
-			definition.can_collapse = false
 		var module := manager.get_instance(module_id)
 		if module != null:
 			if not _module_position_states.has(module_id):
@@ -169,6 +173,17 @@ func _restore_tools_width() -> void:
 	_tools_width_state.clear()
 
 
+func _restore_palette_width() -> void:
+	if _palette_width_state.is_empty() or surface == null:
+		return
+	var definition := surface.manager.get_definition(Builtins.PALETTE_ID)
+	if definition != null:
+		definition.minimum_size.x = float(_palette_width_state["minimum"])
+		definition.preferred_size.x = float(_palette_width_state["preferred"])
+		definition.maximum_size.x = float(_palette_width_state["maximum"])
+	_palette_width_state.clear()
+
+
 func _place_fixed_module(module_id: StringName, zone: int, default_size: Vector2) -> bool:
 	var placement := surface.get_module_placement(module_id)
 	if placement == WorkspaceSurface.Placement.DOCKED:
@@ -181,19 +196,18 @@ func _place_fixed_module(module_id: StringName, zone: int, default_size: Vector2
 				module.set_position_adjustment_enabled(false)
 			return true
 	var current_size := default_size
-	if placement == WorkspaceSurface.Placement.FLOATING:
-		var rect := surface.get_floating_rect(module_id)
-		if rect.has_area():
-			current_size = rect.size
-	elif placement == WorkspaceSurface.Placement.DOCKED:
-		current_size = surface.dock_host.layout.get_module_size(module_id)
-	elif placement == WorkspaceSurface.Placement.COLLAPSED:
-		var restore := surface.get_restore_state(module_id)
-		if int(restore.get("placement", WorkspaceSurface.Placement.NONE)) == WorkspaceSurface.Placement.DOCKED:
-			current_size = restore.get("size", default_size) as Vector2
+	# A layout imported from UI1 must not impose its old floating palette width.
+	# An existing UI4 dock keeps its own size because that state was restored above.
+	if module_id == Builtins.TIMELINE_ID:
+		if placement == WorkspaceSurface.Placement.DOCKED:
+			current_size = surface.dock_host.layout.get_module_size(module_id)
+		elif placement == WorkspaceSurface.Placement.FLOATING:
+			var timeline_rect := surface.get_floating_rect(module_id)
+			if timeline_rect.has_area():
+				current_size.y = timeline_rect.size.y
 	# Preserve height for Timeline; height of the two side panels is container-driven.
 	if module_id == Builtins.PALETTE_ID:
-		current_size.x = maxf(LEFT_WIDTH, current_size.x)
+		current_size.x = LEFT_WIDTH
 	elif module_id == Builtins.TOOLS_ID:
 		current_size.x = RIGHT_WIDTH
 	elif module_id == Builtins.TIMELINE_ID and current_size.y <= 0.0:
