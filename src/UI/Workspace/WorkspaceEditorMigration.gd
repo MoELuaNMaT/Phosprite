@@ -18,8 +18,10 @@ const TIMELINE_HEADER_CONTROLS_SCENE := preload(
 )
 const UI_PROFILE_2_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
 const UI_PROFILE_3_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+const UI_PROFILE_4_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile4.gd")
 
 const UI_PROFILE_3_LAYOUT_VERSION := 1
+const UI_PROFILE_4_LAYOUT_VERSION := 1
 const WORKSPACE_SIDE_MARGIN := 8.0
 const TOOL_PALETTE_WIDTH := 40.0
 # Four 32px selection mode buttons stack vertically in a 72px options column.
@@ -105,6 +107,7 @@ var _timeline_height_restore_generation := 0
 var _active_ui_profile := 1
 var _ui_profile_2: WorkspaceUIProfile2
 var _ui_profile_3: WorkspaceUIProfile3
+var _ui_profile_4: WorkspaceUIProfile4
 
 
 func setup(
@@ -154,7 +157,11 @@ func get_ui_profile() -> int:
 
 
 func get_ui_profile_implementation_version(profile_id: int) -> int:
-	return UI_PROFILE_3_LAYOUT_VERSION if profile_id == 3 else 0
+	if profile_id == 3:
+		return UI_PROFILE_3_LAYOUT_VERSION
+	if profile_id == 4:
+		return UI_PROFILE_4_LAYOUT_VERSION
+	return 0
 
 
 func activate_ui_profile(profile_id: int) -> bool:
@@ -164,6 +171,8 @@ func activate_ui_profile(profile_id: int) -> bool:
 		_ui_profile_2.deactivate()
 	if _active_ui_profile == 3 and profile_id != 3 and is_instance_valid(_ui_profile_3):
 		_ui_profile_3.deactivate()
+	if _active_ui_profile == 4 and profile_id != 4 and is_instance_valid(_ui_profile_4):
+		_ui_profile_4.deactivate()
 	_active_ui_profile = profile_id
 	_configure_ui1_tools_fixed_width(profile_id == 1)
 	if profile_id == 2 and is_instance_valid(_merged_tools_content):
@@ -178,6 +187,10 @@ func activate_ui_profile(profile_id: int) -> bool:
 		if not _ensure_ui_profile_3():
 			return false
 		return _ui_profile_3.activate()
+	if profile_id == 4:
+		if not _ensure_ui_profile_4():
+			return false
+		return _ui_profile_4.activate()
 	return true
 
 
@@ -195,6 +208,8 @@ func sync_active_tool_presentation() -> bool:
 		return _ui_profile_2.refresh_after_tools_ready()
 	if _active_ui_profile == 3 and is_instance_valid(_ui_profile_3):
 		return _ui_profile_3.refresh_after_tools_ready()
+	if _active_ui_profile == 4 and is_instance_valid(_ui_profile_4):
+		return _ui_profile_4.refresh_after_tools_ready()
 	return true
 
 
@@ -207,6 +222,8 @@ func sync_workspace_content_visibility() -> void:
 		_ui_profile_2.activate()
 	elif _active_ui_profile == 3 and is_instance_valid(_ui_profile_3):
 		_ui_profile_3.activate()
+	elif _active_ui_profile == 4 and is_instance_valid(_ui_profile_4):
+		_ui_profile_4.activate()
 	_update_main_canvas_rect()
 
 
@@ -330,6 +347,9 @@ func merge_left_tool_options_after_startup() -> bool:
 			return false
 	elif _active_ui_profile == 3:
 		if not _ensure_ui_profile_3() or not _ui_profile_3.refresh_after_tools_ready():
+			return false
+	elif _active_ui_profile == 4:
+		if not _ensure_ui_profile_4() or not _ui_profile_4.refresh_after_tools_ready():
 			return false
 	if dock_host != null:
 		dock_host.refresh_layout_geometry()
@@ -487,7 +507,26 @@ func _ensure_ui_profile_3() -> bool:
 	return true
 
 
+func _ensure_ui_profile_4() -> bool:
+	if is_instance_valid(_ui_profile_4):
+		return true
+	if not is_instance_valid(ui_root) or not is_instance_valid(surface):
+		return false
+	_ui_profile_4 = UI_PROFILE_4_SCRIPT.new()
+	_ui_profile_4.name = &"WorkspaceUIProfile4"
+	add_child(_ui_profile_4)
+	if not _ui_profile_4.setup(ui_root, surface):
+		_ui_profile_4.queue_free()
+		_ui_profile_4 = null
+		return false
+	return true
+
+
 func apply_ui_profile_initial_defaults(profile_id: int) -> bool:
+	if profile_id == 4:
+		if not _ensure_ui_profile_4():
+			return false
+		return _ui_profile_4.apply_initial_workspace()
 	if profile_id != 3:
 		return true
 	if Global.headless_test_mode:
@@ -507,10 +546,14 @@ func apply_ui_profile_initial_defaults(profile_id: int) -> bool:
 
 
 func has_ui_profile_custom_composition(profile_id: int) -> bool:
-	return profile_id == 2 or profile_id == 3
+	return profile_id in [2, 3, 4]
 
 
 func _apply_active_ui_profile_workspace() -> bool:
+	if _active_ui_profile == 4:
+		if not _ensure_ui_profile_4():
+			return false
+		return _ui_profile_4.enforce_workspace()
 	if _active_ui_profile == 2:
 		if Global.headless_test_mode:
 			return surface.park_module(Builtins.TOOLS_ID)
@@ -1527,6 +1570,7 @@ func _clear_setup() -> void:
 	_palette_color_separator = null
 	_palette_color_states.clear()
 	_left_tool_options_state.clear()
+	_ui_profile_4 = null
 	_tools_palette_state.clear()
 	_project_tabs_height = 0.0
 	_single_project_editor = false
