@@ -113,6 +113,22 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 	check_true(bottom.size.y > timeline_height, "timeline height changes independently")
 	check_eq(left.size.y, dock_host.size.y, "left height stays full after timeline resize")
 
+	# Simulate a portrait-size iPad: no U-frame panel should intrude into another.
+	root.size = Vector2(768.0, 720.0)
+	dock_host.size = root.size
+	await tree.process_frame
+	var timeline_module := manager.get_instance(Builtins.TIMELINE_ID)
+	var tools_module := manager.get_instance(Builtins.TOOLS_ID)
+	check_true(
+		timeline_module.size.x <= bottom.size.x + 1.0,
+		"portrait timeline must shrink to available width instead of overflowing",
+	)
+	check_true(
+		tools_module.size.y <= right.size.y + 1.0,
+		"portrait right tools must stop at timeline top edge",
+	)
+	check_eq(left.size.y, dock_host.size.y, "portrait palette still spans full height")
+
 	ui4.deactivate()
 	check_true(not dock_host.u_frame_layout_enabled, "UI4 geometry disabled on exit")
 	check_true(

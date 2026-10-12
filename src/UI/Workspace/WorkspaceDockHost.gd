@@ -426,7 +426,17 @@ func _apply_module_size(module_id: StringName) -> void:
 			zone == WorkspaceDockLayout.DockZone.LEFT or zone == WorkspaceDockLayout.DockZone.RIGHT
 		):
 			module.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	module.custom_minimum_size = target_size
+	# In UI4, fill children must be allowed to shrink along the filled axis.
+	# A historical timeline width (for example 760px) must not overflow portrait iPad.
+	var minimum_size := target_size
+	if u_frame_layout_enabled and layout.is_module_region_fill(module_id):
+		var definition := manager.get_definition(module_id)
+		if definition != null:
+			if zone == WorkspaceDockLayout.DockZone.BOTTOM:
+				minimum_size.x = definition.minimum_size.x
+			elif zone in [WorkspaceDockLayout.DockZone.LEFT, WorkspaceDockLayout.DockZone.RIGHT]:
+				minimum_size.y = definition.minimum_size.y
+	module.custom_minimum_size = minimum_size
 	module.size = target_size
 
 
