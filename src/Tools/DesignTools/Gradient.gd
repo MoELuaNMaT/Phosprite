@@ -450,7 +450,6 @@ func _on_gradient_edit_updated(_gradient: Gradient, _cc: bool) -> void:
 	save_config()
 
 
-
 func _on_shape_icon_pressed() -> void:
 	_show_mode_choices("shape", shape_option_button)
 
