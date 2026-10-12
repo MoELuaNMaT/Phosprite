@@ -18,12 +18,12 @@ const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
 
 var manager: WorkspaceModuleManager
 var layout: WorkspaceDockLayout
+var u_frame_layout_enabled := false
 
 var _zone_hosts: Dictionary = {}
 var _preview: ColorRect
 var _side_inset := 0.0
 # UI4 uses a full-height left palette and a bottom timeline that begins to its right.
-var u_frame_layout_enabled := false
 var _top_edge_snap_y := 0.0
 var _top_edge_snap_height := EDGE_DOCK_TARGET_EXTENT
 var _drag_module_id: StringName = &""

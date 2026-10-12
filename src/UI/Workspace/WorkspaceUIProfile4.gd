@@ -253,7 +253,15 @@ func _apply_live_palette_presentation() -> void:
 	)
 	_set_split_ratio(ratio, false)
 	_ensure_split_handle()
-	_set_color_button_visibility.call_deferred(true)
+	_show_color_buttons_when_ready.call_deferred()
+
+
+func _show_color_buttons_when_ready() -> void:
+	# ColorPicker._ready hides this row after its first process frame.
+	# Re-enable it only once that initialization has finished.
+	await get_tree().process_frame
+	if active:
+		_set_color_button_visibility(true)
 
 
 func _restore_live_palette_presentation() -> void:
