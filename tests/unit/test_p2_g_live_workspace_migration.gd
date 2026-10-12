@@ -634,6 +634,7 @@ func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles
 func test_ui1_floating_tools_width_lock_still_allows_vertical_resize_hit_target() -> void:
 	var definition := WorkspaceModuleDefinition.new()
 	definition.module_id = &"test_fixed_width"
+	definition.uses_external_content = true
 	definition.minimum_size = Vector2(136.0, 80.0)
 	definition.preferred_size = Vector2(136.0, 160.0)
 	definition.maximum_size = Vector2(136.0, 0.0)
