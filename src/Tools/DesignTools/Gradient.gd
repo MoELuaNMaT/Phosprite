@@ -5,6 +5,27 @@ enum Shape { LINEAR, RADIAL }
 enum Repeat { NONE, REPEAT, MIRROR, TRUNCATE }
 enum FillArea { AREA, COLORS, SELECTION }
 
+# Material Design icon set (Apache-2.0); Bayer thumbnails reuse Phosprite resources.
+const SHAPE_ICONS := [
+	preload("res://assets/graphics/gradient-modes/gradient-horizontal.svg"),
+	preload("res://assets/graphics/gradient-modes/radius.svg"),
+]
+const DITHER_NONE_ICON := preload("res://assets/graphics/gradient-modes/grid-off.svg")
+const REPEAT_ICONS := [
+	preload("res://assets/graphics/gradient-modes/repeat-off.svg"),
+	preload("res://assets/graphics/gradient-modes/repeat.svg"),
+	preload("res://assets/graphics/gradient-modes/mirror.svg"),
+	preload("res://assets/graphics/gradient-modes/crop.svg"),
+]
+const FILL_AREA_ICONS := [
+	preload("res://assets/graphics/gradient-modes/selection-search.svg"),
+	preload("res://assets/graphics/gradient-modes/selection-multiple.svg"),
+	preload("res://assets/graphics/gradient-modes/selection.svg"),
+]
+const SHAPE_NAMES := ["Linear", "Radial"]
+const REPEAT_NAMES := ["None", "Repeat", "Mirror", "Truncate"]
+const FILL_AREA_NAMES := ["Similar area", "Similar colors", "Whole selection"]
+
 static var gradient_shader: Shader
 
 var gradient_shader_inc := load("res://src/Shaders/Effects/Gradient.gdshaderinc")
@@ -33,9 +54,12 @@ var _preview_gradient_texture := GradientTexture2D.new()
 @onready var gradient_edit: GradientEditNode = $GradientPopup/PopupMargin/GradientEdit
 @onready var gradient_preview_button: Button = $GradientPreviewButton
 @onready var gradient_popup: PopupPanel = $GradientPopup
-@onready var shape_option_button: OptionButton = %ShapeOptionButton
-@onready var dithering_option_button: OptionButton = %DitheringOptionButton
-@onready var repeat_option_button: OptionButton = %RepeatOptionButton
+@onready var shape_option_button: Button = %ShapeOptionButton
+@onready var dithering_option_button: Button = %DitheringOptionButton
+@onready var repeat_option_button: Button = %RepeatOptionButton
+@onready var fill_area_option_button: Button = %FillAreaOptions
+@onready var mode_popup: PopupPanel = $ModePopup
+@onready var mode_grid: GridContainer = $ModePopup/ModeMargin/ModeGrid
 
 
 func _init() -> void:
@@ -44,8 +68,6 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	for matrix in ShaderLoader.dither_matrices:
-		dithering_option_button.add_item(matrix.name)
 	super()
 	_preview_gradient_texture.width = 64
 	_preview_gradient_texture.height = 64
@@ -76,6 +98,126 @@ func _on_gradient_preview_button_pressed() -> void:
 	popup_pos.x = clampi(popup_pos.x, 8, maxi(8, roundi(viewport_size.x) - popup_size.x - 8))
 	popup_pos.y = clampi(popup_pos.y, 8, maxi(8, roundi(viewport_size.y) - popup_size.y - 8))
 	gradient_popup.popup_on_parent(Rect2i(popup_pos, popup_size))
+
+
+func _mode_icons(mode: String) -> Array:
+	match mode:
+		"shape":
+			return SHAPE_ICONS
+		"dither":
+			var icons: Array = [DITHER_NONE_ICON]
+			for matrix in ShaderLoader.dither_matrices:
+				icons.append(matrix.texture)
+			return icons
+		"repeat":
+			return REPEAT_ICONS
+		"fill_area":
+			return FILL_AREA_ICONS
+	return []
+
+
+func _mode_names(mode: String) -> Array:
+	match mode:
+		"shape":
+			return SHAPE_NAMES
+		"dither":
+			var names: Array = ["None"]
+			for matrix in ShaderLoader.dither_matrices:
+				names.append(matrix.name)
+			return names
+		"repeat":
+			return REPEAT_NAMES
+		"fill_area":
+			return FILL_AREA_NAMES
+	return []
+
+
+func _mode_index(mode: String) -> int:
+	match mode:
+		"shape":
+			return _shape
+		"dither":
+			return _selected_dither_index
+		"repeat":
+			return _repeat
+		"fill_area":
+			return _fill_area
+	return 0
+
+
+func _set_mode_button(button: Button, mode: String) -> void:
+	var icons := _mode_icons(mode)
+	var names := _mode_names(mode)
+	var index := clampi(_mode_index(mode), 0, icons.size() - 1)
+	button.icon = icons[index]
+	button.tooltip_text = names[index]
+	button.expand_icon = mode == "dither" and index > 0
+	button.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST
+		if mode == "dither" and index > 0
+		else CanvasItem.TEXTURE_FILTER_DEFAULT
+	)
+
+
+func _show_mode_choices(mode: String, trigger: Button) -> void:
+	# Build button contents, not a runtime reparent of tool option controls.
+	for old_child in mode_grid.get_children():
+		mode_grid.remove_child(old_child)
+		old_child.queue_free()
+	var icons := _mode_icons(mode)
+	var names := _mode_names(mode)
+	var count := icons.size()
+	var columns_count := mini(4, count)
+	mode_grid.columns = columns_count
+	for index in count:
+		var choice := Button.new()
+		choice.custom_minimum_size = Vector2(48, 48)
+		choice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		choice.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		choice.icon = icons[index]
+		choice.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		choice.expand_icon = mode == "dither" and index > 0
+		choice.texture_filter = (
+			CanvasItem.TEXTURE_FILTER_NEAREST
+			if mode == "dither" and index > 0
+			else CanvasItem.TEXTURE_FILTER_DEFAULT
+		)
+		choice.tooltip_text = names[index]
+		choice.toggle_mode = true
+		choice.button_pressed = index == _mode_index(mode)
+		choice.pressed.connect(_on_mode_choice_selected.bind(mode, index))
+		mode_grid.add_child(choice)
+	var rows_count := ceili(float(count) / columns_count)
+	var requested_size := Vector2i(
+		columns_count * 48 + (columns_count - 1) * 6 + 16,
+		rows_count * 48 + (rows_count - 1) * 6 + 16
+	)
+	var viewport_size := get_viewport().get_visible_rect().size
+	var popup_size := Vector2i(
+		mini(requested_size.x, maxi(1, roundi(viewport_size.x) - 16)),
+		mini(requested_size.y, maxi(1, roundi(viewport_size.y) - 16))
+	)
+	var button_rect := trigger.get_global_rect()
+	var popup_pos := Vector2i(button_rect.position)
+	popup_pos.x += roundi(button_rect.size.x) + 8
+	if popup_pos.x + popup_size.x > roundi(viewport_size.x) - 8:
+		popup_pos.x = roundi(button_rect.position.x) - popup_size.x - 8
+	popup_pos.x = clampi(popup_pos.x, 8, maxi(8, roundi(viewport_size.x) - popup_size.x - 8))
+	popup_pos.y = clampi(popup_pos.y, 8, maxi(8, roundi(viewport_size.y) - popup_size.y - 8))
+	mode_popup.popup_on_parent(Rect2i(popup_pos, popup_size))
+
+
+func _on_mode_choice_selected(mode: String, index: int) -> void:
+	mode_popup.hide()
+	match mode:
+		"shape":
+			_on_shape_option_button_item_selected(index)
+		"dither":
+			_on_dithering_option_button_item_selected(index)
+		"repeat":
+			_on_repeat_option_button_item_selected(index)
+		"fill_area":
+			_on_fill_area_options_item_selected(index)
 
 
 func _input(event: InputEvent) -> void:
@@ -112,9 +254,9 @@ func set_config(config: Dictionary) -> void:
 
 
 func update_config() -> void:
-	%ShapeOptionButton.selected = _shape
-	%DitheringOptionButton.selected = _selected_dither_index
-	%RepeatOptionButton.selected = _repeat
+	_set_mode_button(shape_option_button, "shape")
+	_set_mode_button(dithering_option_button, "dither")
+	_set_mode_button(repeat_option_button, "repeat")
 	_select_fill_area_optionbutton()
 	%ToleranceSlider.value = _tolerance * 255.0
 
@@ -210,7 +352,7 @@ func apply_gradient(pos: Vector2) -> void:
 		"gradient_texture": gradient_edit.texture,
 		"gradient_texture_no_interpolation": gradient_edit.get_gradient_texture_no_interpolation(),
 		"gradient_offset_texture": gradient_edit.get_gradient_offsets_texture(),
-		"use_dithering": dithering_option_button.selected > 0,
+		"use_dithering": _selected_dither_index > 0,
 		"selection": _selection_tex,
 		"shape": _shape,
 		"repeat": _repeat,
@@ -277,7 +419,7 @@ func _get_undo_data() -> Dictionary:
 
 
 func _select_fill_area_optionbutton() -> void:
-	%FillAreaOptions.selected = _fill_area
+	_set_mode_button(fill_area_option_button, "fill_area")
 	%ToleranceLabel.visible = (_fill_area != FillArea.SELECTION)
 	%ToleranceSlider.visible = (_fill_area != FillArea.SELECTION)
 
@@ -306,6 +448,23 @@ func _on_gradient_edit_updated(_gradient: Gradient, _cc: bool) -> void:
 	_refresh_gradient_preview()
 	update_config()
 	save_config()
+
+
+
+func _on_shape_icon_pressed() -> void:
+	_show_mode_choices("shape", shape_option_button)
+
+
+func _on_dither_icon_pressed() -> void:
+	_show_mode_choices("dither", dithering_option_button)
+
+
+func _on_repeat_icon_pressed() -> void:
+	_show_mode_choices("repeat", repeat_option_button)
+
+
+func _on_fill_area_icon_pressed() -> void:
+	_show_mode_choices("fill_area", fill_area_option_button)
 
 
 func _on_shape_option_button_item_selected(index: Shape) -> void:

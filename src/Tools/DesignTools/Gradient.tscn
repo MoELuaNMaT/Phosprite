@@ -22,56 +22,41 @@ expand_icon = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-columns = 2
+columns = 1
 
 [node name="ShapeLabel" type="Label" parent="GradientOptions" index="0" unique_id=1041473976 groups=["gradient_common"]]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Shape:"
 
-[node name="ShapeOptionButton" type="OptionButton" parent="GradientOptions" index="1" unique_id=2126698017 groups=["gradient_common"]]
+[node name="ShapeOptionButton" type="Button" parent="GradientOptions" index="1" unique_id=2126698017 groups=["gradient_common"]]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-selected = 0
-item_count = 2
-popup/item_0/text = "Linear"
-popup/item_0/id = 0
-popup/item_1/text = "Radial"
-popup/item_1/id = 1
 
 [node name="DitheringLabel" type="Label" parent="GradientOptions" index="2" unique_id=272014290 groups=["gradient_common"]]
 layout_mode = 2
 text = "Dithering pattern:"
 
-[node name="DitheringOptionButton" type="OptionButton" parent="GradientOptions" index="3" unique_id=733272890 groups=["gradient_common"]]
+[node name="DitheringOptionButton" type="Button" parent="GradientOptions" index="3" unique_id=733272890 groups=["gradient_common"]]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-selected = 0
-item_count = 1
-popup/item_0/text = "None"
-popup/item_0/id = 0
 
 [node name="RepeatLabel" type="Label" parent="GradientOptions" index="4" unique_id=951411977 groups=["gradient_common"]]
 layout_mode = 2
 text = "Repeat:"
 
-[node name="RepeatOptionButton" type="OptionButton" parent="GradientOptions" index="5" unique_id=895875958 groups=["gradient_common"]]
+[node name="RepeatOptionButton" type="Button" parent="GradientOptions" index="5" unique_id=895875958 groups=["gradient_common"]]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-selected = 0
-item_count = 4
-popup/item_0/text = "None"
-popup/item_0/id = 0
-popup/item_1/text = "Repeat"
-popup/item_1/id = 1
-popup/item_2/text = "Mirror"
-popup/item_2/id = 2
-popup/item_3/text = "Truncate"
-popup/item_3/id = 3
 
 [node name="FillArea" type="Label" parent="GradientOptions" index="6" unique_id=94359673]
 layout_mode = 2
@@ -79,19 +64,12 @@ size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 text = "Fill area:"
 
-[node name="FillAreaOptions" type="OptionButton" parent="GradientOptions" index="7" unique_id=248210037]
+[node name="FillAreaOptions" type="Button" parent="GradientOptions" index="7" unique_id=248210037]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-selected = 0
-item_count = 3
-popup/item_0/text = "Similar area"
-popup/item_0/id = 0
-popup/item_1/text = "Similar colors"
-popup/item_1/id = 1
-popup/item_2/text = "Whole selection"
-popup/item_2/id = 2
 
 [node name="ToleranceLabel" type="Label" parent="GradientOptions" index="8" unique_id=319926115 groups=["gradient_common"]]
 unique_name_in_owner = true
@@ -130,10 +108,29 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
+[node name="ModePopup" type="PopupPanel" parent="." index="5" unique_id=1523400110]
+
+[node name="ModeMargin" type="MarginContainer" parent="ModePopup" unique_id=1523400111]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+
+[node name="ModeGrid" type="GridContainer" parent="ModePopup/ModeMargin" unique_id=1523400112]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 4
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
 [connection signal="pressed" from="GradientPreviewButton" to="." method="_on_gradient_preview_button_pressed"]
 [connection signal="updated" from="GradientPopup/PopupMargin/GradientEdit" to="." method="_on_gradient_edit_updated"]
-[connection signal="item_selected" from="GradientOptions/ShapeOptionButton" to="." method="_on_shape_option_button_item_selected"]
-[connection signal="item_selected" from="GradientOptions/DitheringOptionButton" to="." method="_on_dithering_option_button_item_selected"]
-[connection signal="item_selected" from="GradientOptions/RepeatOptionButton" to="." method="_on_repeat_option_button_item_selected"]
-[connection signal="item_selected" from="GradientOptions/FillAreaOptions" to="." method="_on_fill_area_options_item_selected"]
+[connection signal="pressed" from="GradientOptions/ShapeOptionButton" to="." method="_on_shape_icon_pressed"]
+[connection signal="pressed" from="GradientOptions/DitheringOptionButton" to="." method="_on_dither_icon_pressed"]
+[connection signal="pressed" from="GradientOptions/RepeatOptionButton" to="." method="_on_repeat_icon_pressed"]
+[connection signal="pressed" from="GradientOptions/FillAreaOptions" to="." method="_on_fill_area_icon_pressed"]
 [connection signal="value_changed" from="GradientOptions/ToleranceSlider" to="." method="_on_tolerance_slider_value_changed"]
