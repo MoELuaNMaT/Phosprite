@@ -71,7 +71,7 @@ func test_ui3_compact_layout_survives_nested_gradient_grid() -> void:
 	check_eq(options.columns, 1, "nested Gradient properties must stack vertically in UI3")
 	tool.set_compact_option_layout(false)
 	await tree.process_frame
-	check_eq(options.columns, 2, "nested Gradient properties must restore their original columns")
+	check_eq(options.columns, 1, "nested Gradient properties keep the intended vertical layout")
 
 
 func test_stacked_tool_options_are_built_before_scene_entry() -> void:

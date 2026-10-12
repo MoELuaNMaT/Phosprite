@@ -6,6 +6,8 @@ var _spawned_tools: Array[Node] = []
 func teardown() -> void:
 	for tool in _spawned_tools:
 		if is_instance_valid(tool):
+			if tool.get_parent() != null:
+				tool.get_parent().remove_child(tool)
 			tool.queue_free()
 	_spawned_tools.clear()
 
