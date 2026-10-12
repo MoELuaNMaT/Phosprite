@@ -347,12 +347,15 @@ func _layout_zones() -> void:
 		# The palette spans the full height; timeline and tool options never overlap it.
 		var content_left := inset + left_w
 		_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
-		_set_host_rect(
-			WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, 0.0, left_w, size.y)
-		)
+		_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, 0.0, left_w, size.y))
 		_set_host_rect(
 			WorkspaceDockLayout.DockZone.BOTTOM,
-			Rect2(content_left, maxf(0.0, size.y - bottom_h), maxf(0.0, size.x - content_left - inset), bottom_h)
+			Rect2(
+				content_left,
+				maxf(0.0, size.y - bottom_h),
+				maxf(0.0, size.x - content_left - inset),
+				bottom_h
+			)
 		)
 		_set_host_rect(
 			WorkspaceDockLayout.DockZone.RIGHT,

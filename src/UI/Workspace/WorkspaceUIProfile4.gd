@@ -79,9 +79,13 @@ func refresh_after_tools_ready() -> bool:
 func enforce_workspace() -> bool:
 	if not active or surface == null:
 		return true
-	if not _place_fixed_module(Builtins.PALETTE_ID, WorkspaceDockLayout.DockZone.LEFT, Vector2(LEFT_WIDTH, 500.0)):
+	if not _place_fixed_module(
+		Builtins.PALETTE_ID, WorkspaceDockLayout.DockZone.LEFT, Vector2(LEFT_WIDTH, 500.0)
+	):
 		return false
-	if not _place_fixed_module(Builtins.TOOLS_ID, WorkspaceDockLayout.DockZone.RIGHT, Vector2(RIGHT_WIDTH, 500.0)):
+	if not _place_fixed_module(
+		Builtins.TOOLS_ID, WorkspaceDockLayout.DockZone.RIGHT, Vector2(RIGHT_WIDTH, 500.0)
+	):
 		return false
 	if not _place_fixed_module(
 		Builtins.TIMELINE_ID, WorkspaceDockLayout.DockZone.BOTTOM, Vector2(760.0, TIMELINE_HEIGHT)
@@ -111,8 +115,7 @@ func apply_initial_workspace() -> bool:
 	var bounds := surface.get_floating_bounds()
 	var target := Rect2(
 		Vector2(
-			bounds.end.x - preview_size.x - PREVIEW_OFFSET.x,
-			bounds.position.y + PREVIEW_OFFSET.y
+			bounds.end.x - preview_size.x - PREVIEW_OFFSET.x, bounds.position.y + PREVIEW_OFFSET.y
 		),
 		preview_size
 	)
@@ -147,12 +150,15 @@ func _configure_fixed_layout() -> void:
 		tools_definition.preferred_size.x = RIGHT_WIDTH
 		tools_definition.maximum_size.x = 260.0
 	surface.dock_host.set_u_frame_layout(true)
-	surface.configure_floating_snap_policy(
-		{
-			Builtins.TIMELINE_ID: WorkspaceDockLayout.DockZone.BOTTOM,
-			Builtins.PALETTE_ID: WorkspaceDockLayout.DockZone.LEFT,
-			Builtins.TOOLS_ID: WorkspaceDockLayout.DockZone.RIGHT,
-		}
+	(
+		surface
+		. configure_floating_snap_policy(
+			{
+				Builtins.TIMELINE_ID: WorkspaceDockLayout.DockZone.BOTTOM,
+				Builtins.PALETTE_ID: WorkspaceDockLayout.DockZone.LEFT,
+				Builtins.TOOLS_ID: WorkspaceDockLayout.DockZone.RIGHT,
+			}
+		)
 	)
 	for module_id in [Builtins.PALETTE_ID, Builtins.TOOLS_ID, Builtins.TIMELINE_ID]:
 		var module := manager.get_instance(module_id)
@@ -237,7 +243,9 @@ func _apply_live_palette_presentation() -> void:
 	_palette_content = palette
 	_picker_content = picker
 	if _palette_stretch_state.x < 0.0:
-		_palette_stretch_state = Vector2(palette.size_flags_stretch_ratio, picker.size_flags_stretch_ratio)
+		_palette_stretch_state = Vector2(
+			palette.size_flags_stretch_ratio, picker.size_flags_stretch_ratio
+		)
 	var ratio := clampf(
 		float(Global.config_cache.get_value("ui4", "palette_split_ratio", 0.68)),
 		SPLIT_MIN,
@@ -267,9 +275,10 @@ func _set_color_button_visibility(enabled: bool) -> void:
 	# Existing two tool slots are the foreground/background colors. Do not fork their state.
 	if not is_instance_valid(_picker_content) or (enabled and not active):
 		return
-	var colors := _picker_content.get_node_or_null(
-		^"ScrollContainer/VerticalContainer/ColorButtons"
-	) as HBoxContainer
+	var colors := (
+		_picker_content.get_node_or_null(^"ScrollContainer/VerticalContainer/ColorButtons")
+		as HBoxContainer
+	)
 	if colors == null:
 		return
 	colors.visible = enabled
@@ -322,8 +331,8 @@ func _update_split_handle() -> void:
 	if not is_instance_valid(_palette_content) or not is_instance_valid(_palette_root):
 		return
 	var host := surface.dock_host
-	var global_edge := _palette_content.get_global_transform_with_canvas() * Vector2(
-		0.0, _palette_content.size.y
+	var global_edge := (
+		_palette_content.get_global_transform_with_canvas() * Vector2(0.0, _palette_content.size.y)
 	)
 	var host_point := host.get_global_transform_with_canvas().affine_inverse() * global_edge
 	_split_handle.position = host_point - Vector2(0.0, SPLIT_GRAB_HEIGHT * 0.5)
