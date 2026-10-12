@@ -155,7 +155,7 @@ func _set_mode_button(button: Button, mode: String) -> void:
 	button.texture_filter = (
 		CanvasItem.TEXTURE_FILTER_NEAREST
 		if mode == "dither" and index > 0
-		else CanvasItem.TEXTURE_FILTER_DEFAULT
+		else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 	)
 
 
@@ -180,7 +180,7 @@ func _show_mode_choices(mode: String, trigger: Button) -> void:
 		choice.texture_filter = (
 			CanvasItem.TEXTURE_FILTER_NEAREST
 			if mode == "dither" and index > 0
-			else CanvasItem.TEXTURE_FILTER_DEFAULT
+			else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 		)
 		choice.tooltip_text = names[index]
 		choice.toggle_mode = true
