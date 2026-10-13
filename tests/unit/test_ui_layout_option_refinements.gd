@@ -157,25 +157,27 @@ func test_ui3_moves_family_selection_into_persistent_config_panel() -> void:
 	)
 
 
-func test_ui1_mode_buttons_reserve_full_text_width() -> void:
+func test_ui1_ui4_mode_button_text_does_not_force_extra_sidebar_width() -> void:
 	var base_src := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
-	var builtins_src := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
+	check_has(
+		base_src,
+		"const MODE_BUTTON_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH",
+		"text-based mode buttons should share the compact sidebar width",
 	)
 	check_has(
 		base_src,
-		"const MODE_BUTTON_MIN_WIDTH := 112.0",
-		"exclusive mode buttons must reserve enough width for their full labels",
+		"button.clip_text = true",
+		"text-based mode buttons must not grow beyond the fixed column",
 	)
 	check_has(
 		base_src,
-		"button.clip_text = false",
-		"exclusive mode button text must not be clipped",
+		"button.tooltip_text = button.text",
+		"clipped text-based mode labels should remain accessible via tooltip",
 	)
-	check_has(
-		builtins_src,
-		"Vector2(168.0, 220.0), Vector2(176.0, 520.0)",
-		"UI 1 Tools module must be wide enough for readable mode buttons",
+	check_eq(
+		WorkspaceEditorMigration.TOOL_OPTIONS_WIDTH,
+		BaseTool.MODE_ICON_BUTTON_SIZE + 24.0,
+		"UI1 and UI4 use the 32px Mode icon plus equal side padding",
 	)
 
 

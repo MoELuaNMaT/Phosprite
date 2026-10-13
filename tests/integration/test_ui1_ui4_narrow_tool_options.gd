@@ -33,10 +33,19 @@ func test_ui1_ui4_shared_mode_padding_and_all_tool_minimum_widths() -> void:
 		_spawned_tools.append(tool)
 		tree.root.add_child(tool)
 		await tree.process_frame
+		# Desktop selection tools expose two-vector transform editors; iOS keeps
+		# only icon Mode controls. Emulate the iOS visibility contract in CI.
+		if tool is BaseSelectionTool:
+			var visible_controls: Array[StringName] = [
+				&"ColorRect", &"ModeLabel", &"ModeButtons"
+			]
+			for child in tool.get_children():
+				if child is Control:
+					(child as Control).visible = StringName(child.name) in visible_controls
+			await tree.process_frame
 		var width := tool.get_combined_minimum_size().x
 		print("[UI1-UI4 SIDEBAR] %s minimum width: %s" % [tool_name, width])
 		check_true(
 			width <= WorkspaceEditorMigration.TOOL_OPTIONS_WIDTH,
-			"%s tool options must fit the same 56px column (measured %s)"
-			% [tool_name, width],
+			"%s tool options must fit the same 56px column (measured %s)" % [tool_name, width],
 		)
