@@ -36,9 +36,7 @@ func test_ui1_ui4_shared_mode_padding_and_all_tool_minimum_widths() -> void:
 		# Desktop selection tools expose two-vector transform editors; iOS keeps
 		# only icon Mode controls. Emulate the iOS visibility contract in CI.
 		if tool is BaseSelectionTool:
-			var visible_controls: Array[StringName] = [
-				&"ColorRect", &"ModeLabel", &"ModeButtons"
-			]
+			var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]
 			for child in tool.get_children():
 				if child is Control:
 					(child as Control).visible = StringName(child.name) in visible_controls
