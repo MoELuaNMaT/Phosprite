@@ -5,7 +5,7 @@ extends Node
 ## Workspace placements, resize rules and presentation change in UI4.
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const LEFT_WIDTH := 176.0
-const RIGHT_WIDTH := WorkspaceEditorMigration.UI1_TOOLS_FIXED_WIDTH
+const RIGHT_WIDTH := 112.0
 const TIMELINE_HEIGHT := 224.0
 const PREVIEW_OFFSET := Vector2(18.0, 18.0)
 const SPLIT_MIN := 0.2
