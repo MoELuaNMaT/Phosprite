@@ -50,6 +50,18 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 	var surface := WorkspaceSurface.new()
 	root.add_child(surface)
 	check_true(surface.setup(manager, dock_host), "surface setup")
+	# Reopen an older UI4 slot with a wider docked Tools module.
+	check_true(
+		surface.dock_module(
+			Builtins.TOOLS_ID,
+			WorkspaceDockLayout.DockZone.RIGHT,
+			0,
+			Vector2(220.0, 500.0),
+			{},
+			true
+		),
+		"simulate older saved wide UI4 Tools dock",
+	)
 	var ui4 := Profile4.new()
 	root.add_child(ui4)
 	check_true(ui4.setup(root, surface), "UI4 setup")
@@ -64,6 +76,11 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 		"UI4 Tools width stays identical for every selected tool",
 	)
 	check_true(tools_definition.is_horizontal_resize_locked(), "UI4 width cannot expand by drag")
+	check_eq(
+		dock_host.layout.get_module_size(Builtins.TOOLS_ID).x,
+		Migration.UI1_TOOLS_FIXED_WIDTH,
+		"existing wide UI4 tool dock is reduced when activating the profile",
+	)
 	var left := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.LEFT] as Control
 	var right := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.RIGHT] as Control
 	var bottom := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.BOTTOM] as Control

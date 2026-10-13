@@ -197,6 +197,14 @@ func _place_fixed_module(module_id: StringName, zone: int, default_size: Vector2
 			surface.dock_host.layout.get_module_zone(module_id) == zone
 			and surface.dock_host.layout.is_module_region_fill(module_id)
 		):
+			# UI4 may restore an older snapshot saved with a wider tool sidebar.
+			# Reapply the fixed width even when no dock transition is necessary.
+			if module_id == Builtins.TOOLS_ID:
+				var current_size := surface.dock_host.layout.get_module_size(module_id)
+				if not is_equal_approx(current_size.x, RIGHT_WIDTH):
+					current_size.x = RIGHT_WIDTH
+					if not surface.dock_host.set_module_size(module_id, current_size):
+						return false
 			var module := surface.manager.get_instance(module_id)
 			if module != null:
 				module.set_position_adjustment_enabled(false)
