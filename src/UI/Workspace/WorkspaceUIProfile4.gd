@@ -5,7 +5,7 @@ extends Node
 ## Workspace placements, resize rules and presentation change in UI4.
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const LEFT_WIDTH := 176.0
-const RIGHT_WIDTH := 136.0
+const RIGHT_WIDTH := WorkspaceEditorMigration.UI1_TOOLS_FIXED_WIDTH
 const TIMELINE_HEIGHT := 224.0
 const PREVIEW_OFFSET := Vector2(18.0, 18.0)
 const SPLIT_MIN := 0.2
@@ -145,10 +145,10 @@ func _configure_fixed_layout() -> void:
 				"preferred": tools_definition.preferred_size.x,
 				"maximum": tools_definition.maximum_size.x,
 			}
-		# UI4 starts as narrow as UI1, but its right inner edge is still resizable.
+		# UI1 and UI4 share the same fixed tool-plus-options width for every tool.
 		tools_definition.minimum_size.x = RIGHT_WIDTH
 		tools_definition.preferred_size.x = RIGHT_WIDTH
-		tools_definition.maximum_size.x = 260.0
+		tools_definition.maximum_size.x = RIGHT_WIDTH
 	surface.dock_host.set_u_frame_layout(true)
 	(
 		surface

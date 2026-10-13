@@ -24,10 +24,10 @@ const UI_PROFILE_3_LAYOUT_VERSION := 1
 const UI_PROFILE_4_LAYOUT_VERSION := 1
 const WORKSPACE_SIDE_MARGIN := 8.0
 const TOOL_PALETTE_WIDTH := 40.0
-# Four 32px selection mode buttons stack vertically in a 72px options column.
-const TOOL_OPTIONS_WIDTH := 72.0
-# Palette 40px + options 72px + separator and workspace interior padding.
-const UI1_TOOLS_FIXED_WIDTH := 136.0
+# Four selection Mode icons are 32px wide; keep 12px of breathing room on each side.
+const TOOL_OPTIONS_WIDTH := 56.0
+# 40px palette + 56px option column + separator and workspace chrome.
+const UI1_TOOLS_FIXED_WIDTH := 112.0
 
 const DEFAULT_LAYOUT := [
 	{

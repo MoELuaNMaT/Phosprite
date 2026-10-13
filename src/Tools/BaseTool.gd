@@ -2,7 +2,7 @@ class_name BaseTool
 extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
-const MODE_BUTTON_MIN_WIDTH := 112.0
+const MODE_BUTTON_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const MODE_ICON_BUTTON_SIZE := 32.0
 const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0
 const COMPACT_OPTION_LABEL_HEIGHT := 20.0
@@ -125,6 +125,10 @@ func _configure_sidebar_option_button(option: OptionButton) -> void:
 func _configure_sidebar_label(label: Label) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.text = _strip_option_colon(label.text)
+	# Text may describe a long tool name/setting; never widen the shared sidebar.
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = 0.0
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 func _configure_sidebar_button(button: Button) -> void:
@@ -137,8 +141,12 @@ func _configure_sidebar_button(button: Button) -> void:
 		return
 	if button.button_group != null:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.clip_text = false
-		button.custom_minimum_size.x = maxf(button.custom_minimum_size.x, MODE_BUTTON_MIN_WIDTH)
+		button.clip_text = true
+		button.custom_minimum_size.x = minf(
+			maxf(button.custom_minimum_size.x, MODE_BUTTON_MIN_WIDTH), SIDEBAR_CONTROL_WIDTH
+		)
+		if button.tooltip_text.is_empty() and not button.text.is_empty():
+			button.tooltip_text = button.text
 		return
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.clip_text = true

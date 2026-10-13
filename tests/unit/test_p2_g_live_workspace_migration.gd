@@ -1378,6 +1378,11 @@ func test_left_tool_options_merge_after_stable_tool_startup() -> void:
 		"tool-options column should keep the matching compact configuration width",
 	)
 	check_eq(
+		WorkspaceEditorMigration.TOOL_OPTIONS_WIDTH,
+		BaseTool.MODE_ICON_BUTTON_SIZE + 24.0,
+		"Options column holds one selection icon plus equal 12px side insets",
+	)
+	check_eq(
 		left_options.size_flags_stretch_ratio,
 		1.0,
 		"remaining few pixels should go to the configuration column",

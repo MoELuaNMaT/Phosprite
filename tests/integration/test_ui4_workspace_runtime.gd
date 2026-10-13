@@ -57,6 +57,13 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 	await tree.process_frame
 
 	check_true(dock_host.u_frame_layout_enabled, "UI4 geometry selected")
+	var tools_definition := manager.get_definition(Builtins.TOOLS_ID)
+	check_eq(
+		tools_definition.get_constrained_size(Vector2(240.0, 360.0)).x,
+		Migration.UI1_TOOLS_FIXED_WIDTH,
+		"UI4 Tools width stays identical for every selected tool",
+	)
+	check_true(tools_definition.is_horizontal_resize_locked(), "UI4 width cannot expand by drag")
 	var left := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.LEFT] as Control
 	var right := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.RIGHT] as Control
 	var bottom := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.BOTTOM] as Control
@@ -128,6 +135,7 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 		"portrait right tools must stop at timeline top edge",
 	)
 	check_eq(left.size.y, dock_host.size.y, "portrait palette still spans full height")
+	check_eq(right.size.x, Migration.UI1_TOOLS_FIXED_WIDTH, "portrait Tools retains fixed width")
 
 	ui4.deactivate()
 	check_true(not dock_host.u_frame_layout_enabled, "UI4 geometry disabled on exit")
