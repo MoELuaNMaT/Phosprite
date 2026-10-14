@@ -629,7 +629,11 @@ func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles
 	)
 	migration._configure_ui1_tools_fixed_width(false)
 	check_eq(tools.minimum_size.x, original_minimum, "other profiles' original minimum is restored")
-	check_eq(tools.preferred_size.x, original_preferred, "other profiles' original preferred width is restored")
+	check_eq(
+		tools.preferred_size.x,
+		original_preferred,
+		"other profiles' original preferred width is restored"
+	)
 	check_eq(tools.maximum_size.x, original_maximum, "other profiles' original maximum is restored")
 	check_true(
 		not tools.is_horizontal_resize_locked(), "other profiles still allow horizontal resize"
