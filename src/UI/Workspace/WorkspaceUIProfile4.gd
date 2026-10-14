@@ -261,15 +261,8 @@ func _apply_live_palette_presentation() -> void:
 	)
 	_set_split_ratio(ratio, false)
 	_ensure_split_handle()
-	_show_color_buttons_when_ready.call_deferred()
-
-
-func _show_color_buttons_when_ready() -> void:
-	# ColorPicker._ready hides this row after its first process frame.
-	# Re-enable it only once that initialization has finished.
-	await get_tree().process_frame
-	if active:
-		_set_color_button_visibility(true)
+	# Foreground/background swatches are now shared by all three profiles.
+	# The ColorPicker places them in its own sampler row.
 
 
 func _restore_live_palette_presentation() -> void:
@@ -280,36 +273,10 @@ func _restore_live_palette_presentation() -> void:
 		if _palette_stretch_state.x >= 0.0:
 			_palette_content.size_flags_stretch_ratio = _palette_stretch_state.x
 			_picker_content.size_flags_stretch_ratio = _palette_stretch_state.y
-	_set_color_button_visibility(false)
 	_palette_stretch_state = Vector2(-1.0, -1.0)
 	_palette_root = null
 	_palette_content = null
 	_picker_content = null
-
-
-func _set_color_button_visibility(enabled: bool) -> void:
-	# Existing two tool slots are the foreground/background colors. Do not fork their state.
-	if not is_instance_valid(_picker_content) or (enabled and not active):
-		return
-	var colors := (
-		_picker_content.get_node_or_null(^"ScrollContainer/VerticalContainer/ColorButtons")
-		as HBoxContainer
-	)
-	if colors == null:
-		return
-	colors.visible = enabled
-	var switch_button := colors.get_node_or_null(^"ColorSwitch") as Control
-	if switch_button != null:
-		switch_button.visible = false
-	var auxiliary := colors.get_node_or_null(^"ColorButtonsVertical") as Control
-	if auxiliary != null:
-		auxiliary.visible = false
-	if enabled:
-		var left := colors.get_node_or_null(^"LeftColorButton") as BaseButton
-		var right := colors.get_node_or_null(^"RightColorButton") as BaseButton
-		if left != null and right != null:
-			left.set_pressed_no_signal(Tools.picking_color_for == MOUSE_BUTTON_LEFT)
-			right.set_pressed_no_signal(Tools.picking_color_for == MOUSE_BUTTON_RIGHT)
 
 
 func _set_split_ratio(ratio: float, persist: bool) -> void:

@@ -32,15 +32,13 @@ var _touch_color_ui_mode := false
 var _touch_color_candidates: Dictionary = {}
 var _ios_screen_sampler_armed := false
 
-# Staged color edits do not affect the actual tool slot until explicit Close.
+# The numeric popup edits the selected foreground/background tool slot LIVE.
+# Its CanvasLayer is outside the Palette and Color VBox layout.
 var _color_options_layer: CanvasLayer
 var _color_options_popup: PanelContainer
 var _color_options_picker: ColorPicker
-var _color_preview_before: ColorRect
-var _color_preview_after: ColorRect
-var _color_preview_original := Color.WHITE
-var _color_preview_staged := Color.WHITE
-var _color_preview_slot := MOUSE_BUTTON_LEFT
+var _color_options_scroll: ScrollContainer
+var _syncing_popup_color := false
 var _color_options_open := false
 
 @onready var color_picker := %ColorPicker as ColorPicker
@@ -99,7 +97,8 @@ func _ready() -> void:
 	_screen_sampler_button = sampler_cont.get_child(0, true) as BaseButton
 	if OS.get_name() == "iOS" and is_instance_valid(_screen_sampler_button):
 		_install_ios_screen_sampler()
-	# Keep sampler/swap/default/left/right logic alive, but remove those controls from this UI.
+	# The two existing tool colors are the permanent foreground/background
+	# swatches in all three UI profiles; keep the original tool slot wiring.
 	if is_instance_valid(_screen_sampler_button):
 		_screen_sampler_button.visible = false
 	var color_texture_rect := sampler_cont.get_child(1, true) as TextureRect
@@ -108,13 +107,22 @@ func _ready() -> void:
 	var shape_popup_menu := shape_menu_button.get_popup()
 	shape_popup_menu.id_pressed.connect(_on_shape_popup_menu_id_pressed)
 	color_buttons.visible = false
-	# Reuse the sampler row itself: Color options lives on the left, while the
-	# picker-shape mode button remains the only control on the far right.
-	expand_button.get_parent().remove_child(expand_button)
-	sampler_cont.add_child(expand_button)
+	# Move the existing left/right ButtonGroup controls beside a square settings
+	# button. All of them stay in the native picker sampler row, so opening a
+	# floating popup does not change the width/height of Palette and Color.
+	expand_button.reparent(sampler_cont)
 	sampler_cont.move_child(expand_button, 0)
-	expand_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_install_color_preview_button()
+	_install_color_settings_button()
+	left_color_button.reparent(sampler_cont)
+	right_color_button.reparent(sampler_cont)
+	for button in [left_color_button, right_color_button]:
+		button.visible = true
+		button.custom_minimum_size = Vector2(32.0, 28.0)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sampler_cont.move_child(left_color_button, 1)
+	sampler_cont.move_child(right_color_button, 2)
+	_sync_active_color_buttons()
 
 	color_slider_types_hbox = picker_vbox_container.get_child(2, true) as HBoxContainer
 	color_slider_types_hbox.visible = false
@@ -134,7 +142,7 @@ func _ready() -> void:
 	color_picker.sliders_visible = false
 	color_picker.presets_visible = false
 	_on_shape_popup_menu_id_pressed(color_picker.picker_shape)
-	_update_color_preview_button()
+	_sync_active_color_buttons()
 
 
 func is_color_options_expanded() -> bool:
@@ -142,7 +150,7 @@ func is_color_options_expanded() -> bool:
 
 
 func _exit_tree() -> void:
-	# Navigating away discards unfinished edits; only Close may apply color.
+	# The popup is independent of the picker layout and has no uncommitted color.
 	if is_instance_valid(_color_options_layer):
 		_color_options_layer.free()
 	_color_options_layer = null
@@ -150,88 +158,62 @@ func _exit_tree() -> void:
 	_color_options_picker = null
 
 
-func _install_color_preview_button() -> void:
-	expand_button.text = ""
+func _install_color_settings_button() -> void:
+	expand_button.text = "⚙"
 	expand_button.icon = null
-	expand_button.toggle_mode = false
-	expand_button.custom_minimum_size = Vector2(80.0, 28.0)
-	expand_button.tooltip_text = "Color options"
-	_color_preview_before = ColorRect.new()
-	_color_preview_before.name = &"CurrentColorPreview"
-	_color_preview_before.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_color_preview_before.anchor_right = 0.5
-	_color_preview_before.anchor_bottom = 1.0
-	_color_preview_before.offset_left = 3.0
-	_color_preview_before.offset_top = 3.0
-	_color_preview_before.offset_right = -1.0
-	_color_preview_before.offset_bottom = -3.0
-	expand_button.add_child(_color_preview_before)
-	_color_preview_after = ColorRect.new()
-	_color_preview_after.name = &"StagedColorPreview"
-	_color_preview_after.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_color_preview_after.anchor_left = 0.5
-	_color_preview_after.anchor_right = 1.0
-	_color_preview_after.anchor_bottom = 1.0
-	_color_preview_after.offset_left = 1.0
-	_color_preview_after.offset_top = 3.0
-	_color_preview_after.offset_right = -3.0
-	_color_preview_after.offset_bottom = -3.0
-	expand_button.add_child(_color_preview_after)
+	expand_button.toggle_mode = true
+	expand_button.set_pressed_no_signal(false)
+	expand_button.custom_minimum_size = Vector2(30.0, 30.0)
+	expand_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	expand_button.tooltip_text = "RGB / HSV / RAW color settings"
 
 
-func _update_color_preview_button() -> void:
-	if not is_instance_valid(_color_preview_before):
+func _sync_active_color_buttons() -> void:
+	if not is_instance_valid(left_color_button) or not is_instance_valid(right_color_button):
 		return
-	if _color_options_open:
-		_color_preview_before.color = _color_preview_original
-		_color_preview_after.color = _color_preview_staged
-	else:
-		if not Tools._slots.has(Tools.picking_color_for):
-			return
-		var active_color: Color = Tools._slots[Tools.picking_color_for].color
-		_color_preview_before.color = active_color
-		_color_preview_after.color = active_color
+	left_color_button.set_pressed_no_signal(Tools.picking_color_for == MOUSE_BUTTON_LEFT)
+	right_color_button.set_pressed_no_signal(Tools.picking_color_for == MOUSE_BUTTON_RIGHT)
+	if Tools._slots.has(MOUSE_BUTTON_LEFT):
+		left_color_rect.color = Tools._slots[MOUSE_BUTTON_LEFT].color
+	if Tools._slots.has(MOUSE_BUTTON_RIGHT):
+		right_color_rect.color = Tools._slots[MOUSE_BUTTON_RIGHT].color
+
+
+func _sync_popup_to_active_slot() -> void:
+	if not _color_options_open or not is_instance_valid(_color_options_picker):
+		return
+	if not Tools._slots.has(Tools.picking_color_for):
+		return
+	_syncing_popup_color = true
+	_color_options_picker.color = Tools._slots[Tools.picking_color_for].color
+	_syncing_popup_color = false
 
 
 func _open_color_options_popup() -> void:
 	if _color_options_open or not Tools._slots.has(Tools.picking_color_for):
+		expand_button.set_pressed_no_signal(_color_options_open)
 		return
-	_color_preview_slot = Tools.picking_color_for
-	_color_preview_original = Tools._slots[_color_preview_slot].color
-	_color_preview_staged = _color_preview_original
 	_color_options_open = true
 
-	# A separate CanvasLayer stays above all three Workspace profile layouts,
-	# without intercepting drawing taps outside its PanelContainer.
 	_color_options_layer = CanvasLayer.new()
 	_color_options_layer.name = &"ColorOptionsLayer"
 	_color_options_layer.layer = 100
 	get_tree().root.add_child(_color_options_layer)
 	_color_options_popup = PanelContainer.new()
 	_color_options_popup.name = &"ColorOptionsPopup"
-	# Content-sized panel: the original wheel/rectangle stays in the main picker.
-	_color_options_popup.custom_minimum_size = Vector2(300.0, 0.0)
+	_color_options_popup.custom_minimum_size = Vector2(270.0, 0.0)
 	_color_options_popup.mouse_filter = Control.MOUSE_FILTER_STOP
 	_color_options_popup.hide()
 	_color_options_layer.add_child(_color_options_popup)
-	var content := VBoxContainer.new()
-	content.name = &"ColorOptionsContent"
-	_color_options_popup.add_child(content)
-	var header := HBoxContainer.new()
-	content.add_child(header)
-	var title := Label.new()
-	title.text = "Color options"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	var close_button := Button.new()
-	close_button.name = &"CloseColorOptions"
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(60.0, 32.0)
-	header.add_child(close_button)
-	close_button.pressed.connect(_close_color_options_popup)
+	_color_options_scroll = ScrollContainer.new()
+	_color_options_scroll.name = &"ColorOptionsScroll"
+	_color_options_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_color_options_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_color_options_scroll.custom_minimum_size = Vector2(270.0, 0.0)
+	_color_options_popup.add_child(_color_options_scroll)
 	_color_options_picker = ColorPicker.new()
-	_color_options_picker.name = &"StagedColorPicker"
-	_color_options_picker.custom_minimum_size = Vector2(300.0, 0.0)
+	_color_options_picker.name = &"LiveColorOptionsPicker"
+	_color_options_picker.custom_minimum_size = Vector2(270.0, 0.0)
 	_color_options_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_color_options_picker.color_modes_visible = true
 	_color_options_picker.sliders_visible = true
@@ -240,15 +222,11 @@ func _open_color_options_popup() -> void:
 	_color_options_picker.presets_visible = false
 	_color_options_picker.can_add_swatches = false
 	_color_options_picker.color_mode = color_picker.color_mode
-	_color_options_picker.color = _color_preview_original
-	content.add_child(_color_options_picker)
-	_color_options_picker.color_changed.connect(_on_staged_color_changed)
-
-	# Godot's native ColorPicker includes a shape palette above the mode sliders.
-	# Hide that palette and its sampler; keep only RGB/HSV/RAW mode controls and sliders.
-	# Wait for its built-in child hierarchy before sizing the compact popup.
+	_color_options_picker.color = Tools._slots[Tools.picking_color_for].color
+	_color_options_scroll.add_child(_color_options_picker)
+	_color_options_picker.color_changed.connect(_on_popup_color_changed)
 	_finalize_color_options_popup.call_deferred()
-	_update_color_preview_button()
+	expand_button.set_pressed_no_signal(true)
 	color_options_toggled.emit(true)
 
 
@@ -279,53 +257,44 @@ func _finalize_color_options_popup() -> void:
 	if not _configure_staged_color_options_picker():
 		push_error("Color options editor could not hide the native palette controls")
 		return
-	# Not a PopupPanel: outside taps may draw on Canvas, but never close this.
 	_color_options_popup.reset_size()
 	_position_color_options_popup()
 	_color_options_popup.show()
-	_update_color_preview_button()
 
 
 func _position_color_options_popup() -> void:
 	if not is_instance_valid(_color_options_popup):
 		return
 	var viewport_size := get_viewport_rect().size
-	var source_rect := get_global_rect()
-	# The source picker is nested in the shared Palette and Color container.
-	# Anchoring to the color BUTTON can place the floating popup on top of
-	# the last portion of the HSV rectangle, making it appear narrower.
-	var panel_parent := get_parent() as VBoxContainer
-	if panel_parent != null:
-		var panel_rect := panel_parent.get_global_rect()
-		if panel_rect.size.x > 0.0 and panel_rect.size.x <= viewport_size.x * 0.75:
-			source_rect = panel_rect
+	var button_rect := expand_button.get_global_rect()
 	var popup_size := _color_options_popup.size
-	var gap := 8.0
-	var right_x := source_rect.end.x + gap
-	var left_x := source_rect.position.x - popup_size.x - gap
-	var x := right_x
-	if right_x + popup_size.x > viewport_size.x and left_x >= 0.0:
-		x = left_x
-	else:
-		x = clampf(right_x, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
-	var trigger_y := expand_button.get_global_rect().position.y - 24.0
-	_color_options_popup.position = Vector2(
-		x, clampf(trigger_y, 0.0, maxf(0.0, viewport_size.y - popup_size.y))
-	)
+	var gap := 6.0
+	# The popup always starts BELOW the settings button. Its top edge never
+	# hides the toggle or the HSV rectangle above the sampler row.
+	var popup_y := button_rect.end.y + gap
+	var panel_left := get_global_rect().position.x
+	var popup_x := clampf(panel_left, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
+	_color_options_popup.position = Vector2(popup_x, popup_y)
+	# A low button on an iPad must not enlarge the parent VBox. Clip only the
+	# independent popup and allow scrolling of its numeric sliders instead.
+	var available_height := maxf(48.0, viewport_size.y - popup_y - gap)
+	if popup_size.y > available_height:
+		_color_options_popup.size.y = available_height
+	_color_options_popup.clip_contents = true
 
 
-func _on_staged_color_changed(color: Color) -> void:
-	if not _color_options_open:
+func _on_popup_color_changed(color: Color) -> void:
+	if not _color_options_open or _syncing_popup_color:
 		return
-	_color_preview_staged = color
-	_update_color_preview_button()
+	if Tools._slots.has(Tools.picking_color_for):
+		# Native ColorPicker events (not opening, leaving, or closing popup)
+		# write immediately to the selected left/right slot.
+		Tools.assign_color(color, Tools.picking_color_for, false)
 
 
 func _close_color_options_popup() -> void:
 	if not _color_options_open:
 		return
-	var applied_color := _color_preview_staged
-	var target_slot := _color_preview_slot
 	if is_instance_valid(_color_options_picker):
 		color_picker.color_mode = _color_options_picker.color_mode
 		Global.config_cache.set_value("color_picker", "color_mode", color_picker.color_mode)
@@ -335,8 +304,8 @@ func _close_color_options_popup() -> void:
 	_color_options_layer = null
 	_color_options_popup = null
 	_color_options_picker = null
-	Tools.assign_color(applied_color, target_slot, false)
-	_update_color_preview_button()
+	_color_options_scroll = null
+	expand_button.set_pressed_no_signal(false)
 	color_options_toggled.emit(false)
 
 
@@ -610,7 +579,8 @@ func _on_left_color_button_toggled(toggled_on: bool) -> void:
 		Tools.picking_color_for = MOUSE_BUTTON_RIGHT
 		color_picker.color = right_color_rect.color
 	_average(left_color_rect.color, right_color_rect.color)
-	_update_color_preview_button()
+	_sync_active_color_buttons()
+	_sync_popup_to_active_slot()
 
 
 func reset_options() -> void:
@@ -632,7 +602,9 @@ func update_color(color_info: Dictionary, button: int) -> void:
 	Global.config_cache.set_value("color_picker", "color_mode", color_picker.color_mode)
 	Global.config_cache.set_value("color_picker", "picker_shape", color_picker.picker_shape)
 	_skip_color_picker_update = false
-	_update_color_preview_button()
+	_sync_active_color_buttons()
+	if button == Tools.picking_color_for:
+		_sync_popup_to_active_slot()
 	if _ios_screen_sampler_armed:
 		_ios_screen_sampler_armed = false
 		if is_instance_valid(_screen_sampler_button) and _screen_sampler_button.toggle_mode:
@@ -648,7 +620,10 @@ func _on_ColorDefaults_pressed() -> void:
 
 
 func _on_expand_button_pressed() -> void:
-	_open_color_options_popup()
+	if _color_options_open:
+		_close_color_options_popup()
+	else:
+		_open_color_options_popup()
 
 
 func _average(color_1: Color, color_2: Color) -> void:
