@@ -33,6 +33,7 @@ var _touch_color_candidates: Dictionary = {}
 var _ios_screen_sampler_armed := false
 
 # Staged color edits do not affect the actual tool slot until explicit Close.
+var _color_options_layer: CanvasLayer
 var _color_options_popup: PanelContainer
 var _color_options_picker: ColorPicker
 var _color_preview_before: ColorRect
@@ -142,8 +143,9 @@ func is_color_options_expanded() -> bool:
 
 func _exit_tree() -> void:
 	# Navigating away discards unfinished edits; only Close may apply color.
-	if is_instance_valid(_color_options_popup):
-		_color_options_popup.free()
+	if is_instance_valid(_color_options_layer):
+		_color_options_layer.free()
+	_color_options_layer = null
 	_color_options_popup = null
 	_color_options_picker = null
 
@@ -199,11 +201,17 @@ func _open_color_options_popup() -> void:
 	_color_preview_staged = _color_preview_original
 	_color_options_open = true
 
+	# A separate CanvasLayer stays above all three Workspace profile layouts,
+	# without intercepting drawing taps outside its PanelContainer.
+	_color_options_layer = CanvasLayer.new()
+	_color_options_layer.name = &"ColorOptionsLayer"
+	_color_options_layer.layer = 100
+	get_tree().root.add_child(_color_options_layer)
 	_color_options_popup = PanelContainer.new()
 	_color_options_popup.name = &"ColorOptionsPopup"
 	_color_options_popup.custom_minimum_size = Vector2(300.0, 320.0)
 	_color_options_popup.mouse_filter = Control.MOUSE_FILTER_STOP
-	get_tree().root.add_child(_color_options_popup)
+	_color_options_layer.add_child(_color_options_popup)
 	var content := VBoxContainer.new()
 	content.name = &"ColorOptionsContent"
 	_color_options_popup.add_child(content)
@@ -263,8 +271,9 @@ func _close_color_options_popup() -> void:
 		color_picker.color_mode = _color_options_picker.color_mode
 		Global.config_cache.set_value("color_picker", "color_mode", color_picker.color_mode)
 	_color_options_open = false
-	if is_instance_valid(_color_options_popup):
-		_color_options_popup.queue_free()
+	if is_instance_valid(_color_options_layer):
+		_color_options_layer.queue_free()
+	_color_options_layer = null
 	_color_options_popup = null
 	_color_options_picker = null
 	Tools.assign_color(applied_color, target_slot, false)
