@@ -5,6 +5,7 @@ signal color_options_toggled(expanded: bool)
 const TOUCH_TOOLTIP_META := &"phosprite_touch_tooltip"
 const TOUCH_MOUSE_FILTER_META := &"phosprite_touch_mouse_filter"
 const TOUCH_TAP_SLOP_PX := 12.0
+const SETTINGS_ICON := preload("res://assets/graphics/misc/settings.svg")
 
 ## The HBoxContainer parent of the picker shapes.
 var shapes_container: HBoxContainer
@@ -159,8 +160,9 @@ func _exit_tree() -> void:
 
 
 func _install_color_settings_button() -> void:
-	expand_button.text = "⚙"
-	expand_button.icon = null
+	expand_button.text = ""
+	expand_button.icon = SETTINGS_ICON
+	expand_button.expand_icon = true
 	expand_button.toggle_mode = true
 	expand_button.set_pressed_no_signal(false)
 	expand_button.custom_minimum_size = Vector2(30.0, 30.0)

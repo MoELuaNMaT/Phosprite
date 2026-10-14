@@ -14,7 +14,7 @@ func test_color_options_use_live_foreground_background_and_toggle_button() -> vo
 	)
 	check_has(source, "func _sync_popup_to_active_slot() -> void:", "other picker syncs live")
 	check_has(source, "func _close_color_options_popup() -> void:", "settings toggles off")
-	check_has(source, 'expand_button.text = "⚙"', "settings control uses square icon")
+	check_has(source, 'expand_button.icon = SETTINGS_ICON', "settings button uses bundled SVG")
 	check_has(scene, "toggle_mode = true", "settings button toggles")
 	check_true(
 		not source.contains("_color_preview_staged"), "obsolete half-color staged preview removed"
