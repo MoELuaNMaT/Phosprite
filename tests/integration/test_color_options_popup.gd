@@ -68,6 +68,7 @@ func test_staged_color_preview_ignores_external_canvas_changes() -> void:
 	editor._color_options_open = false
 	editor.free()
 
+
 func test_staged_editor_hides_visual_color_palette_but_keeps_numeric_controls() -> void:
 	var editor := COLOR_SCENE.instantiate()
 	var picker := ColorPicker.new()
@@ -79,7 +80,9 @@ func test_staged_editor_hides_visual_color_palette_but_keeps_numeric_controls() 
 	tree.root.add_child(picker)
 	await tree.process_frame
 	editor._color_options_picker = picker
-	check_true(editor._configure_staged_color_options_picker(), "native picker modes can be isolated")
+	check_true(
+		editor._configure_staged_color_options_picker(), "native picker modes can be isolated"
+	)
 	var margin := picker.get_child(0, true) as MarginContainer
 	check_true(margin != null, "native ColorPicker margin exists")
 	if margin != null:
