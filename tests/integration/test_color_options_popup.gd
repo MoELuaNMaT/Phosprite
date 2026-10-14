@@ -103,6 +103,18 @@ func test_staged_editor_hides_visual_color_palette_but_keeps_numeric_controls() 
 
 
 func test_opening_numeric_popup_does_not_shrink_main_color_picker_or_palette() -> void:
+	# The standalone test runner doesn't always initialize the editor's active tool slot.
+	var previous_active_slot := Tools.picking_color_for
+	var inserted_slot := not Tools._slots.has(MOUSE_BUTTON_LEFT)
+	var previous_color := Color.WHITE
+	if inserted_slot:
+		var slot := Tools.Slot.new("Left tool")
+		slot.button = MOUSE_BUTTON_LEFT
+		slot.color = Color.RED
+		Tools._slots[MOUSE_BUTTON_LEFT] = slot
+	else:
+		previous_color = Tools._slots[MOUSE_BUTTON_LEFT].color
+	Tools.picking_color_for = MOUSE_BUTTON_LEFT
 	# Reproduce the shared Palette and Color vertical stretch relationship.
 	var palette_and_color := VBoxContainer.new()
 	palette_and_color.size = Vector2(320.0, 700.0)
@@ -146,3 +158,8 @@ func test_opening_numeric_popup_does_not_shrink_main_color_picker_or_palette() -
 	await tree.process_frame
 	check_eq(editor.size, editor_size_before, "closing the popup must not resize the picker")
 	palette_and_color.free()
+	if inserted_slot:
+		Tools._slots.erase(MOUSE_BUTTON_LEFT)
+	else:
+		Tools._slots[MOUSE_BUTTON_LEFT].color = previous_color
+	Tools.picking_color_for = previous_active_slot
