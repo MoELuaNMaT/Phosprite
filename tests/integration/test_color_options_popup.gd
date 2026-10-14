@@ -4,12 +4,8 @@ const COLOR_SCENE := preload("res://src/UI/ColorPickers/ColorPicker.tscn")
 
 
 func test_color_option_editor_uses_separate_staged_picker_and_explicit_close() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/ColorPickers/ColorPicker.gd"
-	)
-	var scene := FileAccess.get_file_as_string(
-		"res://src/UI/ColorPickers/ColorPicker.tscn"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/ColorPickers/ColorPicker.gd")
+	var scene := FileAccess.get_file_as_string("res://src/UI/ColorPickers/ColorPicker.tscn")
 	check_has(scene, 'signal="pressed"', "color swatch is a button, not a toggle")
 	check_true(
 		not scene.contains('method="_on_expand_button_toggled"'),
@@ -17,15 +13,32 @@ func test_color_option_editor_uses_separate_staged_picker_and_explicit_close() -
 	)
 	check_has(source, "func _open_color_options_popup()", "separate editor is created")
 	check_has(source, "_color_options_picker = ColorPicker.new()", "staging owns its own picker")
-	check_has(source, "_color_options_picker.color_modes_visible = true", "popup exposes RGB/HSV modes")
+	check_has(
+		source, "_color_options_picker.color_modes_visible = true", "popup exposes RGB/HSV modes"
+	)
 	check_has(source, "_color_options_picker.sliders_visible = true", "popup exposes sliders")
 	check_has(source, "_color_options_picker.hex_visible = true", "popup exposes HEX")
 	check_has(source, "func _on_staged_color_changed(color: Color)", "preview listens to staging")
-	check_has(source, "_color_preview_after.color = _color_preview_staged", "right half previews edits")
-	check_has(source, "_color_preview_before.color = _color_preview_original", "left half retains original")
-	check_has(source, "close_button.pressed.connect(_close_color_options_popup)", "only Close applies")
-	check_has(source, "Tools.assign_color(applied_color, target_slot, false)", "Close commits to captured slot")
-	check_true(not source.contains("color_picker.sliders_visible = toggled_on"), "embedded picker never expands")
+	check_has(
+		source, "_color_preview_after.color = _color_preview_staged", "right half previews edits"
+	)
+	check_has(
+		source,
+		"_color_preview_before.color = _color_preview_original",
+		"left half retains original"
+	)
+	check_has(
+		source, "close_button.pressed.connect(_close_color_options_popup)", "only Close applies"
+	)
+	check_has(
+		source,
+		"Tools.assign_color(applied_color, target_slot, false)",
+		"Close commits to captured slot"
+	)
+	check_true(
+		not source.contains("color_picker.sliders_visible = toggled_on"),
+		"embedded picker never expands"
+	)
 
 
 func test_staged_color_preview_ignores_external_canvas_changes() -> void:

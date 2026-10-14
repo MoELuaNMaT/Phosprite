@@ -346,7 +346,8 @@ func test_layout_slots_persist_independently_and_keep_slot_one_legacy_compatibil
 
 	check_true(store.set_active_layout_slot(3), "slot 3 should become active")
 	check_true(
-		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_three_rect), "slot 3 should move Preview"
+		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_three_rect),
+		"slot 3 should move Preview"
 	)
 	check_true(store.save_current_layout(false), "slot 3 should save independently")
 	check_true(store.has_layout_slot(3), "slot 3 snapshot should exist")

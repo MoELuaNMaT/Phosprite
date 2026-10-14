@@ -581,6 +581,7 @@ func _on_ColorDefaults_pressed() -> void:
 func _on_expand_button_pressed() -> void:
 	_open_color_options_popup()
 
+
 func _average(color_1: Color, color_2: Color) -> void:
 	var average := (color_1 + color_2) / 2.0
 	var copy_button := average_color.get_parent() as Control
