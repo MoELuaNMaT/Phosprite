@@ -46,32 +46,27 @@ func test_color_picker_removes_legacy_color_row_from_ui_only() -> void:
 		)
 
 
-func test_color_options_moves_up_into_sampler_row_and_keeps_picker_mode_right() -> void:
-	var source := FileAccess.get_file_as_string(COLOR_PICKER_SOURCE)
+func test_color_settings_and_both_swatches_live_in_native_sampler_row() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/ColorPickers/ColorPicker.gd")
 	check_has(
 		source,
-		"sampler_cont.add_child(expand_button)",
-		"Color options must reuse the former sampler row instead of consuming another row",
+		"expand_button.reparent(sampler_cont)",
+		"square settings toggle belongs to the native sampler row",
 	)
 	check_has(
 		source,
-		"sampler_cont.move_child(expand_button, 0)",
-		"Color options must sit at the left edge of the compact row",
+		"left_color_button.reparent(sampler_cont)",
+		"left tool color occupies a distinct slot in the same row",
 	)
 	check_has(
 		source,
-		"expand_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
-		"Color options must fill the row so the picker-mode button stays on the far right",
+		"right_color_button.reparent(sampler_cont)",
+		"right tool color occupies a distinct slot in the same row",
 	)
 	check_has(
 		source,
-		"var shape_menu_button := sampler_cont.get_child(2, true) as MenuButton",
-		"the built-in picker-shape mode selector must remain available",
-	)
-	check_has(
-		source,
-		"signal color_options_toggled(expanded: bool)",
-		"Color options must expose expansion state to the combined Palette & Color panel",
+		"expand_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN",
+		"settings button stays square rather than spanning the row",
 	)
 
 
