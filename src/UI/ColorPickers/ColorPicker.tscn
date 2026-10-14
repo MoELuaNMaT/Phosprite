@@ -93,6 +93,7 @@ size_flags_vertical = 0
 alignment = 1
 
 [node name="LeftColorButton" type="Button" parent="ScrollContainer/VerticalContainer/ColorButtons" unique_id=1839496259]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(42, 32)
 layout_mode = 2
 size_flags_vertical = 4
@@ -133,6 +134,7 @@ shortcut = SubResource("19")
 texture_normal = ExtResource("2_ojj3i")
 
 [node name="RightColorButton" type="Button" parent="ScrollContainer/VerticalContainer/ColorButtons" unique_id=241127658]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(42, 32)
 layout_mode = 2
 size_flags_vertical = 4
