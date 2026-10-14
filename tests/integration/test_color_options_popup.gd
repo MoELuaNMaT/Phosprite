@@ -100,3 +100,46 @@ func test_staged_editor_hides_visual_color_palette_but_keeps_numeric_controls() 
 	picker.free()
 	editor._color_options_picker = null
 	editor.free()
+
+
+
+func test_opening_numeric_popup_does_not_shrink_main_color_picker_or_palette() -> void:
+	# Reproduce the shared Palette and Color vertical stretch relationship.
+	var palette_and_color := VBoxContainer.new()
+	palette_and_color.size = Vector2(320.0, 700.0)
+	tree.root.add_child(palette_and_color)
+	var palette := Control.new()
+	palette.custom_minimum_size = Vector2(80.0, 40.0)
+	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette.size_flags_stretch_ratio = 0.9
+	palette_and_color.add_child(palette)
+	palette_and_color.add_child(HSeparator.new())
+	var editor := COLOR_SCENE.instantiate()
+	editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	editor.size_flags_stretch_ratio = 1.1
+	palette_and_color.add_child(editor)
+	await tree.process_frame
+	await tree.process_frame
+	await tree.process_frame
+	var visual_picker := editor.color_picker as ColorPicker
+	var palette_size_before := palette.size
+	var picker_size_before := visual_picker.size
+	var editor_size_before := editor.size
+	editor._open_color_options_popup()
+	await tree.process_frame
+	await tree.process_frame
+	await tree.process_frame
+	check_true(editor.is_color_options_expanded(), "options editor is open")
+	check_eq(
+		palette.size, palette_size_before, "opening options must not resize the main palette"
+	)
+	check_eq(
+		visual_picker.size,
+		picker_size_before,
+		"opening options must not resize the main color wheel or rectangle",
+	)
+	check_eq(
+		editor.size, editor_size_before, "opening options must not shrink the embedded picker"
+	)
+	editor._close_color_options_popup()
+	palette_and_color.free()
