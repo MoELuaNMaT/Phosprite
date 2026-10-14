@@ -501,6 +501,8 @@ func _read_active_layout_slot() -> int:
 	if config_cache == null:
 		return 1
 	var slot := int(config_cache.get_value(CONFIG_SECTION, CONFIG_ACTIVE_SLOT_KEY, 1))
+	# Slot 2 belonged to the removed UI2. Keep its saved data for compatibility,
+	# but do not open it or silently reinterpret it as UI3.
 	return slot if _is_valid_layout_slot(slot) else 1
 
 
@@ -509,7 +511,7 @@ func _slot_key(slot: int) -> String:
 
 
 func _is_valid_layout_slot(slot: int) -> bool:
-	return slot >= 1 and slot <= LAYOUT_SLOT_COUNT
+	return slot in [1, 3, 4]
 
 
 func _preset_path(preset_name: String) -> String:

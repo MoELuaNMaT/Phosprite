@@ -10,7 +10,6 @@ const Interaction := preload("res://src/UI/Workspace/WorkspaceInteractionControl
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 const ThemeController := preload("res://src/UI/Workspace/WorkspaceThemeController.gd")
 const UIProfileController := preload("res://src/UI/Workspace/WorkspaceUIProfileController.gd")
-const UIProfile2 := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
 
 
 func _make_live_fixture(
@@ -1830,141 +1829,20 @@ func test_managed_editor_removes_project_tabs_and_their_canvas_dead_strip() -> v
 	)
 
 
-func test_ui_profile_2_contract_keeps_primary_tools_inside_palette() -> void:
-	check_eq(
-		UIProfile2.PRIMARY_TOOLS,
-		[&"Pencil", &"Eraser", &"Move", &"Bucket"],
-		"profile 2 primary row must stay Pencil, Eraser, Move, Bucket",
-	)
-	for tool_name in UIProfile2.PRIMARY_TOOLS:
-		check_true(
-			UIProfile2.is_primary_tool(tool_name),
-			"profile 2 should classify every configured primary tool as embedded",
-		)
-	check_false(
-		UIProfile2.is_primary_tool(&"ColorPicker"),
-		"non-primary tools must remain eligible for the top-right toolbar",
-	)
-
-
-func test_unused_normal_profile_does_not_inherit_profile_2_tools_parking() -> void:
+func test_removed_ui2_is_not_exposed_or_switchable() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
-	var surface := fixture["surface"] as WorkspaceSurface
 	var store := fixture["store"] as WorkspaceLayoutStore
 	var migration := fixture["migration"] as WorkspaceEditorMigration
 	var menu := PopupMenu.new()
 	root.add_child(menu)
 	var controller := UIProfileController.new()
 	root.add_child(controller)
-
-	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
-	var profile_one_tools_placement := surface.get_module_placement(Builtins.TOOLS_ID)
-	check_ne(
-		profile_one_tools_placement,
-		WorkspaceSurface.Placement.NONE,
-		"profile 1 should begin with a standalone Tools placement",
-	)
-	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
-	check_true(controller.switch_profile(2), "profile 2 should activate")
-	check_eq(
-		surface.get_module_placement(Builtins.TOOLS_ID),
-		WorkspaceSurface.Placement.NONE,
-		"profile 2 should park Tools",
-	)
-	check_false(store.has_layout_slot(4), "profile 4 should still be unused before first switch")
-	check_true(controller.switch_profile(4), "first switch to profile 4 should succeed")
-	check_eq(
-		surface.get_module_placement(Builtins.TOOLS_ID),
-		profile_one_tools_placement,
-		"unused profile 4 must seed from normal UI instead of profile 2 composition",
-	)
-	_free_fixture(fixture)
-
-
-func test_ui_profile_menu_exposes_four_mutually_exclusive_persistent_slots() -> void:
-	var fixture := _make_live_fixture()
-	var root := fixture["root"] as Control
-	var surface := fixture["surface"] as WorkspaceSurface
-	var store := fixture["store"] as WorkspaceLayoutStore
-	var migration := fixture["migration"] as WorkspaceEditorMigration
-	var menu := PopupMenu.new()
-	root.add_child(menu)
-	var controller := UIProfileController.new()
-	root.add_child(controller)
-
-	check_true(controller.setup(menu, migration, store), "UI profile controller should initialize")
-	check_eq(menu.item_count, 4, "UI menu should expose exactly four profile slots")
-	for profile_id in range(1, 5):
-		var index := menu.get_item_index(profile_id)
-		check_true(index >= 0, "each UI profile should have its own menu item")
-		check_eq(
-			menu.get_item_text(index), str(profile_id), "profile label should match its slot number"
-		)
-		check_eq(
-			menu.is_item_checked(index),
-			profile_id == 1,
-			"only UI profile 1 should be selected initially",
-		)
-
-	var slot_one_rect := Rect2(140.0, 120.0, 320.0, 220.0)
-	var slot_two_rect := Rect2(680.0, 280.0, 320.0, 220.0)
-	check_true(
-		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_one_rect),
-		"slot 1 should accept a Preview position",
-	)
-	var slot_one_tools_placement := surface.get_module_placement(Builtins.TOOLS_ID)
-	check_ne(
-		slot_one_tools_placement,
-		WorkspaceSurface.Placement.NONE,
-		"profile 1 should retain its standalone Tools workspace placement",
-	)
-	check_true(store.save_current_layout(false), "slot 1 should persist before switching")
-
-	check_true(controller.switch_profile(2), "switching to UI profile 2 should succeed")
-	check_eq(
-		surface.get_module_placement(Builtins.TOOLS_ID),
-		WorkspaceSurface.Placement.NONE,
-		"profile 2 must remove the standalone Tools workspace placement",
-	)
-	check_true(
-		surface.is_module_parked(Builtins.TOOLS_ID),
-		"profile 2 should park rather than destroy the original Tools module",
-	)
-	check_eq(store.get_active_layout_slot(), 2, "profile 2 should become the active storage slot")
-	check_eq(migration.get_ui_profile(), 2, "profile 2 should reach the implementation hook")
-	check_eq(
-		surface.get_floating_rect(Builtins.PREVIEW_ID),
-		slot_one_rect,
-		"a new profile should seed from the profile the user came from",
-	)
-	check_true(
-		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_two_rect),
-		"slot 2 should accept an independent Preview position",
-	)
-	check_true(store.save_current_layout(false), "slot 2 should persist independently")
-
-	check_true(controller.switch_profile(1), "switching back to profile 1 should succeed")
-	check_eq(
-		surface.get_module_placement(Builtins.TOOLS_ID),
-		slot_one_tools_placement,
-		"profile 1 must restore the standalone Tools placement after leaving profile 2",
-	)
-	check_eq(
-		surface.get_floating_rect(Builtins.PREVIEW_ID),
-		slot_one_rect,
-		"profile 1 should restore its own Preview position",
-	)
-	check_true(controller.switch_profile(2), "profile 2 should remain switchable")
-	check_eq(
-		surface.get_floating_rect(Builtins.PREVIEW_ID),
-		slot_two_rect,
-		"profile 2 should restore its independent Preview position",
-	)
-	for index in menu.item_count:
-		check_eq(
-			menu.is_item_checked(index),
-			menu.get_item_id(index) == 2,
-			"UI profile menu selection must remain mutually exclusive",
-		)
+	check_true(controller.setup(menu, migration, store), "UI profile controller initializes")
+	check_eq(menu.item_count, 3, "the menu contains only UI1, UI3, UI4")
+	for id in [1, 3, 4]:
+		check_true(menu.get_item_index(id) >= 0, "retained profile menu item must exist")
+	check_eq(menu.get_item_index(2), -1, "UI2 has no menu entry")
+	check_true(not controller.switch_profile(2), "the removed UI2 cannot be selected")
+	check_eq(store.get_active_layout_slot(), 1, "rejecting UI2 must preserve UI1")
 	_free_fixture(fixture)

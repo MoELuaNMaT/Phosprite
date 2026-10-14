@@ -331,7 +331,7 @@ func test_layout_slots_persist_independently_and_keep_slot_one_legacy_compatibil
 	var surface = workspace["surface"] as WorkspaceSurface
 	var store = workspace["store"] as WorkspaceLayoutStore
 	var slot_one_rect := Rect2(120.0, 140.0, 320.0, 220.0)
-	var slot_two_rect := Rect2(620.0, 260.0, 320.0, 220.0)
+	var slot_three_rect := Rect2(620.0, 260.0, 320.0, 220.0)
 
 	check_true(
 		surface.float_module(Builtins.PREVIEW_ID, slot_one_rect), "slot 1 should float Preview"
@@ -344,12 +344,12 @@ func test_layout_slots_persist_independently_and_keep_slot_one_legacy_compatibil
 		"slot 1 should keep the legacy current-layout key mirrored",
 	)
 
-	check_true(store.set_active_layout_slot(2), "slot 2 should become active")
+	check_true(store.set_active_layout_slot(3), "slot 3 should become active")
 	check_true(
-		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_two_rect), "slot 2 should move Preview"
+		surface.set_floating_rect(Builtins.PREVIEW_ID, slot_three_rect), "slot 3 should move Preview"
 	)
-	check_true(store.save_current_layout(false), "slot 2 should save independently")
-	check_true(store.has_layout_slot(2), "slot 2 snapshot should exist")
+	check_true(store.save_current_layout(false), "slot 3 should save independently")
+	check_true(store.has_layout_slot(3), "slot 3 snapshot should exist")
 
 	check_true(store.set_active_layout_slot(1), "slot 1 should reactivate")
 	check_true(store.restore_current_layout(), "slot 1 should restore")
@@ -359,11 +359,11 @@ func test_layout_slots_persist_independently_and_keep_slot_one_legacy_compatibil
 		"slot 1 should retain its own Preview rectangle",
 	)
 
-	check_true(store.set_active_layout_slot(2), "slot 2 should reactivate")
-	check_true(store.restore_current_layout(), "slot 2 should restore")
+	check_true(store.set_active_layout_slot(3), "slot 3 should reactivate")
+	check_true(store.restore_current_layout(), "slot 3 should restore")
 	check_eq(
 		surface.get_floating_rect(Builtins.PREVIEW_ID),
-		slot_two_rect,
-		"slot 2 should retain its own Preview rectangle",
+		slot_three_rect,
+		"slot 3 should retain its own Preview rectangle",
 	)
 	_free_workspace(workspace)

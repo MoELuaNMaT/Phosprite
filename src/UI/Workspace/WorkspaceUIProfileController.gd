@@ -1,7 +1,7 @@
 class_name WorkspaceUIProfileController
 extends Node
 
-## Owns the four top-level UI profile slots.
+## Owns the three active profiles: UI1, UI3, and UI4.
 ##
 ## A profile is intentionally broader than a Workspace preset: each slot has its
 ## own persisted Workspace snapshot and also passes through
@@ -31,6 +31,10 @@ func setup(
 	migration = editor_migration
 	store = layout_store
 	var active_profile := store.get_active_layout_slot()
+	# Removed UI2 is never selected. Existing installs using slot 2 fall back to UI1.
+	if active_profile == 2:
+		active_profile = 1
+		store.set_active_layout_slot(active_profile)
 	if not migration.activate_ui_profile(active_profile):
 		_clear_setup()
 		return false
@@ -51,7 +55,7 @@ func setup(
 		return false
 
 	menu.clear()
-	for profile_id in range(1, WorkspaceLayoutStore.LAYOUT_SLOT_COUNT + 1):
+	for profile_id in [1, 3, 4]:
 		menu.add_radio_check_item(str(profile_id), profile_id)
 	menu.id_pressed.connect(_on_menu_id_pressed)
 	_sync_menu()
@@ -60,7 +64,7 @@ func setup(
 
 
 func switch_profile(profile_id: int) -> bool:
-	if not _setup_complete or profile_id < 1 or profile_id > WorkspaceLayoutStore.LAYOUT_SLOT_COUNT:
+	if not _setup_complete or profile_id not in [1, 3, 4]:
 		return false
 	var previous_profile := store.get_active_layout_slot()
 	if profile_id == previous_profile:

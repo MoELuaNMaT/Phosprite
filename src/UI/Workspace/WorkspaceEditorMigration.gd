@@ -16,7 +16,6 @@ const STORAGE_POLICY := preload("res://src/PlatformServices/StoragePolicy.gd")
 const TIMELINE_HEADER_CONTROLS_SCENE := preload(
 	"res://src/UI/Workspace/TimelineHeaderControls.tscn"
 )
-const UI_PROFILE_2_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
 const UI_PROFILE_3_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 const UI_PROFILE_4_SCRIPT := preload("res://src/UI/Workspace/WorkspaceUIProfile4.gd")
 
@@ -105,7 +104,6 @@ var _zen_mode := false
 var _single_project_editor := false
 var _timeline_height_restore_generation := 0
 var _active_ui_profile := 1
-var _ui_profile_2: WorkspaceUIProfile2
 var _ui_profile_3: WorkspaceUIProfile3
 var _ui_profile_4: WorkspaceUIProfile4
 
@@ -165,22 +163,14 @@ func get_ui_profile_implementation_version(profile_id: int) -> int:
 
 
 func activate_ui_profile(profile_id: int) -> bool:
-	if profile_id < 1 or profile_id > WorkspaceLayoutStore.LAYOUT_SLOT_COUNT:
+	if profile_id not in [1, 3, 4]:
 		return false
-	if _active_ui_profile == 2 and profile_id != 2 and is_instance_valid(_ui_profile_2):
-		_ui_profile_2.deactivate()
 	if _active_ui_profile == 3 and profile_id != 3 and is_instance_valid(_ui_profile_3):
 		_ui_profile_3.deactivate()
 	if _active_ui_profile == 4 and profile_id != 4 and is_instance_valid(_ui_profile_4):
 		_ui_profile_4.deactivate()
 	_active_ui_profile = profile_id
 	_configure_ui1_tools_fixed_width(profile_id == 1)
-	if profile_id == 2 and is_instance_valid(_merged_tools_content):
-		if Global.headless_test_mode:
-			return true
-		if not _ensure_ui_profile_2():
-			return false
-		return _ui_profile_2.activate()
 	if profile_id == 3 and is_instance_valid(_merged_tools_content):
 		if Global.headless_test_mode:
 			return true
@@ -204,8 +194,6 @@ func sync_active_tool_presentation() -> bool:
 		return true
 	if not Tools.synchronize_tool_panel(MOUSE_BUTTON_LEFT):
 		return false
-	if _active_ui_profile == 2 and is_instance_valid(_ui_profile_2):
-		return _ui_profile_2.refresh_after_tools_ready()
 	if _active_ui_profile == 3 and is_instance_valid(_ui_profile_3):
 		return _ui_profile_3.refresh_after_tools_ready()
 	if _active_ui_profile == 4 and is_instance_valid(_ui_profile_4):
@@ -218,9 +206,7 @@ func sync_workspace_content_visibility() -> void:
 		return
 	_sync_content_visibility_from_placements()
 	_apply_active_ui_profile_workspace()
-	if _active_ui_profile == 2 and is_instance_valid(_ui_profile_2):
-		_ui_profile_2.activate()
-	elif _active_ui_profile == 3 and is_instance_valid(_ui_profile_3):
+	if _active_ui_profile == 3 and is_instance_valid(_ui_profile_3):
 		_ui_profile_3.activate()
 	elif _active_ui_profile == 4 and is_instance_valid(_ui_profile_4):
 		_ui_profile_4.activate()
@@ -229,8 +215,6 @@ func sync_workspace_content_visibility() -> void:
 
 func is_panel_visible(module_id: StringName) -> bool:
 	if not live:
-		return false
-	if _active_ui_profile == 2 and module_id == Builtins.TOOLS_ID:
 		return false
 	if (
 		_active_ui_profile == 3
@@ -247,8 +231,6 @@ func is_panel_visible(module_id: StringName) -> bool:
 func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 	if not live or not manager.has_definition(module_id):
 		return false
-	if _active_ui_profile == 2 and module_id == Builtins.TOOLS_ID:
-		return not visible
 	if (
 		_active_ui_profile == 3
 		and module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]
@@ -342,10 +324,7 @@ func merge_left_tool_options_after_startup() -> bool:
 	if not is_instance_valid(_merged_tools_content):
 		if not _merge_left_tool_options_into_tools():
 			return false
-	if _active_ui_profile == 2:
-		if not _ensure_ui_profile_2() or not _ui_profile_2.refresh_after_tools_ready():
-			return false
-	elif _active_ui_profile == 3:
+	if _active_ui_profile == 3:
 		if not _ensure_ui_profile_3() or not _ui_profile_3.refresh_after_tools_ready():
 			return false
 	elif _active_ui_profile == 4:
@@ -468,28 +447,6 @@ func _migrate_live_editor() -> bool:
 	return true
 
 
-func _ensure_ui_profile_2() -> bool:
-	if Global.headless_test_mode:
-		return true
-	if is_instance_valid(_ui_profile_2):
-		return true
-	if (
-		not is_instance_valid(ui_root)
-		or not is_instance_valid(_palette_color_root)
-		or not is_instance_valid(_left_tool_options)
-		or not is_instance_valid(_merged_tools_content)
-	):
-		return false
-	_ui_profile_2 = UI_PROFILE_2_SCRIPT.new()
-	_ui_profile_2.name = &"WorkspaceUIProfile2"
-	add_child(_ui_profile_2)
-	if not _ui_profile_2.setup(ui_root, _palette_color_root, _left_tool_options, surface):
-		_ui_profile_2.queue_free()
-		_ui_profile_2 = null
-		return false
-	return true
-
-
 func _ensure_ui_profile_3() -> bool:
 	if Global.headless_test_mode:
 		return true
@@ -546,7 +503,7 @@ func apply_ui_profile_initial_defaults(profile_id: int) -> bool:
 
 
 func has_ui_profile_custom_composition(profile_id: int) -> bool:
-	return profile_id in [2, 3, 4]
+	return profile_id in [3, 4]
 
 
 func _apply_active_ui_profile_workspace() -> bool:
@@ -554,12 +511,6 @@ func _apply_active_ui_profile_workspace() -> bool:
 		if not _ensure_ui_profile_4():
 			return false
 		return _ui_profile_4.enforce_workspace()
-	if _active_ui_profile == 2:
-		if Global.headless_test_mode:
-			return surface.park_module(Builtins.TOOLS_ID)
-		if is_instance_valid(_ui_profile_2):
-			return _ui_profile_2.enforce_workspace()
-		return surface.park_module(Builtins.TOOLS_ID)
 	if _active_ui_profile == 3:
 		if Global.headless_test_mode:
 			for module_id in [
