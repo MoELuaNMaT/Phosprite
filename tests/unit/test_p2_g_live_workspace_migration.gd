@@ -566,7 +566,7 @@ func test_persisted_collapsed_modules_restart_hidden_and_restore_without_reparen
 	_free_fixture(second)
 
 
-func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
+func test_tools_workspace_base_contract_preserves_general_resize_range() -> void:
 	var definitions := Builtins.create_definitions()
 	var tools_definition: WorkspaceModuleDefinition
 	for definition in definitions:
@@ -576,18 +576,18 @@ func test_tools_workspace_contract_is_a_compact_two_column_sidebar() -> void:
 	check_true(tools_definition != null, "Tools definition must exist")
 	check_eq(
 		tools_definition.minimum_size.x,
-		104.0,
-		"Tools sidebar should shrink to the two compact tool/config columns",
+		168.0,
+		"general Tools definition retains its minimum width until a profile constrains it",
 	)
 	check_eq(
 		tools_definition.preferred_size.x,
-		108.0,
-		"Tools sidebar should default to the compact no-horizontal-scroll width",
+		176.0,
+		"general Tools definition retains its base preferred width",
 	)
 	check_eq(
 		tools_definition.maximum_size.x,
-		120.0,
-		"Tools sidebar should remain narrow instead of regaining large side padding",
+		260.0,
+		"other profiles retain their original maximum width",
 	)
 	var ui_scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
 	check_has(
@@ -628,9 +628,9 @@ func test_ui1_fixed_tools_width_matches_selection_icons_and_keeps_other_profiles
 		"old saved wide widths must be clamped when restoring UI1",
 	)
 	migration._configure_ui1_tools_fixed_width(false)
-	check_eq(tools.minimum_size.x, original_minimum, "UI2/UI3 minimum width is untouched")
-	check_eq(tools.preferred_size.x, original_preferred, "UI2/UI3 preferred width is untouched")
-	check_eq(tools.maximum_size.x, original_maximum, "UI2/UI3 maximum width is untouched")
+	check_eq(tools.minimum_size.x, original_minimum, "other profiles' original minimum is restored")
+	check_eq(tools.preferred_size.x, original_preferred, "other profiles' original preferred width is restored")
+	check_eq(tools.maximum_size.x, original_maximum, "other profiles' original maximum is restored")
 	check_true(
 		not tools.is_horizontal_resize_locked(), "other profiles still allow horizontal resize"
 	)
@@ -1739,11 +1739,8 @@ func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_out
 
 	var canvas_source := FileAccess.get_file_as_string("res://src/UI/Canvas/Canvas.gd")
 	check_true(
-		(
-			canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_LEFT)")
-			and canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_RIGHT)")
-		),
-		"cursor tool icons must disappear outside the document for ordinary tools"
+		not canvas_source.contains("Tools.should_show_tool_at(pixel, MOUSE_BUTTON_LEFT)"),
+		"removed floating tool icons must not return to the Canvas renderer",
 	)
 
 	var adapter_source := FileAccess.get_file_as_string(
