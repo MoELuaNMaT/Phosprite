@@ -123,7 +123,7 @@ func test_opening_numeric_popup_does_not_shrink_main_color_picker_or_palette() -
 	var visual_picker := editor.color_picker as ColorPicker
 	var palette_size_before := palette.size
 	var picker_size_before := visual_picker.size
-	var editor_size_before := editor.size
+	var editor_size_before: Vector2 = editor.size
 	editor._open_color_options_popup()
 	await tree.process_frame
 	await tree.process_frame
@@ -136,7 +136,7 @@ func test_opening_numeric_popup_does_not_shrink_main_color_picker_or_palette() -
 		"opening options must not resize the main color wheel or rectangle",
 	)
 	check_eq(editor.size, editor_size_before, "opening options must not shrink the embedded picker")
-	var popup_rect := editor._color_options_popup.get_global_rect()
+	var popup_rect: Rect2 = editor._color_options_popup.get_global_rect()
 	var panel_rect := palette_and_color.get_global_rect()
 	check_true(
 		not popup_rect.intersects(panel_rect),
