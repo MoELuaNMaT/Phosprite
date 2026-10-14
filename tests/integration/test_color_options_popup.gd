@@ -125,8 +125,8 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 
 func test_numeric_adjustment_updates_selected_slot_without_closing_popup() -> void:
 	var previous_slot := Tools.picking_color_for
-	var previous_left := Tools._slots.get(MOUSE_BUTTON_LEFT)
-	var previous_right := Tools._slots.get(MOUSE_BUTTON_RIGHT)
+	var previous_left: Variant = Tools._slots.get(MOUSE_BUTTON_LEFT)
+	var previous_right: Variant = Tools._slots.get(MOUSE_BUTTON_RIGHT)
 	for button in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		if not Tools._slots.has(button):
 			var slot := Tools.Slot.new("Color test")
