@@ -281,15 +281,37 @@ func _finalize_color_options_popup() -> void:
 		return
 	# Not a PopupPanel: outside taps may draw on Canvas, but never close this.
 	_color_options_popup.reset_size()
-	var bounds := get_viewport_rect().size
-	var origin := expand_button.get_global_rect().position
-	var popup_size := _color_options_popup.size
-	_color_options_popup.position = Vector2(
-		clampf(origin.x + expand_button.size.x + 6.0, 0.0, maxf(0.0, bounds.x - popup_size.x)),
-		clampf(origin.y - 24.0, 0.0, maxf(0.0, bounds.y - popup_size.y))
-	)
+	_position_color_options_popup()
 	_color_options_popup.show()
 	_update_color_preview_button()
+
+
+func _position_color_options_popup() -> void:
+	if not is_instance_valid(_color_options_popup):
+		return
+	var viewport_size := get_viewport_rect().size
+	var source_rect := get_global_rect()
+	# The source picker is nested in the shared Palette and Color container.
+	# Anchoring to the color BUTTON can place the floating popup on top of
+	# the last portion of the HSV rectangle, making it appear narrower.
+	var panel_parent := get_parent() as VBoxContainer
+	if panel_parent != null:
+		var panel_rect := panel_parent.get_global_rect()
+		if panel_rect.size.x > 0.0 and panel_rect.size.x <= viewport_size.x * 0.75:
+			source_rect = panel_rect
+	var popup_size := _color_options_popup.size
+	var gap := 8.0
+	var right_x := source_rect.end.x + gap
+	var left_x := source_rect.position.x - popup_size.x - gap
+	var x := right_x
+	if right_x + popup_size.x > viewport_size.x and left_x >= 0.0:
+		x = left_x
+	else:
+		x = clampf(right_x, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
+	var trigger_y := expand_button.get_global_rect().position.y - 24.0
+	_color_options_popup.position = Vector2(
+		x, clampf(trigger_y, 0.0, maxf(0.0, viewport_size.y - popup_size.y))
+	)
 
 
 func _on_staged_color_changed(color: Color) -> void:
