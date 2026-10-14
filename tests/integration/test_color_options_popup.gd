@@ -9,7 +9,9 @@ func test_color_options_use_live_foreground_background_and_toggle_button() -> vo
 	check_has(source, "left_color_button.reparent(sampler_cont)", "left color reuses tool slot")
 	check_has(source, "right_color_button.reparent(sampler_cont)", "right color reuses tool slot")
 	check_has(source, "func _sync_active_color_buttons() -> void:", "selected slot is displayed")
-	check_has(source, "Tools.assign_color(color, Tools.picking_color_for, false)", "popup edits live slot")
+	check_has(
+		source, "Tools.assign_color(color, Tools.picking_color_for, false)", "popup edits live slot"
+	)
 	check_has(source, "func _sync_popup_to_active_slot() -> void:", "other picker syncs live")
 	check_has(source, "func _close_color_options_popup() -> void:", "settings toggles off")
 	check_has(source, 'expand_button.text = "⚙"', "settings control uses square icon")
@@ -36,9 +38,7 @@ func test_numeric_picker_excludes_wheel_but_includes_mode_sliders() -> void:
 	tree.root.add_child(picker)
 	await tree.process_frame
 	editor._color_options_picker = picker
-	check_true(
-		editor._configure_staged_color_options_picker(), "native RGB HSV RAW modes isolated"
-	)
+	check_true(editor._configure_staged_color_options_picker(), "native RGB HSV RAW modes isolated")
 	var margin := picker.get_child(0, true) as MarginContainer
 	check_true(margin != null, "native picker margin exists")
 	if margin != null:
