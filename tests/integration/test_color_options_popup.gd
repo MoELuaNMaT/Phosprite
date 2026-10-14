@@ -17,7 +17,11 @@ func test_color_option_editor_uses_separate_staged_picker_and_explicit_close() -
 		source, "_color_options_picker.color_modes_visible = true", "popup exposes RGB/HSV modes"
 	)
 	check_has(source, "_color_options_picker.sliders_visible = true", "popup exposes sliders")
-	check_has(source, "_color_options_picker.hex_visible = true", "popup exposes HEX")
+	check_has(source, "_color_options_picker.sampler_visible = false", "popup omits eyedropper")
+	check_has(
+		source, "func _configure_staged_color_options_picker() -> bool:", "staged picker is compact"
+	)
+	check_has(source, "_color_options_picker.hex_visible = false", "mode popup omits HEX row")
 	check_has(source, "func _on_staged_color_changed(color: Color)", "preview listens to staging")
 	check_has(
 		source, "_color_preview_after.color = _color_preview_staged", "right half previews edits"
@@ -62,4 +66,34 @@ func test_staged_color_preview_ignores_external_canvas_changes() -> void:
 	editor._update_color_preview_button()
 	check_eq(editor._color_preview_staged, Color.BLUE, "external updates cannot clear candidate")
 	editor._color_options_open = false
+	editor.free()
+
+func test_staged_editor_hides_visual_color_palette_but_keeps_numeric_controls() -> void:
+	var editor := COLOR_SCENE.instantiate()
+	var picker := ColorPicker.new()
+	picker.color_modes_visible = true
+	picker.sliders_visible = true
+	picker.hex_visible = false
+	picker.sampler_visible = false
+	picker.presets_visible = false
+	tree.root.add_child(picker)
+	await tree.process_frame
+	editor._color_options_picker = picker
+	check_true(editor._configure_staged_color_options_picker(), "native picker modes can be isolated")
+	var margin := picker.get_child(0, true) as MarginContainer
+	check_true(margin != null, "native ColorPicker margin exists")
+	if margin != null:
+		var column := margin.get_child(0, true) as VBoxContainer
+		check_true(column != null, "native ColorPicker column exists")
+		if column != null:
+			var color_shape := column.get_child(0, true) as Control
+			var sampler := column.get_child(1, true) as Control
+			var mode_row := column.get_child(2, true) as Control
+			var sliders := column.get_child(3, true) as Control
+			check_true(not color_shape.visible, "upper HSV rectangle or wheel is not in popup")
+			check_true(not sampler.visible, "color sampler row is not in popup")
+			check_true(mode_row.visible, "RGB HSV RAW color mode selector remains available")
+			check_true(sliders.visible, "color values and sliders remain available")
+	picker.free()
+	editor._color_options_picker = null
 	editor.free()
