@@ -209,8 +209,10 @@ func _open_color_options_popup() -> void:
 	get_tree().root.add_child(_color_options_layer)
 	_color_options_popup = PanelContainer.new()
 	_color_options_popup.name = &"ColorOptionsPopup"
-	_color_options_popup.custom_minimum_size = Vector2(300.0, 320.0)
+	# Content-sized panel: the original wheel/rectangle stays in the main picker.
+	_color_options_popup.custom_minimum_size = Vector2(300.0, 0.0)
 	_color_options_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_color_options_popup.hide()
 	_color_options_layer.add_child(_color_options_popup)
 	var content := VBoxContainer.new()
 	content.name = &"ColorOptionsContent"
@@ -229,11 +231,12 @@ func _open_color_options_popup() -> void:
 	close_button.pressed.connect(_close_color_options_popup)
 	_color_options_picker = ColorPicker.new()
 	_color_options_picker.name = &"StagedColorPicker"
-	_color_options_picker.custom_minimum_size = Vector2(300.0, 275.0)
+	_color_options_picker.custom_minimum_size = Vector2(300.0, 0.0)
 	_color_options_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_color_options_picker.color_modes_visible = true
 	_color_options_picker.sliders_visible = true
-	_color_options_picker.hex_visible = true
+	_color_options_picker.sampler_visible = false
+	_color_options_picker.hex_visible = false
 	_color_options_picker.presets_visible = false
 	_color_options_picker.can_add_swatches = false
 	_color_options_picker.color_mode = color_picker.color_mode
@@ -241,7 +244,42 @@ func _open_color_options_popup() -> void:
 	content.add_child(_color_options_picker)
 	_color_options_picker.color_changed.connect(_on_staged_color_changed)
 
-	# Not a PopupPanel: taps outside never close or commit this floating editor.
+	# Godot's native ColorPicker includes a shape palette above the mode sliders.
+	# Hide that palette and its sampler; keep only RGB/HSV/RAW mode controls and sliders.
+	# Wait for its built-in child hierarchy before sizing the compact popup.
+	_finalize_color_options_popup.call_deferred()
+	_update_color_preview_button()
+	color_options_toggled.emit(true)
+
+
+func _configure_staged_color_options_picker() -> bool:
+	if not is_instance_valid(_color_options_picker):
+		return false
+	var margin := _color_options_picker.get_child(0, true) as MarginContainer
+	if margin == null:
+		return false
+	var columns := margin.get_child(0, true) as VBoxContainer
+	if columns == null or columns.get_child_count(true) < 4:
+		return false
+	var color_shape := columns.get_child(0, true) as Control
+	var sampler_row := columns.get_child(1, true) as Control
+	if color_shape == null or sampler_row == null:
+		return false
+	color_shape.hide()
+	sampler_row.hide()
+	# The built-in color-mode selector (index 2) and slider grid (index 3)
+	# remain visible and continue updating the isolated staging picker.
+	return true
+
+
+func _finalize_color_options_popup() -> void:
+	await get_tree().process_frame
+	if not _color_options_open or not is_instance_valid(_color_options_popup):
+		return
+	if not _configure_staged_color_options_picker():
+		push_error("Color options editor could not hide the native palette controls")
+		return
+	# Not a PopupPanel: outside taps may draw on Canvas, but never close this.
 	_color_options_popup.reset_size()
 	var bounds := get_viewport_rect().size
 	var origin := expand_button.get_global_rect().position
@@ -250,9 +288,8 @@ func _open_color_options_popup() -> void:
 		clampf(origin.x + expand_button.size.x + 6.0, 0.0, maxf(0.0, bounds.x - popup_size.x)),
 		clampf(origin.y - 24.0, 0.0, maxf(0.0, bounds.y - popup_size.y))
 	)
-	_color_options_popup.move_to_front()
+	_color_options_popup.show()
 	_update_color_preview_button()
-	color_options_toggled.emit(true)
 
 
 func _on_staged_color_changed(color: Color) -> void:
