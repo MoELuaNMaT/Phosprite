@@ -38,7 +38,6 @@ var _ios_screen_sampler_armed := false
 var _color_options_layer: CanvasLayer
 var _color_options_popup: PanelContainer
 var _color_options_picker: ColorPicker
-var _color_options_scroll: ScrollContainer
 var _syncing_popup_color := false
 var _color_options_open := false
 
@@ -218,23 +217,18 @@ func _open_color_options_popup() -> void:
 	get_tree().root.add_child(_color_options_layer)
 	_color_options_popup = PanelContainer.new()
 	_color_options_popup.name = &"ColorOptionsPopup"
-	_color_options_popup.custom_minimum_size = Vector2(270.0, 190.0)
+	# Numeric modes must be fully visible: no ScrollContainer or height clamp.
+	_color_options_popup.custom_minimum_size = Vector2(270.0, 0.0)
 	_color_options_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_color_options_popup.mouse_force_pass_scroll_events = false
 	_color_options_popup.hide()
+	_color_options_popup.add_to_group(&"phosprite_color_options_popup")
 	_color_options_layer.add_child(_color_options_popup)
-	_color_options_scroll = ScrollContainer.new()
-	_color_options_scroll.name = &"ColorOptionsScroll"
-	# The built-in ColorPicker's hidden palette can collapse its scrollable
-	# minimum height to zero; reserve space for mode tabs and numeric sliders.
-	_color_options_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_color_options_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_color_options_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_color_options_scroll.custom_minimum_size = Vector2(270.0, 190.0)
-	_color_options_popup.add_child(_color_options_scroll)
 	_color_options_picker = ColorPicker.new()
 	_color_options_picker.name = &"LiveColorOptionsPicker"
 	_color_options_picker.custom_minimum_size = Vector2(270.0, 0.0)
 	_color_options_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_color_options_picker.mouse_filter = Control.MOUSE_FILTER_STOP
 	_color_options_picker.color_modes_visible = true
 	_color_options_picker.sliders_visible = true
 	_color_options_picker.sampler_visible = false
@@ -243,7 +237,7 @@ func _open_color_options_popup() -> void:
 	_color_options_picker.can_add_swatches = false
 	_color_options_picker.color_mode = color_picker.color_mode
 	_color_options_picker.color = Tools._slots[Tools.picking_color_for].color
-	_color_options_scroll.add_child(_color_options_picker)
+	_color_options_popup.add_child(_color_options_picker)
 	_color_options_picker.color_changed.connect(_on_popup_color_changed)
 	_finalize_color_options_popup.call_deferred()
 	expand_button.set_pressed_no_signal(true)
@@ -265,9 +259,25 @@ func _configure_staged_color_options_picker() -> bool:
 		return false
 	color_shape.hide()
 	sampler_row.hide()
-	# The built-in color-mode selector (index 2) and slider grid (index 3)
-	# remain visible and continue updating the isolated staging picker.
+	# The built-in color-mode selector and numeric sliders remain visible.
+	# Lock typing in their SpinBox LineEdit children, but leave SpinBox itself
+	# enabled so its increment/decrement arrows and slider controls still work.
+	_lock_color_option_numeric_typing()
 	return true
+
+
+func _lock_color_option_numeric_typing() -> void:
+	if not is_instance_valid(_color_options_picker):
+		return
+	for child in _color_options_picker.find_children("*", "SpinBox", true, false):
+		var spinner := child as SpinBox
+		if spinner == null:
+			continue
+		var edit := spinner.get_line_edit()
+		if edit == null:
+			continue
+		edit.editable = false
+		edit.focus_mode = Control.FOCUS_NONE
 
 
 func _finalize_color_options_popup() -> void:
@@ -277,6 +287,8 @@ func _finalize_color_options_popup() -> void:
 	if not _configure_staged_color_options_picker():
 		push_error("Color options editor could not hide the native palette controls")
 		return
+	# Let the numeric ColorPicker compute its actual full minimum height after
+	# hiding the wheel. Never trim it with an overlay scroll viewport.
 	_color_options_popup.reset_size()
 	_position_color_options_popup()
 	_color_options_popup.show()
@@ -289,32 +301,33 @@ func _position_color_options_popup() -> void:
 	var button_rect := expand_button.get_global_rect()
 	var popup_size := _color_options_popup.get_combined_minimum_size()
 	var gap := 6.0
-	# Prefer the requested below-button location when enough screen height is
-	# available. Near the bottom of an iPad viewport, a popup starting below
-	# the gear would be completely offscreen: use an adjacent floating overlay.
+	# Keep the whole mode/slider panel visible. Prefer directly below the gear;
+	# if there is not enough height, put the full panel above or alongside it.
 	var popup_y := button_rect.end.y + gap
 	var panel_rect := get_global_rect()
 	var popup_x := clampf(panel_rect.position.x, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
-	var space_below := viewport_size.y - popup_y - gap
-	if space_below < 96.0:
-		# Keep the gear visible. A side-positioned overlay is preferable to an
-		# invisible below-screen popup, and never resizes the palette container.
-		popup_y = clampf(
-			button_rect.position.y - popup_size.y, 0.0, maxf(0.0, viewport_size.y - 120.0)
-		)
-		var right_of_panel := panel_rect.end.x + gap
-		if right_of_panel + popup_size.x <= viewport_size.x:
-			popup_x = right_of_panel
-		elif panel_rect.position.x >= popup_size.x + gap:
-			popup_x = panel_rect.position.x - popup_size.x - gap
+	if popup_y + popup_size.y + gap > viewport_size.y:
+		var above_y := button_rect.position.y - popup_size.y - gap
+		if above_y >= 0.0:
+			popup_y = above_y
 		else:
-			popup_x = clampf(
-				button_rect.end.x + gap, 0.0, maxf(0.0, viewport_size.x - popup_size.x)
+			var right_of_panel := panel_rect.end.x + gap
+			if right_of_panel + popup_size.x <= viewport_size.x:
+				popup_x = right_of_panel
+			elif panel_rect.position.x >= popup_size.x + gap:
+				popup_x = panel_rect.position.x - popup_size.x - gap
+			else:
+				popup_x = clampf(
+					button_rect.end.x + gap, 0.0, maxf(0.0, viewport_size.x - popup_size.x)
+				)
+			popup_y = clampf(
+				button_rect.position.y - popup_size.y * 0.5,
+				0.0,
+				maxf(0.0, viewport_size.y - popup_size.y)
 			)
-	space_below = viewport_size.y - popup_y - gap
 	_color_options_popup.position = Vector2(popup_x, popup_y)
-	_color_options_popup.size = Vector2(popup_size.x, minf(popup_size.y, maxf(96.0, space_below)))
-	_color_options_popup.clip_contents = true
+	_color_options_popup.size = popup_size
+	_color_options_popup.clip_contents = false
 
 
 func _on_popup_color_changed(color: Color) -> void:
@@ -338,7 +351,6 @@ func _close_color_options_popup() -> void:
 	_color_options_layer = null
 	_color_options_popup = null
 	_color_options_picker = null
-	_color_options_scroll = null
 	expand_button.set_pressed_no_signal(false)
 	color_options_toggled.emit(false)
 
