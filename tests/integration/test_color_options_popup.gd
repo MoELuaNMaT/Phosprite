@@ -45,7 +45,9 @@ func test_numeric_picker_excludes_wheel_but_includes_mode_sliders() -> void:
 		var edit := spinner.get_line_edit()
 		check_true(not edit.editable, "numeric text input is disabled")
 		check_eq(edit.focus_mode, Control.FOCUS_NONE, "numeric field cannot gain typing focus")
-		check_true(spinner.mouse_filter != Control.MOUSE_FILTER_IGNORE, "arrow control remains active")
+		check_true(
+			spinner.mouse_filter != Control.MOUSE_FILTER_IGNORE, "arrow control remains active"
+		)
 	var margin := picker.get_child(0, true) as MarginContainer
 	check_true(margin != null, "native picker margin exists")
 	if margin != null:
@@ -134,7 +136,10 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 	await tree.process_frame
 	await tree.process_frame
 	check_true(editor.is_color_options_expanded(), "settings popup opens")
-	check_true(editor._color_options_popup.get_child(0) is ColorPicker, "popup shows native numeric picker directly")
+	check_true(
+		editor._color_options_popup.get_child(0) is ColorPicker,
+		"popup shows native numeric picker directly"
+	)
 	check_true(
 		not editor._color_options_popup.get_child(0) is ScrollContainer,
 		"numeric popup has no internal vertical scrolling container",
@@ -227,7 +232,6 @@ func test_numeric_adjustment_updates_selected_slot_without_closing_popup() -> vo
 	if previous_right == null:
 		Tools._slots.erase(MOUSE_BUTTON_RIGHT)
 	Tools.picking_color_for = previous_slot
-
 
 
 func _find_numeric_spinners(root: Node) -> Array[SpinBox]:
