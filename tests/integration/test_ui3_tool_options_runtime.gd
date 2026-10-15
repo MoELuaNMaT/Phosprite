@@ -1,6 +1,76 @@
 extends "res://tests/test_base.gd"
 
+const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const Profile3 := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+const Profile4 := preload("res://src/UI/Workspace/WorkspaceUIProfile4.gd")
+const Migration := preload("res://src/UI/Workspace/WorkspaceEditorMigration.gd")
+
 var _spawned_tools: Array[Node] = []
+
+
+func test_ui3_options_width_matches_ui1_ui4_and_legacy_layouts() -> void:
+	var manager := WorkspaceModuleManager.new()
+	var dock_host := WorkspaceDockHost.new()
+	var surface := WorkspaceSurface.new()
+	var root := Control.new()
+	root.size = Vector2(1200.0, 800.0)
+	tree.root.add_child(root)
+	root.add_child(manager)
+	root.add_child(dock_host)
+	root.add_child(surface)
+	dock_host.size = root.size
+	check_true(Builtins.register_defaults(manager), "workspace module definitions register")
+	check_true(dock_host.setup(manager), "dock host initializes")
+	check_true(surface.setup(manager, dock_host), "workspace surface initializes")
+	var left_options := ScrollContainer.new()
+	root.add_child(left_options)
+	var profile := Profile3.new()
+	root.add_child(profile)
+	check_true(profile.setup(root, left_options, surface), "UI3 profile initializes")
+
+	var definition := manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
+	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 width matches")
+	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Profile4.RIGHT_WIDTH, "UI4 width matches")
+	check_eq(definition.minimum_size.x, Builtins.TOOL_SIDEBAR_WIDTH, "UI3 minimum width")
+	check_eq(definition.preferred_size.x, Builtins.TOOL_SIDEBAR_WIDTH, "UI3 default width")
+	check_eq(definition.maximum_size.x, Builtins.TOOL_SIDEBAR_WIDTH, "UI3 maximum width")
+	check_true(definition.is_horizontal_resize_locked(), "UI3 only resizes vertically")
+
+	# Recreate a saved wider floating panel from the previous release.
+	definition.minimum_size.x = 144.0
+	definition.preferred_size.x = 220.0
+	definition.maximum_size.x = 440.0
+	var old_rect := Rect2(Vector2(30.0, 60.0), Vector2(220.0, 400.0))
+	check_true(surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, old_rect), "legacy float loads")
+	definition.minimum_size.x = Builtins.TOOL_SIDEBAR_WIDTH
+	definition.preferred_size.x = Builtins.TOOL_SIDEBAR_WIDTH
+	definition.maximum_size.x = Builtins.TOOL_SIDEBAR_WIDTH
+	check_true(profile._ensure_options_module_placement(), "UI3 normalizes old floating width")
+	var resized := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
+	check_eq(resized.size.x, Builtins.TOOL_SIDEBAR_WIDTH, "legacy floating width replaced")
+	check_eq(resized.size.y, old_rect.size.y, "legacy floating height preserved")
+
+	# A collapsed window must also normalize its saved restore width.
+	definition.minimum_size.x = 144.0
+	definition.preferred_size.x = 220.0
+	definition.maximum_size.x = 440.0
+	check_true(surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, old_rect), "legacy size")
+	check_true(surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID), "legacy collapse")
+	definition.minimum_size.x = Builtins.TOOL_SIDEBAR_WIDTH
+	definition.preferred_size.x = Builtins.TOOL_SIDEBAR_WIDTH
+	definition.maximum_size.x = Builtins.TOOL_SIDEBAR_WIDTH
+	check_true(profile._ensure_options_module_placement(), "UI3 normalizes collapsed width")
+	check_eq(
+		surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID),
+		WorkspaceSurface.Placement.COLLAPSED,
+		"old collapsed state remains collapsed",
+	)
+	var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
+	var restore_rect := restore.get("rect", Rect2()) as Rect2
+	check_eq(restore_rect.size.x, Builtins.TOOL_SIDEBAR_WIDTH, "collapsed restore width fixed")
+	check_eq(restore_rect.size.y, old_rect.size.y, "collapsed restore height preserved")
+	root.queue_free()
+	await tree.process_frame
 
 
 func teardown() -> void:

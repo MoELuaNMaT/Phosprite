@@ -28,6 +28,8 @@ const REFERENCE_IMAGES_ID := &"reference_images"
 const PERSPECTIVE_EDITOR_ID := &"perspective_editor"
 const RECORDER_ID := &"recorder"
 const UI3_TOOL_OPTIONS_ID := &"ui3_tool_options"
+## UI1, UI4 and UI3 Tool Options use the same overall sidebar width.
+const TOOL_SIDEBAR_WIDTH := 112.0
 
 const PREVIEW_SCENE := preload("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn")
 const PALETTE_SCENE := preload("res://src/UI/Workspace/PaletteColorPanel.tscn")
@@ -81,9 +83,9 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	ui3_tool_options.module_id = UI3_TOOL_OPTIONS_ID
 	ui3_tool_options.display_name = "Tool Options"
 	ui3_tool_options.content_scene = UI3_TOOL_OPTIONS_SCENE
-	ui3_tool_options.minimum_size = Vector2(144.0, 104.0)
-	ui3_tool_options.preferred_size = Vector2(220.0, 360.0)
-	ui3_tool_options.maximum_size = Vector2(440.0, 620.0)
+	ui3_tool_options.minimum_size = Vector2(TOOL_SIDEBAR_WIDTH, 104.0)
+	ui3_tool_options.preferred_size = Vector2(TOOL_SIDEBAR_WIDTH, 360.0)
+	ui3_tool_options.maximum_size = Vector2(TOOL_SIDEBAR_WIDTH, 620.0)
 	ui3_tool_options.can_dock = false
 	ui3_tool_options.can_float = true
 	ui3_tool_options.can_collapse = true

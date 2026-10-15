@@ -338,10 +338,21 @@ func _ensure_options_module_placement() -> bool:
 			current_rect.size = constrained_size
 			return surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, current_rect)
 		return true
-	if (
-		placement == WorkspaceSurface.Placement.COLLAPSED
-		or placement == WorkspaceSurface.Placement.DOCKED
-	):
+	if placement == WorkspaceSurface.Placement.COLLAPSED:
+		# A saved UI3 window may still have the old 220px width. Normalize
+		# its restore size without changing its collapsed state.
+		var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
+		if (
+			int(restore.get("placement", WorkspaceSurface.Placement.NONE))
+			== WorkspaceSurface.Placement.FLOATING
+		):
+			var restore_rect := restore.get("rect", Rect2()) as Rect2
+			if not is_equal_approx(restore_rect.size.x, Builtins.TOOL_SIDEBAR_WIDTH):
+				if not surface.restore_module(Builtins.UI3_TOOL_OPTIONS_ID):
+					return false
+				return surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID)
+		return true
+	if placement == WorkspaceSurface.Placement.DOCKED:
 		return true
 	var rect := _options_last_rect
 	if not rect.has_area():
