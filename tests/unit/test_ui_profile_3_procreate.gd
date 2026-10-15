@@ -298,18 +298,18 @@ func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.minimum_size = Vector2(144.0, 104.0)",
-		"UI 3 Tool Options should support a narrow vertical floating footprint",
+		"ui3_tool_options.minimum_size = Vector2(TOOL_SIDEBAR_WIDTH, 104.0)",
+		"UI3 Tool Options must use the shared tool-sidebar width",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.preferred_size = Vector2(220.0, 360.0)",
-		"UI 3 Tool Options should default to a narrow vertical footprint",
+		"ui3_tool_options.preferred_size = Vector2(TOOL_SIDEBAR_WIDTH, 360.0)",
+		"UI3 Tool Options must default to the same width as UI1 and UI4",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.maximum_size = Vector2(440.0, 620.0)",
-		"vertical Tool Options must allow extra height without forcing extra width",
+		"ui3_tool_options.maximum_size = Vector2(TOOL_SIDEBAR_WIDTH, 620.0)",
+		"UI3 Tool Options height stays adjustable while width is fixed",
 	)
 
 
