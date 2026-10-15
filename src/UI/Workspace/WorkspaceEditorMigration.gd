@@ -26,7 +26,7 @@ const TOOL_PALETTE_WIDTH := 40.0
 # Four selection Mode icons are 32px wide; keep 12px of breathing room on each side.
 const TOOL_OPTIONS_WIDTH := 56.0
 # 40px palette + 56px option column + separator and workspace chrome.
-const UI1_TOOLS_FIXED_WIDTH := 112.0
+const UI1_TOOLS_FIXED_WIDTH := Builtins.TOOL_SIDEBAR_WIDTH
 
 const DEFAULT_LAYOUT := [
 	{
