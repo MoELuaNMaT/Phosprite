@@ -218,15 +218,18 @@ func _open_color_options_popup() -> void:
 	get_tree().root.add_child(_color_options_layer)
 	_color_options_popup = PanelContainer.new()
 	_color_options_popup.name = &"ColorOptionsPopup"
-	_color_options_popup.custom_minimum_size = Vector2(270.0, 0.0)
+	_color_options_popup.custom_minimum_size = Vector2(270.0, 190.0)
 	_color_options_popup.mouse_filter = Control.MOUSE_FILTER_STOP
 	_color_options_popup.hide()
 	_color_options_layer.add_child(_color_options_popup)
 	_color_options_scroll = ScrollContainer.new()
 	_color_options_scroll.name = &"ColorOptionsScroll"
+	# The built-in ColorPicker's hidden palette can collapse its scrollable
+	# minimum height to zero; reserve space for mode tabs and numeric sliders.
+	_color_options_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_color_options_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_color_options_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_color_options_scroll.custom_minimum_size = Vector2(270.0, 0.0)
+	_color_options_scroll.custom_minimum_size = Vector2(270.0, 190.0)
 	_color_options_popup.add_child(_color_options_scroll)
 	_color_options_picker = ColorPicker.new()
 	_color_options_picker.name = &"LiveColorOptionsPicker"
