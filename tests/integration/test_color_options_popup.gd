@@ -155,6 +155,17 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 	if is_instance_valid(editor._color_options_popup):
 		var popup_rect: Rect2 = editor._color_options_popup.get_global_rect()
 		var button_rect: Rect2 = editor.expand_button.get_global_rect()
+		print(
+			"[COLOR-POPUP-RECT] viewport=%s button=%s popup=%s minimum=%s picker_minimum=%s scale=%s"
+			% [
+				editor.get_viewport_rect().size,
+				button_rect,
+				popup_rect,
+				editor._color_options_popup.get_combined_minimum_size(),
+				editor._color_options_picker.get_combined_minimum_size(),
+				editor._color_options_popup.scale,
+			]
+		)
 		check_true(editor._color_options_popup.visible, "settings popup is actually visible")
 		check_true(popup_rect.size.y >= 48.0, "settings popup has usable on-screen height")
 		check_true(
