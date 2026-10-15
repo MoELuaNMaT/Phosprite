@@ -5,23 +5,22 @@ const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.ts
 const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn")
 const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
-const DOUBLE_TAP_MSEC := 350
-const DOUBLE_TAP_DISTANCE := 32.0
+const VISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_visible.png")
+const INVISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_invisible.png")
 
 var multiselect_mode := false
 var _bound_project: Project
 var _displayed_frame := -1
 var _gesture_resolver := GESTURE_RESOLVER.new()
 var _cards_by_layer: Dictionary = {}
-var _last_tap_msec := -1
-var _last_tap_layer := -1
-var _last_tap_position := Vector2.INF
 var _settings_layer: BaseLayer
 var _blend_menu_has_group := -1
 
 @onready var layer_settings_panel := %LayerSettingsPanel as PanelContainer
 @onready var current_layer_name := %CurrentLayerName as Label
 @onready var layer_opacity_slider := %OpacitySlider as ValueSlider
+@onready var layer_visibility_button := %OpacityEye as Button
+@onready var layer_visibility_icon := %OpacityEyeIcon as TextureRect
 @onready var layer_style_button := %LayerStyle as OptionButton
 @onready var layer_content := %LayerContent as Control
 @onready var group_bracket_lane := %GroupBracketLane as Control
@@ -38,6 +37,7 @@ var _blend_menu_has_group := -1
 
 func _ready() -> void:
 	layer_opacity_slider.value_changed.connect(_on_layer_opacity_changed)
+	layer_visibility_button.pressed.connect(_on_layer_visibility_pressed)
 	layer_style_button.item_selected.connect(_on_blend_mode_selected)
 	add_layer_button.pressed.connect(_on_add_layer_pressed)
 	exit_multiselect_button.pressed.connect(_on_exit_multiselect_pressed)
@@ -124,7 +124,6 @@ func set_multiselect_mode(enabled: bool, initial_layer := -1) -> void:
 	if multiselect_mode == enabled and initial_layer < 0:
 		return
 	multiselect_mode = enabled
-	_reset_last_tap()
 	_gesture_resolver.reset()
 	if not is_instance_valid(multiselect_bar):
 		return
@@ -148,7 +147,6 @@ func _bind_project(project: Project) -> void:
 	_bound_project = project
 	multiselect_mode = false
 	_gesture_resolver.reset()
-	_reset_last_tap()
 	if is_instance_valid(multiselect_bar):
 		multiselect_bar.hide()
 	if not is_instance_valid(_bound_project):
@@ -221,6 +219,42 @@ func _on_layer_opacity_changed(value: float) -> void:
 		_sync_layer_settings()
 
 
+func _on_layer_visibility_pressed() -> void:
+	var project := _bound_project
+	if (
+		project == null
+		or project != Global.current_project
+		or project.current_layer < 0
+		or project.current_layer >= project.layers.size()
+	):
+		return
+	var layer := project.layers[project.current_layer]
+	Global.transform_content_confirmed.emit()
+	if Global.layer_visibility_undoable:
+		project.undo_redo.create_action("Change Layer Visibility")
+		project.undo_redo.add_do_property(layer, "visible", not layer.visible)
+		project.undo_redo.add_undo_property(layer, "visible", layer.visible)
+		project.undo_redo.add_do_property(Global.canvas, "update_all_layers", true)
+		project.undo_redo.add_undo_property(Global.canvas, "update_all_layers", true)
+		project.undo_redo.add_do_method(Global.canvas.queue_redraw)
+		project.undo_redo.add_undo_method(Global.canvas.queue_redraw)
+		project.undo_redo.add_do_method(_sync_layer_settings)
+		project.undo_redo.add_undo_method(_sync_layer_settings)
+		if is_instance_valid(Global.animation_timeline):
+			project.undo_redo.add_do_method(Global.animation_timeline.update_global_layer_buttons)
+			project.undo_redo.add_undo_method(Global.animation_timeline.update_global_layer_buttons)
+		project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
+		project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
+		project.undo_redo.commit_action()
+	else:
+		layer.visible = not layer.visible
+		Global.canvas.update_all_layers = true
+		Global.canvas.queue_redraw()
+		if is_instance_valid(Global.animation_timeline):
+			Global.animation_timeline.update_global_layer_buttons()
+		_sync_layer_settings()
+
+
 func _on_blend_mode_selected(index: int) -> void:
 	var project := _bound_project
 	if (
@@ -281,11 +315,14 @@ func _sync_layer_settings() -> void:
 	)
 	layer_settings_panel.modulate = Color(1.0, 1.0, 1.0, 1.0 if has_layer else 0.55)
 	layer_opacity_slider.editable = has_layer
+	layer_visibility_button.disabled = not has_layer
 	layer_style_button.disabled = not has_layer
 	if not has_layer:
 		_disconnect_settings_layer()
 		current_layer_name.text = tr("No layer")
 		_set_opacity_slider_value(100.0)
+		layer_visibility_icon.texture = VISIBLE_EYE_TEXTURE
+		layer_visibility_button.tooltip_text = tr("Toggle layer visibility")
 		layer_style_button.selected = -1
 		return
 
@@ -293,8 +330,19 @@ func _sync_layer_settings() -> void:
 	_bind_settings_layer(layer)
 	current_layer_name.text = layer.name
 	_set_opacity_slider_value(layer.opacity * 100.0)
+	_sync_visibility_icon(layer)
 	_refresh_blend_mode_options(layer)
 	layer_style_button.disabled = layer is AudioLayer
+
+
+func _sync_visibility_icon(layer: BaseLayer) -> void:
+	layer_visibility_icon.texture = VISIBLE_EYE_TEXTURE if layer.visible else INVISIBLE_EYE_TEXTURE
+	layer_visibility_button.tooltip_text = tr("Hide layer") if layer.visible else tr("Show layer")
+
+
+func _on_settings_layer_visibility_changed() -> void:
+	if is_instance_valid(_settings_layer):
+		_sync_visibility_icon(_settings_layer)
 
 
 func _set_opacity_slider_value(value: float) -> void:
@@ -314,6 +362,7 @@ func _bind_settings_layer(layer: BaseLayer) -> void:
 	_settings_layer = layer
 	if is_instance_valid(_settings_layer):
 		_settings_layer.name_changed.connect(_on_settings_layer_name_changed)
+		_settings_layer.visibility_changed.connect(_on_settings_layer_visibility_changed)
 
 
 func _disconnect_settings_layer() -> void:
@@ -322,6 +371,8 @@ func _disconnect_settings_layer() -> void:
 		return
 	if _settings_layer.name_changed.is_connected(_on_settings_layer_name_changed):
 		_settings_layer.name_changed.disconnect(_on_settings_layer_name_changed)
+	if _settings_layer.visibility_changed.is_connected(_on_settings_layer_visibility_changed):
+		_settings_layer.visibility_changed.disconnect(_on_settings_layer_visibility_changed)
 	_settings_layer = null
 
 
@@ -351,7 +402,6 @@ func _on_card_pointer_up(layer_index: int, position: Vector2, timestamp_msec: in
 
 func _on_card_pointer_cancel(layer_index: int) -> void:
 	_gesture_resolver.pointer_cancel(str(layer_index))
-	_reset_last_tap()
 
 
 func _consume_gesture_actions(actions: Array[Dictionary]) -> void:
@@ -359,56 +409,26 @@ func _consume_gesture_actions(actions: Array[Dictionary]) -> void:
 		var layer_index := int(str(action.get("path", "-1")))
 		if not _is_valid_card_layer(layer_index):
 			continue
-		var position: Vector2 = action.get("position", Vector2.ZERO)
 		var kind := int(action.get("kind", -1))
 		match kind:
 			GESTURE_RESOLVER.ActionKind.SINGLE_TAP:
-				_on_resolved_single_tap(layer_index, position)
+				_on_resolved_single_tap(layer_index)
 			GESTURE_RESOLVER.ActionKind.LONG_PRESS:
 				_on_resolved_long_press(layer_index)
 
 
-func _on_resolved_single_tap(layer_index: int, position: Vector2) -> void:
+func _on_resolved_single_tap(layer_index: int) -> void:
 	if multiselect_mode:
 		_toggle_layer_in_multiselect(layer_index)
-		return
-	if _register_double_tap(layer_index, position):
-		var card := _cards_by_layer.get(layer_index) as SingleFrameLayerCard
-		if is_instance_valid(card):
-			card.toggle_layer_visibility()
-		_reset_last_tap()
 		return
 	_select_only_layer(layer_index)
 
 
 func _on_resolved_long_press(layer_index: int) -> void:
-	_reset_last_tap()
 	if not multiselect_mode:
 		set_multiselect_mode(true, layer_index)
 	elif not _is_layer_selected(layer_index):
 		_toggle_layer_in_multiselect(layer_index)
-
-
-func _register_double_tap(layer_index: int, position: Vector2) -> bool:
-	var now_msec := Time.get_ticks_msec()
-	var matched := (
-		_last_tap_msec >= 0
-		and now_msec - _last_tap_msec <= DOUBLE_TAP_MSEC
-		and _last_tap_layer == layer_index
-		and _last_tap_position.distance_to(position) <= DOUBLE_TAP_DISTANCE
-	)
-	if matched:
-		return true
-	_last_tap_msec = now_msec
-	_last_tap_layer = layer_index
-	_last_tap_position = position
-	return false
-
-
-func _reset_last_tap() -> void:
-	_last_tap_msec = -1
-	_last_tap_layer = -1
-	_last_tap_position = Vector2.INF
 
 
 func _select_only_layer(layer_index: int) -> void:
