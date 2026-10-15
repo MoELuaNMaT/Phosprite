@@ -538,8 +538,8 @@ func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
 	var menu_script := load("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 	var animation_menu := OptionButton.new()
 	var single_frame_menu := OptionButton.new()
-	add_child(animation_menu)
-	add_child(single_frame_menu)
+	tree.root.add_child(animation_menu)
+	tree.root.add_child(single_frame_menu)
 	menu_script.populate(animation_menu, false)
 	menu_script.populate(single_frame_menu, false)
 	check_eq(
@@ -596,8 +596,14 @@ func test_single_frame_blend_mode_edit_is_undoable_and_refreshes_canvas() -> voi
 		"Single Frame has no FX dialog action",
 	)
 	check_has(source, 'project.undo_redo.create_action("Set Blend Mode")', "edit is undoable")
-	check_has(source, 'project.undo_redo.add_do_property(layer, "blend_mode", mode)', "edit updates selected layer")
-	check_has(source, 'project.undo_redo.add_undo_property(layer, "blend_mode", layer.blend_mode)', "undo restores mode")
+	check_has(
+		source, 'project.undo_redo.add_do_property(layer, "blend_mode", mode)', "edit updates selected layer"
+	)
+	check_has(
+		source,
+		'project.undo_redo.add_undo_property(layer, "blend_mode", layer.blend_mode)',
+		"undo restores mode",
+	)
 	check_has(source, "_refresh_blend_mode_rendering()", "blend edit recomposites canvas")
 	check_has(
 		source, "layer_style_button.selected = layer_style_button.get_item_index(layer.blend_mode)",
