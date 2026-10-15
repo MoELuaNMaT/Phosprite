@@ -360,33 +360,79 @@ func test_single_frame_layer_selection_never_changes_the_current_frame() -> void
 	)
 
 
-func test_single_frame_layer_double_tap_toggles_visibility_undoably() -> void:
+func test_single_frame_visibility_uses_eye_button_and_not_double_tap() -> void:
 	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	var card_source := FileAccess.get_file_as_string(CARD_SOURCE)
+	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
+	check_has(scene, '[node name="OpacityEye" type="Button"', "eye must accept direct taps")
 	check_has(
-		strip_source,
-		"const DOUBLE_TAP_MSEC := 350",
-		"single-frame layer double tap must use the established bounded touch window",
+		scene, '[node name="OpacityEyeIcon" type="TextureRect"', "eye texture must remain visible"
 	)
 	check_has(
 		strip_source,
-		"card.toggle_layer_visibility()",
-		"a resolved double tap must toggle the tapped layer visibility",
+		"layer_visibility_button.pressed.connect(_on_layer_visibility_pressed)",
+		"eye button must toggle layer visibility",
 	)
 	check_has(
-		card_source,
+		strip_source,
+		"var layer := project.layers[project.current_layer]",
+		"eye must target the selected layer, not a previously tapped card",
+	)
+	check_has(
+		strip_source,
 		'project.undo_redo.create_action("Change Layer Visibility")',
-		"double-tap visibility changes must reuse the undoable layer visibility action",
+		"eye visibility action must be undoable",
 	)
 	check_has(
-		card_source,
+		strip_source,
 		'project.undo_redo.add_do_property(layer, "visible", not layer.visible)',
-		"double tap must invert the target layer visibility",
+		"eye must invert selected-layer visibility",
 	)
 	check_has(
-		card_source,
+		strip_source,
+		'project.undo_redo.add_undo_property(layer, "visible", layer.visible)',
+		"undo must restore the previous visibility",
+	)
+	check_has(
+		strip_source,
 		"Global.canvas.queue_redraw",
-		"double-tap visibility changes must redraw the canvas immediately",
+		"visibility changes must redraw the canvas",
+	)
+	check_has(
+		strip_source,
+		"layer_visibility_icon.texture = VISIBLE_EYE_TEXTURE if layer.visible else INVISIBLE_EYE_TEXTURE",
+		"eye graphic must show the selected layer's real visibility state",
+	)
+	check_has(
+		strip_source,
+		"_settings_layer.visibility_changed.connect(_on_settings_layer_visibility_changed)",
+		"external visibility changes and undo must refresh the eye",
+	)
+	check_has(
+		strip_source,
+		"_settings_layer.visibility_changed.disconnect(_on_settings_layer_visibility_changed)",
+		"switching projects and layers must disconnect the old signal",
+	)
+	check_has(
+		strip_source,
+		"layer_visibility_button.disabled = not has_layer",
+		"eye must be disabled without a valid selected layer",
+	)
+	check_has(
+		strip_source,
+		"func _on_resolved_single_tap(layer_index: int) -> void:\n\tif multiselect_mode:",
+		"single taps must still support normal and multiselect selection",
+	)
+	check_true(
+		(
+			not strip_source.contains("_register_double_tap")
+			and not strip_source.contains("DOUBLE_TAP_MSEC")
+		),
+		"double-tap detection must be completely removed",
+	)
+	check_true(
+		not card_source.contains("func toggle_layer_visibility()"),
+		"layer cards must no longer expose a separate visibility action",
 	)
 
 
@@ -489,7 +535,7 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 		"show_arrows = false",
 		"single-frame opacity must remove increment/decrement arrow buttons",
 	)
-	check_has(scene, '[node name="OpacityEye" type="TextureRect"', "eye icon labels opacity")
+	check_has(scene, '[node name="OpacityEye" type="Button"', "eye controls layer visibility")
 	check_has(scene, 'suffix = "%"', "opacity value shows a percentage")
 	check_true(not scene.contains('prefix = "Opacity:"'), "old opacity text label is removed")
 	check_has(

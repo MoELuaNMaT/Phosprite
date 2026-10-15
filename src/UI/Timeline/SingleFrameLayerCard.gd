@@ -73,8 +73,8 @@ func _disconnect_bound_data() -> void:
 
 func _on_native_pressed() -> void:
 	# The Button still receives native press feedback. Restore the authoritative
-	# project selection after its internal toggle so double-tap/long-press never
-	# leaves a stale pressed visual behind.
+	# project selection after its internal toggle so long presses and repeated taps
+	# never leave a stale pressed visual behind.
 	call_deferred("_sync_selected")
 
 
@@ -150,42 +150,6 @@ static func _should_suppress_mouse_after_touch(
 	if elapsed < 0 or elapsed > SYNTHETIC_MOUSE_SUPPRESSION_MSEC:
 		return false
 	return mouse_position.distance_to(last_touch_position) <= SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE
-
-
-func toggle_layer_visibility() -> void:
-	if (
-		_project == null
-		or _project != Global.current_project
-		or not is_instance_valid(_layer)
-		or layer_index < 0
-		or layer_index >= _project.layers.size()
-		or _project.layers[layer_index] != _layer
-	):
-		return
-
-	Global.transform_content_confirmed.emit()
-	var project := _project
-	var layer := _layer
-	if Global.layer_visibility_undoable:
-		project.undo_redo.create_action("Change Layer Visibility")
-		project.undo_redo.add_do_property(layer, "visible", not layer.visible)
-		project.undo_redo.add_undo_property(layer, "visible", layer.visible)
-		project.undo_redo.add_do_property(Global.canvas, "update_all_layers", true)
-		project.undo_redo.add_undo_property(Global.canvas, "update_all_layers", true)
-		project.undo_redo.add_do_method(Global.canvas.queue_redraw)
-		project.undo_redo.add_undo_method(Global.canvas.queue_redraw)
-		if is_instance_valid(Global.animation_timeline):
-			project.undo_redo.add_do_method(Global.animation_timeline.update_global_layer_buttons)
-			project.undo_redo.add_undo_method(Global.animation_timeline.update_global_layer_buttons)
-		project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
-		project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
-		project.undo_redo.commit_action()
-	else:
-		layer.visible = not layer.visible
-		Global.canvas.update_all_layers = true
-		Global.canvas.queue_redraw()
-		if is_instance_valid(Global.animation_timeline):
-			Global.animation_timeline.update_global_layer_buttons()
 
 
 func _on_layer_name_changed() -> void:
