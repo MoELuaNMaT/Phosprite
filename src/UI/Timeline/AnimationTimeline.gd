@@ -438,6 +438,7 @@ func _fill_blend_modes_option_button() -> void:
 				break
 	BLEND_MODE_MENU.populate(blend_modes_button, selected_layers_are_groups)
 
+
 func _on_blend_modes_item_selected(index: int) -> void:
 	var project := Global.current_project
 	var current_mode := blend_modes_button.get_item_id(index)
