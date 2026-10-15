@@ -5,6 +5,8 @@ const Profile3 := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 const Profile4 := preload("res://src/UI/Workspace/WorkspaceUIProfile4.gd")
 const Migration := preload("res://src/UI/Workspace/WorkspaceEditorMigration.gd")
 
+var _spawned_tools: Array[Node] = []
+
 
 func test_ui3_options_width_matches_ui1_ui4_and_legacy_layouts() -> void:
 	var manager := WorkspaceModuleManager.new()
@@ -69,9 +71,6 @@ func test_ui3_options_width_matches_ui1_ui4_and_legacy_layouts() -> void:
 	check_eq(restore_rect.size.y, old_rect.size.y, "collapsed restore height preserved")
 	root.queue_free()
 	await tree.process_frame
-
-
-var _spawned_tools: Array[Node] = []
 
 
 func teardown() -> void:
