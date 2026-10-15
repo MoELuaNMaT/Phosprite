@@ -123,6 +123,10 @@ func _ready() -> void:
 		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	sampler_cont.move_child(left_color_button, 1)
 	sampler_cont.move_child(right_color_button, 2)
+	# ColorRect nodes were designed for the old 42x32 buttons. Anchor them to
+	# the live button bounds instead of keeping their old absolute 38x28 rects.
+	_configure_tool_color_swatch(left_color_button, left_color_rect)
+	_configure_tool_color_swatch(right_color_button, right_color_rect)
 	_sync_active_color_buttons()
 
 	color_slider_types_hbox = picker_vbox_container.get_child(2, true) as HBoxContainer
@@ -168,6 +172,17 @@ func _install_color_settings_button() -> void:
 	expand_button.custom_minimum_size = Vector2(30.0, 30.0)
 	expand_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	expand_button.tooltip_text = "RGB / HSV / RAW color settings"
+
+
+func _configure_tool_color_swatch(button: Button, swatch: ColorRect) -> void:
+	if not is_instance_valid(button) or not is_instance_valid(swatch):
+		return
+	swatch.set_anchors_preset(Control.PRESET_FULL_RECT)
+	swatch.offset_left = 2.0
+	swatch.offset_top = 2.0
+	swatch.offset_right = -2.0
+	swatch.offset_bottom = -2.0
+	swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _sync_active_color_buttons() -> void:
@@ -269,19 +284,37 @@ func _position_color_options_popup() -> void:
 		return
 	var viewport_size := get_viewport_rect().size
 	var button_rect := expand_button.get_global_rect()
-	var popup_size := _color_options_popup.size
+	var popup_size := _color_options_popup.get_combined_minimum_size()
 	var gap := 6.0
-	# The popup always starts BELOW the settings button. Its top edge never
-	# hides the toggle or the HSV rectangle above the sampler row.
+	# Prefer the requested below-button location when enough screen height is
+	# available. Near the bottom of an iPad viewport, a popup starting below
+	# the gear would be completely offscreen: use an adjacent floating overlay.
 	var popup_y := button_rect.end.y + gap
-	var panel_left := get_global_rect().position.x
-	var popup_x := clampf(panel_left, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
+	var panel_rect := get_global_rect()
+	var popup_x := clampf(
+		panel_rect.position.x, 0.0, maxf(0.0, viewport_size.x - popup_size.x)
+	)
+	var space_below := viewport_size.y - popup_y - gap
+	if space_below < 96.0:
+		# Keep the gear visible. A side-positioned overlay is preferable to an
+		# invisible below-screen popup, and never resizes the palette container.
+		popup_y = clampf(
+			button_rect.position.y - popup_size.y, 0.0, maxf(0.0, viewport_size.y - 120.0)
+		)
+		var right_of_panel := panel_rect.end.x + gap
+		if right_of_panel + popup_size.x <= viewport_size.x:
+			popup_x = right_of_panel
+		elif panel_rect.position.x >= popup_size.x + gap:
+			popup_x = panel_rect.position.x - popup_size.x - gap
+		else:
+			popup_x = clampf(
+				button_rect.end.x + gap, 0.0, maxf(0.0, viewport_size.x - popup_size.x)
+			)
+	space_below = viewport_size.y - popup_y - gap
 	_color_options_popup.position = Vector2(popup_x, popup_y)
-	# A low button on an iPad must not enlarge the parent VBox. Clip only the
-	# independent popup and allow scrolling of its numeric sliders instead.
-	var available_height := maxf(48.0, viewport_size.y - popup_y - gap)
-	if popup_size.y > available_height:
-		_color_options_popup.size.y = available_height
+	_color_options_popup.size = Vector2(
+		popup_size.x, minf(popup_size.y, maxf(96.0, space_below))
+	)
 	_color_options_popup.clip_contents = true
 
 
@@ -398,6 +431,12 @@ func _handle_color_control_drag(event: InputEventScreenDrag) -> bool:
 
 func _color_control_action_at(screen_position: Vector2) -> StringName:
 	if (
+		is_instance_valid(expand_button)
+		and expand_button.is_visible_in_tree()
+		and expand_button.get_global_rect().has_point(screen_position)
+	):
+		return &"settings"
+	if (
 		is_instance_valid(left_color_button)
 		and left_color_button.is_visible_in_tree()
 		and left_color_button.get_global_rect().has_point(screen_position)
@@ -426,6 +465,8 @@ func _color_control_action_at(screen_position: Vector2) -> StringName:
 
 func _activate_touch_color_action(action: StringName) -> void:
 	match action:
+		&"settings":
+			_on_expand_button_pressed()
 		&"left":
 			left_color_button.set_pressed_no_signal(true)
 			right_color_button.set_pressed_no_signal(false)
@@ -465,7 +506,7 @@ func _touch_color_controls() -> Array[Control]:
 func _touch_interactive_color_controls() -> Array[Control]:
 	var controls: Array[Control] = []
 	for control: Control in [
-		left_color_button, right_color_button, color_switch, _screen_sampler_button
+		expand_button, left_color_button, right_color_button, color_switch, _screen_sampler_button
 	]:
 		if is_instance_valid(control):
 			controls.append(control)

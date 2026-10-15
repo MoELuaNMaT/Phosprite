@@ -105,11 +105,14 @@ button_group = SubResource("ButtonGroup_02x7w")
 
 [node name="LeftColorRect" type="ColorRect" parent="ScrollContainer/VerticalContainer/ColorButtons/LeftColorButton" unique_id=970441020]
 unique_name_in_owner = true
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 2.0
 offset_top = 2.0
-offset_right = 40.0
-offset_bottom = 30.0
+offset_right = -2.0
+offset_bottom = -2.0
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
@@ -145,11 +148,14 @@ button_group = SubResource("ButtonGroup_02x7w")
 
 [node name="RightColorRect" type="ColorRect" parent="ScrollContainer/VerticalContainer/ColorButtons/RightColorButton" unique_id=1925615162]
 unique_name_in_owner = true
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 2.0
 offset_top = 2.0
-offset_right = 40.0
-offset_bottom = 30.0
+offset_right = -2.0
+offset_bottom = -2.0
 mouse_filter = 2
 metadata/_edit_lock_ = true
 
