@@ -26,43 +26,14 @@ func test_bucket_and_curve_modes_use_exclusive_buttons() -> void:
 	)
 
 
-func test_profiles_2_and_3_request_profile_specific_tool_option_presentations() -> void:
+func test_ui3_keeps_compact_tool_options_after_ui2_removal() -> void:
 	var base_scene := FileAccess.get_file_as_string("res://src/Tools/BaseTool.tscn")
 	var base_src := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
-	var profile_2 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
 	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
-
-	check_has(
-		base_scene,
-		'[node name="ToolOptions" type="GridContainer"',
-		"shared tool options root must support title-over-control horizontal grouping",
-	)
-	check_has(base_scene, "columns = 1", "UI 1 must keep one-column vertical options by default")
-	check_has(
-		base_src,
-		"func set_horizontal_option_layout(enabled: bool)",
-		"shared tool options must expose an explicit presentation-only orientation switch",
-	)
-	check_has(
-		profile_2,
-		"set_horizontal_option_layout(true)",
-		"UI 2 must opt into horizontal tool options",
-	)
-	check_has(
-		base_src,
-		"func set_compact_option_layout(enabled: bool)",
-		"shared tool options must expose the compact floating-panel presentation used by UI 3",
-	)
-	check_has(
-		profile_3,
-		"set_compact_option_layout(true)",
-		"UI 3 must opt into compact two-column tool options",
-	)
-	check_has(
-		profile_2,
-		"_top_tools_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL",
-		"UI 2 top tools host must consume remaining toolbar width so icons align right",
-	)
+	check_has(base_scene, '[node name="ToolOptions" type="GridContainer"', "shared tool options")
+	check_has(base_scene, "columns = 1", "UI1 maintains stacked options")
+	check_has(base_src, "func set_compact_option_layout(enabled: bool)", "UI3 compact presentation")
+	check_has(profile_3, "set_compact_option_layout(true)", "UI3 continues using compact layout")
 
 
 func test_profile_3_popups_are_persistent_and_selected_tools_are_highlighted() -> void:
@@ -124,15 +95,6 @@ func test_tool_profile_switch_contract_keeps_one_authoritative_options_node() ->
 	)
 
 
-func test_ui2_keeps_crop_and_color_picker_optionless() -> void:
-	var profile_2 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile2.gd")
-	check_has(
-		profile_2,
-		'const NO_POPUP_TOOLS: Array[StringName] = [&"Crop", &"ColorPicker"]',
-		"UI 2 Crop and Color Picker must not expose profile popup options",
-	)
-
-
 func test_ui3_moves_family_selection_into_persistent_config_panel() -> void:
 	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(
@@ -157,25 +119,27 @@ func test_ui3_moves_family_selection_into_persistent_config_panel() -> void:
 	)
 
 
-func test_ui1_mode_buttons_reserve_full_text_width() -> void:
+func test_ui1_ui4_mode_button_text_does_not_force_extra_sidebar_width() -> void:
 	var base_src := FileAccess.get_file_as_string("res://src/Tools/BaseTool.gd")
-	var builtins_src := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceBuiltinModules.gd"
+	check_has(
+		base_src,
+		"const MODE_BUTTON_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH",
+		"text-based mode buttons should share the compact sidebar width",
 	)
 	check_has(
 		base_src,
-		"const MODE_BUTTON_MIN_WIDTH := 112.0",
-		"exclusive mode buttons must reserve enough width for their full labels",
+		"button.clip_text = true",
+		"text-based mode buttons must not grow beyond the fixed column",
 	)
 	check_has(
 		base_src,
-		"button.clip_text = false",
-		"exclusive mode button text must not be clipped",
+		"button.tooltip_text = button.text",
+		"clipped text-based mode labels should remain accessible via tooltip",
 	)
-	check_has(
-		builtins_src,
-		"Vector2(168.0, 220.0), Vector2(176.0, 520.0)",
-		"UI 1 Tools module must be wide enough for readable mode buttons",
+	check_eq(
+		WorkspaceEditorMigration.TOOL_OPTIONS_WIDTH,
+		BaseTool.MODE_ICON_BUTTON_SIZE + 24.0,
+		"UI1 and UI4 use the 32px Mode icon plus equal side padding",
 	)
 
 

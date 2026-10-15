@@ -71,6 +71,11 @@ func get_tray() -> HBoxContainer:
 
 
 func _input(event: InputEvent) -> void:
+	# Workspace resize/drag is captured in _input before Control._gui_input.
+	# Ignore pointers on the floating numeric color panel, so slider drags
+	# cannot also resize, drag, or activate the Animation Timeline underneath.
+	if _event_over_color_options_popup(event):
+		return
 	if _is_emulated_pointer_event(event):
 		return
 	if not _has_captured_interaction() and event is InputEventScreenTouch:
@@ -115,6 +120,20 @@ func _input(event: InputEvent) -> void:
 		var touch := event as InputEventScreenTouch
 		if not touch.pressed:
 			_handle_captured_screen_release(touch)
+
+
+func _event_over_color_options_popup(event: InputEvent) -> bool:
+	if not (
+		event is InputEventScreenTouch
+		or event is InputEventScreenDrag
+		or event is InputEventMouseButton
+		or event is InputEventMouseMotion
+	):
+		return false
+	var popup := get_tree().get_first_node_in_group(&"phosprite_color_options_popup") as Control
+	if popup == null or not popup.is_visible_in_tree():
+		return false
+	return popup.get_global_rect().has_point(event.position)
 
 
 func _is_emulated_pointer_event(event: InputEvent) -> bool:

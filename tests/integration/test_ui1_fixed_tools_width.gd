@@ -13,6 +13,11 @@ func test_ui1_tools_width_is_fixed_and_other_profiles_keep_resize_range() -> voi
 		manager.free()
 		return
 
+	check_eq(
+		Migration.TOOL_OPTIONS_WIDTH,
+		BaseTool.MODE_ICON_BUTTON_SIZE + 2.0 * 12.0,
+		"Mode icon plus symmetric padding determines configuration column width"
+	)
 	var original_min := tools_definition.minimum_size.x
 	var original_preferred := tools_definition.preferred_size.x
 	var original_max := tools_definition.maximum_size.x
@@ -22,17 +27,17 @@ func test_ui1_tools_width_is_fixed_and_other_profiles_keep_resize_range() -> voi
 	check_eq(
 		tools_definition.minimum_size.x,
 		Migration.UI1_TOOLS_FIXED_WIDTH,
-		"UI1 minimum width equals fixed 136px",
+		"UI1 minimum width equals fixed compact width",
 	)
 	check_eq(
 		tools_definition.preferred_size.x,
 		Migration.UI1_TOOLS_FIXED_WIDTH,
-		"UI1 preferred width equals fixed 136px",
+		"UI1 preferred width equals fixed compact width",
 	)
 	check_eq(
 		tools_definition.maximum_size.x,
 		Migration.UI1_TOOLS_FIXED_WIDTH,
-		"UI1 maximum width equals fixed 136px",
+		"UI1 maximum width equals fixed compact width",
 	)
 	check_true(tools_definition.is_horizontal_resize_locked(), "UI1 horizontal resize disabled")
 	check_eq(

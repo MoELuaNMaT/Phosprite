@@ -233,29 +233,35 @@ func test_profile_3_parks_tools_and_palette_and_defaults_preview_upper_left() ->
 	_free_fixture(fixture)
 
 
-func test_unused_normal_profile_does_not_inherit_profile_3_composition() -> void:
+func test_ui4_uses_its_own_fixed_panes_after_switching_from_ui3() -> void:
 	var fixture := _make_live_fixture()
 	var surface := fixture["surface"] as WorkspaceSurface
 	var store := fixture["store"] as WorkspaceLayoutStore
 	var controller := _make_controller(fixture)
 
-	var profile_one_tools := surface.get_module_placement(Builtins.TOOLS_ID)
-	var profile_one_palette := surface.get_module_placement(Builtins.PALETTE_ID)
 	check_true(store.save_current_layout(false), "profile 1 baseline should persist")
 	check_true(controller.switch_profile(3), "profile 3 should activate")
-	check_true(not store.has_layout_slot(4), "profile 4 should still be unused")
-	check_true(
-		controller.switch_profile(4), "first switch from profile 3 to profile 4 should succeed"
-	)
+	check_true(not store.has_layout_slot(4), "UI4 has no saved layout yet")
+	check_true(controller.switch_profile(4), "switching from UI3 to UI4 should succeed")
 	check_eq(
 		surface.get_module_placement(Builtins.TOOLS_ID),
-		profile_one_tools,
-		"profile 4 must seed normal Tools instead of profile 3 parking",
+		WorkspaceSurface.Placement.DOCKED,
+		"UI4 Tools must dock rather than inherit UI3 parking",
 	)
 	check_eq(
 		surface.get_module_placement(Builtins.PALETTE_ID),
-		profile_one_palette,
-		"profile 4 must seed normal Palette instead of profile 3 parking",
+		WorkspaceSurface.Placement.DOCKED,
+		"UI4 Palette must dock rather than inherit UI3 parking",
+	)
+	check_eq(
+		surface.dock_host.layout.get_module_zone(Builtins.TOOLS_ID),
+		WorkspaceDockLayout.DockZone.RIGHT,
+		"UI4 tool configuration docks on the right",
+	)
+	check_eq(
+		surface.dock_host.layout.get_module_zone(Builtins.PALETTE_ID),
+		WorkspaceDockLayout.DockZone.LEFT,
+		"UI4 swatches and picker dock on the left",
 	)
 	_free_fixture(fixture)
 

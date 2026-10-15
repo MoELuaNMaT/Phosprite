@@ -14,6 +14,7 @@ const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
 const APP_SHELL_SOURCE := "res://src/AppShell/AppShellController.gd"
 const PROJECT_STATE_SOURCE := "res://src/UI/Timeline/TimelineProjectState.gd"
+const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 
 
 class FakeHeightProject:
@@ -488,10 +489,13 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 		"show_arrows = false",
 		"single-frame opacity must remove increment/decrement arrow buttons",
 	)
+	check_has(scene, '[node name="OpacityEye" type="TextureRect"', "eye icon labels opacity")
+	check_has(scene, 'suffix = "%"', "opacity value shows a percentage")
+	check_true(not scene.contains('prefix = "Opacity:"'), "old opacity text label is removed")
 	check_has(
 		scene,
-		'[node name="LayerStyle" type="Button"',
-		"single-frame layer settings must expose the layer style entry",
+		'[node name="LayerStyle" type="OptionButton"',
+		"single-frame settings must expose the layer blend mode dropdown",
 	)
 	check_has(
 		strip_source,
@@ -515,18 +519,98 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 	check_has(
 		strip_source,
-		"Global.animation_timeline.open_current_layer_effects()",
-		"layer style must reuse the existing layer effects dialog",
+		"BLEND_MODE_MENU.populate(layer_style_button, allows_group)",
+		"single frame blend modes must share the animation view's menu definition",
 	)
 	check_has(
 		timeline_source,
-		"func open_current_layer_effects() -> void:",
-		"AnimationTimeline must expose one shared current-layer effects entry point",
+		"BLEND_MODE_MENU.populate(blend_modes_button, selected_layers_are_groups)",
+		"animation view must use the same blend mode menu as Single Frame",
 	)
 	check_has(
-		timeline_source,
-		"project.layers[project.current_layer] is AudioLayer",
-		"the shared style entry must preserve the existing AudioLayer restriction",
+		strip_source,
+		"if layer is AudioLayer:",
+		"single frame blend mode selection must exclude audio layers",
+	)
+
+
+func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
+	var animation_menu := OptionButton.new()
+	var single_frame_menu := OptionButton.new()
+	tree.root.add_child(animation_menu)
+	tree.root.add_child(single_frame_menu)
+	BLEND_MODE_MENU.populate(animation_menu, false)
+	BLEND_MODE_MENU.populate(single_frame_menu, false)
+	check_eq(
+		single_frame_menu.item_count,
+		animation_menu.item_count,
+		"Single Frame and Animation have the same blend options and separators",
+	)
+	for item_index in animation_menu.item_count:
+		check_eq(
+			single_frame_menu.get_item_text(item_index),
+			animation_menu.get_item_text(item_index),
+			"mode labels match both timeline views",
+		)
+		check_eq(
+			single_frame_menu.get_item_id(item_index),
+			animation_menu.get_item_id(item_index),
+			"mode enum IDs match both timeline views",
+		)
+	for mode in [
+		BaseLayer.BlendModes.NORMAL,
+		BaseLayer.BlendModes.ERASE,
+		BaseLayer.BlendModes.DARKEN,
+		BaseLayer.BlendModes.MULTIPLY,
+		BaseLayer.BlendModes.COLOR_BURN,
+		BaseLayer.BlendModes.SCREEN,
+		BaseLayer.BlendModes.OVERLAY,
+	]:
+		check_true(
+			single_frame_menu.get_item_index(mode) >= 0,
+			"required layer blend mode appears in Single Frame",
+		)
+	check_eq(
+		single_frame_menu.get_item_index(BaseLayer.BlendModes.PASS_THROUGH),
+		-1,
+		"Pass through must not appear for ordinary pixel layers",
+	)
+	BLEND_MODE_MENU.populate(single_frame_menu, true)
+	check_true(
+		single_frame_menu.get_item_index(BaseLayer.BlendModes.PASS_THROUGH) >= 0,
+		"Pass through becomes available on folder/group layers",
+	)
+	animation_menu.free()
+	single_frame_menu.free()
+
+
+func test_single_frame_blend_mode_edit_is_undoable_and_refreshes_canvas() -> void:
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(
+		source,
+		"layer_style_button.item_selected.connect(_on_blend_mode_selected)",
+		"dropdown changes layer blend mode, never opens layer effects",
+	)
+	check_true(
+		not source.contains("open_current_layer_effects()"),
+		"Single Frame has no FX dialog action",
+	)
+	check_has(source, 'project.undo_redo.create_action("Set Blend Mode")', "edit is undoable")
+	check_has(
+		source,
+		'project.undo_redo.add_do_property(layer, "blend_mode", mode)',
+		"edit updates selected layer"
+	)
+	check_has(
+		source,
+		'project.undo_redo.add_undo_property(layer, "blend_mode", layer.blend_mode)',
+		"undo restores mode",
+	)
+	check_has(source, "_refresh_blend_mode_rendering()", "blend edit recomposites canvas")
+	check_has(
+		source,
+		"layer_style_button.selected = layer_style_button.get_item_index(layer.blend_mode)",
+		"active layer is reflected by dropdown selection",
 	)
 
 

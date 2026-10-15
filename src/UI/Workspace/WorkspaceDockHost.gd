@@ -18,10 +18,12 @@ const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
 
 var manager: WorkspaceModuleManager
 var layout: WorkspaceDockLayout
+var u_frame_layout_enabled := false
 
 var _zone_hosts: Dictionary = {}
 var _preview: ColorRect
 var _side_inset := 0.0
+# UI4 uses a full-height left palette and a bottom timeline that begins to its right.
 var _top_edge_snap_y := 0.0
 var _top_edge_snap_height := EDGE_DOCK_TARGET_EXTENT
 var _drag_module_id: StringName = &""
@@ -147,6 +149,13 @@ func set_preview_color(color: Color) -> void:
 
 func set_side_inset(inset: float) -> void:
 	_side_inset = maxf(0.0, inset)
+	_layout_zones()
+
+
+func set_u_frame_layout(enabled: bool) -> void:
+	if u_frame_layout_enabled == enabled:
+		return
+	u_frame_layout_enabled = enabled
 	_layout_zones()
 
 
@@ -334,16 +343,35 @@ func _layout_zones() -> void:
 	var inner_width := maxf(0.0, size.x - inset * 2.0)
 	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
 
-	_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
-	_set_host_rect(
-		WorkspaceDockLayout.DockZone.BOTTOM,
-		Rect2(0.0, maxf(0.0, size.y - bottom_h), size.x, bottom_h)
-	)
-	_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, top_h, left_w, middle_h))
-	_set_host_rect(
-		WorkspaceDockLayout.DockZone.RIGHT,
-		Rect2(maxf(inset, size.x - inset - right_w), top_h, right_w, middle_h)
-	)
+	if u_frame_layout_enabled:
+		# The palette spans the full height; timeline and tool options never overlap it.
+		var content_left := inset + left_w
+		_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
+		_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, 0.0, left_w, size.y))
+		_set_host_rect(
+			WorkspaceDockLayout.DockZone.BOTTOM,
+			Rect2(
+				content_left,
+				maxf(0.0, size.y - bottom_h),
+				maxf(0.0, size.x - content_left - inset),
+				bottom_h
+			)
+		)
+		_set_host_rect(
+			WorkspaceDockLayout.DockZone.RIGHT,
+			Rect2(maxf(inset, size.x - inset - right_w), top_h, right_w, middle_h)
+		)
+	else:
+		_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
+		_set_host_rect(
+			WorkspaceDockLayout.DockZone.BOTTOM,
+			Rect2(0.0, maxf(0.0, size.y - bottom_h), size.x, bottom_h)
+		)
+		_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, top_h, left_w, middle_h))
+		_set_host_rect(
+			WorkspaceDockLayout.DockZone.RIGHT,
+			Rect2(maxf(inset, size.x - inset - right_w), top_h, right_w, middle_h)
+		)
 	layout_geometry_changed.emit(get_content_rect())
 
 
@@ -398,7 +426,17 @@ func _apply_module_size(module_id: StringName) -> void:
 			zone == WorkspaceDockLayout.DockZone.LEFT or zone == WorkspaceDockLayout.DockZone.RIGHT
 		):
 			module.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	module.custom_minimum_size = target_size
+	# In UI4, fill children must be allowed to shrink along the filled axis.
+	# A historical timeline width (for example 760px) must not overflow portrait iPad.
+	var minimum_size := target_size
+	if u_frame_layout_enabled and layout.is_module_region_fill(module_id):
+		var definition := manager.get_definition(module_id)
+		if definition != null:
+			if zone == WorkspaceDockLayout.DockZone.BOTTOM:
+				minimum_size.x = definition.minimum_size.x
+			elif zone in [WorkspaceDockLayout.DockZone.LEFT, WorkspaceDockLayout.DockZone.RIGHT]:
+				minimum_size.y = definition.minimum_size.y
+	module.custom_minimum_size = minimum_size
 	module.size = target_size
 
 
