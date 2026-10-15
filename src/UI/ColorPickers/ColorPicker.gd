@@ -291,9 +291,7 @@ func _position_color_options_popup() -> void:
 	# the gear would be completely offscreen: use an adjacent floating overlay.
 	var popup_y := button_rect.end.y + gap
 	var panel_rect := get_global_rect()
-	var popup_x := clampf(
-		panel_rect.position.x, 0.0, maxf(0.0, viewport_size.x - popup_size.x)
-	)
+	var popup_x := clampf(panel_rect.position.x, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
 	var space_below := viewport_size.y - popup_y - gap
 	if space_below < 96.0:
 		# Keep the gear visible. A side-positioned overlay is preferable to an
@@ -312,9 +310,7 @@ func _position_color_options_popup() -> void:
 			)
 	space_below = viewport_size.y - popup_y - gap
 	_color_options_popup.position = Vector2(popup_x, popup_y)
-	_color_options_popup.size = Vector2(
-		popup_size.x, minf(popup_size.y, maxf(96.0, space_below))
-	)
+	_color_options_popup.size = Vector2(popup_size.x, minf(popup_size.y, maxf(96.0, space_below)))
 	_color_options_popup.clip_contents = true
 
 
