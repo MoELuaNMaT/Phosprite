@@ -14,6 +14,7 @@ const MIGRATION_SOURCE := "res://src/UI/Workspace/WorkspaceEditorMigration.gd"
 const INTERACTION_SOURCE := "res://src/UI/Workspace/WorkspaceInteractionController.gd"
 const APP_SHELL_SOURCE := "res://src/AppShell/AppShellController.gd"
 const PROJECT_STATE_SOURCE := "res://src/UI/Timeline/TimelineProjectState.gd"
+const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 
 
 class FakeHeightProject:
@@ -535,13 +536,12 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 
 
 func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
-	var menu_script := load("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 	var animation_menu := OptionButton.new()
 	var single_frame_menu := OptionButton.new()
 	tree.root.add_child(animation_menu)
 	tree.root.add_child(single_frame_menu)
-	menu_script.populate(animation_menu, false)
-	menu_script.populate(single_frame_menu, false)
+	BLEND_MODE_MENU.populate(animation_menu, false)
+	BLEND_MODE_MENU.populate(single_frame_menu, false)
 	check_eq(
 		single_frame_menu.item_count,
 		animation_menu.item_count,
@@ -576,7 +576,7 @@ func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
 		-1,
 		"Pass through must not appear for ordinary pixel layers",
 	)
-	menu_script.populate(single_frame_menu, true)
+	BLEND_MODE_MENU.populate(single_frame_menu, true)
 	check_true(
 		single_frame_menu.get_item_index(BaseLayer.BlendModes.PASS_THROUGH) >= 0,
 		"Pass through becomes available on folder/group layers",
