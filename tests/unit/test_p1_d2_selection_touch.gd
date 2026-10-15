@@ -274,7 +274,7 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 
 
-func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_tolerance() -> void:
+func test_ios_selection_options_use_safe_dropdown_with_legacy_button_diagnostic() -> void:
 	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
 	var base_scene := FileAccess.get_file_as_string(BASE_SELECTION_SCENE)
 	check_has(
@@ -282,8 +282,38 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]',
-		"all iOS selection tools should expose the same compact four-mode button set",
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel"]',
+		"iOS selection tool options must begin with only the shared label",
+	)
+	check_has(
+		base_src,
+		'visible_controls.append(&"Modes")',
+		"iPad selection options must use the existing four-mode dropdown by default",
+	)
+	check_has(
+		base_src,
+		"if _ios_legacy_mode_buttons:",
+		"old selection ButtonGroup may only return through the explicit diagnostic override",
+	)
+	check_has(
+		base_src,
+		'visible_controls.append(&"ModeButtons")',
+		"diagnostic A/B must retain the old four-button option for root-cause verification",
+	)
+	check_has(
+		base_src,
+		"func set_ios_legacy_mode_buttons(enabled: bool) -> void:",
+		"diagnostic-only legacy selection control should be reversible",
+	)
+	check_has(
+		base_src,
+		"func _on_modes_item_selected(index: int) -> void:",
+		"the dropdown must remain connected to the existing selection mode handler",
+	)
+	check_has(
+		base_scene,
+		'[connection signal="item_selected" from="Modes" to="." method="_on_modes_item_selected"]',
+		"the saved scene must still wire dropdown input to the four-mode selection model",
 	)
 	check_has(
 		base_src,
@@ -293,7 +323,7 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	check_has(
 		base_src,
 		'visible_controls.append(&"ToleranceSlider")',
-		"Magic Wand should retain Tolerance below the shared mode buttons",
+		"Magic Wand should retain Tolerance below the shared selection mode control",
 	)
 	check_has(
 		base_src,
@@ -308,7 +338,7 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	check_has(
 		base_scene,
 		'[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]',
-		"selection mode buttons must share one exclusive ButtonGroup in the base scene",
+		"legacy selection mode buttons must remain exclusive for diagnostic A/B",
 	)
 	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
 		check_has(

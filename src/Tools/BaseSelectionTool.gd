@@ -20,6 +20,7 @@ var _intersect := false  ## Shift + Ctrl + Mouse Click
 ## while draw_move() is being called. For example, pressing Enter while still moving content
 var _transformation_status_changed := false
 var _skip_slider_logic := false
+var _ios_legacy_mode_buttons := false
 
 @onready var selection_node := Global.canvas.selection
 @onready var transformation_handles := selection_node.transformation_handles
@@ -46,10 +47,23 @@ func _ready() -> void:
 	_apply_ios_compact_options()
 
 
+## On iPad, the compact four-button ButtonGroup can trigger a native first-frame
+## crash when the selection tool is displayed inside UI3 Tool Options.
+## Reuse the pre-existing Modes OptionButton and its working selection handler.
+## The legacy controls remain available only for an explicit diagnostic A/B test.
+func set_ios_legacy_mode_buttons(enabled: bool) -> void:
+	_ios_legacy_mode_buttons = enabled
+	_apply_ios_compact_options()
+
+
 func _apply_ios_compact_options() -> void:
 	if OS.get_name() != "iOS":
 		return
-	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]
+	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel"]
+	if _ios_legacy_mode_buttons:
+		visible_controls.append(&"ModeButtons")
+	else:
+		visible_controls.append(&"Modes")
 	if name == &"MagicWand":
 		visible_controls.append(&"ToleranceSlider")
 	for child in get_children():
