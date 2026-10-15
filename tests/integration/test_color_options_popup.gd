@@ -93,10 +93,36 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 		editor.right_color_button.get_parent() == editor.expand_button.get_parent(),
 		"right color and settings are in the same stable control row",
 	)
+	for button_and_swatch in [
+		[editor.left_color_button, editor.left_color_rect],
+		[editor.right_color_button, editor.right_color_rect],
+	]:
+		var swatch_button := button_and_swatch[0] as Button
+		var swatch := button_and_swatch[1] as ColorRect
+		var button_rect: Rect2 = swatch_button.get_global_rect()
+		var swatch_rect: Rect2 = swatch.get_global_rect()
+		check_true(
+			button_rect.encloses(swatch_rect),
+			"foreground/background color fill stays inside its real button bounds",
+		)
+		check_true(
+			swatch_rect.size.x >= button_rect.size.x - 5.0,
+			"swatch fills the full available button width minus its 2px border",
+		)
+		check_true(
+			swatch_rect.size.y >= button_rect.size.y - 5.0,
+			"swatch fills the full available button height minus its 2px border",
+		)
+	var gear_rect: Rect2 = editor.expand_button.get_global_rect()
+	check_eq(
+		editor._color_control_action_at(gear_rect.get_center()),
+		&"settings",
+		"iPad touch hit-test recognizes square settings button",
+	)
 	var palette_before: Vector2 = palette.size
 	var picker_before: Vector2 = editor.color_picker.size
 	var editor_before: Vector2 = editor.size
-	editor._open_color_options_popup()
+	editor._activate_touch_color_action(&"settings")
 	await tree.process_frame
 	await tree.process_frame
 	await tree.process_frame
@@ -107,11 +133,17 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 	if is_instance_valid(editor._color_options_popup):
 		var popup_rect: Rect2 = editor._color_options_popup.get_global_rect()
 		var button_rect: Rect2 = editor.expand_button.get_global_rect()
+		check_true(editor._color_options_popup.visible, "settings popup is actually visible")
+		check_true(popup_rect.size.y >= 48.0, "settings popup has usable on-screen height")
 		check_true(
-			popup_rect.position.y >= button_rect.end.y,
-			"popup always opens below its settings button, never over it",
+			popup_rect.position.y < editor.get_viewport_rect().size.y,
+			"settings popup is located inside the viewport, not below the screen",
 		)
-	editor._on_expand_button_pressed()
+		check_true(
+			not popup_rect.intersects(button_rect),
+			"popup never covers the settings toggle, even in narrow screen fallback",
+		)
+	editor._activate_touch_color_action(&"settings")
 	check_true(not editor.is_color_options_expanded(), "same settings button closes popup")
 	await tree.process_frame
 	check_eq(editor.size, editor_before, "closing popup never resizes original picker")
