@@ -424,8 +424,10 @@ func test_single_frame_visibility_uses_eye_button_and_not_double_tap() -> void:
 		"single taps must still support normal and multiselect selection",
 	)
 	check_true(
-		not strip_source.contains("_register_double_tap")
-		and not strip_source.contains("DOUBLE_TAP_MSEC"),
+		(
+			not strip_source.contains("_register_double_tap")
+			and not strip_source.contains("DOUBLE_TAP_MSEC")
+		),
 		"double-tap detection must be completely removed",
 	)
 	check_true(
