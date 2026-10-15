@@ -533,6 +533,78 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 
 
+
+func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
+	var menu_script := load("res://src/UI/Timeline/LayerBlendModeMenu.gd")
+	var animation_menu := OptionButton.new()
+	var single_frame_menu := OptionButton.new()
+	add_child(animation_menu)
+	add_child(single_frame_menu)
+	menu_script.populate(animation_menu, false)
+	menu_script.populate(single_frame_menu, false)
+	check_eq(
+		single_frame_menu.item_count,
+		animation_menu.item_count,
+		"Single Frame and Animation have the same blend options and separators",
+	)
+	for item_index in animation_menu.item_count:
+		check_eq(
+			single_frame_menu.get_item_text(item_index),
+			animation_menu.get_item_text(item_index),
+			"mode labels match both timeline views",
+		)
+		check_eq(
+			single_frame_menu.get_item_id(item_index),
+			animation_menu.get_item_id(item_index),
+			"mode enum IDs match both timeline views",
+		)
+	for mode in [
+		BaseLayer.BlendModes.NORMAL,
+		BaseLayer.BlendModes.ERASE,
+		BaseLayer.BlendModes.DARKEN,
+		BaseLayer.BlendModes.MULTIPLY,
+		BaseLayer.BlendModes.COLOR_BURN,
+		BaseLayer.BlendModes.SCREEN,
+		BaseLayer.BlendModes.OVERLAY,
+	]:
+		check_true(
+			single_frame_menu.get_item_index(mode) >= 0,
+			"required layer blend mode appears in Single Frame",
+		)
+	check_eq(
+		single_frame_menu.get_item_index(BaseLayer.BlendModes.PASS_THROUGH),
+		-1,
+		"Pass through must not appear for ordinary pixel layers",
+	)
+	menu_script.populate(single_frame_menu, true)
+	check_true(
+		single_frame_menu.get_item_index(BaseLayer.BlendModes.PASS_THROUGH) >= 0,
+		"Pass through becomes available on folder/group layers",
+	)
+	animation_menu.free()
+	single_frame_menu.free()
+
+
+func test_single_frame_blend_mode_edit_is_undoable_and_refreshes_canvas() -> void:
+	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
+	check_has(
+		source, "layer_style_button.item_selected.connect(_on_blend_mode_selected)",
+		"dropdown changes layer blend mode, never opens layer effects",
+	)
+	check_true(
+		not source.contains("open_current_layer_effects()"),
+		"Single Frame has no FX dialog action",
+	)
+	check_has(source, 'project.undo_redo.create_action("Set Blend Mode")', "edit is undoable")
+	check_has(source, 'project.undo_redo.add_do_property(layer, "blend_mode", mode)', "edit updates selected layer")
+	check_has(source, 'project.undo_redo.add_undo_property(layer, "blend_mode", layer.blend_mode)', "undo restores mode")
+	check_has(source, "_refresh_blend_mode_rendering()", "blend edit recomposites canvas")
+	check_has(
+		source, "layer_style_button.selected = layer_style_button.get_item_index(layer.blend_mode)",
+		"active layer is reflected by dropdown selection",
+	)
+
+
 func test_single_frame_folder_uses_group_layers_and_tag_like_brackets() -> void:
 	var strip_source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	var bracket_source := FileAccess.get_file_as_string(GROUP_BRACKET_SOURCE)
