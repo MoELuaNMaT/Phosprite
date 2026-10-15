@@ -299,34 +299,43 @@ func _position_color_options_popup() -> void:
 		return
 	var viewport_size := get_viewport_rect().size
 	var button_rect := expand_button.get_global_rect()
-	var popup_size := _color_options_popup.get_combined_minimum_size()
+	var natural_size := _color_options_popup.get_combined_minimum_size()
 	var gap := 6.0
-	# Keep the whole mode/slider panel visible. Prefer directly below the gear;
-	# if there is not enough height, put the full panel above or alongside it.
+	# Keep every RGB/HSV/RAW slider in the panel; on a small viewport scale
+	# the whole floating panel uniformly instead of adding scrolling/clipping.
+	var width_scale := maxf(1.0, viewport_size.x - gap * 2.0) / maxf(1.0, natural_size.x)
+	var height_scale := maxf(1.0, viewport_size.y - gap * 2.0) / maxf(1.0, natural_size.y)
+	var ui_scale := minf(1.0, minf(width_scale, height_scale))
+	_color_options_popup.scale = Vector2(ui_scale, ui_scale)
+	var visible_size := natural_size * ui_scale
+	# Prefer below the gear, then above. Only shift sideways when neither
+	# vertical placement has room, so the toggle stays reachable.
 	var popup_y := button_rect.end.y + gap
 	var panel_rect := get_global_rect()
-	var popup_x := clampf(panel_rect.position.x, 0.0, maxf(0.0, viewport_size.x - popup_size.x))
-	if popup_y + popup_size.y + gap > viewport_size.y:
-		var above_y := button_rect.position.y - popup_size.y - gap
-		if above_y >= 0.0:
+	var popup_x := clampf(panel_rect.position.x, gap, maxf(gap, viewport_size.x - visible_size.x - gap))
+	if popup_y + visible_size.y + gap > viewport_size.y:
+		var above_y := button_rect.position.y - visible_size.y - gap
+		if above_y >= gap:
 			popup_y = above_y
 		else:
 			var right_of_panel := panel_rect.end.x + gap
-			if right_of_panel + popup_size.x <= viewport_size.x:
+			if right_of_panel + visible_size.x + gap <= viewport_size.x:
 				popup_x = right_of_panel
-			elif panel_rect.position.x >= popup_size.x + gap:
-				popup_x = panel_rect.position.x - popup_size.x - gap
+			elif panel_rect.position.x >= visible_size.x + gap * 2.0:
+				popup_x = panel_rect.position.x - visible_size.x - gap
 			else:
 				popup_x = clampf(
-					button_rect.end.x + gap, 0.0, maxf(0.0, viewport_size.x - popup_size.x)
+					button_rect.end.x + gap,
+					gap,
+					maxf(gap, viewport_size.x - visible_size.x - gap)
 				)
 			popup_y = clampf(
-				button_rect.position.y - popup_size.y * 0.5,
-				0.0,
-				maxf(0.0, viewport_size.y - popup_size.y)
+				button_rect.position.y - visible_size.y * 0.5,
+				gap,
+				maxf(gap, viewport_size.y - visible_size.y - gap)
 			)
 	_color_options_popup.position = Vector2(popup_x, popup_y)
-	_color_options_popup.size = popup_size
+	_color_options_popup.size = natural_size
 	_color_options_popup.clip_contents = false
 
 
