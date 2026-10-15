@@ -49,7 +49,9 @@ func _ready() -> void:
 func _apply_ios_compact_options() -> void:
 	if OS.get_name() != "iOS":
 		return
-	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]
+	# The four ButtonGroup-backed controls crash native iPad startup when visible in UI3.
+	# Reuse the existing four-mode OptionButton and its connected selection handler.
+	var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"Modes"]
 	if name == &"MagicWand":
 		visible_controls.append(&"ToleranceSlider")
 	for child in get_children():

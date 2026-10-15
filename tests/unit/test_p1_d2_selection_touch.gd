@@ -274,7 +274,7 @@ func test_compact_tool_families_show_bottom_right_disclosure_triangle() -> void:
 	)
 
 
-func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_tolerance() -> void:
+func test_ios_selection_options_use_safe_dropdown_with_magic_wand_tolerance() -> void:
 	var base_src := FileAccess.get_file_as_string(BASE_SELECTION_SOURCE)
 	var base_scene := FileAccess.get_file_as_string(BASE_SELECTION_SCENE)
 	check_has(
@@ -282,8 +282,24 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]',
-		"all iOS selection tools should expose the same compact four-mode button set",
+		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"Modes"]',
+		"iPad selection tools must show the existing dropdown, not the crashing four-button group",
+	)
+	check_has(
+		base_scene,
+		'[connection signal="item_selected" from="Modes" to="." method="_on_modes_item_selected"]',
+		"selection dropdown must remain connected to the existing four-mode handler",
+	)
+	check_has(
+		base_src,
+		"func _on_modes_item_selected(index: int) -> void:",
+		"the existing mode handler must remain available on iPad",
+	)
+	check_true(
+		not base_src.contains(
+			'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]'
+		),
+		"iPad startup must never reactivate the crashing four-button selection group",
 	)
 	check_has(
 		base_src,
@@ -293,7 +309,7 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	check_has(
 		base_src,
 		'visible_controls.append(&"ToleranceSlider")',
-		"Magic Wand should retain Tolerance below the shared mode buttons",
+		"Magic Wand should retain Tolerance beneath the shared selection mode dropdown",
 	)
 	check_has(
 		base_src,
@@ -308,7 +324,7 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	check_has(
 		base_scene,
 		'[sub_resource type="ButtonGroup" id="ButtonGroup_modes"]',
-		"selection mode buttons must share one exclusive ButtonGroup in the base scene",
+		"desktop selection mode buttons must retain their exclusive ButtonGroup",
 	)
 	for button_name in ["Replace", "Add", "Subtract", "Intersect"]:
 		check_has(
