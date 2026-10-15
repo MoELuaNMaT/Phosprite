@@ -67,6 +67,10 @@ func test_numeric_picker_excludes_wheel_but_includes_mode_sliders() -> void:
 
 
 func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> void:
+	# tests/runner.gd uses a 64x64 headless viewport by default; a 700px
+	# palette must be tested in an actual iPad-sized viewport instead.
+	var original_window_size := tree.root.size
+	tree.root.size = Vector2i(1024, 768)
 	var previous_slot := Tools.picking_color_for
 	var inserted_slot := not Tools._slots.has(MOUSE_BUTTON_LEFT)
 	var previous_color := Color.WHITE
@@ -155,17 +159,6 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 	if is_instance_valid(editor._color_options_popup):
 		var popup_rect: Rect2 = editor._color_options_popup.get_global_rect()
 		var button_rect: Rect2 = editor.expand_button.get_global_rect()
-		print(
-			"[COLOR-POPUP-RECT] viewport=%s button=%s popup=%s minimum=%s picker_minimum=%s scale=%s"
-			% [
-				editor.get_viewport_rect().size,
-				button_rect,
-				popup_rect,
-				editor._color_options_popup.get_combined_minimum_size(),
-				editor._color_options_picker.get_combined_minimum_size(),
-				editor._color_options_popup.scale,
-			]
-		)
 		check_true(editor._color_options_popup.visible, "settings popup is actually visible")
 		check_true(popup_rect.size.y >= 48.0, "settings popup has usable on-screen height")
 		check_true(
@@ -200,6 +193,7 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 	else:
 		Tools._slots[MOUSE_BUTTON_LEFT].color = previous_color
 	Tools.picking_color_for = previous_slot
+	tree.root.size = original_window_size
 
 
 func test_numeric_adjustment_updates_selected_slot_without_closing_popup() -> void:
