@@ -528,7 +528,7 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 		"animation view must use the same blend mode menu as Single Frame",
 	)
 	check_has(
-		timeline_source,
+		strip_source,
 		"if layer is AudioLayer:",
 		"single frame blend mode selection must exclude audio layers",
 	)
