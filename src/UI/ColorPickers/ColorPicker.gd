@@ -312,7 +312,9 @@ func _position_color_options_popup() -> void:
 	# vertical placement has room, so the toggle stays reachable.
 	var popup_y := button_rect.end.y + gap
 	var panel_rect := get_global_rect()
-	var popup_x := clampf(panel_rect.position.x, gap, maxf(gap, viewport_size.x - visible_size.x - gap))
+	var popup_x := clampf(
+		panel_rect.position.x, gap, maxf(gap, viewport_size.x - visible_size.x - gap)
+	)
 	if popup_y + visible_size.y + gap > viewport_size.y:
 		var above_y := button_rect.position.y - visible_size.y - gap
 		if above_y >= gap:
@@ -325,9 +327,7 @@ func _position_color_options_popup() -> void:
 				popup_x = panel_rect.position.x - visible_size.x - gap
 			else:
 				popup_x = clampf(
-					button_rect.end.x + gap,
-					gap,
-					maxf(gap, viewport_size.x - visible_size.x - gap)
+					button_rect.end.x + gap, gap, maxf(gap, viewport_size.x - visible_size.x - gap)
 				)
 			popup_y = clampf(
 				button_rect.position.y - visible_size.y * 0.5,
