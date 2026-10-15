@@ -488,10 +488,13 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 		"show_arrows = false",
 		"single-frame opacity must remove increment/decrement arrow buttons",
 	)
+	check_has(scene, '[node name="OpacityEye" type="TextureRect"', "eye icon labels opacity")
+	check_has(scene, 'suffix = "%"', "opacity value shows a percentage")
+	check_true(not scene.contains('prefix = "Opacity:"'), "old opacity text label is removed")
 	check_has(
 		scene,
-		'[node name="LayerStyle" type="Button"',
-		"single-frame layer settings must expose the layer style entry",
+		'[node name="LayerStyle" type="OptionButton"',
+		"single-frame settings must expose the layer blend mode dropdown",
 	)
 	check_has(
 		strip_source,
@@ -515,18 +518,18 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 	check_has(
 		strip_source,
-		"Global.animation_timeline.open_current_layer_effects()",
-		"layer style must reuse the existing layer effects dialog",
+		"BLEND_MODE_MENU.populate(layer_style_button, allows_group)",
+		"single frame blend modes must share the animation view's menu definition",
 	)
 	check_has(
 		timeline_source,
-		"func open_current_layer_effects() -> void:",
-		"AnimationTimeline must expose one shared current-layer effects entry point",
+		"BLEND_MODE_MENU.populate(blend_modes_button, selected_layers_are_groups)",
+		"animation view must use the same blend mode menu as Single Frame",
 	)
 	check_has(
 		timeline_source,
-		"project.layers[project.current_layer] is AudioLayer",
-		"the shared style entry must preserve the existing AudioLayer restriction",
+		"if layer is AudioLayer:",
+		"single frame blend mode selection must exclude audio layers",
 	)
 
 

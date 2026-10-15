@@ -20,6 +20,7 @@ const FRAME_BUTTON_TSCN := preload("res://src/UI/Timeline/FrameButton.tscn")
 const ANIMATION_TAG_TSCN := preload("res://src/UI/Timeline/AnimationTagUI.tscn")
 const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSettings.tscn"
 const PROJECT_STATE := preload("res://src/UI/Timeline/TimelineProjectState.gd")
+const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 ## Do not let [member min_cel_size] go below 22, as this is the size of the layer icons.
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
@@ -426,9 +427,8 @@ func _cel_size_changed(value: int) -> void:
 
 ## Fill the blend modes OptionButton with items
 func _fill_blend_modes_option_button() -> void:
-	blend_modes_button.clear()
 	var selected_layers_are_groups := true
-	if Global.current_project.layers.size() == 0:
+	if Global.current_project.layers.is_empty():
 		selected_layers_are_groups = false
 	else:
 		for idx_pair in Global.current_project.selected_cels:
@@ -436,39 +436,7 @@ func _fill_blend_modes_option_button() -> void:
 			if not layer is GroupLayer:
 				selected_layers_are_groups = false
 				break
-	if selected_layers_are_groups:
-		# Special blend mode that appears only when group layers are selected
-		blend_modes_button.add_item("Pass through", BaseLayer.BlendModes.PASS_THROUGH)
-	blend_modes_button.add_item("Normal", BaseLayer.BlendModes.NORMAL)
-	blend_modes_button.add_item("Erase", BaseLayer.BlendModes.ERASE)
-	blend_modes_button.add_separator("Darken")
-	blend_modes_button.add_item("Darken", BaseLayer.BlendModes.DARKEN)
-	blend_modes_button.add_item("Multiply", BaseLayer.BlendModes.MULTIPLY)
-	blend_modes_button.add_item("Color burn", BaseLayer.BlendModes.COLOR_BURN)
-	blend_modes_button.add_item("Linear burn", BaseLayer.BlendModes.LINEAR_BURN)
-	blend_modes_button.add_separator("Lighten")
-	blend_modes_button.add_item("Lighten", BaseLayer.BlendModes.LIGHTEN)
-	blend_modes_button.add_item("Screen", BaseLayer.BlendModes.SCREEN)
-	blend_modes_button.add_item("Color dodge", BaseLayer.BlendModes.COLOR_DODGE)
-	blend_modes_button.add_item("Add", BaseLayer.BlendModes.ADD)
-	blend_modes_button.add_separator("Contrast")
-	blend_modes_button.add_item("Overlay", BaseLayer.BlendModes.OVERLAY)
-	blend_modes_button.add_item("Soft light", BaseLayer.BlendModes.SOFT_LIGHT)
-	blend_modes_button.add_item("Hard light", BaseLayer.BlendModes.HARD_LIGHT)
-	blend_modes_button.add_separator("Inversion")
-	blend_modes_button.add_item("Difference", BaseLayer.BlendModes.DIFFERENCE)
-	blend_modes_button.add_item("Exclusion", BaseLayer.BlendModes.EXCLUSION)
-	blend_modes_button.add_item("Subtract", BaseLayer.BlendModes.SUBTRACT)
-	blend_modes_button.add_item("Divide", BaseLayer.BlendModes.DIVIDE)
-	blend_modes_button.add_separator("Component")
-	blend_modes_button.add_item("Hue", BaseLayer.BlendModes.HUE)
-	blend_modes_button.add_item("Saturation", BaseLayer.BlendModes.SATURATION)
-	blend_modes_button.add_item("Color", BaseLayer.BlendModes.COLOR)
-	blend_modes_button.add_item("Luminosity", BaseLayer.BlendModes.LUMINOSITY)
-	blend_modes_button.add_separator("Masking")
-	blend_modes_button.add_item("Intersection", BaseLayer.BlendModes.INTERSECTION)
-	blend_modes_button.add_item("Match colors", BaseLayer.BlendModes.MATCH_COLORS)
-
+	BLEND_MODE_MENU.populate(blend_modes_button, selected_layers_are_groups)
 
 func _on_blend_modes_item_selected(index: int) -> void:
 	var project := Global.current_project

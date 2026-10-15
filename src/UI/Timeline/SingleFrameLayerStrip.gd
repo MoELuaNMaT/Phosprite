@@ -3,6 +3,7 @@ extends PanelContainer
 
 const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
 const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn")
+const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
 const DOUBLE_TAP_MSEC := 350
 const DOUBLE_TAP_DISTANCE := 32.0
@@ -16,11 +17,12 @@ var _last_tap_msec := -1
 var _last_tap_layer := -1
 var _last_tap_position := Vector2.INF
 var _settings_layer: BaseLayer
+var _blend_menu_has_group := -1
 
 @onready var layer_settings_panel := %LayerSettingsPanel as PanelContainer
 @onready var current_layer_name := %CurrentLayerName as Label
 @onready var layer_opacity_slider := %OpacitySlider as ValueSlider
-@onready var layer_style_button := %LayerStyle as Button
+@onready var layer_style_button := %LayerStyle as OptionButton
 @onready var layer_content := %LayerContent as Control
 @onready var group_bracket_lane := %GroupBracketLane as Control
 @onready var layer_row := %LayerRow as HBoxContainer
@@ -36,7 +38,7 @@ var _settings_layer: BaseLayer
 
 func _ready() -> void:
 	layer_opacity_slider.value_changed.connect(_on_layer_opacity_changed)
-	layer_style_button.pressed.connect(_on_layer_style_pressed)
+	layer_style_button.item_selected.connect(_on_blend_mode_selected)
 	add_layer_button.pressed.connect(_on_add_layer_pressed)
 	exit_multiselect_button.pressed.connect(_on_exit_multiselect_pressed)
 	create_folder_button.pressed.connect(_on_create_folder_pressed)
@@ -219,10 +221,52 @@ func _on_layer_opacity_changed(value: float) -> void:
 		_sync_layer_settings()
 
 
-func _on_layer_style_pressed() -> void:
-	if not is_instance_valid(Global.animation_timeline):
+func _on_blend_mode_selected(index: int) -> void:
+	var project := _bound_project
+	if (
+		project == null
+		or project != Global.current_project
+		or project.current_layer < 0
+		or project.current_layer >= project.layers.size()
+	):
 		return
-	Global.animation_timeline.open_current_layer_effects()
+	var layer := project.layers[project.current_layer]
+	if layer is AudioLayer:
+		return
+	var mode := layer_style_button.get_item_id(index)
+	if mode == layer.blend_mode:
+		return
+	if Global.layer_blend_mode_undoable:
+		project.undo_redo.create_action("Set Blend Mode")
+		project.undo_redo.add_do_property(layer, "blend_mode", mode)
+		project.undo_redo.add_undo_property(layer, "blend_mode", layer.blend_mode)
+		project.undo_redo.add_do_method(_refresh_blend_mode_rendering)
+		project.undo_redo.add_undo_method(_refresh_blend_mode_rendering)
+		project.undo_redo.add_do_method(_sync_layer_settings)
+		project.undo_redo.add_undo_method(_sync_layer_settings)
+		project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
+		project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
+		project.undo_redo.commit_action()
+	else:
+		layer.blend_mode = mode as BaseLayer.BlendModes
+		_refresh_blend_mode_rendering()
+		_sync_layer_settings()
+
+
+func _refresh_blend_mode_rendering() -> void:
+	if is_instance_valid(Global.animation_timeline):
+		Global.animation_timeline._update_layers()
+	elif is_instance_valid(Global.canvas):
+		Global.canvas.update_all_layers = true
+		Global.canvas.draw_layers()
+
+
+func _refresh_blend_mode_options(layer: BaseLayer) -> void:
+	var allows_group := layer is GroupLayer
+	if _blend_menu_has_group != int(allows_group):
+		BLEND_MODE_MENU.populate(layer_style_button, allows_group)
+		_blend_menu_has_group = int(allows_group)
+	layer_style_button.selected = layer_style_button.get_item_index(layer.blend_mode)
 
 
 func _sync_layer_settings() -> void:
@@ -242,12 +286,14 @@ func _sync_layer_settings() -> void:
 		_disconnect_settings_layer()
 		current_layer_name.text = tr("No layer")
 		_set_opacity_slider_value(100.0)
+		layer_style_button.selected = -1
 		return
 
 	var layer := project.layers[project.current_layer]
 	_bind_settings_layer(layer)
 	current_layer_name.text = layer.name
 	_set_opacity_slider_value(layer.opacity * 100.0)
+	_refresh_blend_mode_options(layer)
 	layer_style_button.disabled = layer is AudioLayer
 
 

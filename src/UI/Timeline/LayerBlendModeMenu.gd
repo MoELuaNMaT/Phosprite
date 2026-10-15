@@ -1,0 +1,37 @@
+extends RefCounted
+## One canonical blend mode dropdown used by Animation and Single Frame modes.
+
+
+static func populate(button: OptionButton, include_pass_through: bool) -> void:
+	button.clear()
+	if include_pass_through:
+		button.add_item("Pass through", BaseLayer.BlendModes.PASS_THROUGH)
+	button.add_item("Normal", BaseLayer.BlendModes.NORMAL)
+	button.add_item("Erase", BaseLayer.BlendModes.ERASE)
+	button.add_separator("Darken")
+	button.add_item("Darken", BaseLayer.BlendModes.DARKEN)
+	button.add_item("Multiply", BaseLayer.BlendModes.MULTIPLY)
+	button.add_item("Color burn", BaseLayer.BlendModes.COLOR_BURN)
+	button.add_item("Linear burn", BaseLayer.BlendModes.LINEAR_BURN)
+	button.add_separator("Lighten")
+	button.add_item("Lighten", BaseLayer.BlendModes.LIGHTEN)
+	button.add_item("Screen", BaseLayer.BlendModes.SCREEN)
+	button.add_item("Color dodge", BaseLayer.BlendModes.COLOR_DODGE)
+	button.add_item("Add", BaseLayer.BlendModes.ADD)
+	button.add_separator("Contrast")
+	button.add_item("Overlay", BaseLayer.BlendModes.OVERLAY)
+	button.add_item("Soft light", BaseLayer.BlendModes.SOFT_LIGHT)
+	button.add_item("Hard light", BaseLayer.BlendModes.HARD_LIGHT)
+	button.add_separator("Inversion")
+	button.add_item("Difference", BaseLayer.BlendModes.DIFFERENCE)
+	button.add_item("Exclusion", BaseLayer.BlendModes.EXCLUSION)
+	button.add_item("Subtract", BaseLayer.BlendModes.SUBTRACT)
+	button.add_item("Divide", BaseLayer.BlendModes.DIVIDE)
+	button.add_separator("Component")
+	button.add_item("Hue", BaseLayer.BlendModes.HUE)
+	button.add_item("Saturation", BaseLayer.BlendModes.SATURATION)
+	button.add_item("Color", BaseLayer.BlendModes.COLOR)
+	button.add_item("Luminosity", BaseLayer.BlendModes.LUMINOSITY)
+	button.add_separator("Masking")
+	button.add_item("Intersection", BaseLayer.BlendModes.INTERSECTION)
+	button.add_item("Match colors", BaseLayer.BlendModes.MATCH_COLORS)

@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://src/UI/Timeline/SingleFrameLayerStrip.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/graphics/layers/new.png" id="2_new"]
 [ext_resource type="PackedScene" path="res://src/UI/Nodes/Sliders/ValueSlider.tscn" id="3_value_slider"]
-[ext_resource type="Texture2D" path="res://assets/graphics/layers/fx.png" id="4_fx"]
+[ext_resource type="Texture2D" path="res://assets/graphics/layers/layer_visible.png" id="4_eye"]
 
 [node name="SingleFrameLayerStrip" type="PanelContainer"]
 size_flags_horizontal = 3
@@ -50,28 +50,41 @@ vertical_alignment = 1
 clip_text = true
 text_overrun_behavior = 3
 
-[node name="OpacitySlider" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn" instance=ExtResource("3_value_slider")]
+[node name="OpacityRow" type="HBoxContainer" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpacityEye" type="TextureRect" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn/OpacityRow"]
+custom_minimum_size = Vector2(22, 24)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+mouse_filter = 2
+tooltip_text = "Layer opacity"
+texture = ExtResource("4_eye")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="OpacitySlider" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn/OpacityRow" instance=ExtResource("3_value_slider")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
+size_flags_horizontal = 3
 focus_mode = 0
 value = 100.0
-prefix = "Opacity:"
+suffix = "%"
 allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
-[node name="LayerStyle" type="Button" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn" groups=["UIButtons"]]
+[node name="LayerStyle" type="OptionButton" parent="MarginContainer/SingleFrameBody/LayerSettingsPanel/MarginContainer/SettingsColumn"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
+size_flags_horizontal = 3
 focus_mode = 0
 mouse_default_cursor_shape = 2
-tooltip_text = "Layer effects"
-text = "Layer Style"
-icon = ExtResource("4_fx")
-expand_icon = true
-icon_max_width = 24
+tooltip_text = "Layer blend mode"
 
 [node name="LayerScroll" type="ScrollContainer" parent="MarginContainer/SingleFrameBody"]
 unique_name_in_owner = true
