@@ -534,7 +534,6 @@ func test_single_frame_layer_settings_stay_fixed_and_follow_current_layer() -> v
 	)
 
 
-
 func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
 	var animation_menu := OptionButton.new()
 	var single_frame_menu := OptionButton.new()
@@ -588,7 +587,8 @@ func test_single_frame_and_animation_share_actual_blend_mode_items() -> void:
 func test_single_frame_blend_mode_edit_is_undoable_and_refreshes_canvas() -> void:
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	check_has(
-		source, "layer_style_button.item_selected.connect(_on_blend_mode_selected)",
+		source,
+		"layer_style_button.item_selected.connect(_on_blend_mode_selected)",
 		"dropdown changes layer blend mode, never opens layer effects",
 	)
 	check_true(
@@ -597,7 +597,9 @@ func test_single_frame_blend_mode_edit_is_undoable_and_refreshes_canvas() -> voi
 	)
 	check_has(source, 'project.undo_redo.create_action("Set Blend Mode")', "edit is undoable")
 	check_has(
-		source, 'project.undo_redo.add_do_property(layer, "blend_mode", mode)', "edit updates selected layer"
+		source,
+		'project.undo_redo.add_do_property(layer, "blend_mode", mode)',
+		"edit updates selected layer"
 	)
 	check_has(
 		source,
@@ -606,7 +608,8 @@ func test_single_frame_blend_mode_edit_is_undoable_and_refreshes_canvas() -> voi
 	)
 	check_has(source, "_refresh_blend_mode_rendering()", "blend edit recomposites canvas")
 	check_has(
-		source, "layer_style_button.selected = layer_style_button.get_item_index(layer.blend_mode)",
+		source,
+		"layer_style_button.selected = layer_style_button.get_item_index(layer.blend_mode)",
 		"active layer is reflected by dropdown selection",
 	)
 
