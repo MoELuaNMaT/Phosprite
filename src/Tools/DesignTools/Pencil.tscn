@@ -4,6 +4,18 @@
 [ext_resource type="PackedScene" uid="uid://yjhp0ssng2mp" path="res://src/UI/Nodes/Sliders/ValueSlider.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bks78g787tsu8" path="res://src/Tools/DesignTools/Pencil.gd" id="3"]
 
+[sub_resource type="InputEventAction" id="PencilPixelPerfectAction"]
+action = &"pixel_perfect"
+
+[sub_resource type="Shortcut" id="PencilPixelPerfectShortcut"]
+events = [SubResource("PencilPixelPerfectAction")]
+
+[sub_resource type="InputEventAction" id="PencilAlphaLockAction"]
+action = &"alpha_lock"
+
+[sub_resource type="Shortcut" id="PencilAlphaLockShortcut"]
+events = [SubResource("PencilAlphaLockAction")]
+
 [node name="ToolOptions" unique_id=450758674 instance=ExtResource("1")]
 script = ExtResource("3")
 
@@ -56,6 +68,33 @@ allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
+[node name="PressureSettings" type="Button" parent="." index="9"]
+custom_minimum_size = Vector2(54, 28)
+layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "Open pressure, velocity and stabilizer settings"
+mouse_default_cursor_shape = 2
+text = "Pressure Settings"
+
+[node name="PixelPerfect" type="CheckBox" parent="." index="10"]
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+tooltip_text = "Pixel Perfect: remove extra corner pixels while drawing"
+text = "Pixel Perfect"
+shortcut = SubResource("PencilPixelPerfectShortcut")
+
+[node name="TransparentOnly" type="CheckBox" parent="." index="11"]
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+tooltip_text = "Alpha lock: draw only on pixels that are already nontransparent"
+text = "Transparent Only"
+shortcut = SubResource("PencilAlphaLockShortcut")
+
+[connection signal="pressed" from="PressureSettings" to="." method="_on_pressure_settings_pressed"]
+[connection signal="toggled" from="PixelPerfect" to="." method="_on_pixel_perfect_toggled"]
+[connection signal="toggled" from="TransparentOnly" to="." method="_on_transparent_only_toggled"]
 [connection signal="value_changed" from="Opacity" to="." method="_on_Opacity_value_changed"]
 [connection signal="toggled" from="Dither" to="." method="_on_Dither_toggled"]
 [connection signal="item_selected" from="DitherSettings/PatternRow/Pattern" to="." method="_on_DitherPattern_item_selected"]
