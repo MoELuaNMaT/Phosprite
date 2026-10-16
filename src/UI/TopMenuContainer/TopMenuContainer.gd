@@ -209,7 +209,9 @@ func handle_main_menu_collapse() -> void:
 				# The editor's compact menu does not duplicate Project Manager's File menu.
 				# Keep the original File and Edit popups in the hidden MenuBar so
 				# shortcuts, action IDs and quick-access buttons remain unchanged.
-				if menu_option == file_menu:
+				if menu_option == file_menu or menu_option == select_menu:
+					# Selection commands are available in the selection tools' options.
+					# Retain the original menus for shortcuts and desktop layouts.
 					continue
 				if menu_option == edit_menu:
 					_compact_edit_menu = _create_compact_edit_menu()
