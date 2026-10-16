@@ -32,7 +32,7 @@ var _skip_slider_logic := false
 
 func _ready() -> void:
 	super()
-	algorithm_option_button.add_item("Nearest neighbor")
+	algorithm_option_button.add_item(tr("Nearest neighbor"))
 	algorithm_option_button.add_item("cleanEdge", DrawingAlgos.RotationAlgorithm.CLEANEDGE)
 	algorithm_option_button.add_item("OmniScale", DrawingAlgos.RotationAlgorithm.OMNISCALE)
 	algorithm_option_button.select(0)
@@ -73,10 +73,10 @@ func set_confirm_buttons_visibility() -> void:
 ## Ensure all items are added when we are selecting an option.
 func refresh_options() -> void:
 	$Modes.clear()
-	$Modes.add_item("Replace selection")
-	$Modes.add_item("Add to selection")
-	$Modes.add_item("Subtract from selection")
-	$Modes.add_item("Intersection of selections")
+	$Modes.add_item(tr("Replace selection"))
+	$Modes.add_item(tr("Add to selection"))
+	$Modes.add_item(tr("Subtract from selection"))
+	$Modes.add_item(tr("Intersection of selections"))
 	$Modes.select(_mode_selected)
 	_sync_mode_buttons()
 
