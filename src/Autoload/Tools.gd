@@ -9,6 +9,7 @@ signal config_changed(slot_idx: int, config: Dictionary)
 @warning_ignore("unused_signal")
 signal flip_rotated(flip_x: bool, flip_y: bool, transposed: bool)
 signal options_reset
+signal draw_options_changed
 signal runtime_ready
 
 enum Dynamics { NONE, PRESSURE, VELOCITY }
