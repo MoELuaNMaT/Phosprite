@@ -41,17 +41,11 @@ func test_simplified_chinese_tool_options_have_short_translations() -> void:
 
 
 func test_tool_options_dynamic_labels_request_translation() -> void:
-	var profile := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
-	)
+	var profile := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(profile, 'tr("Tool Options")', "UI3 title must respect active locale")
-	var gradient := FileAccess.get_file_as_string(
-		"res://src/Tools/DesignTools/Gradient.gd"
-	)
+	var gradient := FileAccess.get_file_as_string("res://src/Tools/DesignTools/Gradient.gd")
 	check_has(
 		gradient, "tooltip_text = tr(String(names[index]))", "Gradient mode tips must translate"
 	)
-	var selection := FileAccess.get_file_as_string(
-		"res://src/Tools/BaseSelectionTool.gd"
-	)
+	var selection := FileAccess.get_file_as_string("res://src/Tools/BaseSelectionTool.gd")
 	check_has(selection, '$Modes.add_item(tr("Replace selection"))', "Selection menus translate")
