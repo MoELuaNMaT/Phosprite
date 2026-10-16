@@ -31,7 +31,11 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	var definition := manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
 	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 width matches")
 	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Profile4.RIGHT_WIDTH, "UI4 Tools width matches")
-	check_eq(Builtins.TOOL_OPTIONS_COLUMN_WIDTH, Migration.TOOL_OPTIONS_WIDTH, "Options column width matches")
+	check_eq(
+		Builtins.TOOL_OPTIONS_COLUMN_WIDTH,
+		Migration.TOOL_OPTIONS_WIDTH,
+		"Options column width matches"
+	)
 	check_eq(definition.minimum_size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "UI3 minimum width")
 	check_eq(definition.preferred_size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "UI3 default width")
 	check_eq(definition.maximum_size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "UI3 maximum width")
@@ -50,7 +54,9 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	var options_module := manager.get_instance(Builtins.UI3_TOOL_OPTIONS_ID)
 	options_module.apply_visual_theme(WorkspaceVisualTheme.new(), &"floating")
 	check_eq(options_module.get_theme_constant(&"margin_left"), 0, "UI3 has no left chrome gutter")
-	check_eq(options_module.get_theme_constant(&"margin_right"), 0, "UI3 has no right chrome gutter")
+	check_eq(
+		options_module.get_theme_constant(&"margin_right"), 0, "UI3 has no right chrome gutter"
+	)
 	var options_host := options_module.get_content().get_node("OptionsHost") as MarginContainer
 	check_eq(options_host.get_theme_constant(&"margin_left"), 0, "UI3 has no inner left gutter")
 	check_eq(options_host.get_theme_constant(&"margin_right"), 0, "UI3 has no inner right gutter")
@@ -75,7 +81,9 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	)
 	var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
 	var restore_rect := restore.get("rect", Rect2()) as Rect2
-	check_eq(restore_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "collapsed restore width fixed")
+	check_eq(
+		restore_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "collapsed restore width fixed"
+	)
 	check_eq(restore_rect.size.y, old_rect.size.y, "collapsed restore height preserved")
 	root.queue_free()
 	await tree.process_frame
@@ -101,7 +109,11 @@ func test_ui3_compact_layout_survives_live_pencil_tool() -> void:
 	check_eq(
 		opacity.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "UI3 expands the active option"
 	)
-	check_eq(opacity.custom_minimum_size.x, BaseTool.SIDEBAR_CONTROL_WIDTH, "UI3 uses 54px slider footprint")
+	check_eq(
+		opacity.custom_minimum_size.x,
+		BaseTool.SIDEBAR_CONTROL_WIDTH,
+		"UI3 uses 54px slider footprint"
+	)
 	check_true(not tool.color_rect.visible, "UI3 hides the legacy tool color strip")
 	# Newly visible groups must not initiate a second layout capture or reorder.
 	var dither_settings := tool.get_node("DitherSettings") as VBoxContainer
