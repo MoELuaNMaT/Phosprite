@@ -52,7 +52,7 @@ func _ready() -> void:
 		color_rect.color = Global.left_tool_color
 	else:
 		color_rect.color = Global.right_tool_color
-	$Label.text = Tools.tools[name].display_name
+	$Label.text = tr(Tools.tools[name].display_name)
 	# Runtime tools prepare their option labels before entering the scene tree.
 	# Keep this fallback for scenes created outside Tools.set_tool().
 	prepare_stacked_option_layout()
