@@ -150,7 +150,7 @@ func _set_mode_button(button: Button, mode: String) -> void:
 	var names := _mode_names(mode)
 	var index := clampi(_mode_index(mode), 0, icons.size() - 1)
 	button.icon = icons[index]
-	button.tooltip_text = names[index]
+	button.tooltip_text = tr(String(names[index]))
 	button.expand_icon = mode == "dither" and index > 0
 	button.texture_filter = (
 		CanvasItem.TEXTURE_FILTER_NEAREST
@@ -182,7 +182,7 @@ func _show_mode_choices(mode: String, trigger: Button) -> void:
 			if mode == "dither" and index > 0
 			else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 		)
-		choice.tooltip_text = names[index]
+		choice.tooltip_text = tr(String(names[index]))
 		choice.toggle_mode = true
 		choice.button_pressed = index == _mode_index(mode)
 		choice.pressed.connect(_on_mode_choice_selected.bind(mode, index))
