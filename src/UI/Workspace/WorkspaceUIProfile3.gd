@@ -484,7 +484,9 @@ func _refresh_config_panel() -> void:
 	if not active or not _ensure_options_module() or not is_instance_valid(_options_host):
 		return
 	var current := _current_left_tool_name()
-	_options_module.set_header_title_override("%s · %s" % [tr("Tool Options"), _tool_display_name(current)])
+	_options_module.set_header_title_override(
+		"%s · %s" % [tr("Tool Options"), _tool_display_name(current)]
+	)
 	_refresh_family_row(current)
 	_set_current_options_compact(true)
 	_reparent_left_options(_options_host)
