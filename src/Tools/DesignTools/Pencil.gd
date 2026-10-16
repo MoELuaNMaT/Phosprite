@@ -38,6 +38,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if Tools.draw_options_changed.is_connected(_sync_global_draw_options):
 		Tools.draw_options_changed.disconnect(_sync_global_draw_options)
+	super._exit_tree()
 
 
 func _global_draw_options() -> Node:
