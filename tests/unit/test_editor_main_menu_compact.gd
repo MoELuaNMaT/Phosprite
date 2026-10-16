@@ -3,7 +3,7 @@ extends "res://tests/test_base.gd"
 const TopMenuScript := preload("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 
 
-func test_compact_main_menu_hides_file_undo_redo_without_removing_commands() -> void:
+func test_compact_main_menu_hides_file_select_undo_redo_without_removing_commands() -> void:
 	var menu := TopMenuScript.new()
 	var button := MenuButton.new()
 	var bar := MenuBar.new()
@@ -20,6 +20,7 @@ func test_compact_main_menu_hides_file_undo_redo_without_removing_commands() -> 
 		original[name] = popup
 	menu.set("file_menu", original["File"])
 	menu.set("edit_menu", original["Edit"])
+	menu.set("select_menu", original["Select"])
 	var edit := original["Edit"] as PopupMenu
 	edit.add_item("Undo", Global.EditMenu.UNDO)
 	edit.add_item("Redo", Global.EditMenu.REDO)
@@ -32,11 +33,12 @@ func test_compact_main_menu_hides_file_undo_redo_without_removing_commands() -> 
 	Global.collapse_main_menu = true
 	menu.handle_main_menu_collapse()
 	var popup := button.get_popup()
-	check_eq(popup.item_count, names.size() - 1, "main menu omits File")
+	check_eq(popup.item_count, names.size() - 2, "main menu omits File and Select")
 	var visible_names: Array[String] = []
 	for i in popup.item_count:
 		visible_names.append(popup.get_item_text(i))
 	check_true(not "File" in visible_names, "File entry is absent")
+	check_true(not "Select" in visible_names, "Select entry is absent")
 	check_true("Edit" in visible_names, "Edit entry remains")
 	check_true("Help" in visible_names, "other sections remain")
 	var compact := menu.get("_compact_edit_menu") as PopupMenu
@@ -53,12 +55,14 @@ func test_compact_main_menu_hides_file_undo_redo_without_removing_commands() -> 
 	check_eq(edit.item_count, 5, "original Edit menu and shortcuts are intact")
 	check_eq(original["File"].get_parent(), bar, "File menu stays live but offscreen")
 	check_eq(edit.get_parent(), bar, "original Edit menu stays live but offscreen")
+	check_eq(original["Select"].get_parent(), bar, "Select menu stays live for shortcuts")
 
 	Global.collapse_main_menu = false
 	menu.handle_main_menu_collapse()
 	check_eq(bar.get_child_count(), names.size(), "expanded menu restores original items")
 	check_eq(bar.get_child(0), original["File"], "File order is preserved for desktop")
 	check_eq(bar.get_child(1), edit, "Edit order is preserved for desktop")
+	check_eq(bar.get_child(2), original["Select"], "Select returns in original desktop order")
 	check_eq(button.get_popup().item_count, 0, "compact popup is removed on expansion")
 	Global.collapse_main_menu = was_collapsed
 	menu.free()
