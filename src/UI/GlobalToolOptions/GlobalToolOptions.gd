@@ -25,6 +25,17 @@ func _ready() -> void:
 	alpha_lock.button_pressed = Tools.alpha_locked
 
 
+func _unhandled_key_input(event: InputEvent) -> void:
+	# The original shortcuts must keep working even after their timeline
+	# buttons are hidden and Pencil exposes the visible controls instead.
+	if event.is_action_pressed(&"pixel_perfect"):
+		pixel_perfect.button_pressed = not pixel_perfect.button_pressed
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"alpha_lock"):
+		alpha_lock.button_pressed = not alpha_lock.button_pressed
+		get_viewport().set_input_as_handled()
+
+
 func reset_options() -> void:
 	horizontal_mirror.button_pressed = false
 	vertical_mirror.button_pressed = false
