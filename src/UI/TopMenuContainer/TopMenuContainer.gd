@@ -31,6 +31,7 @@ var effects_blur_submenu := PopupMenu.new()
 var effects_loaded_submenu: PopupMenu
 var ui_layout_button: MenuButton
 var ui_menu: PopupMenu
+var _compact_edit_menu: PopupMenu
 
 # Dialogs
 var new_image_dialog := Dialog.new("res://src/UI/Dialogs/CreateNewImage.tscn")
@@ -205,6 +206,17 @@ func handle_main_menu_collapse() -> void:
 			menu_bar.visible = false
 			var menu_options := menu_bar.get_children()
 			for menu_option in menu_options:
+				# The editor's compact menu does not duplicate Project Manager's File menu.
+				# Keep the original File and Edit popups in the hidden MenuBar so
+				# shortcuts, action IDs and quick-access buttons remain unchanged.
+				if menu_option == file_menu:
+					continue
+				if menu_option == edit_menu:
+					_compact_edit_menu = _create_compact_edit_menu()
+					main_menu_button_popup.add_submenu_node_item(
+						menu_option.name, _compact_edit_menu
+					)
+					continue
 				menu_bar.remove_child(menu_option)
 				main_menu_button_popup.add_submenu_node_item(menu_option.name, menu_option)
 	else:
@@ -214,12 +226,45 @@ func handle_main_menu_collapse() -> void:
 			var menu_options: Array[PopupMenu]
 			for i in range(main_menu_button_popup.item_count - 1, -1, -1):
 				var submenu := main_menu_button_popup.get_item_submenu_node(i)
-				menu_options.append(submenu)
 				main_menu_button_popup.remove_item(i)
 				submenu.get_parent().remove_child(submenu)
+				if submenu == _compact_edit_menu:
+					_compact_edit_menu = null
+					submenu.queue_free()
+					continue
+				menu_options.append(submenu)
 			menu_options.reverse()
 			for menu_option in menu_options:
 				menu_bar.add_child(menu_option)
+
+
+## Show only the non-duplicated Edit actions in the compact Main Menu.
+## The original Edit popup is left intact for keyboard shortcuts and other callers.
+func _create_compact_edit_menu() -> PopupMenu:
+	var compact := PopupMenu.new()
+	compact.name = &"CompactEditMenu"
+	compact.id_pressed.connect(edit_menu_id_pressed)
+	compact.about_to_popup.connect(_sync_compact_edit_menu.bind(compact))
+	_sync_compact_edit_menu(compact)
+	return compact
+
+
+func _sync_compact_edit_menu(compact: PopupMenu) -> void:
+	compact.clear()
+	for index in edit_menu.item_count:
+		var item_id := edit_menu.get_item_id(index)
+		if item_id in [Global.EditMenu.UNDO, Global.EditMenu.REDO]:
+			continue
+		if edit_menu.is_item_separator(index):
+			compact.add_separator(edit_menu.get_item_text(index), item_id)
+		else:
+			compact.add_item(edit_menu.get_item_text(index), item_id)
+		var compact_index := compact.item_count - 1
+		compact.set_item_disabled(compact_index, edit_menu.is_item_disabled(index))
+		compact.set_item_metadata(compact_index, edit_menu.get_item_metadata(index))
+		var icon := edit_menu.get_item_icon(index)
+		if icon != null:
+			compact.set_item_icon(compact_index, icon)
 
 
 func _on_project_about_to_switch() -> void:
