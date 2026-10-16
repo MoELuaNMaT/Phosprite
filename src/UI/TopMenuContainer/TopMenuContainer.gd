@@ -215,7 +215,7 @@ func _attach_settings_project_menu() -> void:
 				old_popup.remove_item(index)
 	if parent != null:
 		parent.remove_child(project_menu)
-	popup.add_submenu_node_item(tr("Project"), project_menu, 0)
+	popup.add_submenu_node_item(tr("Project"), project_menu, -1, 0)
 
 
 func _detach_settings_project_menu() -> void:
