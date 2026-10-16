@@ -30,6 +30,53 @@ func _ready() -> void:
 		for size in DITHER_SIZES:
 			pattern.add_item("%d × %d" % [size, size])
 	update_config()
+	if not Tools.draw_options_changed.is_connected(_sync_global_draw_options):
+		Tools.draw_options_changed.connect(_sync_global_draw_options)
+	_sync_global_draw_options()
+
+
+func _exit_tree() -> void:
+	if Tools.draw_options_changed.is_connected(_sync_global_draw_options):
+		Tools.draw_options_changed.disconnect(_sync_global_draw_options)
+
+
+func _global_draw_options() -> Node:
+	return get_tree().get_first_node_in_group(&"GlobalDrawOptions")
+
+
+func _sync_global_draw_options() -> void:
+	$PixelPerfect.set_pressed_no_signal(Tools.pixel_perfect)
+	$TransparentOnly.set_pressed_no_signal(Tools.alpha_locked)
+
+
+func _on_pixel_perfect_toggled(enabled: bool) -> void:
+	var options := _global_draw_options()
+	if is_instance_valid(options):
+		var source := options.get("pixel_perfect") as BaseButton
+		if is_instance_valid(source):
+			source.button_pressed = enabled
+			return
+	Tools.pixel_perfect = enabled
+	Global.config_cache.set_value("tools", "pixel_perfect", enabled)
+	Tools.draw_options_changed.emit()
+
+
+func _on_transparent_only_toggled(enabled: bool) -> void:
+	var options := _global_draw_options()
+	if is_instance_valid(options):
+		var source := options.get("alpha_lock") as BaseButton
+		if is_instance_valid(source):
+			source.button_pressed = enabled
+			return
+	Tools.alpha_locked = enabled
+	Global.config_cache.set_value("tools", "alpha_locked", enabled)
+	Tools.draw_options_changed.emit()
+
+
+func _on_pressure_settings_pressed() -> void:
+	var options := _global_draw_options()
+	if is_instance_valid(options):
+		options.call(&"show_dynamics_at", $PressureSettings)
 
 
 func _on_Opacity_value_changed(value: float) -> void:
@@ -84,6 +131,7 @@ func set_config(config: Dictionary) -> void:
 
 func update_config() -> void:
 	super.update_config()
+	_sync_global_draw_options()
 	$DensityValueSlider.visible = false
 	$Opacity.value = _strength * 100.0
 	$Dither.button_pressed = _dither_enabled
