@@ -65,7 +65,10 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	check_eq(original["File"].get_parent(), bar, "File menu stays live but offscreen")
 	check_eq(edit.get_parent(), bar, "original Edit menu stays live but offscreen")
 	check_eq(original["Select"].get_parent(), bar, "Select menu stays live for shortcuts")
-	check_true(compact.get_item_index(Global.EditMenu.PREFERENCES) == -1, "Preferences is absent from compact Edit")
+	check_true(
+		compact.get_item_index(Global.EditMenu.PREFERENCES) == -1,
+		"Preferences is absent from compact Edit"
+	)
 
 	menu.set_return_home_visible(true)
 	var ui_button := menu.get("ui_layout_button") as MenuButton
