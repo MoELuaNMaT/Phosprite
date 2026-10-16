@@ -110,8 +110,8 @@ func _create_selection_actions() -> void:
 	_selection_modify_group.visible = false
 	_selection_modify_group.add_theme_constant_override(&"separation", 4)
 	actions.add_child(_selection_modify_group)
+	var labels := ["Expand selection", "Shrink selection", "Selection border", "Center selection"]
 	for index in 4:
-		var labels := ["Expand selection", "Shrink selection", "Selection border", "Center selection"]
 		var button := _make_selection_action_button(labels[index])
 		button.pressed.connect(_on_selection_modify_pressed.bind(index))
 		_selection_modify_group.add_child(button)
