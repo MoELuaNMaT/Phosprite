@@ -31,7 +31,6 @@ var effects_blur_submenu := PopupMenu.new()
 var effects_loaded_submenu: PopupMenu
 var ui_layout_button: MenuButton
 var ui_menu: PopupMenu
-var _compact_edit_menu: PopupMenu
 
 # Dialogs
 var new_image_dialog := Dialog.new("res://src/UI/Dialogs/CreateNewImage.tscn")
@@ -64,6 +63,7 @@ var last_applied_effect: Window
 var window_opacity_dialog := Dialog.new("res://src/UI/Dialogs/WindowOpacityDialog.tscn")
 var about_dialog := Dialog.new("res://src/UI/Dialogs/AboutDialog.tscn")
 var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
+var _compact_edit_menu: PopupMenu
 
 @onready var main := $"../.." as Control
 @onready var main_ui := main.find_child("DockableContainer") as DockableContainer
