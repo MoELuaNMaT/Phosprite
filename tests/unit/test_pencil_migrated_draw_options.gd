@@ -43,8 +43,14 @@ func test_migrated_buttons_preserve_canonical_tool_modes_and_shortcuts() -> void
 	check_has(pencil, 'options.get("pixel_perfect")', "Pencil delegates Perfect to source")
 	check_has(pencil, 'options.get("alpha_lock")', "Pencil delegates Alpha Lock to source")
 	check_has(pencil, 'options.call(&"show_dynamics_at", $PressureSettings)', "existing Dynamics")
-	check_has(pencil, "set_pressed_no_signal(Tools.pixel_perfect)", "shared Perfect state is synced")
-	check_has(pencil, "set_pressed_no_signal(Tools.alpha_locked)", "shared Alpha Lock state is synced")
-	check_has(global_options, 'event.is_action_pressed(&"pixel_perfect")', "Perfect shortcut remains")
+	check_has(
+		pencil, "set_pressed_no_signal(Tools.pixel_perfect)", "shared Perfect state is synced"
+	)
+	check_has(
+		pencil, "set_pressed_no_signal(Tools.alpha_locked)", "shared Alpha Lock state is synced"
+	)
+	check_has(
+		global_options, 'event.is_action_pressed(&"pixel_perfect")', "Perfect shortcut remains"
+	)
 	check_has(global_options, 'event.is_action_pressed(&"alpha_lock")', "Alpha shortcut remains")
 	check_has(global_options, "dynamics_panel.popup_on_parent", "original Dynamics panel remains")
