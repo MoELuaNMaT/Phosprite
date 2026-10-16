@@ -282,8 +282,8 @@ func test_ios_selection_options_use_shared_mode_buttons_with_magic_wand_toleranc
 	)
 	check_has(
 		base_src,
-		'var visible_controls: Array[StringName] = [&"ColorRect", &"ModeLabel", &"ModeButtons"]',
-		"all iOS selection tools should expose the same compact four-mode button set",
+		'&"ModeButtons", &"SelectionActions"',
+		"all iOS selection tools show four modes plus the shared selection actions",
 	)
 	check_has(
 		base_src,
