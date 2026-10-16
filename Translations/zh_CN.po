@@ -4403,3 +4403,6 @@ msgstr "边框"
 
 msgid "Center selection"
 msgstr "居中"
+
+msgid "Settings"
+msgstr "设置"
