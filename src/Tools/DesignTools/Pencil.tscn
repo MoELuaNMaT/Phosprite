@@ -56,22 +56,27 @@ allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
-[node name="PressureSettings" type="Button" parent="." index="9"]
+[node name="PressureSettingsLabel" type="Label" parent="." index="9"]
+layout_mode = 2
+text = "Pressure Settings"
+autowrap_mode = 3
+
+[node name="PressureSettings" type="Button" parent="." index="10"]
 custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 size_flags_horizontal = 4
 tooltip_text = "Open pressure, velocity and stabilizer settings"
 mouse_default_cursor_shape = 2
-text = "Pressure Settings"
+text = "…"
 
-[node name="PixelPerfect" type="CheckBox" parent="." index="10"]
+[node name="PixelPerfect" type="CheckBox" parent="." index="11"]
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 tooltip_text = "Pixel Perfect: remove extra corner pixels while drawing"
 text = "Pixel Perfect"
 
-[node name="TransparentOnly" type="CheckBox" parent="." index="11"]
+[node name="TransparentOnly" type="CheckBox" parent="." index="12"]
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
