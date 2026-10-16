@@ -1552,12 +1552,12 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 		"res://src/UI/GlobalToolOptions/GlobalToolOptions.gd"
 	)
 	check_true(
-		options_scene.contains("custom_minimum_size = Vector2(256, 36)"),
-		"Global Tool Options should keep its compact single-row width inside the combined row"
+		options_scene.contains("custom_minimum_size = Vector2(176, 36)"),
+		"Timeline only needs the compact five-control mirror group after Pencil migration"
 	)
 	check_true(
-		options_script.contains("grid_container.columns = 8"),
-		"all eight Global Tool Options controls must remain on one header row"
+		options_script.contains("grid_container.columns = 5"),
+		"the five remaining mirror controls must stay on one header row"
 	)
 
 

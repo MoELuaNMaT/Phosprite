@@ -2319,7 +2319,7 @@ msgid "Overwrites color instead of blending it. This option is only relevant wit
 msgstr "直接覆盖颜色，不与底色混合"
 
 msgid "Pixel Perfect"
-msgstr "平滑像素"
+msgstr "完美像素"
 
 msgid "Pixel Perfect\n"
 "Makes lines smooth by removing the extra pixels on the edges"
@@ -4406,3 +4406,9 @@ msgstr "居中"
 
 msgid "Settings"
 msgstr "设置"
+
+msgid "Transparent Only"
+msgstr "透明锁定"
+
+msgid "Pressure Settings"
+msgstr "压感设置"

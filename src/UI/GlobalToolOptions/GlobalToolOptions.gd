@@ -15,14 +15,25 @@ extends PanelContainer
 func _ready() -> void:
 	Tools.options_reset.connect(reset_options)
 	mirror_options.get_popup().id_pressed.connect(_on_mirror_options_id_pressed)
-	# The controls now live inside Animation Timeline's Workspace header.
-	# Keep the complete option set on a single row so the header can right-align it as one tool group.
+	# Timeline header now keeps only the mirror tools. The other draw settings
+	# are shown in Pencil Tool Options, while their original handlers stay live.
 	horizontal_mirror.button_pressed = Tools.horizontal_mirror
 	vertical_mirror.button_pressed = Tools.vertical_mirror
 	diagonal_xy_mirror.button_pressed = Tools.diagonal_xy_mirror
 	diagonal_x_minus_y_mirror.button_pressed = Tools.diagonal_x_minus_y_mirror
 	pixel_perfect.button_pressed = Tools.pixel_perfect
 	alpha_lock.button_pressed = Tools.alpha_locked
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	# The original shortcuts must keep working even after their timeline
+	# buttons are hidden and Pencil exposes the visible controls instead.
+	if event.is_action_pressed(&"pixel_perfect"):
+		pixel_perfect.button_pressed = not pixel_perfect.button_pressed
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"alpha_lock"):
+		alpha_lock.button_pressed = not alpha_lock.button_pressed
+		get_viewport().set_input_as_handled()
 
 
 func reset_options() -> void:
@@ -34,7 +45,7 @@ func reset_options() -> void:
 
 func _on_resized() -> void:
 	if is_instance_valid(grid_container):
-		grid_container.columns = 8
+		grid_container.columns = 5
 
 
 func _on_Horizontal_toggled(toggled_on: bool) -> void:
@@ -108,6 +119,7 @@ func _on_PixelPerfect_toggled(button_pressed: bool) -> void:
 	if !button_pressed:
 		file_name = "pixel_perfect_off.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	Tools.draw_options_changed.emit()
 
 
 func _on_alpha_lock_toggled(toggled_on: bool) -> void:
@@ -118,10 +130,17 @@ func _on_alpha_lock_toggled(toggled_on: bool) -> void:
 	if not toggled_on:
 		file_name = "alpha_lock_off.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	Tools.draw_options_changed.emit()
 
 
 func _on_Dynamics_pressed() -> void:
-	var pos := dynamics.global_position + Vector2(0, dynamics.size.y)
+	show_dynamics_at(dynamics)
+
+
+## Keep using the existing pressure/velocity/stabilizer dialog, but anchor it
+## to the Pencil settings button rather than the hidden timeline action.
+func show_dynamics_at(anchor: Control) -> void:
+	var pos := anchor.global_position + Vector2(0, anchor.size.y)
 	dynamics_panel.popup_on_parent(Rect2(pos, dynamics_panel.size))
 
 

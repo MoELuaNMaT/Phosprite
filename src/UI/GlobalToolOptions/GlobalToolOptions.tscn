@@ -70,10 +70,10 @@ gradient = SubResource("3")
 [sub_resource type="GradientTexture2D" id="5"]
 gradient = SubResource("3")
 
-[node name="Global Tool Options" type="PanelContainer" unique_id=1744736398]
-custom_minimum_size = Vector2(256, 36)
+[node name="Global Tool Options" type="PanelContainer" unique_id=1744736398 groups=["GlobalDrawOptions"]]
+custom_minimum_size = Vector2(176, 36)
 offset_left = 1.0
-offset_right = 257.0
+offset_right = 177.0
 offset_bottom = 36.0
 theme_override_styles/panel = SubResource("StyleBoxEmpty_header")
 script = ExtResource("3")
@@ -92,7 +92,7 @@ size_flags_vertical = 3
 [node name="GridContainer" type="GridContainer" parent="ScrollContainer/CenterContainer" unique_id=1296961989]
 layout_mode = 2
 size_flags_vertical = 0
-columns = 8
+columns = 5
 
 [node name="Horizontal" type="Button" parent="ScrollContainer/CenterContainer/GridContainer" unique_id=1430786735 groups=["UIButtons"]]
 custom_minimum_size = Vector2(32, 32)
@@ -203,6 +203,7 @@ texture = ExtResource("3_faalk")
 stretch_mode = 3
 
 [node name="PixelPerfect" type="Button" parent="ScrollContainer/CenterContainer/GridContainer" unique_id=1257770485 groups=["UIButtons"]]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Pixel Perfect
@@ -224,6 +225,7 @@ offset_bottom = 10.0
 texture = ExtResource("4")
 
 [node name="AlphaLock" type="Button" parent="ScrollContainer/CenterContainer/GridContainer" unique_id=535628166]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Lock alpha"
@@ -244,6 +246,7 @@ offset_bottom = 10.0
 texture = ExtResource("5_jv20x")
 
 [node name="Dynamics" type="Button" parent="ScrollContainer/CenterContainer/GridContainer" unique_id=2033294383 groups=["UIButtons"]]
+visible = false
 unique_name_in_owner = true
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
