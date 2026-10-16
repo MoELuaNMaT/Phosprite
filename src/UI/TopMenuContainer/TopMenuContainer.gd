@@ -197,7 +197,6 @@ func _ensure_settings_button() -> void:
 	settings_button.text = tr("Settings")
 	row.add_child(settings_button)
 	var popup := settings_button.get_popup()
-	popup.add_item(tr("Preferences"), Global.EditMenu.PREFERENCES)
 	popup.id_pressed.connect(edit_menu_id_pressed)
 
 
@@ -215,7 +214,8 @@ func _attach_settings_project_menu() -> void:
 				old_popup.remove_item(index)
 	if parent != null:
 		parent.remove_child(project_menu)
-	popup.add_submenu_node_item(tr("Project"), project_menu, -1, 0)
+	popup.add_submenu_node_item(tr("Project"), project_menu)
+	popup.add_item(tr("Preferences"), Global.EditMenu.PREFERENCES)
 
 
 func _detach_settings_project_menu() -> void:
@@ -225,8 +225,7 @@ func _detach_settings_project_menu() -> void:
 	if project_menu.get_parent() != popup:
 		return
 	for index in range(popup.item_count - 1, -1, -1):
-		if popup.get_item_submenu_node(index) == project_menu:
-			popup.remove_item(index)
+		popup.remove_item(index)
 	popup.remove_child(project_menu)
 	menu_bar.add_child(project_menu)
 	menu_bar.move_child(project_menu, mini(3, menu_bar.get_child_count() - 1))
