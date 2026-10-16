@@ -256,7 +256,7 @@ msgstr "反向"
 
 #. Found under the Select menu. When selected, the area of non-transparent pixels in the cel is being selected.
 msgid "Select cel area"
-msgstr "选择单元格区域"
+msgstr "选取单元格区域"
 
 msgid "Modify"
 msgstr "修改"
@@ -4373,3 +4373,33 @@ msgstr "下"
 
 msgid "Brush color"
 msgstr "笔刷颜色"
+
+msgid "Selection actions"
+msgstr "选区操作"
+
+msgid "Select all"
+msgstr "全选"
+
+msgid "Clear selection"
+msgstr "取消选区"
+
+msgid "Reselect"
+msgstr "重新选择"
+
+msgid "Invert selection"
+msgstr "反选"
+
+msgid "Modify selection"
+msgstr "修改选区"
+
+msgid "Expand selection"
+msgstr "扩展"
+
+msgid "Shrink selection"
+msgstr "收缩"
+
+msgid "Selection border"
+msgstr "边框"
+
+msgid "Center selection"
+msgstr "居中"
