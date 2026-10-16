@@ -298,17 +298,17 @@ func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.minimum_size = Vector2(TOOL_SIDEBAR_WIDTH, 104.0)",
-		"UI3 Tool Options must use the shared tool-sidebar width",
+		"ui3_tool_options.minimum_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 104.0)",
+		"UI3 must match the actual 56px tool-options column",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.preferred_size = Vector2(TOOL_SIDEBAR_WIDTH, 360.0)",
-		"UI3 Tool Options must default to the same width as UI1 and UI4",
+		"ui3_tool_options.preferred_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 360.0)",
+		"UI3 Tool Options must match the UI1/UI4 options column, not the whole sidebar",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.maximum_size = Vector2(TOOL_SIDEBAR_WIDTH, 620.0)",
+		"ui3_tool_options.maximum_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 620.0)",
 		"UI3 Tool Options height stays adjustable while width is fixed",
 	)
 
