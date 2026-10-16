@@ -32,12 +32,12 @@ func test_selection_actions_are_vertical_and_shared_by_all_selection_tools() -> 
 
 func test_selection_actions_use_existing_handlers_and_ios_visibility() -> void:
 	var source := FileAccess.get_file_as_string("res://src/Tools/BaseSelectionTool.gd")
-	check_has(source, "Global.top_menu_container.select_menu_id_pressed(id)", "reuse select actions")
+	check_has(
+		source, "Global.top_menu_container.select_menu_id_pressed(id)", "reuse select actions"
+	)
 	check_has(source, '"_selection_modify_submenu_id_pressed"', "reuse Modify dialogs")
 	check_has(source, '&"SelectionActions"', "the iOS compact options keep the action group")
 	check_has(source, "SelectionNode.flag_tilemode", "Wrap Strokes preserves shared state")
-	var menu := FileAccess.get_file_as_string(
-		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
-	)
+	var menu := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 	check_has(menu, "menu_option == file_menu or menu_option == select_menu", "hide only entry")
 	check_has(menu, "select_menu.id_pressed.connect(select_menu_id_pressed)", "shortcuts remain")
