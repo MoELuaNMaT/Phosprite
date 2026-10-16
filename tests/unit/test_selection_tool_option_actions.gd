@@ -39,5 +39,5 @@ func test_selection_actions_use_existing_handlers_and_ios_visibility() -> void:
 	check_has(source, '&"SelectionActions"', "the iOS compact options keep the action group")
 	check_has(source, "SelectionNode.flag_tilemode", "Wrap Strokes preserves shared state")
 	var menu := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
-	check_has(menu, "menu_option == file_menu or menu_option == select_menu", "hide only entry")
+	check_has(menu, "menu_option in [file_menu, select_menu, project_menu]", "hide only entry")
 	check_has(menu, "select_menu.id_pressed.connect(select_menu_id_pressed)", "shortcuts remain")
