@@ -47,6 +47,7 @@ var _position_adjustment_enabled := true
 var _header_accessory_layer: Node2D
 var _header_accessory: Control
 var _header_title_override := ""
+var _horizontal_content_padding_override := -1
 
 
 func configure(module_definition: WorkspaceModuleDefinition) -> bool:
@@ -256,6 +257,15 @@ func get_constrained_size(requested_size: Vector2) -> Vector2:
 	return definition.get_constrained_size(requested_size)
 
 
+## Narrow configuration windows can opt out of Workspace's normal side gutters.
+func set_horizontal_content_padding_override(padding: int) -> void:
+	if _horizontal_content_padding_override == padding:
+		return
+	_horizontal_content_padding_override = padding
+	if _visual_theme != null:
+		apply_visual_theme(_visual_theme, _visual_state)
+
+
 func get_header_height() -> float:
 	var height := _visual_theme.HEADER_HEIGHT if _visual_theme != null else INTERACTION_TARGET_SIZE
 	if is_instance_valid(_header_accessory):
@@ -352,6 +362,11 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		queue_redraw()
 		return
 	var padding := int(_visual_theme.CONTENT_PADDING)
+	var horizontal_padding := (
+		_horizontal_content_padding_override
+		if _horizontal_content_padding_override >= 0
+		else padding
+	)
 	if state == &"collapsed" and _content_collapsed:
 		add_theme_constant_override(&"margin_left", 0)
 		add_theme_constant_override(&"margin_top", int(get_header_height()))
@@ -366,11 +381,11 @@ func apply_visual_theme(workspace_theme: WorkspaceVisualTheme, state: StringName
 		var bottom_margin := padding
 		if state == &"floating":
 			bottom_margin = maxi(padding, int(INTERACTION_TARGET_SIZE))
-		add_theme_constant_override(&"margin_left", padding)
+		add_theme_constant_override(&"margin_left", horizontal_padding)
 		add_theme_constant_override(
 			&"margin_top", int(get_header_height() + _visual_theme.CONTENT_PADDING)
 		)
-		add_theme_constant_override(&"margin_right", padding)
+		add_theme_constant_override(&"margin_right", horizontal_padding)
 		add_theme_constant_override(&"margin_bottom", bottom_margin)
 	_layout_header_accessory()
 	queue_redraw()
