@@ -1145,10 +1145,10 @@ msgid "Drop Shadow"
 msgstr "阴影"
 
 msgid "Offset X:"
-msgstr "偏移 X："
+msgstr "水平偏移："
 
 msgid "Offset Y:"
-msgstr "偏移 Y："
+msgstr "垂直偏移："
 
 msgid "Shadow color:"
 msgstr "阴影颜色："
@@ -1317,7 +1317,7 @@ msgstr "绿色"
 
 #. Refers to the value (as in HSV) of the colors of an image.
 msgid "Value"
-msgstr "值"
+msgstr "明度"
 
 msgid "Presets"
 msgstr "预设"
@@ -4325,3 +4325,51 @@ msgstr "仅拾取当前图层颜色"
 
 msgid "Nearest neighbor"
 msgstr "最近邻"
+
+msgid "Brush color from"
+msgstr "笔刷取色"
+
+msgid "Density"
+msgstr "密度"
+
+msgid "Offset X"
+msgstr "水平偏移"
+
+msgid "Offset Y"
+msgstr "垂直偏移"
+
+msgid "Fill area"
+msgstr "填充范围"
+
+msgid "Fill with"
+msgstr "填充方式"
+
+msgid "Shape"
+msgstr "形状"
+
+msgid "Dithering pattern"
+msgstr "抖动图案"
+
+msgid "Pick for"
+msgstr "取色目标"
+
+msgid "Pick mode"
+msgstr "取色范围"
+
+msgid "Aspect Ratio"
+msgstr "宽高比"
+
+msgid "Font"
+msgstr "字体"
+
+msgid "Colors right"
+msgstr "右侧颜色"
+
+msgid "Top"
+msgstr "上"
+
+msgid "Bottom"
+msgstr "下"
+
+msgid "Brush color"
+msgstr "笔刷颜色"
