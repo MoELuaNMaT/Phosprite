@@ -30,6 +30,7 @@ var effects_procedural_submenu := PopupMenu.new()
 var effects_blur_submenu := PopupMenu.new()
 var effects_loaded_submenu: PopupMenu
 var ui_layout_button: MenuButton
+var settings_button: MenuButton
 var ui_menu: PopupMenu
 
 # Dialogs
@@ -139,20 +140,29 @@ func set_return_home_visible(should_show: bool) -> void:
 	if not should_show:
 		if is_instance_valid(ui_layout_button):
 			ui_layout_button.visible = false
+		if is_instance_valid(settings_button):
+			settings_button.visible = false
+		_detach_settings_project_menu()
 		ui_menu = desktop_ui_menu
 		return
 	_ensure_ui_layout_button()
-	if not is_instance_valid(ui_layout_button):
+	_ensure_settings_button()
+	if not is_instance_valid(ui_layout_button) or not is_instance_valid(settings_button):
 		return
 	ui_layout_button.visible = true
+	settings_button.visible = true
+	_attach_settings_project_menu()
 	var row := return_home_button.get_parent()
 	if row == null:
 		return
 	# iPadOS owns the center of the title bar for its multitasking ellipsis.
-	# Keep Projects and UI immediately after the app menu in the left safe area.
+	# Keep Projects, UI and Settings grouped immediately after Main Menu.
 	row.move_child(return_home_button, mini(menu_bar.get_index() + 1, row.get_child_count() - 1))
 	row.move_child(
 		ui_layout_button, mini(return_home_button.get_index() + 1, row.get_child_count() - 1)
+	)
+	row.move_child(
+		settings_button, mini(ui_layout_button.get_index() + 1, row.get_child_count() - 1)
 	)
 
 
@@ -169,6 +179,56 @@ func _ensure_ui_layout_button() -> void:
 	ui_layout_button.text = "UI"
 	row.add_child(ui_layout_button)
 	ui_menu = ui_layout_button.get_popup()
+
+
+## Editor-only settings live alongside the separate Projects and UI buttons.
+## Reparent the actual Project popup rather than copying its commands, so
+## Color Mode, project-specific disabled states and keyboard shortcuts stay live.
+func _ensure_settings_button() -> void:
+	if is_instance_valid(settings_button):
+		return
+	var row := return_home_button.get_parent()
+	if row == null:
+		return
+	settings_button = MenuButton.new()
+	settings_button.name = &"EditorSettingsButton"
+	settings_button.focus_mode = Control.FOCUS_ALL
+	settings_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	settings_button.text = tr("Settings")
+	row.add_child(settings_button)
+	var popup := settings_button.get_popup()
+	popup.id_pressed.connect(edit_menu_id_pressed)
+
+
+func _attach_settings_project_menu() -> void:
+	if not is_instance_valid(settings_button) or not is_instance_valid(project_menu):
+		return
+	var popup := settings_button.get_popup()
+	if project_menu.get_parent() == popup:
+		return
+	var parent := project_menu.get_parent()
+	if parent is PopupMenu:
+		var old_popup := parent as PopupMenu
+		for index in range(old_popup.item_count - 1, -1, -1):
+			if old_popup.get_item_submenu_node(index) == project_menu:
+				old_popup.remove_item(index)
+	if parent != null:
+		parent.remove_child(project_menu)
+	popup.add_submenu_node_item(tr("Project"), project_menu)
+	popup.add_item(tr("Preferences"), Global.EditMenu.PREFERENCES)
+
+
+func _detach_settings_project_menu() -> void:
+	if not is_instance_valid(settings_button) or not is_instance_valid(project_menu):
+		return
+	var popup := settings_button.get_popup()
+	if project_menu.get_parent() != popup:
+		return
+	for index in range(popup.item_count - 1, -1, -1):
+		popup.remove_item(index)
+	popup.remove_child(project_menu)
+	menu_bar.add_child(project_menu)
+	menu_bar.move_child(project_menu, mini(3, menu_bar.get_child_count() - 1))
 
 
 func _on_return_home_pressed() -> void:
@@ -209,7 +269,7 @@ func handle_main_menu_collapse() -> void:
 				# The editor's compact menu does not duplicate Project Manager's File menu.
 				# Keep the original File and Edit popups in the hidden MenuBar so
 				# shortcuts, action IDs and quick-access buttons remain unchanged.
-				if menu_option == file_menu or menu_option == select_menu:
+				if menu_option in [file_menu, select_menu, project_menu]:
 					# Selection commands are available in the selection tools' options.
 					# Retain the original menus for shortcuts and desktop layouts.
 					continue
@@ -255,7 +315,7 @@ func _sync_compact_edit_menu(compact: PopupMenu) -> void:
 	compact.clear()
 	for index in edit_menu.item_count:
 		var item_id := edit_menu.get_item_id(index)
-		if item_id in [Global.EditMenu.UNDO, Global.EditMenu.REDO]:
+		if item_id in [Global.EditMenu.UNDO, Global.EditMenu.REDO, Global.EditMenu.PREFERENCES]:
 			continue
 		if edit_menu.is_item_separator(index):
 			compact.add_separator(edit_menu.get_item_text(index), item_id)
