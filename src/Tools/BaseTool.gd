@@ -4,7 +4,7 @@ extends GridContainer
 const SIDEBAR_CONTROL_WIDTH := 54.0
 const MODE_BUTTON_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const MODE_ICON_BUTTON_SIZE := 32.0
-const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0
+const COMPACT_OPTION_CONTROL_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const COMPACT_OPTION_LABEL_HEIGHT := 20.0
 const COMPACT_OPTION_ROW_HEIGHT := 28.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
@@ -442,9 +442,10 @@ func _rebuild_compact_option_layout() -> void:
 			label.clip_text = false
 			label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 		else:
+			# UI3 shares UI1/UI4's 54px control footprint. Legacy tool scenes may
+			# request wider minima, which must not stretch the compact column.
 			control.custom_minimum_size = Vector2(
-				maxf(minimum.x, COMPACT_OPTION_CONTROL_MIN_WIDTH),
-				maxf(minimum.y, COMPACT_OPTION_ROW_HEIGHT)
+				COMPACT_OPTION_CONTROL_MIN_WIDTH, maxf(minimum.y, COMPACT_OPTION_ROW_HEIGHT)
 			)
 			control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			control.size_flags_vertical = Control.SIZE_SHRINK_CENTER

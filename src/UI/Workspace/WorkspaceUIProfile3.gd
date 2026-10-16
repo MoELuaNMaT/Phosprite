@@ -311,6 +311,9 @@ func _ensure_options_module() -> bool:
 		_options_module = surface.manager.create_module(Builtins.UI3_TOOL_OPTIONS_ID)
 	if not is_instance_valid(_options_module):
 		return false
+	# The UI3 panel is just the options column, not UI1/UI4's combined Tools width.
+	# Remove Workspace's 6px side gutters so its 56px content stays usable.
+	_options_module.set_horizontal_content_padding_override(0)
 	var content := _options_module.get_content()
 	if not is_instance_valid(content):
 		return false
@@ -339,7 +342,7 @@ func _ensure_options_module_placement() -> bool:
 			return surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, current_rect)
 		return true
 	if placement == WorkspaceSurface.Placement.COLLAPSED:
-		# A saved UI3 window may still have the old 220px width. Normalize
+		# Saved UI3 windows may still have a 220px or 112px width. Normalize
 		# its restore size without changing its collapsed state.
 		var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
 		if (
@@ -347,7 +350,7 @@ func _ensure_options_module_placement() -> bool:
 			== WorkspaceSurface.Placement.FLOATING
 		):
 			var restore_rect := restore.get("rect", Rect2()) as Rect2
-			if not is_equal_approx(restore_rect.size.x, Builtins.TOOL_SIDEBAR_WIDTH):
+			if not is_equal_approx(restore_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH):
 				if not surface.restore_module(Builtins.UI3_TOOL_OPTIONS_ID):
 					return false
 				return surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID)

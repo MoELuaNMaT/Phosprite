@@ -84,8 +84,8 @@ func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 	)
 	check_has(
 		source,
-		"const COMPACT_OPTION_CONTROL_MIN_WIDTH := 72.0",
-		"vertical compact controls need a small usable width floor",
+		"const COMPACT_OPTION_CONTROL_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH",
+		"UI3 compact controls must reuse the 54px sidebar control width",
 	)
 	check_has(
 		source,
