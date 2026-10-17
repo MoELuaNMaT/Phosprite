@@ -12,8 +12,11 @@ func test_preview_view_toolbar_wraps_with_window_width() -> void:
 		preview.queue_free()
 		return
 	for name in [
-		"CenterCanvasButton", "MirrorViewButton", "ShowGridButton",
-		"ShowPixelGridButton", "GrayscaleButton",
+		"CenterCanvasButton",
+		"MirrorViewButton",
+		"ShowGridButton",
+		"ShowPixelGridButton",
+		"GrayscaleButton",
 	]:
 		var button := toolbar.get_node_or_null(name) as Button
 		check_true(button != null, "%s lives beside Grayscale" % name)
@@ -63,7 +66,9 @@ func test_preview_actions_reuse_existing_view_handlers() -> void:
 		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
 	)
 	for action in [
-		"Global.ViewMenu.CENTER_CANVAS", "Global.ViewMenu.MIRROR_VIEW",
-		"Global.ViewMenu.SHOW_GRID", "Global.ViewMenu.SHOW_PIXEL_GRID",
+		"Global.ViewMenu.CENTER_CANVAS",
+		"Global.ViewMenu.MIRROR_VIEW",
+		"Global.ViewMenu.SHOW_GRID",
+		"Global.ViewMenu.SHOW_PIXEL_GRID",
 	]:
 		check_has(source, "view_menu_id_pressed(%s)" % action, "Preview reuses %s" % action)
