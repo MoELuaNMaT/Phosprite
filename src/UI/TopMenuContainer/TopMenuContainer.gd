@@ -310,19 +310,30 @@ func handle_main_menu_collapse() -> void:
 			for menu_option in menu_options:
 				menu_bar.add_child(menu_option)
 			# Reinsert the original menus kept hidden for their command IDs and shortcuts.
-			for original_menu in [file_menu, edit_menu, select_menu, project_menu, desktop_ui_menu, view_menu]:
+			for original_menu in [
+				file_menu, edit_menu, select_menu, project_menu, desktop_ui_menu, view_menu
+			]:
 				if original_menu.get_parent() == menu_bar:
 					continue
 				if original_menu.get_parent() == null:
 					menu_bar.add_child(original_menu)
 			# Restore the defined desktop menu order regardless of compact view filtering.
 			var original_order := [
-				file_menu, edit_menu, select_menu, project_menu, desktop_ui_menu,
-				effects_menu, view_menu, window_menu, help_menu
+				file_menu,
+				edit_menu,
+				select_menu,
+				project_menu,
+				desktop_ui_menu,
+				effects_menu,
+				view_menu,
+				window_menu,
+				help_menu
 			]
 			for index in original_order.size():
 				if original_order[index].get_parent() == menu_bar:
-					menu_bar.move_child(original_order[index], mini(index, menu_bar.get_child_count() - 1))
+					menu_bar.move_child(
+						original_order[index], mini(index, menu_bar.get_child_count() - 1)
+					)
 
 
 ## Show only the non-duplicated Edit actions in the compact Main Menu.
@@ -373,14 +384,17 @@ func _sync_compact_view_menu(compact: PopupMenu) -> void:
 			child.free()
 	for index in view_menu.item_count:
 		var item_id := view_menu.get_item_id(index)
-		if item_id in [
-			Global.ViewMenu.CENTER_CANVAS,
-			Global.ViewMenu.GREYSCALE_VIEW,
-			Global.ViewMenu.MIRROR_VIEW,
-			Global.ViewMenu.SHOW_GRID,
-			Global.ViewMenu.SHOW_PIXEL_GRID,
-			Global.ViewMenu.SHOW_MOUSE_GUIDES,
-		]:
+		if (
+			item_id
+			in [
+				Global.ViewMenu.CENTER_CANVAS,
+				Global.ViewMenu.GREYSCALE_VIEW,
+				Global.ViewMenu.MIRROR_VIEW,
+				Global.ViewMenu.SHOW_GRID,
+				Global.ViewMenu.SHOW_PIXEL_GRID,
+				Global.ViewMenu.SHOW_MOUSE_GUIDES,
+			]
+		):
 			continue
 		var source_submenu := view_menu.get_item_submenu_node(index)
 		if source_submenu != null:
