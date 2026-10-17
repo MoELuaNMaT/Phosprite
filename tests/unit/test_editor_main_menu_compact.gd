@@ -28,6 +28,7 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	menu.set("select_menu", original["Select"])
 	menu.set("project_menu", original["Project"])
 	menu.set("desktop_ui_menu", original["UI"])
+	menu.set("view_menu", original["View"])
 	var edit := original["Edit"] as PopupMenu
 	edit.add_item("Undo", Global.EditMenu.UNDO)
 	edit.add_item("Redo", Global.EditMenu.REDO)
@@ -41,13 +42,15 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	Global.collapse_main_menu = true
 	menu.handle_main_menu_collapse()
 	var popup := button.get_popup()
-	check_eq(popup.item_count, names.size() - 3, "main menu omits File, Select and Project")
+	check_eq(popup.item_count, names.size() - 4, "main menu also omits duplicate UI")
 	var visible_names: Array[String] = []
 	for i in popup.item_count:
 		visible_names.append(popup.get_item_text(i))
 	check_true(not "File" in visible_names, "File entry is absent")
 	check_true(not "Select" in visible_names, "Select entry is absent")
 	check_true(not "Project" in visible_names, "Project entry is absent")
+	check_true(not "UI" in visible_names, "UI entry is absent from Main Menu")
+	check_true("View" in visible_names, "View submenu remains")
 	check_true("Edit" in visible_names, "Edit entry remains")
 	check_true("Help" in visible_names, "other sections remain")
 	var compact := menu.get("_compact_edit_menu") as PopupMenu
@@ -65,6 +68,8 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	check_eq(original["File"].get_parent(), bar, "File menu stays live but offscreen")
 	check_eq(edit.get_parent(), bar, "original Edit menu stays live but offscreen")
 	check_eq(original["Select"].get_parent(), bar, "Select menu stays live for shortcuts")
+	check_eq(original["UI"].get_parent(), bar, "UI source remains for the standalone UI menu")
+	check_eq(original["View"].get_parent(), bar, "View source remains for shortcuts")
 	check_true(
 		compact.get_item_index(Global.EditMenu.PREFERENCES) == -1,
 		"Preferences is absent from compact Edit"
@@ -108,6 +113,60 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	check_eq(bar.get_child(3), original["Project"], "Project menu restores desktop order")
 	check_eq(button.get_popup().item_count, 0, "compact popup is removed on expansion")
 	Global.collapse_main_menu = was_collapsed
+	menu.free()
+
+
+
+func test_compact_view_keeps_tile_submenus_and_only_unmoved_actions() -> void:
+	var menu := TopMenuScript.new()
+	var original := PopupMenu.new()
+	var compact := PopupMenu.new()
+	menu.add_child(original)
+	menu.add_child(compact)
+	menu.set("view_menu", original)
+	for index in Global.ViewMenu.size():
+		if index in [Global.ViewMenu.TILE_MODE, Global.ViewMenu.SNAP_TO]:
+			var submenu := PopupMenu.new()
+			submenu.add_radio_check_item("None", 0)
+			original.add_submenu_node_item("submenu %d" % index, submenu, index)
+		else:
+			original.add_check_item("action %d" % index, index)
+	original.set_item_checked(Global.ViewMenu.SHOW_RULERS, true)
+	original.set_item_checked(Global.ViewMenu.SHOW_GUIDES, true)
+	menu.call("_sync_compact_view_menu", compact)
+	var removed := [
+		Global.ViewMenu.CENTER_CANVAS,
+		Global.ViewMenu.GREYSCALE_VIEW,
+		Global.ViewMenu.MIRROR_VIEW,
+		Global.ViewMenu.SHOW_GRID,
+		Global.ViewMenu.SHOW_PIXEL_GRID,
+		Global.ViewMenu.SHOW_MOUSE_GUIDES,
+	]
+	check_eq(compact.item_count, Global.ViewMenu.size() - removed.size(), "moved View actions removed")
+	for item_id in removed:
+		check_eq(compact.get_item_index(item_id), -1, "removed action %d is absent" % item_id)
+	for item_id in [
+		Global.ViewMenu.TILE_MODE,
+		Global.ViewMenu.TILE_MODE_OFFSETS,
+		Global.ViewMenu.SHOW_PIXEL_INDICES,
+		Global.ViewMenu.SHOW_RULERS,
+		Global.ViewMenu.SHOW_GUIDES,
+		Global.ViewMenu.SHOW_REFERENCE_IMAGES,
+		Global.ViewMenu.SNAP_TO,
+	]:
+		check_true(compact.get_item_index(item_id) >= 0, "preserved action %d exists" % item_id)
+	for item_id in [Global.ViewMenu.TILE_MODE, Global.ViewMenu.SNAP_TO]:
+		var submenu_index := compact.get_item_index(item_id)
+		check_true(
+			compact.get_item_submenu_node(submenu_index) != null,
+			"preserved nested menu %d remains navigable" % item_id,
+		)
+	var rulers := compact.get_item_index(Global.ViewMenu.SHOW_RULERS)
+	check_true(compact.is_item_checked(rulers), "check state follows original menu")
+	original.set_item_checked(Global.ViewMenu.SHOW_RULERS, false)
+	menu.call("_sync_compact_view_menu", compact)
+	rulers = compact.get_item_index(Global.ViewMenu.SHOW_RULERS)
+	check_true(not compact.is_item_checked(rulers), "state stays synced when reopened")
 	menu.free()
 
 
