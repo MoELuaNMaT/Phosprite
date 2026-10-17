@@ -87,7 +87,53 @@ texture = ExtResource("6")
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GrayscaleButton" type="Button" parent="VBox/Animation" groups=["UIButtons"]]
+[node name="PreviewViewButtons" type="HFlowContainer" parent="VBox/Animation"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="CenterCanvasButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 32)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+text = "Center"
+tooltip_text = "Center Canvas"
+
+[node name="MirrorViewButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 32)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+toggle_mode = true
+text = "Mirror"
+tooltip_text = "Mirror View"
+
+[node name="ShowGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 32)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+toggle_mode = true
+text = "Grid"
+tooltip_text = "Show Grid"
+
+[node name="ShowPixelGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(84, 32)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+toggle_mode = true
+text = "Pixel Grid"
+tooltip_text = "Show Pixel Grid"
+
+[node name="GrayscaleButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 32)
 layout_mode = 2
@@ -183,7 +229,11 @@ prefix = "End frame:"
 [connection signal="mouse_entered" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_entered"]
 [connection signal="mouse_exited" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_exited"]
 [connection signal="toggled" from="VBox/Animation/PlayButton" to="." method="_on_PlayButton_toggled"]
-[connection signal="toggled" from="VBox/Animation/GrayscaleButton" to="." method="_on_GrayscaleButton_toggled"]
+[connection signal="pressed" from="VBox/Animation/PreviewViewButtons/CenterCanvasButton" to="." method="_on_center_canvas_pressed"]
+[connection signal="toggled" from="VBox/Animation/PreviewViewButtons/MirrorViewButton" to="." method="_on_mirror_view_toggled"]
+[connection signal="toggled" from="VBox/Animation/PreviewViewButtons/ShowGridButton" to="." method="_on_show_grid_toggled"]
+[connection signal="toggled" from="VBox/Animation/PreviewViewButtons/ShowPixelGridButton" to="." method="_on_show_pixel_grid_toggled"]
+[connection signal="toggled" from="VBox/Animation/PreviewViewButtons/GrayscaleButton" to="." method="_on_GrayscaleButton_toggled"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/HFrames" to="." method="_on_HFrames_value_changed"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/VFrames" to="." method="_on_VFrames_value_changed"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/StartFrame" to="." method="_on_StartFrame_value_changed"]
