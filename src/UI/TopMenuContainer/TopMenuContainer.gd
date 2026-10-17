@@ -1293,18 +1293,21 @@ func _toggle_mirror_view() -> void:
 		Global.canvas.selection.marching_ants_outline.position.x = 0
 	Global.canvas.selection.queue_redraw()
 	view_menu.set_item_checked(Global.ViewMenu.MIRROR_VIEW, Global.mirror_view)
+	Global.preview_view_controls_changed.emit()
 
 
 func _toggle_show_grid() -> void:
 	Global.draw_grid = !Global.draw_grid
 	view_menu.set_item_checked(Global.ViewMenu.SHOW_GRID, Global.draw_grid)
 	Global.grid_updated.emit()
+	Global.preview_view_controls_changed.emit()
 
 
 func _toggle_show_pixel_grid() -> void:
 	Global.draw_pixel_grid = !Global.draw_pixel_grid
 	view_menu.set_item_checked(Global.ViewMenu.SHOW_PIXEL_GRID, Global.draw_pixel_grid)
 	Global.pixel_grid_updated.emit()
+	Global.preview_view_controls_changed.emit()
 
 
 func _toggle_show_pixel_indices() -> void:
