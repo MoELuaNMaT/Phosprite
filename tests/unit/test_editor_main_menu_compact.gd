@@ -116,7 +116,6 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	menu.free()
 
 
-
 func test_compact_view_keeps_tile_submenus_and_only_unmoved_actions() -> void:
 	var menu := TopMenuScript.new()
 	var original := PopupMenu.new()
@@ -142,7 +141,9 @@ func test_compact_view_keeps_tile_submenus_and_only_unmoved_actions() -> void:
 		Global.ViewMenu.SHOW_PIXEL_GRID,
 		Global.ViewMenu.SHOW_MOUSE_GUIDES,
 	]
-	check_eq(compact.item_count, Global.ViewMenu.size() - removed.size(), "moved View actions removed")
+	check_eq(
+		compact.item_count, Global.ViewMenu.size() - removed.size(), "moved View actions removed"
+	)
 	for item_id in removed:
 		check_eq(compact.get_item_index(item_id), -1, "removed action %d is absent" % item_id)
 	for item_id in [
