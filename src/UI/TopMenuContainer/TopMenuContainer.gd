@@ -322,7 +322,7 @@ func handle_main_menu_collapse() -> void:
 			]
 			for index in original_order.size():
 				if original_order[index].get_parent() == menu_bar:
-					menu_bar.move_child(original_order[index], index)
+					menu_bar.move_child(original_order[index], mini(index, menu_bar.get_child_count() - 1))
 
 
 ## Show only the non-duplicated Edit actions in the compact Main Menu.
