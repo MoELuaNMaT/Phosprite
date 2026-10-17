@@ -27,6 +27,7 @@ signal font_loaded  ## Emitted when a new font has been loaded, or an old one ge
 signal collapse_main_menu_changed  ## Emitted when [member collapse_main_menu] changes.
 signal single_tool_mode_changed(mode: bool)  ## Emitted when [member single_tool_mode] changes.
 signal greyscale_view_changed(enabled: bool)
+signal preview_view_controls_changed
 ## Emitted when [member share_options_between_tools] changes.
 signal share_options_between_tools_changed(mode: bool)
 @warning_ignore("unused_signal")
