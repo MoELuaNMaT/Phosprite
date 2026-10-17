@@ -379,7 +379,7 @@ func _sync_compact_view_menu(compact: PopupMenu) -> void:
 			Global.ViewMenu.MIRROR_VIEW,
 			Global.ViewMenu.SHOW_GRID,
 			Global.ViewMenu.SHOW_PIXEL_GRID,
-			Global.ViewMenu.SHOW_GUIDES,
+			Global.ViewMenu.SHOW_MOUSE_GUIDES,
 		]:
 			continue
 		var source_submenu := view_menu.get_item_submenu_node(index)
