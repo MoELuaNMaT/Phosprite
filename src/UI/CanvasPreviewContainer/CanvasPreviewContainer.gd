@@ -19,6 +19,9 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var camera := $"%CameraPreview" as CanvasCamera
 @onready var play_button := $"%PlayButton" as Button
 @onready var grayscale_button := $"%GrayscaleButton" as Button
+@onready var mirror_view_button := $"%MirrorViewButton" as Button
+@onready var show_grid_button := $"%ShowGridButton" as Button
+@onready var show_pixel_grid_button := $"%ShowPixelGridButton" as Button
 @onready var start_frame := $"%StartFrame" as ValueSlider
 @onready var end_frame := $"%EndFrame" as ValueSlider
 
@@ -26,17 +29,27 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 func _enter_tree() -> void:
 	if not Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
 		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
+	if not Global.preview_view_controls_changed.is_connected(_sync_view_controls):
+		Global.preview_view_controls_changed.connect(_sync_view_controls)
+	if not Global.project_switched.is_connected(_sync_view_controls):
+		Global.project_switched.connect(_sync_view_controls)
 	# _ready() is not guaranteed to run when UI3 reuses and reparents the Preview.
 	_on_greyscale_view_changed(Global.greyscale_view)
+	_sync_view_controls()
 
 
 func _ready() -> void:
 	_on_greyscale_view_changed(Global.greyscale_view)
+	_sync_view_controls()
 
 
 func _exit_tree() -> void:
 	if Global.greyscale_view_changed.is_connected(_on_greyscale_view_changed):
 		Global.greyscale_view_changed.disconnect(_on_greyscale_view_changed)
+	if Global.preview_view_controls_changed.is_connected(_sync_view_controls):
+		Global.preview_view_controls_changed.disconnect(_sync_view_controls)
+	if Global.project_switched.is_connected(_sync_view_controls):
+		Global.project_switched.disconnect(_sync_view_controls)
 
 
 func _input(event: InputEvent) -> void:
@@ -179,6 +192,40 @@ func _preview_navigation_geometry() -> Dictionary:
 	var first: Vector2 = _preview_touches[_navigation_ids[0]]
 	var second: Vector2 = _preview_touches[_navigation_ids[1]]
 	return NAVIGATION.navigation_pair_geometry(first, second)
+
+
+## Preview actions share the existing View menu handlers and global canvas state.
+## The menu keeps its hidden original entries for keyboard shortcuts.
+func _on_center_canvas_pressed() -> void:
+	if Global.current_project != null:
+		Global.top_menu_container.view_menu_id_pressed(Global.ViewMenu.CENTER_CANVAS)
+
+
+func _on_mirror_view_toggled(enabled: bool) -> void:
+	if Global.current_project != null and Global.mirror_view != enabled:
+		Global.top_menu_container.view_menu_id_pressed(Global.ViewMenu.MIRROR_VIEW)
+	_sync_view_controls()
+
+
+func _on_show_grid_toggled(enabled: bool) -> void:
+	if Global.current_project != null and Global.draw_grid != enabled:
+		Global.top_menu_container.view_menu_id_pressed(Global.ViewMenu.SHOW_GRID)
+	_sync_view_controls()
+
+
+func _on_show_pixel_grid_toggled(enabled: bool) -> void:
+	if Global.current_project != null and Global.draw_pixel_grid != enabled:
+		Global.top_menu_container.view_menu_id_pressed(Global.ViewMenu.SHOW_PIXEL_GRID)
+	_sync_view_controls()
+
+
+func _sync_view_controls() -> void:
+	if is_instance_valid(mirror_view_button):
+		mirror_view_button.set_pressed_no_signal(Global.mirror_view)
+	if is_instance_valid(show_grid_button):
+		show_grid_button.set_pressed_no_signal(Global.draw_grid)
+	if is_instance_valid(show_pixel_grid_button):
+		show_pixel_grid_button.set_pressed_no_signal(Global.draw_pixel_grid)
 
 
 func _on_GrayscaleButton_toggled(button_pressed: bool) -> void:
