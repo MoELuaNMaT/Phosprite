@@ -65,6 +65,7 @@ var window_opacity_dialog := Dialog.new("res://src/UI/Dialogs/WindowOpacityDialo
 var about_dialog := Dialog.new("res://src/UI/Dialogs/AboutDialog.tscn")
 var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 var _compact_edit_menu: PopupMenu
+var _compact_view_menu: PopupMenu
 
 @onready var main := $"../.." as Control
 @onready var main_ui := main.find_child("DockableContainer") as DockableContainer
@@ -269,7 +270,7 @@ func handle_main_menu_collapse() -> void:
 				# The editor's compact menu does not duplicate Project Manager's File menu.
 				# Keep the original File and Edit popups in the hidden MenuBar so
 				# shortcuts, action IDs and quick-access buttons remain unchanged.
-				if menu_option in [file_menu, select_menu, project_menu]:
+				if menu_option in [file_menu, select_menu, project_menu, desktop_ui_menu]:
 					# Selection commands are available in the selection tools' options.
 					# Retain the original menus for shortcuts and desktop layouts.
 					continue
@@ -277,6 +278,12 @@ func handle_main_menu_collapse() -> void:
 					_compact_edit_menu = _create_compact_edit_menu()
 					main_menu_button_popup.add_submenu_node_item(
 						menu_option.name, _compact_edit_menu
+					)
+					continue
+				if menu_option == view_menu:
+					_compact_view_menu = _create_compact_view_menu()
+					main_menu_button_popup.add_submenu_node_item(
+						menu_option.name, _compact_view_menu
 					)
 					continue
 				menu_bar.remove_child(menu_option)
@@ -294,10 +301,28 @@ func handle_main_menu_collapse() -> void:
 					_compact_edit_menu = null
 					submenu.queue_free()
 					continue
+				if submenu == _compact_view_menu:
+					_compact_view_menu = null
+					submenu.queue_free()
+					continue
 				menu_options.append(submenu)
 			menu_options.reverse()
 			for menu_option in menu_options:
 				menu_bar.add_child(menu_option)
+			# Reinsert the original menus kept hidden for their command IDs and shortcuts.
+			for original_menu in [file_menu, edit_menu, select_menu, project_menu, desktop_ui_menu, view_menu]:
+				if original_menu.get_parent() == menu_bar:
+					continue
+				if original_menu.get_parent() == null:
+					menu_bar.add_child(original_menu)
+			# Restore the defined desktop menu order regardless of compact view filtering.
+			var original_order := [
+				file_menu, edit_menu, select_menu, project_menu, desktop_ui_menu,
+				effects_menu, view_menu, window_menu, help_menu
+			]
+			for index in original_order.size():
+				if original_order[index].get_parent() == menu_bar:
+					menu_bar.move_child(original_order[index], index)
 
 
 ## Show only the non-duplicated Edit actions in the compact Main Menu.
@@ -325,6 +350,72 @@ func _sync_compact_edit_menu(compact: PopupMenu) -> void:
 		compact.set_item_disabled(compact_index, edit_menu.is_item_disabled(index))
 		compact.set_item_metadata(compact_index, edit_menu.get_item_metadata(index))
 		var icon := edit_menu.get_item_icon(index)
+		if icon != null:
+			compact.set_item_icon(compact_index, icon)
+
+
+## Main Menu keeps a filtered View submenu. The full original remains live
+## for shortcuts, source check states, and the desktop menu.
+func _create_compact_view_menu() -> PopupMenu:
+	var compact := PopupMenu.new()
+	compact.name = &"CompactViewMenu"
+	compact.id_pressed.connect(view_menu_id_pressed)
+	compact.about_to_popup.connect(_sync_compact_view_menu.bind(compact))
+	_sync_compact_view_menu(compact)
+	return compact
+
+
+func _sync_compact_view_menu(compact: PopupMenu) -> void:
+	compact.clear()
+	for child in compact.get_children():
+		if child is PopupMenu:
+			compact.remove_child(child)
+			child.free()
+	for index in view_menu.item_count:
+		var item_id := view_menu.get_item_id(index)
+		if item_id in [
+			Global.ViewMenu.CENTER_CANVAS,
+			Global.ViewMenu.GREYSCALE_VIEW,
+			Global.ViewMenu.MIRROR_VIEW,
+			Global.ViewMenu.SHOW_GRID,
+			Global.ViewMenu.SHOW_PIXEL_GRID,
+			Global.ViewMenu.SHOW_GUIDES,
+		]:
+			continue
+		var source_submenu := view_menu.get_item_submenu_node(index)
+		if source_submenu != null:
+			var sub := PopupMenu.new()
+			sub.name = StringName("CompactViewSubmenu%d" % item_id)
+			sub.hide_on_checkable_item_selection = source_submenu.hide_on_checkable_item_selection
+			for subindex in source_submenu.item_count:
+				var sub_id := source_submenu.get_item_id(subindex)
+				var sub_text := source_submenu.get_item_text(subindex)
+				if source_submenu.is_item_radio_checkable(subindex):
+					sub.add_radio_check_item(sub_text, sub_id)
+				elif source_submenu.is_item_checkable(subindex):
+					sub.add_check_item(sub_text, sub_id)
+				else:
+					sub.add_item(sub_text, sub_id)
+				sub.set_item_checked(subindex, source_submenu.is_item_checked(subindex))
+				sub.set_item_disabled(subindex, source_submenu.is_item_disabled(subindex))
+			if item_id == Global.ViewMenu.TILE_MODE:
+				sub.id_pressed.connect(_tile_mode_submenu_id_pressed)
+			elif item_id == Global.ViewMenu.SNAP_TO:
+				sub.id_pressed.connect(_snap_to_submenu_id_pressed)
+			compact.add_submenu_node_item(view_menu.get_item_text(index), sub, item_id)
+		elif view_menu.is_item_separator(index):
+			compact.add_separator(view_menu.get_item_text(index), item_id)
+		elif view_menu.is_item_radio_checkable(index):
+			compact.add_radio_check_item(view_menu.get_item_text(index), item_id)
+		elif view_menu.is_item_checkable(index):
+			compact.add_check_item(view_menu.get_item_text(index), item_id)
+		else:
+			compact.add_item(view_menu.get_item_text(index), item_id)
+		var compact_index := compact.item_count - 1
+		compact.set_item_checked(compact_index, view_menu.is_item_checked(index))
+		compact.set_item_disabled(compact_index, view_menu.is_item_disabled(index))
+		compact.set_item_metadata(compact_index, view_menu.get_item_metadata(index))
+		var icon := view_menu.get_item_icon(index)
 		if icon != null:
 			compact.set_item_icon(compact_index, icon)
 
