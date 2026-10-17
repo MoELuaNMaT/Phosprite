@@ -129,7 +129,7 @@ func test_preview_footer_exposes_synced_grayscale_toggle() -> void:
 	)
 	check_has(
 		preview_scene,
-		'[node name="GrayscaleButton" type="Button" parent="VBox/Animation"',
+		'[node name="GrayscaleButton" type="Button" parent="VBox/Animation/PreviewViewButtons"',
 		"Preview footer must expose a dedicated grayscale toggle",
 	)
 	check_has(
