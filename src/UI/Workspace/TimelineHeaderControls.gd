@@ -37,7 +37,9 @@ func _ready() -> void:
 		and not timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
 	):
 		timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
-	_managed_items = [global_tool_options, undo_button, redo_button, undo_history_button, frame_group]
+	_managed_items = [
+		global_tool_options, undo_button, redo_button, undo_history_button, frame_group
+	]
 	for item in _managed_items:
 		_item_widths[item] = item.get_combined_minimum_size().x
 	if not Global.project_switched.is_connected(_on_project_switched):
