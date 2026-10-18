@@ -209,11 +209,7 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 	var delta := event.position - origin
 	# Holding then moving still begins reorder. A quick horizontal swipe
 	# instead toggles only the layer-name row, without scrolling the timeline.
-	if (
-		held_msec < IOS_TOUCH_REORDER_HOLD_MSEC
-		and absf(delta.x) >= IOS_LAYER_SWIPE_DISTANCE_PX
-		and absf(delta.x) >= absf(delta.y) * IOS_LAYER_SWIPE_DIRECTION_RATIO
-	):
+	if _is_layer_selection_swipe(delta, held_msec):
 		candidate["swipe_selected"] = true
 		_ios_touch_candidates[event.index] = candidate
 		_toggle_swipe_layer_selection()
@@ -240,6 +236,14 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 		return false
 	_ios_touch_candidates[event.index] = candidate
 	return true
+
+
+static func _is_layer_selection_swipe(delta: Vector2, held_msec: int) -> bool:
+	return (
+		held_msec < IOS_TOUCH_REORDER_HOLD_MSEC
+		and absf(delta.x) >= IOS_LAYER_SWIPE_DISTANCE_PX
+		and absf(delta.x) >= absf(delta.y) * IOS_LAYER_SWIPE_DIRECTION_RATIO
+	)
 
 
 func _begin_reorder(touch_index: int, screen_position: Vector2) -> void:
