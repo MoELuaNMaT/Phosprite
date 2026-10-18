@@ -123,64 +123,6 @@ offset_right = 104.0
 offset_bottom = 126.0
 theme_override_constants/separation = 6
 
-[node name="MultiSelectBar" type="PanelContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow"]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(196, 126)
-layout_mode = 2
-
-[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar"]
-layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
-
-[node name="MenuColumn" type="VBoxContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="SelectionCount" type="Label" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 26)
-layout_mode = 2
-text = "1 selected"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="ActionGrid" type="GridContainer" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn"]
-layout_mode = 2
-size_flags_vertical = 3
-columns = 2
-
-[node name="ExitMultiSelect" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(88, 40)
-layout_mode = 2
-focus_mode = 0
-text = "Exit"
-
-[node name="CreateFolder" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(88, 40)
-layout_mode = 2
-focus_mode = 0
-text = "Folder"
-
-[node name="MergeLayers" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(88, 40)
-layout_mode = 2
-focus_mode = 0
-text = "Merge"
-
-[node name="DuplicateLayers" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow/MultiSelectBar/MarginContainer/MenuColumn/ActionGrid" groups=["UIButtons"]]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(88, 40)
-layout_mode = 2
-focus_mode = 0
-text = "Duplicate"
-
 [node name="AddLayer" type="Button" parent="MarginContainer/SingleFrameBody/LayerScroll/LayerContent/LayerRow" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(104, 104)

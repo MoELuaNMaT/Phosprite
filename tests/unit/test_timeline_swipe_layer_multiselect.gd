@@ -2,6 +2,7 @@ extends "res://tests/test_base.gd"
 
 const ANIMATION_GESTURES := preload("res://src/UI/Timeline/LayerTouchAdapter.gd")
 const SINGLE_FRAME_CARD := preload("res://src/UI/Timeline/SingleFrameLayerCard.gd")
+const SINGLE_FRAME_STRIP := preload("res://src/UI/Timeline/SingleFrameLayerStrip.gd")
 const ANIMATION_SOURCE := "res://src/UI/Timeline/LayerTouchAdapter.gd"
 const SINGLE_FRAME_CARD_SOURCE := "res://src/UI/Timeline/SingleFrameLayerCard.gd"
 const SINGLE_FRAME_STRIP_SOURCE := "res://src/UI/Timeline/SingleFrameLayerStrip.gd"
@@ -107,3 +108,46 @@ func test_clipping_mask_context_action_updates_every_selected_layer() -> void:
 		"clipping mask applies to all swipe-selected layers",
 	)
 	check_has(source, "update_global_layer_buttons()", "all selected layer icons refresh")
+
+
+func test_single_frame_actual_batch_selection_counts_unique_layers() -> void:
+	var selected := [[3, 2], [3, 4], [3, 0], [3, 2], [2, 1]]
+	var layer_indices: PackedInt32Array = SINGLE_FRAME_STRIP._selected_layers_for_frame(
+		selected, 3, 5
+	)
+	check_eq(layer_indices.size(), 3, "three distinct selected layers exist in project data")
+	check_eq(layer_indices, PackedInt32Array([0, 2, 4]), "selected indices match layer cards")
+	check_eq(
+		SINGLE_FRAME_STRIP._selected_layers_for_frame([[3, 2]], 3, 5).size(),
+		1,
+		"one selected card counts as one layer",
+	)
+	check_true(
+		SINGLE_FRAME_STRIP._selected_layers_for_frame([], 3, 5).is_empty(),
+		"swiping the final selected card again leaves zero selected",
+	)
+
+
+func test_single_frame_selection_border_is_stable_while_pressing_and_holding() -> void:
+	var card := FileAccess.get_file_as_string(SINGLE_FRAME_CARD_SOURCE)
+	check_true(not card.contains("pressed.connect(_on_native_pressed)"), "remove native toggle")
+	check_true(not card.contains("button_pressed = ("), "selection no longer uses press state")
+	check_has(card, "_selection_outline_visible", "store committed selection separately")
+	check_has(card, "func _draw()", "render stable overlay independently of input feedback")
+	check_has(card, "in _project.selected_cels", "selection visual derives from Project data")
+	check_has(card, "queue_redraw()", "refresh outline only when selected state changes")
+	var scene := FileAccess.get_file_as_string("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
+	check_has(scene, "toggle_mode = false", "card cannot toggle its highlight at pointer down")
+
+
+func test_animation_swipe_visual_bounces_without_reordering_layers() -> void:
+	var adapter := FileAccess.get_file_as_string(ANIMATION_SOURCE)
+	check_has(
+		adapter,
+		'call_deferred("_animate_swipe_feedback", signf(delta.x))',
+		"swipe feedback follows direction"
+	)
+	check_has(adapter, '"position:x"', "slide visual horizontally without changing hierarchy")
+	check_has(adapter, "direction * 14.0", "swipe nudge is short, not a drag-away")
+	check_has(adapter, "Tween.TRANS_BACK", "button springs back to exact home")
+	check_has(adapter, "_stop_swipe_feedback()", "old animation gets cancelled safely")

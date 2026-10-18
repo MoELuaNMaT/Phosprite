@@ -270,8 +270,8 @@ func test_single_frame_layer_strip_is_horizontal_and_keeps_add_layer_at_tail() -
 	)
 	check_has(
 		source,
-		"layer_row.move_child(card, layer_row.get_child_count() - 3)",
-		"layer cards must stay before the temporary menu and trailing new-layer button",
+		"layer_row.move_child(card, layer_row.get_child_count() - 2)",
+		"layer cards must stay before the trailing new-layer button",
 	)
 	check_has(
 		source,
@@ -457,33 +457,25 @@ func test_single_frame_long_press_opens_layer_menu_with_multiselect_action() -> 
 	check_has(card_source, "pointer_cancel.emit(layer_index)", "drag slop cancels hold for scroll")
 
 
-func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void:
+func test_single_frame_multiselect_removes_sidebar_and_keeps_batch_actions() -> void:
 	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
-	check_has(
-		scene,
-		'[node name="MultiSelectBar" type="PanelContainer"',
-		"multi-select needs a temporary action bar"
-	)
-	check_has(scene, '[node name="ExitMultiSelect" type="Button"', "action menu must expose exit")
-	check_has(
-		scene, '[node name="CreateFolder" type="Button"', "action menu must expose folder creation"
-	)
-	check_has(
-		scene, '[node name="MergeLayers" type="Button"', "action menu must expose layer merge"
-	)
-	check_has(
-		scene, '[node name="DuplicateLayers" type="Button"', "action menu must expose duplicate"
-	)
+	check_true(not scene.contains('name="MultiSelectBar"'), "old right sidebar must be absent")
+	check_true(not scene.contains('name="SelectionCount"'), "old stale count label removed")
+	check_true(not scene.contains('name="ExitMultiSelect"'), "old sidebar action buttons removed")
+	check_true(not source.contains("_update_multiselect_bar"), "no stale sidebar update calls")
+	check_has(source, 'tr("Create folder from selection")', "folder action remains in hold menu")
+	check_has(source, 'tr("Merge selected layers")', "merge action remains in hold menu")
+	check_has(source, "_selected_layers_for_frame(", "batch selection reads project data")
 	check_has(
 		source,
 		"Global.animation_timeline.flatten_layers(indices, false)",
-		"merge must reuse the existing undoable flatten-layers transaction",
+		"merge still uses undoable flatten-layers operation",
 	)
 	check_has(
 		source,
 		'project.undo_redo.create_action("Add Layer")',
-		"multi-layer duplicate must remain undoable",
+		"duplicate remains undoable",
 	)
 
 
