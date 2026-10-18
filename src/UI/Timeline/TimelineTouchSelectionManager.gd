@@ -88,7 +88,9 @@ func _process(delta: float) -> void:
 			continue
 		candidate["menu_opened"] = true
 		_touch_candidates[touch_index] = candidate
-		_show_existing_context_menu(int(candidate.get("kind", TouchTargetKind.NONE)), target, position)
+		_show_existing_context_menu(
+			int(candidate.get("kind", TouchTargetKind.NONE)), target, position
+		)
 		break
 	if _touch_candidates.is_empty():
 		set_process(false)
@@ -203,8 +205,9 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 	var pressed_msec := int(candidate.get("pressed_msec", Time.get_ticks_msec()))
 	var held_msec := Time.get_ticks_msec() - pressed_msec
 	var origin: Vector2 = candidate.get("origin", event.position)
-	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC and (
-		origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX
+	if (
+		held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC
+		and (origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX)
 	):
 		_touch_candidates[event.index] = candidate
 		if _begin_reorder(event.index, event.position):
