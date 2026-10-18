@@ -4412,3 +4412,18 @@ msgstr "透明锁定"
 
 msgid "Pressure Settings"
 msgstr "压感设置"
+
+msgid "Clipping mask (layer to right)"
+msgstr "剪切蒙版（作用于右侧下层）"
+
+msgid "Move layer left (up)"
+msgstr "向左移动图层（上层）"
+
+msgid "Move layer right (down)"
+msgstr "向右移动图层（下层）"
+
+msgid "Merge right (down)"
+msgstr "向右合并图层（合并到下层）"
+
+msgid "Select multiple layers"
+msgstr "多选图层"
