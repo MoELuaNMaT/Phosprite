@@ -11,6 +11,7 @@ const DRAG_CANCEL_DISTANCE := 24.0
 const SWIPE_DOWN_DISTANCE := 28.0
 const SWIPE_DOWN_DIRECTION_RATIO := 1.35
 const SYNTHETIC_MOUSE_SUPPRESSION_MSEC := 500
+const SELECTED_OUTLINE_COLOR := Color(0.36, 0.72, 1.0, 0.98)
 const SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE := 32.0
 
 var layer_index := -1
@@ -19,6 +20,7 @@ var _project: Project
 var _layer: BaseLayer
 var _cel: BaseCel
 var _pointer_active := false
+var _selection_outline_visible := false
 var _pointer_origin := Vector2.ZERO
 var _last_touch_msec := -1
 var _last_touch_position := Vector2.ZERO
@@ -28,8 +30,9 @@ var _last_touch_position := Vector2.ZERO
 
 
 func _ready() -> void:
-	toggle_mode = true
-	pressed.connect(_on_native_pressed)
+	# Selection is drawn from Project.selected_cels, never the transient Button
+	# pressed state. Otherwise pressing a selected card briefly hides its frame.
+	toggle_mode = false
 	gui_input.connect(_on_gui_input)
 	if not Global.cel_switched.is_connected(_sync_selected):
 		Global.cel_switched.connect(_sync_selected)
@@ -75,11 +78,17 @@ func _disconnect_bound_data() -> void:
 	_pointer_active = false
 
 
-func _on_native_pressed() -> void:
-	# The Button still receives native press feedback. Restore the authoritative
-	# project selection after its internal toggle so long presses and repeated taps
-	# never leave a stale pressed visual behind.
-	call_deferred("_sync_selected")
+func _draw() -> void:
+	if not _selection_outline_visible:
+		return
+	# Independent from Button's momentary pressed/hover state. The selection
+	# frame must remain in place from pointer-down through a 650 ms hold.
+	draw_rect(
+		Rect2(Vector2(1.5, 1.5), size - Vector2(3.0, 3.0)),
+		SELECTED_OUTLINE_COLOR,
+		false,
+		3.0,
+	)
 
 
 func _on_gui_input(event: InputEvent) -> void:
@@ -188,10 +197,13 @@ func _on_cel_texture_changed() -> void:
 
 
 func _sync_selected() -> void:
-	button_pressed = (
+	var selected := (
 		_project != null
 		and _project == Global.current_project
 		and layer_index >= 0
 		and layer_index < _project.layers.size()
 		and [_project.current_frame, layer_index] in _project.selected_cels
 	)
+	if _selection_outline_visible != selected:
+		_selection_outline_visible = selected
+		queue_redraw()
