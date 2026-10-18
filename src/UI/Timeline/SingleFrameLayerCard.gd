@@ -142,10 +142,7 @@ func _maybe_cancel_pointer(local_position: Vector2) -> void:
 	if not _pointer_active:
 		return
 	var delta := local_position - _pointer_origin
-	if (
-		delta.y >= SWIPE_DOWN_DISTANCE
-		and delta.y >= absf(delta.x) * SWIPE_DOWN_DIRECTION_RATIO
-	):
+	if _is_downward_selection_swipe(delta):
 		_pointer_active = false
 		pointer_cancel.emit(layer_index)
 		swipe_selection.emit(layer_index)
@@ -157,6 +154,10 @@ func _maybe_cancel_pointer(local_position: Vector2) -> void:
 		return
 	_pointer_active = false
 	pointer_cancel.emit(layer_index)
+
+
+static func _is_downward_selection_swipe(delta: Vector2) -> bool:
+	return delta.y >= SWIPE_DOWN_DISTANCE and delta.y >= absf(delta.x) * SWIPE_DOWN_DIRECTION_RATIO
 
 
 func _to_global_position(local_position: Vector2) -> Vector2:
