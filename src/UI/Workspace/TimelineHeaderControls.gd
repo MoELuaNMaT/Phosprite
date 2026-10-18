@@ -16,6 +16,7 @@ var _item_widths: Dictionary = {}
 @onready var separator := %Separator as VSeparator
 @onready var undo_button := %Undo as Button
 @onready var redo_button := %Redo as Button
+@onready var undo_history_button := %UndoHistory as Button
 @onready var frame_group := %FrameGroup as HBoxContainer
 @onready var frame_mark := %CurrentFrameMark as Label
 @onready var overflow_button := %OverflowButton as Button
@@ -27,6 +28,7 @@ var _item_widths: Dictionary = {}
 func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_pressed)
 	redo_button.pressed.connect(_on_redo_pressed)
+	undo_history_button.pressed.connect(_on_undo_history_pressed)
 	overflow_button.pressed.connect(_on_overflow_pressed)
 	mode_switch_button.toggled.connect(_on_mode_switch_toggled)
 	var timeline := Global.animation_timeline as AnimationTimeline
@@ -35,7 +37,7 @@ func _ready() -> void:
 		and not timeline.timeline_mode_changed.is_connected(_on_timeline_mode_changed)
 	):
 		timeline.timeline_mode_changed.connect(_on_timeline_mode_changed)
-	_managed_items = [global_tool_options, undo_button, redo_button, frame_group]
+	_managed_items = [global_tool_options, undo_button, redo_button, undo_history_button, frame_group]
 	for item in _managed_items:
 		_item_widths[item] = item.get_combined_minimum_size().x
 	if not Global.project_switched.is_connected(_on_project_switched):
@@ -96,7 +98,9 @@ func _apply_overflow_layout() -> void:
 		var budget := maxf(0.0, content_width - overflow_width - ITEM_SEPARATION)
 		# Preserve the commands that are most useful during animation work.
 		# The large Global Tool Options group overflows first on narrow windows.
-		var priority: Array[Control] = [undo_button, redo_button, frame_group, global_tool_options]
+		var priority: Array[Control] = [
+			undo_button, redo_button, undo_history_button, frame_group, global_tool_options
+		]
 		for item in priority:
 			var candidate: Array[Control] = []
 			candidate.assign(keep_inline)
@@ -219,6 +223,13 @@ func _on_undo_pressed() -> void:
 func _on_redo_pressed() -> void:
 	if Global.current_project != null:
 		Global.current_project.commit_redo()
+
+
+func _on_undo_history_pressed() -> void:
+	if Global.current_project == null or not is_instance_valid(Global.top_menu_container):
+		return
+	# Reuse the original Edit command and dialog, including its history navigation.
+	Global.top_menu_container.edit_menu_id_pressed(Global.EditMenu.UNDO_HISTORY)
 
 
 func _update_frame_mark() -> void:
