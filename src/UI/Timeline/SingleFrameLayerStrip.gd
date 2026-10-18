@@ -425,7 +425,9 @@ func _on_card_pointer_cancel(layer_index: int) -> void:
 
 func _setup_context_menu() -> void:
 	layer_context_menu.add_item(tr("Properties"), ContextAction.PROPERTIES)
-	layer_context_menu.add_check_item(tr("Clipping mask (layer to right)"), ContextAction.CLIPPING_MASK)
+	layer_context_menu.add_check_item(
+		tr("Clipping mask (layer to right)"), ContextAction.CLIPPING_MASK
+	)
 	layer_context_menu.add_item(tr("Flatten"), ContextAction.FLATTEN)
 	layer_context_menu.add_item(tr("Flatten visible"), ContextAction.FLATTEN_VISIBLE)
 	layer_context_menu.add_separator()
