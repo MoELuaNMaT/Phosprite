@@ -68,8 +68,11 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec()
 	for touch_index in _ios_touch_candidates:
 		var candidate: Dictionary = _ios_touch_candidates[touch_index]
-		if (bool(candidate.get("cancelled", false)) or bool(candidate.get("menu_opened", false))
-			or bool(candidate.get("swipe_selected", false))):
+		if (
+			bool(candidate.get("cancelled", false))
+			or bool(candidate.get("menu_opened", false))
+			or bool(candidate.get("swipe_selected", false))
+		):
 			continue
 		if now - int(candidate.get("pressed_msec", now)) < IOS_TOUCH_CONTEXT_HOLD_MSEC:
 			continue
@@ -164,9 +167,7 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 
 	_ios_touch_candidates.erase(event.index)
 	set_process(not _ios_touch_candidates.is_empty())
-	if bool(candidate.get("menu_opened", false)) or bool(
-		candidate.get("swipe_selected", false)
-	):
+	if bool(candidate.get("menu_opened", false)) or bool(candidate.get("swipe_selected", false)):
 		get_viewport().set_input_as_handled()
 		return true
 	if bool(candidate.get("cancelled", false)):
