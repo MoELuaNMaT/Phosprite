@@ -4,6 +4,7 @@ extends Button
 signal pointer_down(layer_index: int, position: Vector2, timestamp_msec: int)
 signal pointer_up(layer_index: int, position: Vector2, timestamp_msec: int)
 signal pointer_cancel(layer_index: int)
+signal context_requested(layer_index: int, position: Vector2)
 
 const DRAG_CANCEL_DISTANCE := 24.0
 const SYNTHETIC_MOUSE_SUPPRESSION_MSEC := 500
@@ -94,6 +95,10 @@ func _on_gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mouse_button := event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_RIGHT and mouse_button.pressed:
+			context_requested.emit(layer_index, get_global_mouse_position())
+			accept_event()
+			return
 		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if _should_suppress_mouse_after_touch(
