@@ -121,6 +121,7 @@ func refresh() -> void:
 		card.pointer_up.connect(_on_card_pointer_up)
 		card.pointer_cancel.connect(_on_card_pointer_cancel)
 		card.context_requested.connect(_show_card_context_menu)
+		card.swipe_selection.connect(_on_card_swipe_selection)
 		_cards_by_layer[layer_index] = card
 	_update_multiselect_bar()
 	_sync_layer_settings()
@@ -425,6 +426,18 @@ func _on_card_pointer_cancel(layer_index: int) -> void:
 	_gesture_resolver.pointer_cancel(str(layer_index))
 
 
+func _on_card_swipe_selection(layer_index: int) -> void:
+	if not _is_valid_card_layer(layer_index):
+		return
+	# A down swipe is additive and independently toggles every layer card.
+	# First swipe starts with an empty explicit multi-selection rather than
+	# counting the previously focused layer as an accidental selection.
+	if not multiselect_mode:
+		set_multiselect_mode(true)
+		_bound_project.selected_cels.clear()
+	_toggle_layer_in_multiselect(layer_index)
+
+
 func _setup_context_menu() -> void:
 	layer_context_menu.add_item(tr("Properties"), ContextAction.PROPERTIES)
 	layer_context_menu.add_item(tr("Rename"), ContextAction.RENAME)
@@ -495,7 +508,8 @@ func _on_context_action(action: int) -> void:
 		_select_only_layer(_context_layer_index)
 	match action:
 		ContextAction.MULTI_SELECT:
-			set_multiselect_mode(true, _context_layer_index)
+			if not multiselect_mode:
+				set_multiselect_mode(true, _context_layer_index)
 		ContextAction.PROPERTIES, ContextAction.RENAME:
 			var dialog := Global.control.find_child("LayerProperties") as AcceptDialog
 			if is_instance_valid(dialog):
@@ -545,8 +559,9 @@ func _consume_gesture_actions(actions: Array[Dictionary]) -> void:
 
 func _on_resolved_single_tap(layer_index: int) -> void:
 	if multiselect_mode:
-		_toggle_layer_in_multiselect(layer_index)
-		return
+		# A normal tap ends the whole multi-selection and focuses only
+		# the tapped layer, even when it was already in the batch.
+		set_multiselect_mode(false)
 	_select_only_layer(layer_index)
 
 
@@ -575,13 +590,13 @@ func _toggle_layer_in_multiselect(layer_index: int) -> void:
 	Global.transform_content_confirmed.emit()
 	var frame_layer := [project.current_frame, layer_index]
 	if project.selected_cels.has(frame_layer):
-		if project.selected_cels.size() <= 1:
-			return
 		project.selected_cels.erase(frame_layer)
-		if project.current_layer == layer_index:
-			project.change_cel(-1, int(project.selected_cels[0][1]))
+		if project.selected_cels.is_empty():
+			# Unlike change_cel(), emitting the selection update leaves
+			# zero selected layers after a repeated downward swipe.
+			Global.cel_switched.emit()
 		else:
-			project.change_cel(-1, project.current_layer)
+			project.change_cel(-1, int(project.selected_cels[0][1]))
 	else:
 		project.selected_cels.append(frame_layer)
 		project.change_cel(-1, layer_index)
