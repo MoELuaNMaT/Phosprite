@@ -2,7 +2,7 @@ class_name LayerTouchAdapter
 extends Node
 
 const IOS_TOUCH_TAP_SLOP_PX := 12.0
-const IOS_TOUCH_DOUBLE_TAP_MSEC := 350
+const IOS_TOUCH_CONTEXT_HOLD_MSEC := 650
 const IOS_TOUCH_REORDER_HOLD_MSEC := 450
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_layer_touch_mouse_filter"
 const AUTO_SCROLL_MIN_SPEED := 90.0
@@ -18,8 +18,6 @@ var _main_button: Button
 var _popup_menu: PopupMenu
 var _ios_touch_candidates: Dictionary = {}
 var _ios_touch_ui_mode := false
-var _ios_last_tap_msec := -1
-var _ios_last_tap_position := Vector2.INF
 var _active_reorder_touch := -1
 var _managed_scroll := 0.0
 var _reorder_data: Array = []
@@ -57,18 +55,31 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if _active_reorder_touch < 0:
+	if _active_reorder_touch >= 0:
+		if not _ios_touch_candidates.has(_active_reorder_touch):
+			_finish_reorder()
+			return
+		var moving: Dictionary = _ios_touch_candidates[_active_reorder_touch]
+		_update_reorder_feedback(moving.get("position", Vector2.ZERO), delta)
+		return
+	var now := Time.get_ticks_msec()
+	for touch_index in _ios_touch_candidates:
+		var candidate: Dictionary = _ios_touch_candidates[touch_index]
+		if bool(candidate.get("cancelled", false)) or bool(candidate.get("menu_opened", false)):
+			continue
+		if now - int(candidate.get("pressed_msec", now)) < IOS_TOUCH_CONTEXT_HOLD_MSEC:
+			continue
+		var origin: Vector2 = candidate.get("origin", Vector2.ZERO)
+		var position: Vector2 = candidate.get("position", origin)
+		if origin.distance_to(position) > IOS_TOUCH_TAP_SLOP_PX:
+			continue
+		_select_layer_for_touch()
+		candidate["menu_opened"] = true
+		_ios_touch_candidates[touch_index] = candidate
+		_popup_menu.popup_on_parent(Rect2(position, Vector2.ONE))
+		break
+	if _ios_touch_candidates.is_empty():
 		set_process(false)
-		return
-	if not _ios_touch_candidates.has(_active_reorder_touch):
-		_finish_reorder()
-		return
-	var candidate: Dictionary = _ios_touch_candidates[_active_reorder_touch]
-	if not bool(candidate.get("reordering", false)):
-		_finish_reorder()
-		return
-	var screen_position: Vector2 = candidate.get("position", Vector2.ZERO)
-	_update_reorder_feedback(screen_position, delta)
 
 
 func _install_ios_layer_touch() -> void:
@@ -108,6 +119,7 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 		if was_reordering or event.index == _active_reorder_touch:
 			_finish_reorder()
 			get_viewport().set_input_as_handled()
+		set_process(not _ios_touch_candidates.is_empty())
 		return was_reordering
 
 	if event.pressed:
@@ -120,7 +132,9 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 			"pressed_msec": Time.get_ticks_msec(),
 			"cancelled": false,
 			"reordering": false,
+			"menu_opened": false,
 		}
+		set_process(true)
 		return true
 
 	if not _ios_touch_candidates.has(event.index):
@@ -133,10 +147,15 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 		_commit_reorder_if_valid()
 		_ios_touch_candidates.erase(event.index)
 		_finish_reorder()
+		set_process(not _ios_touch_candidates.is_empty())
 		get_viewport().set_input_as_handled()
 		return true
 
 	_ios_touch_candidates.erase(event.index)
+	set_process(not _ios_touch_candidates.is_empty())
+	if bool(candidate.get("menu_opened", false)):
+		get_viewport().set_input_as_handled()
+		return true
 	if bool(candidate.get("cancelled", false)):
 		return true
 	var origin: Vector2 = candidate.get("origin", event.position)
@@ -144,8 +163,6 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 		return true
 
 	_select_layer_for_touch()
-	if _register_ios_layer_tap(event.position):
-		_popup_menu.popup_on_parent(Rect2(event.position, Vector2.ONE))
 	get_viewport().set_input_as_handled()
 	return true
 
@@ -156,6 +173,9 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 	var candidate: Dictionary = _ios_touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
 		return false
+	if bool(candidate.get("menu_opened", false)):
+		get_viewport().set_input_as_handled()
+		return true
 	candidate["position"] = event.position
 	if bool(candidate.get("reordering", false)):
 		_ios_touch_candidates[event.index] = candidate
@@ -165,17 +185,18 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 
 	var pressed_msec: int = int(candidate.get("pressed_msec", Time.get_ticks_msec()))
 	var held_msec := Time.get_ticks_msec() - pressed_msec
-	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC:
+	var origin: Vector2 = candidate.get("origin", event.position)
+	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC and (
+		origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX
+	):
 		_ios_touch_candidates[event.index] = candidate
 		_begin_reorder(event.index, event.position)
 		get_viewport().set_input_as_handled()
 		return true
 
-	var origin: Vector2 = candidate.get("origin", event.position)
 	if origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX:
 		candidate["cancelled"] = true
 		_ios_touch_candidates[event.index] = candidate
-		_reset_ios_last_tap()
 		# Before reorder ownership, vertical movement belongs to the Timeline ScrollContainer.
 		return false
 	_ios_touch_candidates[event.index] = candidate
@@ -198,7 +219,6 @@ func _begin_reorder(touch_index: int, screen_position: Vector2) -> void:
 	_ios_touch_candidates[touch_index] = candidate
 	_active_reorder_touch = touch_index
 	_reorder_data = data
-	_reset_ios_last_tap()
 	var scroll := _timeline_scroll()
 	if is_instance_valid(scroll):
 		_managed_scroll = float(scroll.scroll_vertical)
@@ -387,26 +407,6 @@ func _select_layer_for_touch() -> void:
 	_layer_button._select_current_layer()
 
 
-func _register_ios_layer_tap(screen_position: Vector2) -> bool:
-	var now := Time.get_ticks_msec()
-	var is_double_tap := (
-		_ios_last_tap_msec >= 0
-		and now - _ios_last_tap_msec <= IOS_TOUCH_DOUBLE_TAP_MSEC
-		and _ios_last_tap_position.distance_to(screen_position) <= IOS_TOUCH_TAP_SLOP_PX
-	)
-	if is_double_tap:
-		_reset_ios_last_tap()
-		return true
-	_ios_last_tap_msec = now
-	_ios_last_tap_position = screen_position
-	return false
-
-
-func _reset_ios_last_tap() -> void:
-	_ios_last_tap_msec = -1
-	_ios_last_tap_position = Vector2.INF
-
-
 func _on_popup_menu_id_pressed(id: int) -> void:
 	if id == RENAME_MENU_ID:
 		_layer_button._show_rename_edit()
@@ -426,7 +426,6 @@ func _restore_pointer_layer_ui() -> void:
 	_finish_reorder()
 	_ios_touch_ui_mode = false
 	_ios_touch_candidates.clear()
-	_reset_ios_last_tap()
 	if _main_button.has_meta(IOS_TOUCH_MOUSE_FILTER_META):
 		_main_button.mouse_filter = int(_main_button.get_meta(IOS_TOUCH_MOUSE_FILTER_META))
 		_main_button.remove_meta(IOS_TOUCH_MOUSE_FILTER_META)
