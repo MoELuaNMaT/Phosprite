@@ -73,7 +73,13 @@ func _process(delta: float) -> void:
 		var position: Vector2 = candidate.get("position", origin)
 		if origin.distance_to(position) > IOS_TOUCH_TAP_SLOP_PX:
 			continue
-		_select_layer_for_touch()
+		var already_selected := false
+		for cel in Global.current_project.selected_cels:
+			if int(cel[1]) == _layer_button.layer_index:
+				already_selected = true
+				break
+		if not already_selected:
+			_select_layer_for_touch()
 		candidate["menu_opened"] = true
 		_ios_touch_candidates[touch_index] = candidate
 		_popup_menu.popup_on_parent(Rect2(position, Vector2.ONE))
