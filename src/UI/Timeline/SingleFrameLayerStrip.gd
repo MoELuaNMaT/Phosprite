@@ -13,6 +13,8 @@ enum ContextAction {
 	MERGE_RIGHT,
 	EFFECTS,
 	RENAME,
+	CREATE_FOLDER,
+	MERGE_SELECTED,
 }
 
 const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
@@ -44,12 +46,6 @@ var _context_layer_index := -1
 @onready var layer_row := %LayerRow as HBoxContainer
 @onready var scroll_container := %LayerScroll as ScrollContainer
 @onready var add_layer_button := %AddLayer as Button
-@onready var multiselect_bar := %MultiSelectBar as PanelContainer
-@onready var selection_count := %SelectionCount as Label
-@onready var exit_multiselect_button := %ExitMultiSelect as Button
-@onready var create_folder_button := %CreateFolder as Button
-@onready var merge_layers_button := %MergeLayers as Button
-@onready var duplicate_layers_button := %DuplicateLayers as Button
 @onready var layer_context_menu := %LayerContextMenu as PopupMenu
 
 
@@ -60,10 +56,6 @@ func _ready() -> void:
 	layer_visibility_button.pressed.connect(_on_layer_visibility_pressed)
 	layer_style_button.item_selected.connect(_on_blend_mode_selected)
 	add_layer_button.pressed.connect(_on_add_layer_pressed)
-	exit_multiselect_button.pressed.connect(_on_exit_multiselect_pressed)
-	create_folder_button.pressed.connect(_on_create_folder_pressed)
-	merge_layers_button.pressed.connect(_on_merge_layers_pressed)
-	duplicate_layers_button.pressed.connect(_on_duplicate_layers_pressed)
 	Global.cel_switched.connect(_on_cel_switched)
 	set_process(true)
 	set_project(Global.current_project)
@@ -95,7 +87,7 @@ func refresh() -> void:
 		return
 	_cards_by_layer.clear()
 	for child in layer_row.get_children():
-		if child == add_layer_button or child == multiselect_bar:
+		if child == add_layer_button:
 			continue
 		layer_row.remove_child(child)
 		child.queue_free()
@@ -105,7 +97,6 @@ func refresh() -> void:
 	if project == null:
 		_displayed_frame = -1
 		multiselect_mode = false
-		multiselect_bar.hide()
 		_sync_layer_settings()
 		return
 	_displayed_frame = project.current_frame
@@ -115,7 +106,7 @@ func refresh() -> void:
 			continue
 		var card := LAYER_CARD_SCENE.instantiate() as SingleFrameLayerCard
 		layer_row.add_child(card)
-		layer_row.move_child(card, layer_row.get_child_count() - 3)
+		layer_row.move_child(card, layer_row.get_child_count() - 2)
 		card.setup(project, layer_index, project.current_frame)
 		card.pointer_down.connect(_on_card_pointer_down)
 		card.pointer_up.connect(_on_card_pointer_up)
@@ -123,7 +114,6 @@ func refresh() -> void:
 		card.context_requested.connect(_show_card_context_menu)
 		card.swipe_selection.connect(_on_card_swipe_selection)
 		_cards_by_layer[layer_index] = card
-	_update_multiselect_bar()
 	_sync_layer_settings()
 	call_deferred("_sync_content_geometry")
 	call_deferred("_rebuild_group_brackets")
@@ -147,9 +137,6 @@ func set_multiselect_mode(enabled: bool, initial_layer := -1) -> void:
 		return
 	multiselect_mode = enabled
 	_gesture_resolver.reset()
-	if not is_instance_valid(multiselect_bar):
-		return
-	multiselect_bar.visible = enabled
 	call_deferred("_sync_content_geometry")
 	var project := _bound_project
 	if project == null or project != Global.current_project:
@@ -169,8 +156,6 @@ func _bind_project(project: Project) -> void:
 	_bound_project = project
 	multiselect_mode = false
 	_gesture_resolver.reset()
-	if is_instance_valid(multiselect_bar):
-		multiselect_bar.hide()
 	if not is_instance_valid(_bound_project):
 		return
 	if not _bound_project.layers_updated.is_connected(_on_layers_updated):
@@ -450,6 +435,8 @@ func _setup_context_menu() -> void:
 	layer_context_menu.add_item(tr("Move layer left (up)"), ContextAction.MOVE_LEFT)
 	layer_context_menu.add_item(tr("Move layer right (down)"), ContextAction.MOVE_RIGHT)
 	layer_context_menu.add_item(tr("Duplicate layer"), ContextAction.DUPLICATE)
+	layer_context_menu.add_item(tr("Create folder from selection"), ContextAction.CREATE_FOLDER)
+	layer_context_menu.add_item(tr("Merge selected layers"), ContextAction.MERGE_SELECTED)
 	layer_context_menu.add_item(tr("Merge right (down)"), ContextAction.MERGE_RIGHT)
 	layer_context_menu.add_item(tr("Layer effects"), ContextAction.EFFECTS)
 	layer_context_menu.add_separator()
@@ -489,6 +476,9 @@ func _sync_context_menu() -> void:
 	_set_context_disabled(ContextAction.MOVE_RIGHT, timeline.move_down_layer.disabled)
 	_set_context_disabled(ContextAction.MERGE_RIGHT, timeline.merge_down_layer.disabled)
 	_set_context_disabled(ContextAction.EFFECTS, timeline.layer_fx.disabled)
+	var selection := _selected_layer_indices()
+	_set_context_disabled(ContextAction.CREATE_FOLDER, not _can_create_folder(selection))
+	_set_context_disabled(ContextAction.MERGE_SELECTED, not _can_merge_layers(selection))
 
 
 func _set_context_disabled(action: int, disabled: bool) -> void:
@@ -536,6 +526,10 @@ func _on_context_action(action: int) -> void:
 				timeline.change_layer_order(false)
 		ContextAction.DUPLICATE:
 			_duplicate_selected_layers()
+		ContextAction.CREATE_FOLDER:
+			_create_folder_from_selection()
+		ContextAction.MERGE_SELECTED:
+			_on_merge_layers_pressed()
 		ContextAction.MERGE_RIGHT:
 			if not timeline.merge_down_layer.disabled:
 				timeline._on_MergeDownLayer_pressed()
@@ -639,19 +633,6 @@ func _selected_layer_indices() -> PackedInt32Array:
 	return indices
 
 
-func _update_multiselect_bar() -> void:
-	if not is_instance_valid(multiselect_bar):
-		return
-	multiselect_bar.visible = multiselect_mode
-	if not multiselect_mode:
-		return
-	var indices := _selected_layer_indices()
-	selection_count.text = tr("%d selected") % indices.size()
-	create_folder_button.disabled = not _can_create_folder(indices)
-	merge_layers_button.disabled = not _can_merge_layers(indices)
-	duplicate_layers_button.disabled = indices.is_empty()
-
-
 func _can_create_folder(indices: PackedInt32Array) -> bool:
 	var project := _bound_project
 	if project == null or indices.is_empty():
@@ -673,10 +654,6 @@ func _can_merge_layers(indices: PackedInt32Array) -> bool:
 		if layer is AudioLayer or layer is GroupLayer:
 			return false
 	return true
-
-
-func _on_exit_multiselect_pressed() -> void:
-	set_multiselect_mode(false)
 
 
 func _on_create_folder_pressed() -> void:
