@@ -243,8 +243,8 @@ func test_mode_switch_is_fixed_on_timeline_header_right_side() -> void:
 	)
 	check_has(
 		source,
-		"_managed_items = [global_tool_options, undo_button, redo_button, frame_group]",
-		"mode switch must stay outside the overflow-managed command list",
+		"undo_button, redo_button, undo_history_button, frame_group",
+		"mode switch stays fixed while Undo History joins the overflow-managed commands",
 	)
 
 

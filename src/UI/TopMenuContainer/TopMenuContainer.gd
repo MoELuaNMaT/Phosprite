@@ -351,6 +351,9 @@ func _sync_compact_edit_menu(compact: PopupMenu) -> void:
 	compact.clear()
 	for index in edit_menu.item_count:
 		var item_id := edit_menu.get_item_id(index)
+		# Undo History is now in the Timeline header, next to Undo and Redo.
+		if item_id == Global.EditMenu.UNDO_HISTORY:
+			continue
 		if item_id in [Global.EditMenu.UNDO, Global.EditMenu.REDO, Global.EditMenu.PREFERENCES]:
 			continue
 		if edit_menu.is_item_separator(index):

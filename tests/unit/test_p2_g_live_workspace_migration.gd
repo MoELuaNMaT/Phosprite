@@ -1518,6 +1518,28 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 	)
 	check_true(accessory.undo_button != null, "Timeline header must expose Undo")
 	check_true(accessory.redo_button != null, "Timeline header must expose Redo")
+	check_true(accessory.undo_history_button != null, "Timeline header must expose Undo History")
+	if accessory.undo_history_button != null:
+		var header_items: Array = accessory.get("_managed_items")
+		check_eq(
+			header_items.find(accessory.undo_history_button),
+			header_items.find(accessory.redo_button) + 1,
+			"Undo History must immediately follow Redo, including in overflow",
+		)
+		check_true(
+			accessory.undo_history_button.pressed.is_connected(
+				Callable(accessory, "_on_undo_history_pressed")
+			),
+			"Undo History button must open the existing history action",
+		)
+	var header_source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/TimelineHeaderControls.gd"
+	)
+	check_has(
+		header_source,
+		"edit_menu_id_pressed(Global.EditMenu.UNDO_HISTORY)",
+		"Timeline must reuse the original Undo History dialog",
+	)
 	check_true(
 		accessory.frame_mark != null, "Timeline header must expose the current/total frame display"
 	)
