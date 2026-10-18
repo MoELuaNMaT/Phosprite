@@ -436,39 +436,23 @@ func test_single_frame_visibility_uses_eye_button_and_not_double_tap() -> void:
 	)
 
 
-func test_single_frame_long_press_enters_multiselect_and_taps_toggle_layers() -> void:
+func test_single_frame_long_press_opens_layer_menu_with_multiselect_action() -> void:
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	var card_source := FileAccess.get_file_as_string(CARD_SOURCE)
-	check_has(
-		source,
-		"ProjectCardGestureResolver.gd",
-		"single-frame layers must reuse the established long-press gesture timing",
-	)
-	check_has(
-		source,
-		"set_multiselect_mode(true, layer_index)",
-		"long press must enter multi-select with the held layer selected",
-	)
-	check_has(
-		source,
-		"project.selected_cels.erase(frame_layer)",
-		"multi-select taps must remove an already-selected layer",
-	)
-	check_has(
-		source,
-		"project.selected_cels.append(frame_layer)",
-		"multi-select taps must add an unselected layer",
-	)
-	check_has(
-		source,
-		"if project.selected_cels.size() <= 1:",
-		"multi-select must preserve the non-empty selected_cels contract",
-	)
-	check_has(
-		card_source,
-		"pointer_cancel.emit(layer_index)",
-		"drag past touch slop must cancel recognition so horizontal scrolling stays available",
-	)
+	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
+	check_has(source, "ProjectCardGestureResolver.gd", "reuse established gesture resolver")
+	check_has(source, "long_press_msec = CONTEXT_HOLD_MSEC", "single frame sets 650 ms hold")
+	check_has(source, "_show_card_context_menu(layer_index", "long press opens context menu")
+	check_has(scene, 'name="LayerContextMenu"', "single frame provides a context menu")
+	check_has(source, "Clipping mask (layer to right)", "clipping uses right-hand lower layer")
+	check_has(source, "Move layer left (up)", "left means above in single-frame order")
+	check_has(source, "Move layer right (down)", "right means below in single-frame order")
+	check_has(source, "Select multiple layers", "menu keeps multi-select accessible")
+	check_has(source, "set_multiselect_mode(true, _context_layer_index)", "selection mode works")
+	check_has(source, "project.selected_cels.erase(frame_layer)", "multi-select can remove a layer")
+	check_has(source, "project.selected_cels.append(frame_layer)", "multi-select can add a layer")
+	check_has(source, "if project.selected_cels.size() <= 1:", "selection stays nonempty")
+	check_has(card_source, "pointer_cancel.emit(layer_index)", "drag slop cancels hold for scroll")
 
 
 func test_single_frame_multiselect_exposes_requested_temporary_actions() -> void:
