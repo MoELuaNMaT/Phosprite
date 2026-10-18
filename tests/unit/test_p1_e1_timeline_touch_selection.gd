@@ -86,51 +86,17 @@ func test_multi_select_toggles_cels_and_whole_frames_without_empty_selection() -
 	)
 
 
-func test_double_tap_opens_existing_cel_and_frame_context_menus() -> void:
+func test_stationary_long_press_opens_existing_cel_and_frame_context_menus() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_eq(MANAGER.IOS_TOUCH_DOUBLE_TAP_MSEC, 350, "double-tap window must match Layer touch UX")
-	check_has(
-		src,
-		'target.get_node_or_null("PopupMenu")',
-		"E1 must reuse each existing Cel/Frame PopupMenu",
-	)
-	check_has(src, "popup.popup_on_parent", "double tap must open the existing context menu")
-	check_has(
-		src,
-		"_prepare_frame_popup",
-		"touch Frame popup must refresh the same existing action availability",
-	)
-
-
-func test_double_tap_restores_pre_first_tap_selection_before_opening_menu() -> void:
-	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(
-		src,
-		'"selected_cels": project.selected_cels.duplicate(true)',
-		"the first tap must retain an exact selection snapshot for double-tap rollback",
-	)
-	check_has(
-		src,
-		'"current_frame": project.current_frame',
-		"double-tap rollback must preserve the pre-first-tap current Frame",
-	)
-	check_has(
-		src,
-		'"current_layer": project.current_layer',
-		"double-tap rollback must preserve the pre-first-tap current Layer",
-	)
-	var restore_pos := src.find(
-		"_restore_last_tap_selection_snapshot()\n\t\t_show_existing_context_menu"
-	)
-	check_true(
-		restore_pos >= 0,
-		"confirmed double tap must restore the first tap before opening the existing menu",
-	)
-	check_has(
-		src,
-		"_last_tap_selection_snapshot.clear()",
-		"completed/cancelled gestures must not leak rollback state into the next tap",
-	)
+	check_eq(MANAGER.IOS_TOUCH_CONTEXT_HOLD_MSEC, 650, "stationary menu hold is 650 ms")
+	check_has(src, 'target.get_node_or_null("PopupMenu")', "reuse existing Cel/Frame menu")
+	check_has(src, "popup.popup_on_parent", "hold opens native context menu")
+	check_has(src, "_prepare_frame_popup", "Frame menu refreshes disabled actions")
+	check_has(src, 'candidate["menu_opened"] = true', "only open menu once per hold")
+	check_has(src, 'if bool(candidate.get("menu_opened", false)):', "release cannot select")
+	check_true(not src.contains("IOS_TOUCH_DOUBLE_TAP_MSEC"), "double tap no longer opens menu")
+	check_true(not src.contains("_register_tap("), "remove double-tap recognizer")
+	check_has(src, "_apply_touch_selection(kind, target)", "repeated taps remain single taps")
 
 
 func test_touch_selection_suppresses_synthetic_mouse_but_preserves_physical_pointer() -> void:
