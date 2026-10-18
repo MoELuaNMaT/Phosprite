@@ -426,9 +426,11 @@ func _on_popup_menu_id_pressed(id: int) -> void:
 		properties.layer_indices = _get_layer_indices()
 		properties.popup_centered_clamped()
 	elif id == MenuOptions.CLIPPING_MASK:
-		layer.clipping_mask = not layer.clipping_mask
-		popup_menu.set_item_checked(id, layer.clipping_mask)
-		clipping_mask_icon.visible = layer.clipping_mask
+		# Layer context actions must respect the swipe-selected batch.
+		var new_clipping_mask := not layer.clipping_mask
+		for selected_index in _get_layer_indices():
+			project.layers[selected_index].clipping_mask = new_clipping_mask
+		Global.animation_timeline.update_global_layer_buttons()
 		Global.canvas.update_all_layers = true
 		Global.canvas.draw_layers()
 	elif id == MenuOptions.FLATTEN:

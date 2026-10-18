@@ -421,7 +421,7 @@ func test_single_frame_visibility_uses_eye_button_and_not_double_tap() -> void:
 	check_has(
 		strip_source,
 		"func _on_resolved_single_tap(layer_index: int) -> void:\n\tif multiselect_mode:",
-		"single taps must still support normal and multiselect selection",
+		"single tap detects active multi-selection so it can exit and refocus",
 	)
 	check_true(
 		(
@@ -451,7 +451,9 @@ func test_single_frame_long_press_opens_layer_menu_with_multiselect_action() -> 
 	check_has(source, "set_multiselect_mode(true, _context_layer_index)", "selection mode works")
 	check_has(source, "project.selected_cels.erase(frame_layer)", "multi-select can remove a layer")
 	check_has(source, "project.selected_cels.append(frame_layer)", "multi-select can add a layer")
-	check_has(source, "if project.selected_cels.size() <= 1:", "selection stays nonempty")
+	check_has(
+		source, "if project.selected_cels.is_empty():", "swipe can clear the last selected layer"
+	)
 	check_has(card_source, "pointer_cancel.emit(layer_index)", "drag slop cancels hold for scroll")
 
 

@@ -5,8 +5,11 @@ signal pointer_down(layer_index: int, position: Vector2, timestamp_msec: int)
 signal pointer_up(layer_index: int, position: Vector2, timestamp_msec: int)
 signal pointer_cancel(layer_index: int)
 signal context_requested(layer_index: int, position: Vector2)
+signal swipe_selection(layer_index: int)
 
 const DRAG_CANCEL_DISTANCE := 24.0
+const SWIPE_DOWN_DISTANCE := 28.0
+const SWIPE_DOWN_DIRECTION_RATIO := 1.35
 const SYNTHETIC_MOUSE_SUPPRESSION_MSEC := 500
 const SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE := 32.0
 
@@ -136,10 +139,25 @@ func _finish_pointer(local_position: Vector2) -> void:
 
 
 func _maybe_cancel_pointer(local_position: Vector2) -> void:
-	if not _pointer_active or local_position.distance_to(_pointer_origin) <= DRAG_CANCEL_DISTANCE:
+	if not _pointer_active:
+		return
+	var delta := local_position - _pointer_origin
+	if _is_downward_selection_swipe(delta):
+		_pointer_active = false
+		pointer_cancel.emit(layer_index)
+		swipe_selection.emit(layer_index)
+		return
+	if local_position.distance_to(_pointer_origin) <= DRAG_CANCEL_DISTANCE:
+		return
+	# Keep a downward stroke eligible for multi-select until it reaches 28pt.
+	if delta.y > 0.0 and delta.y >= absf(delta.x) * SWIPE_DOWN_DIRECTION_RATIO:
 		return
 	_pointer_active = false
 	pointer_cancel.emit(layer_index)
+
+
+static func _is_downward_selection_swipe(delta: Vector2) -> bool:
+	return delta.y >= SWIPE_DOWN_DISTANCE and delta.y >= absf(delta.x) * SWIPE_DOWN_DIRECTION_RATIO
 
 
 func _to_global_position(local_position: Vector2) -> Vector2:
