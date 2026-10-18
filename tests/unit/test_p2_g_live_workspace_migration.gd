@@ -1518,9 +1518,7 @@ func test_timeline_header_combines_global_options_undo_redo_and_frame_mark() -> 
 	)
 	check_true(accessory.undo_button != null, "Timeline header must expose Undo")
 	check_true(accessory.redo_button != null, "Timeline header must expose Redo")
-	check_true(
-		accessory.undo_history_button != null, "Timeline header must expose Undo History"
-	)
+	check_true(accessory.undo_history_button != null, "Timeline header must expose Undo History")
 	if accessory.undo_history_button != null:
 		var header_items: Array = accessory.get("_managed_items")
 		check_eq(
