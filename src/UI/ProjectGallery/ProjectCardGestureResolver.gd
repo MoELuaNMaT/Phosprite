@@ -4,6 +4,7 @@ extends RefCounted
 enum ActionKind { SINGLE_TAP, LONG_PRESS }
 
 const LONG_PRESS_MSEC := 1000
+var long_press_msec := LONG_PRESS_MSEC
 
 var _pressed_path := ""
 var _pressed_since_msec := -1
@@ -49,7 +50,7 @@ func poll(now_msec: int) -> Array[Dictionary]:
 		not _pressed_path.is_empty()
 		and not _long_press_emitted
 		and _pressed_since_msec >= 0
-		and now_msec - _pressed_since_msec >= LONG_PRESS_MSEC
+		and now_msec - _pressed_since_msec >= long_press_msec
 	):
 		_long_press_emitted = true
 		actions.append(_action(ActionKind.LONG_PRESS, _pressed_path, _pressed_position))

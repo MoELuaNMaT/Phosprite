@@ -1,10 +1,26 @@
 class_name SingleFrameLayerStrip
 extends PanelContainer
 
+enum ContextAction {
+	PROPERTIES,
+	CLIPPING_MASK,
+	FLATTEN,
+	FLATTEN_VISIBLE,
+	MULTI_SELECT = 1000,
+	MOVE_LEFT,
+	MOVE_RIGHT,
+	DUPLICATE,
+	MERGE_RIGHT,
+	EFFECTS,
+	RENAME,
+}
+
 const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
 const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn")
 const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
+const CONTEXT_HOLD_MSEC := 650
+
 const VISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_visible.png")
 const INVISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_invisible.png")
 
@@ -15,6 +31,7 @@ var _gesture_resolver := GESTURE_RESOLVER.new()
 var _cards_by_layer: Dictionary = {}
 var _settings_layer: BaseLayer
 var _blend_menu_has_group := -1
+var _context_layer_index := -1
 
 @onready var layer_settings_panel := %LayerSettingsPanel as PanelContainer
 @onready var current_layer_name := %CurrentLayerName as Label
@@ -33,9 +50,12 @@ var _blend_menu_has_group := -1
 @onready var create_folder_button := %CreateFolder as Button
 @onready var merge_layers_button := %MergeLayers as Button
 @onready var duplicate_layers_button := %DuplicateLayers as Button
+@onready var layer_context_menu := %LayerContextMenu as PopupMenu
 
 
 func _ready() -> void:
+	_gesture_resolver.long_press_msec = CONTEXT_HOLD_MSEC
+	_setup_context_menu()
 	layer_opacity_slider.value_changed.connect(_on_layer_opacity_changed)
 	layer_visibility_button.pressed.connect(_on_layer_visibility_pressed)
 	layer_style_button.item_selected.connect(_on_blend_mode_selected)
@@ -100,6 +120,7 @@ func refresh() -> void:
 		card.pointer_down.connect(_on_card_pointer_down)
 		card.pointer_up.connect(_on_card_pointer_up)
 		card.pointer_cancel.connect(_on_card_pointer_cancel)
+		card.context_requested.connect(_show_card_context_menu)
 		_cards_by_layer[layer_index] = card
 	_update_multiselect_bar()
 	_sync_layer_settings()
@@ -404,6 +425,111 @@ func _on_card_pointer_cancel(layer_index: int) -> void:
 	_gesture_resolver.pointer_cancel(str(layer_index))
 
 
+func _setup_context_menu() -> void:
+	layer_context_menu.add_item(tr("Properties"), ContextAction.PROPERTIES)
+	layer_context_menu.add_item(tr("Rename"), ContextAction.RENAME)
+	layer_context_menu.add_check_item(
+		tr("Clipping mask (layer to right)"), ContextAction.CLIPPING_MASK
+	)
+	layer_context_menu.add_item(tr("Flatten"), ContextAction.FLATTEN)
+	layer_context_menu.add_item(tr("Flatten visible"), ContextAction.FLATTEN_VISIBLE)
+	layer_context_menu.add_separator()
+	layer_context_menu.add_item(tr("Move layer left (up)"), ContextAction.MOVE_LEFT)
+	layer_context_menu.add_item(tr("Move layer right (down)"), ContextAction.MOVE_RIGHT)
+	layer_context_menu.add_item(tr("Duplicate layer"), ContextAction.DUPLICATE)
+	layer_context_menu.add_item(tr("Merge right (down)"), ContextAction.MERGE_RIGHT)
+	layer_context_menu.add_item(tr("Layer effects"), ContextAction.EFFECTS)
+	layer_context_menu.add_separator()
+	layer_context_menu.add_item(tr("Select multiple layers"), ContextAction.MULTI_SELECT)
+	layer_context_menu.id_pressed.connect(_on_context_action)
+	layer_context_menu.about_to_popup.connect(_sync_context_menu)
+
+
+func _show_card_context_menu(layer_index: int, position: Vector2) -> void:
+	if not _is_valid_card_layer(layer_index):
+		return
+	_context_layer_index = layer_index
+	# Preserve an existing multi-selection; otherwise target the card under the finger.
+	if not _is_layer_selected(layer_index):
+		_select_only_layer(layer_index)
+	elif _bound_project.current_layer != layer_index:
+		_bound_project.change_cel(-1, layer_index)
+	_sync_context_menu()
+	layer_context_menu.popup_on_parent(Rect2(position, Vector2.ONE))
+
+
+func _sync_context_menu() -> void:
+	if not _is_valid_card_layer(_context_layer_index):
+		return
+	var project := _bound_project
+	var layer := project.layers[_context_layer_index]
+	var clip_index := layer_context_menu.get_item_index(ContextAction.CLIPPING_MASK)
+	layer_context_menu.set_item_checked(clip_index, layer.clipping_mask)
+	layer_context_menu.set_item_disabled(clip_index, _context_layer_index == 0)
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if not is_instance_valid(timeline):
+		return
+	# The horizontal card order is reversed from the underlying layer indices.
+	# A higher-index layer is left (above); a lower-index layer is right (below).
+	timeline._toggle_layer_buttons()
+	_set_context_disabled(ContextAction.MOVE_LEFT, timeline.move_up_layer.disabled)
+	_set_context_disabled(ContextAction.MOVE_RIGHT, timeline.move_down_layer.disabled)
+	_set_context_disabled(ContextAction.MERGE_RIGHT, timeline.merge_down_layer.disabled)
+	_set_context_disabled(ContextAction.EFFECTS, timeline.layer_fx.disabled)
+
+
+func _set_context_disabled(action: int, disabled: bool) -> void:
+	var index := layer_context_menu.get_item_index(action)
+	if index >= 0:
+		layer_context_menu.set_item_disabled(index, disabled)
+
+
+func _on_context_action(action: int) -> void:
+	if not _is_valid_card_layer(_context_layer_index):
+		return
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if not is_instance_valid(timeline):
+		return
+	var project := _bound_project
+	if not _is_layer_selected(_context_layer_index):
+		_select_only_layer(_context_layer_index)
+	match action:
+		ContextAction.MULTI_SELECT:
+			set_multiselect_mode(true, _context_layer_index)
+		ContextAction.PROPERTIES, ContextAction.RENAME:
+			var dialog := Global.control.find_child("LayerProperties") as AcceptDialog
+			if is_instance_valid(dialog):
+				dialog.set("layer_indices", _selected_layer_indices())
+				dialog.popup_centered_clamped()
+		ContextAction.CLIPPING_MASK:
+			if _context_layer_index <= 0:
+				return
+			# Reuse the Animation layer handler so its clipping icon and canvas
+			# refresh immediately when the command comes from Single Frame.
+			var visual_index := project.layers.size() - 1 - _context_layer_index
+			var button := timeline.layer_vbox.get_child(visual_index) as LayerButton
+			if is_instance_valid(button):
+				button._on_popup_menu_id_pressed(LayerButton.MenuOptions.CLIPPING_MASK)
+		ContextAction.FLATTEN:
+			timeline.flatten_layers.call_deferred(_selected_layer_indices(), false)
+		ContextAction.FLATTEN_VISIBLE:
+			timeline.flatten_layers.call_deferred(_selected_layer_indices(), true)
+		ContextAction.MOVE_LEFT:
+			if not timeline.move_up_layer.disabled:
+				timeline.change_layer_order(true)
+		ContextAction.MOVE_RIGHT:
+			if not timeline.move_down_layer.disabled:
+				timeline.change_layer_order(false)
+		ContextAction.DUPLICATE:
+			_duplicate_selected_layers()
+		ContextAction.MERGE_RIGHT:
+			if not timeline.merge_down_layer.disabled:
+				timeline._on_MergeDownLayer_pressed()
+		ContextAction.EFFECTS:
+			if not timeline.layer_fx.disabled:
+				timeline._on_layer_fx_pressed()
+
+
 func _consume_gesture_actions(actions: Array[Dictionary]) -> void:
 	for action: Dictionary in actions:
 		var layer_index := int(str(action.get("path", "-1")))
@@ -414,7 +540,7 @@ func _consume_gesture_actions(actions: Array[Dictionary]) -> void:
 			GESTURE_RESOLVER.ActionKind.SINGLE_TAP:
 				_on_resolved_single_tap(layer_index)
 			GESTURE_RESOLVER.ActionKind.LONG_PRESS:
-				_on_resolved_long_press(layer_index)
+				_show_card_context_menu(layer_index, action.get("position", Vector2.ZERO))
 
 
 func _on_resolved_single_tap(layer_index: int) -> void:
@@ -422,13 +548,6 @@ func _on_resolved_single_tap(layer_index: int) -> void:
 		_toggle_layer_in_multiselect(layer_index)
 		return
 	_select_only_layer(layer_index)
-
-
-func _on_resolved_long_press(layer_index: int) -> void:
-	if not multiselect_mode:
-		set_multiselect_mode(true, layer_index)
-	elif not _is_layer_selected(layer_index):
-		_toggle_layer_in_multiselect(layer_index)
 
 
 func _select_only_layer(layer_index: int) -> void:
