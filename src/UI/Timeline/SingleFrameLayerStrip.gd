@@ -1,12 +1,6 @@
 class_name SingleFrameLayerStrip
 extends PanelContainer
 
-const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
-const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn")
-const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
-const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
-const CONTEXT_HOLD_MSEC := 650
-
 enum ContextAction {
 	PROPERTIES,
 	CLIPPING_MASK,
@@ -19,6 +13,13 @@ enum ContextAction {
 	MERGE_RIGHT,
 	EFFECTS,
 }
+
+const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
+const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn")
+const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
+const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
+const CONTEXT_HOLD_MSEC := 650
+
 const VISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_visible.png")
 const INVISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_invisible.png")
 
