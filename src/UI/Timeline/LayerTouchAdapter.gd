@@ -2,6 +2,9 @@ class_name LayerTouchAdapter
 extends Node
 
 const IOS_TOUCH_TAP_SLOP_PX := 12.0
+const IOS_LAYER_SWIPE_DISTANCE_PX := 28.0
+const IOS_LAYER_SWIPE_DIRECTION_RATIO := 1.35
+const LAYER_SWIPE_MULTI_META := &"phosprite_animation_layer_swipe_multiselect"
 const IOS_TOUCH_CONTEXT_HOLD_MSEC := 650
 const IOS_TOUCH_REORDER_HOLD_MSEC := 450
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_layer_touch_mouse_filter"
@@ -139,6 +142,7 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 			"cancelled": false,
 			"reordering": false,
 			"menu_opened": false,
+			"swipe_selected": false,
 		}
 		set_process(true)
 		return true
@@ -159,7 +163,9 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 
 	_ios_touch_candidates.erase(event.index)
 	set_process(not _ios_touch_candidates.is_empty())
-	if bool(candidate.get("menu_opened", false)):
+	if bool(candidate.get("menu_opened", false)) or bool(
+		candidate.get("swipe_selected", false)
+	):
 		get_viewport().set_input_as_handled()
 		return true
 	if bool(candidate.get("cancelled", false)):
@@ -169,6 +175,10 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 		return true
 
 	_select_layer_for_touch()
+	# A tap always exits swipe multi-selection and focuses just this layer.
+	var project := Global.current_project
+	if is_instance_valid(project) and project.has_meta(LAYER_SWIPE_MULTI_META):
+		project.remove_meta(LAYER_SWIPE_MULTI_META)
 	get_viewport().set_input_as_handled()
 	return true
 
@@ -179,6 +189,9 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 	var candidate: Dictionary = _ios_touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
 		return false
+	if bool(candidate.get("swipe_selected", false)):
+		get_viewport().set_input_as_handled()
+		return true
 	if bool(candidate.get("menu_opened", false)):
 		get_viewport().set_input_as_handled()
 		return true
@@ -192,6 +205,19 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 	var pressed_msec: int = int(candidate.get("pressed_msec", Time.get_ticks_msec()))
 	var held_msec := Time.get_ticks_msec() - pressed_msec
 	var origin: Vector2 = candidate.get("origin", event.position)
+	var delta := event.position - origin
+	# Holding then moving still begins reorder. A quick horizontal swipe
+	# instead toggles only the layer-name row, without scrolling the timeline.
+	if (
+		held_msec < IOS_TOUCH_REORDER_HOLD_MSEC
+		and absf(delta.x) >= IOS_LAYER_SWIPE_DISTANCE_PX
+		and absf(delta.x) >= absf(delta.y) * IOS_LAYER_SWIPE_DIRECTION_RATIO
+	):
+		candidate["swipe_selected"] = true
+		_ios_touch_candidates[event.index] = candidate
+		_toggle_swipe_layer_selection()
+		get_viewport().set_input_as_handled()
+		return true
 	if (
 		held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC
 		and (origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX)
@@ -202,6 +228,11 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 		return true
 
 	if origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX:
+		# A horizontal gesture stays eligible for a swipe until it reaches
+		# the swipe threshold; vertical gestures keep native scrolling.
+		if absf(delta.x) > absf(delta.y) * IOS_LAYER_SWIPE_DIRECTION_RATIO:
+			_ios_touch_candidates[event.index] = candidate
+			return true
 		candidate["cancelled"] = true
 		_ios_touch_candidates[event.index] = candidate
 		# Before reorder ownership, vertical movement belongs to the Timeline ScrollContainer.
@@ -412,6 +443,39 @@ func _timeline_scroll() -> ScrollContainer:
 func _select_layer_for_touch() -> void:
 	Global.transform_content_confirmed.emit()
 	_layer_button._select_current_layer()
+
+
+func _toggle_swipe_layer_selection() -> void:
+	var project := Global.current_project
+	if not is_instance_valid(project):
+		return
+	Global.transform_content_confirmed.emit()
+	var layer_index := _layer_button.layer_index
+	if not project.has_meta(LAYER_SWIPE_MULTI_META):
+		# The focused layer is not a multi-selection until the first swipe.
+		project.selected_cels.clear()
+		project.set_meta(LAYER_SWIPE_MULTI_META, true)
+	var already_selected := false
+	for frame_layer in project.selected_cels:
+		if int(frame_layer[1]) == layer_index:
+			already_selected = true
+			break
+	if already_selected:
+		for frame in range(project.frames.size()):
+			project.selected_cels.erase([frame, layer_index])
+	else:
+		for frame in range(project.frames.size()):
+			var frame_layer := [frame, layer_index]
+			if not project.selected_cels.has(frame_layer):
+				project.selected_cels.append(frame_layer)
+	if project.selected_cels.is_empty():
+		# Project.change_cel() restores one Cel when empty; avoid that so
+		# a repeated swipe can visibly deselect the final layer.
+		Global.cel_switched.emit()
+	elif already_selected:
+		project.change_cel(-1, int(project.selected_cels[0][1]))
+	else:
+		project.change_cel(-1, layer_index)
 
 
 func _on_popup_menu_id_pressed(id: int) -> void:
