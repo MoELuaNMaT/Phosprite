@@ -136,15 +136,17 @@ func test_single_frame_selection_border_is_stable_while_pressing_and_holding() -
 	check_has(card, "func _draw()", "render stable overlay independently of input feedback")
 	check_has(card, "in _project.selected_cels", "selection visual derives from Project data")
 	check_has(card, "queue_redraw()", "refresh outline only when selected state changes")
-	var scene := FileAccess.get_file_as_string(
-		"res://src/UI/Timeline/SingleFrameLayerCard.tscn"
-	)
+	var scene := FileAccess.get_file_as_string("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
 	check_has(scene, "toggle_mode = false", "card cannot toggle its highlight at pointer down")
 
 
 func test_animation_swipe_visual_bounces_without_reordering_layers() -> void:
 	var adapter := FileAccess.get_file_as_string(ANIMATION_SOURCE)
-	check_has(adapter, 'call_deferred("_animate_swipe_feedback", signf(delta.x))', "swipe feedback follows direction")
+	check_has(
+		adapter,
+		'call_deferred("_animate_swipe_feedback", signf(delta.x))',
+		"swipe feedback follows direction"
+	)
 	check_has(adapter, '"position:x"', "slide visual horizontally without changing hierarchy")
 	check_has(adapter, "direction * 14.0", "swipe nudge is short, not a drag-away")
 	check_has(adapter, "Tween.TRANS_BACK", "button springs back to exact home")
