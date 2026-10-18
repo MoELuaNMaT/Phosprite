@@ -457,7 +457,7 @@ func test_single_frame_long_press_opens_layer_menu_with_multiselect_action() -> 
 	check_has(card_source, "pointer_cancel.emit(layer_index)", "drag slop cancels hold for scroll")
 
 
-func test_single_frame_swipe_selection_removes_obsolete_sidebar_without_losing_batch_actions() -> void:
+func test_single_frame_multiselect_removes_sidebar_and_keeps_batch_actions() -> void:
 	var scene := FileAccess.get_file_as_string(STRIP_SCENE)
 	var source := FileAccess.get_file_as_string(STRIP_SOURCE)
 	check_true(not scene.contains('name="MultiSelectBar"'), "old right sidebar must be absent")
