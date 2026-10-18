@@ -3,7 +3,7 @@ extends Node
 enum TouchTargetKind { NONE, CEL, FRAME }
 
 const IOS_TOUCH_TAP_SLOP_PX := 12.0
-const IOS_TOUCH_DOUBLE_TAP_MSEC := 350
+const IOS_TOUCH_CONTEXT_HOLD_MSEC := 650
 const IOS_TOUCH_REORDER_HOLD_MSEC := 450
 const IOS_MULTI_SELECT_WIDTH := 72.0
 const IOS_MULTI_SELECT_HEIGHT := 44.0
@@ -27,10 +27,6 @@ var _timeline: Control
 var _multi_select_button: Button
 var _touch_candidates: Dictionary = {}
 var _suppressed_controls: Array[Control] = []
-var _last_tap_msec := -1
-var _last_tap_position := Vector2.INF
-var _last_tap_key := ""
-var _last_tap_selection_snapshot: Dictionary = {}
 var _active_reorder_touch := -1
 var _reorder_kind := TouchTargetKind.NONE
 var _reorder_data: Array = []
@@ -69,18 +65,33 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if _active_reorder_touch < 0:
+	if _active_reorder_touch >= 0:
+		if not _touch_candidates.has(_active_reorder_touch):
+			_finish_reorder()
+			return
+		var moving: Dictionary = _touch_candidates[_active_reorder_touch]
+		_update_reorder_feedback(moving.get("position", Vector2.ZERO), delta)
+		return
+	var now := Time.get_ticks_msec()
+	for touch_index in _touch_candidates:
+		var candidate: Dictionary = _touch_candidates[touch_index]
+		if bool(candidate.get("cancelled", false)) or bool(candidate.get("menu_opened", false)):
+			continue
+		if now - int(candidate.get("pressed_msec", now)) < IOS_TOUCH_CONTEXT_HOLD_MSEC:
+			continue
+		var origin: Vector2 = candidate.get("origin", Vector2.ZERO)
+		var position: Vector2 = candidate.get("position", origin)
+		if origin.distance_to(position) > IOS_TOUCH_TAP_SLOP_PX:
+			continue
+		var target := candidate.get("target") as Control
+		if not is_instance_valid(target):
+			continue
+		candidate["menu_opened"] = true
+		_touch_candidates[touch_index] = candidate
+		_show_existing_context_menu(int(candidate.get("kind", TouchTargetKind.NONE)), target, position)
+		break
+	if _touch_candidates.is_empty():
 		set_process(false)
-		return
-	if not _touch_candidates.has(_active_reorder_touch):
-		_finish_reorder()
-		return
-	var candidate: Dictionary = _touch_candidates[_active_reorder_touch]
-	if not bool(candidate.get("reordering", false)):
-		_finish_reorder()
-		return
-	var screen_position: Vector2 = candidate.get("position", Vector2.ZERO)
-	_update_reorder_feedback(screen_position, delta)
 
 
 func _install_ios_timeline_selection() -> void:
@@ -118,7 +129,7 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 		if was_reordering or event.index == _active_reorder_touch:
 			_finish_reorder()
 			get_viewport().set_input_as_handled()
-		_reset_last_tap()
+		set_process(not _touch_candidates.is_empty())
 		return was_reordering
 
 	if event.pressed:
@@ -135,7 +146,9 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 			"kind": int(target_data.get("kind", TouchTargetKind.NONE)),
 			"cancelled": false,
 			"reordering": false,
+			"menu_opened": false,
 		}
+		set_process(true)
 		return true
 
 	if not _touch_candidates.has(event.index):
@@ -148,30 +161,25 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 		_commit_reorder_if_valid()
 		_touch_candidates.erase(event.index)
 		_finish_reorder()
+		set_process(not _touch_candidates.is_empty())
 		get_viewport().set_input_as_handled()
 		return true
 
 	_touch_candidates.erase(event.index)
+	set_process(not _touch_candidates.is_empty())
+	if bool(candidate.get("menu_opened", false)):
+		get_viewport().set_input_as_handled()
+		return true
 	if bool(candidate.get("cancelled", false)):
 		return false
 	var origin: Vector2 = candidate.get("origin", event.position)
 	if origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX:
-		_reset_last_tap()
 		return false
 	var target := candidate.get("target") as Control
 	if not is_instance_valid(target):
 		return false
 	var kind := int(candidate.get("kind", TouchTargetKind.NONE))
-	var tap_key := _touch_target_key(kind, target)
-	if _register_tap(tap_key, event.position):
-		# Single taps stay immediate. A confirmed double tap restores the exact
-		# pre-first-tap selection/focus state before opening the existing menu.
-		_restore_last_tap_selection_snapshot()
-		_show_existing_context_menu(kind, target, event.position)
-		_reset_last_tap()
-	else:
-		_last_tap_selection_snapshot = _capture_selection_snapshot()
-		_apply_touch_selection(kind, target)
+	_apply_touch_selection(kind, target)
 	get_viewport().set_input_as_handled()
 	return true
 
@@ -182,6 +190,9 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 	var candidate: Dictionary = _touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
 		return false
+	if bool(candidate.get("menu_opened", false)):
+		get_viewport().set_input_as_handled()
+		return true
 	candidate["position"] = event.position
 	if bool(candidate.get("reordering", false)):
 		_touch_candidates[event.index] = candidate
@@ -191,17 +202,18 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 
 	var pressed_msec := int(candidate.get("pressed_msec", Time.get_ticks_msec()))
 	var held_msec := Time.get_ticks_msec() - pressed_msec
-	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC:
+	var origin: Vector2 = candidate.get("origin", event.position)
+	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC and (
+		origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX
+	):
 		_touch_candidates[event.index] = candidate
 		if _begin_reorder(event.index, event.position):
 			get_viewport().set_input_as_handled()
 			return true
 
-	var origin: Vector2 = candidate.get("origin", event.position)
 	if origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX:
 		candidate["cancelled"] = true
 		_touch_candidates[event.index] = candidate
-		_reset_last_tap()
 		# Before long-press ownership, movement belongs to the existing Timeline scroll views.
 		return false
 	_touch_candidates[event.index] = candidate
@@ -227,7 +239,6 @@ func _begin_reorder(touch_index: int, screen_position: Vector2) -> bool:
 	_reorder_kind = kind
 	_reorder_data = data
 	_reorder_source = source
-	_reset_last_tap()
 	_capture_managed_scroll()
 	_create_reorder_preview(source)
 	_create_source_outline(source)
@@ -593,28 +604,6 @@ func _find_touch_target(screen_position: Vector2) -> Dictionary:
 	return {}
 
 
-func _capture_selection_snapshot() -> Dictionary:
-	var project := Global.current_project
-	return {
-		"selected_cels": project.selected_cels.duplicate(true),
-		"current_frame": project.current_frame,
-		"current_layer": project.current_layer,
-	}
-
-
-func _restore_last_tap_selection_snapshot() -> void:
-	if _last_tap_selection_snapshot.is_empty():
-		return
-	var project := Global.current_project
-	var selected_cels: Array = _last_tap_selection_snapshot.get("selected_cels", [])
-	project.selected_cels.clear()
-	for frame_layer in selected_cels:
-		project.selected_cels.append(frame_layer)
-	var frame := int(_last_tap_selection_snapshot.get("current_frame", project.current_frame))
-	var layer := int(_last_tap_selection_snapshot.get("current_layer", project.current_layer))
-	project.change_cel(frame, layer)
-
-
 func _apply_touch_selection(kind: int, target: Control) -> void:
 	match kind:
 		TouchTargetKind.CEL:
@@ -704,30 +693,6 @@ func _prepare_frame_popup(popup: PopupMenu, frame: int) -> void:
 	popup.set_item_disabled(FRAME_MENU_REVERSE, single_frame or project.selected_cels.size() <= 1)
 
 
-func _touch_target_key(kind: int, target: Control) -> String:
-	if kind == TouchTargetKind.CEL:
-		return "cel:%s:%s" % [int(target.get("frame")), int(target.get("layer"))]
-	if kind == TouchTargetKind.FRAME:
-		return "frame:%s" % int(target.get("frame"))
-	return ""
-
-
-func _register_tap(tap_key: String, screen_position: Vector2) -> bool:
-	var now := Time.get_ticks_msec()
-	var is_double_tap := (
-		_last_tap_msec >= 0
-		and tap_key == _last_tap_key
-		and now - _last_tap_msec <= IOS_TOUCH_DOUBLE_TAP_MSEC
-		and _last_tap_position.distance_to(screen_position) <= IOS_TOUCH_TAP_SLOP_PX
-	)
-	if is_double_tap:
-		return true
-	_last_tap_msec = now
-	_last_tap_position = screen_position
-	_last_tap_key = tap_key
-	return false
-
-
 func _suppress_synthetic_mouse(control: Control) -> void:
 	if not is_instance_valid(control):
 		return
@@ -741,7 +706,6 @@ func _suppress_synthetic_mouse(control: Control) -> void:
 func _restore_pointer_timeline_ui() -> void:
 	_finish_reorder()
 	_touch_candidates.clear()
-	_reset_last_tap()
 	for control in _suppressed_controls:
 		if not is_instance_valid(control):
 			continue
@@ -752,7 +716,7 @@ func _restore_pointer_timeline_ui() -> void:
 
 
 func _on_multi_select_toggled(_enabled: bool) -> void:
-	_reset_last_tap()
+	pass
 
 
 func _on_project_about_to_switch() -> void:
@@ -762,18 +726,10 @@ func _on_project_about_to_switch() -> void:
 func _on_project_switched() -> void:
 	if is_instance_valid(_multi_select_button):
 		_multi_select_button.button_pressed = false
-	_reset_last_tap()
 
 
 func _multi_select_enabled() -> bool:
 	return is_instance_valid(_multi_select_button) and _multi_select_button.button_pressed
-
-
-func _reset_last_tap() -> void:
-	_last_tap_msec = -1
-	_last_tap_position = Vector2.INF
-	_last_tap_key = ""
-	_last_tap_selection_snapshot.clear()
 
 
 func _is_ready_for_touch() -> bool:
