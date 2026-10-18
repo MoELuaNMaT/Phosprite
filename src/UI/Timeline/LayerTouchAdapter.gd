@@ -28,6 +28,8 @@ var _reorder_preview: Control = null
 var _source_outline: Control = null
 var _drop_target: Control = null
 var _drop_local_position := Vector2.ZERO
+var _swipe_feedback_tween: Tween
+var _swipe_feedback_home_x := 0.0
 
 
 func _ready() -> void:
@@ -40,6 +42,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_stop_swipe_feedback()
 	_finish_reorder()
 
 
@@ -214,6 +217,9 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 		candidate["swipe_selected"] = true
 		_ios_touch_candidates[event.index] = candidate
 		_toggle_swipe_layer_selection()
+		# Feedback is visual only: slide the name button briefly, then spring
+		# back. Do not reorder or translate the actual layer container.
+		call_deferred("_animate_swipe_feedback", signf(delta.x))
 		get_viewport().set_input_as_handled()
 		return true
 	if (
@@ -451,6 +457,28 @@ func _select_layer_for_touch() -> void:
 	_layer_button._select_current_layer()
 
 
+func _animate_swipe_feedback(direction: float) -> void:
+	if not is_instance_valid(_main_button):
+		return
+	_stop_swipe_feedback()
+	_swipe_feedback_home_x = _main_button.position.x
+	_swipe_feedback_tween = create_tween()
+	_swipe_feedback_tween.tween_property(
+		_main_button, "position:x", _swipe_feedback_home_x + direction * 14.0, 0.10
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_swipe_feedback_tween.tween_property(
+		_main_button, "position:x", _swipe_feedback_home_x, 0.18
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _stop_swipe_feedback() -> void:
+	if is_instance_valid(_swipe_feedback_tween) and _swipe_feedback_tween.is_running():
+		_swipe_feedback_tween.kill()
+		if is_instance_valid(_main_button):
+			_main_button.position.x = _swipe_feedback_home_x
+	_swipe_feedback_tween = null
+
+
 func _toggle_swipe_layer_selection() -> void:
 	var project := Global.current_project
 	if not is_instance_valid(project):
@@ -498,6 +526,7 @@ func _enter_ios_touch_layer_ui() -> void:
 
 
 func _restore_pointer_layer_ui() -> void:
+	_stop_swipe_feedback()
 	if not _ios_touch_ui_mode:
 		return
 	_finish_reorder()
