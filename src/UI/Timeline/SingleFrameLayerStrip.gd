@@ -127,7 +127,6 @@ func sync_selection() -> void:
 	for child in layer_row.get_children():
 		if child is SingleFrameLayerCard:
 			(child as SingleFrameLayerCard)._sync_selected()
-	_update_multiselect_bar()
 	_sync_layer_settings()
 	call_deferred("_ensure_current_layer_visible")
 
@@ -148,7 +147,6 @@ func set_multiselect_mode(enabled: bool, initial_layer := -1) -> void:
 		project.selected_cels.clear()
 		project.selected_cels.append([project.current_frame, project.current_layer])
 		project.change_cel(-1, project.current_layer)
-	_update_multiselect_bar()
 
 
 func _bind_project(project: Project) -> void:
@@ -615,19 +613,24 @@ func _is_valid_card_layer(layer_index: int) -> bool:
 
 
 func _selected_layer_indices() -> PackedInt32Array:
+	if not is_instance_valid(_bound_project):
+		return PackedInt32Array()
+	return _selected_layers_for_frame(
+		_bound_project.selected_cels, _bound_project.current_frame, _bound_project.layers.size()
+	)
+
+
+static func _selected_layers_for_frame(
+	selected_cels: Array, frame_index: int, layer_count: int
+) -> PackedInt32Array:
+	# Project.selected_cels is the source of truth, not a transient Button state
+	# or the obsolete multi-select counter. Deduplicate by layer index.
 	var indices := PackedInt32Array()
-	var project := _bound_project
-	if project == null:
-		return indices
-	for cel in project.selected_cels:
-		if cel.size() < 2:
+	for cel in selected_cels:
+		if cel.size() < 2 or int(cel[0]) != frame_index:
 			continue
 		var layer_index := int(cel[1])
-		if (
-			layer_index >= 0
-			and layer_index < project.layers.size()
-			and not indices.has(layer_index)
-		):
+		if layer_index >= 0 and layer_index < layer_count and not indices.has(layer_index):
 			indices.append(layer_index)
 	indices.sort()
 	return indices
@@ -665,7 +668,6 @@ func _on_merge_layers_pressed() -> void:
 	if not _can_merge_layers(indices) or not is_instance_valid(Global.animation_timeline):
 		return
 	Global.animation_timeline.flatten_layers(indices, false)
-	call_deferred("_update_multiselect_bar")
 
 
 func _on_duplicate_layers_pressed() -> void:
