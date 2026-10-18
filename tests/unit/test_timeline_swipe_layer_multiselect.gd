@@ -56,14 +56,28 @@ func test_single_frame_swipe_requires_downward_movement() -> void:
 
 func test_animation_swipe_selection_uses_shared_layer_model_and_resets_on_tap() -> void:
 	var source := FileAccess.get_file_as_string(ANIMATION_SOURCE)
-	check_has(source, "_main_button.get_global_rect().has_point", "swipes are limited to layer-name buttons")
+	check_has(
+		source,
+		"_main_button.get_global_rect().has_point",
+		"swipes are limited to layer-name buttons"
+	)
 	check_has(source, '"swipe_selected": false', "gesture initially owns no selection change")
 	check_has(source, 'candidate["swipe_selected"] = true', "a swipe is consumed only once")
-	check_has(source, "project.set_meta(LAYER_SWIPE_MULTI_META, true)", "first swipe starts additive mode")
-	check_has(source, "project.selected_cels.clear()", "first swipe ignores unrelated focus selection")
-	check_has(source, "project.selected_cels.erase([frame, layer_index])", "reswipe deselects the layer")
-	check_has(source, "project.selected_cels.append(frame_layer)", "swipes add layers across frames")
-	check_has(source, "project.remove_meta(LAYER_SWIPE_MULTI_META)", "a normal tap exits swipe selection")
+	check_has(
+		source, "project.set_meta(LAYER_SWIPE_MULTI_META, true)", "first swipe starts additive mode"
+	)
+	check_has(
+		source, "project.selected_cels.clear()", "first swipe ignores unrelated focus selection"
+	)
+	check_has(
+		source, "project.selected_cels.erase([frame, layer_index])", "reswipe deselects the layer"
+	)
+	check_has(
+		source, "project.selected_cels.append(frame_layer)", "swipes add layers across frames"
+	)
+	check_has(
+		source, "project.remove_meta(LAYER_SWIPE_MULTI_META)", "a normal tap exits swipe selection"
+	)
 	check_has(source, "Global.cel_switched.emit()", "empty selection updates the button visuals")
 	check_has(source, 'candidate.get("menu_opened", false)', "long-press popups remain active")
 	check_has(source, "_build_layer_drag_data", "existing hold-and-drag behavior remains")
@@ -74,7 +88,9 @@ func test_single_frame_swipe_selection_preserves_long_press_batch_context() -> v
 	var strip := FileAccess.get_file_as_string(SINGLE_FRAME_STRIP_SOURCE)
 	check_has(card, "signal swipe_selection(layer_index: int)", "cards expose down-swipe selection")
 	check_has(card, "pointer_cancel.emit(layer_index)", "swipe consumes long-press recognition")
-	check_has(strip, "card.swipe_selection.connect(_on_card_swipe_selection)", "strip receives swipes")
+	check_has(
+		strip, "card.swipe_selection.connect(_on_card_swipe_selection)", "strip receives swipes"
+	)
 	check_has(strip, "set_multiselect_mode(true)", "first down swipe starts multi-selection")
 	check_has(strip, "_toggle_layer_in_multiselect(layer_index)", "repeat down swipe toggles")
 	check_has(strip, "set_multiselect_mode(false)", "single tap exits multi-selection")
