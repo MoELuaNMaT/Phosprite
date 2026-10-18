@@ -491,7 +491,6 @@ func _on_context_action(action: int) -> void:
 	var project := _bound_project
 	if not _is_layer_selected(_context_layer_index):
 		_select_only_layer(_context_layer_index)
-	var layer := project.layers[_context_layer_index]
 	match action:
 		ContextAction.MULTI_SELECT:
 			set_multiselect_mode(true, _context_layer_index)
@@ -503,9 +502,12 @@ func _on_context_action(action: int) -> void:
 		ContextAction.CLIPPING_MASK:
 			if _context_layer_index <= 0:
 				return
-			layer.clipping_mask = not layer.clipping_mask
-			Global.canvas.update_all_layers = true
-			Global.canvas.draw_layers()
+			# Reuse the Animation layer handler so its clipping icon and canvas
+			# refresh immediately when the command comes from Single Frame.
+			var visual_index := project.layers.size() - 1 - _context_layer_index
+			var button := timeline.layer_vbox.get_child(visual_index) as LayerButton
+			if is_instance_valid(button):
+				button._on_popup_menu_id_pressed(LayerButton.MenuOptions.CLIPPING_MASK)
 		ContextAction.FLATTEN:
 			timeline.flatten_layers.call_deferred(_selected_layer_indices(), false)
 		ContextAction.FLATTEN_VISIBLE:
