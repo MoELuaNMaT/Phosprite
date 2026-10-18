@@ -56,15 +56,19 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	var compact := menu.get("_compact_edit_menu") as PopupMenu
 	check_true(compact != null, "Edit menu has a compact view")
 	if compact != null:
-		check_eq(compact.item_count, 3, "only Undo and Redo are omitted")
-		check_eq(compact.get_item_id(0), Global.EditMenu.UNDO_HISTORY, "Undo History stays")
-		check_eq(compact.get_item_id(1), Global.EditMenu.COPY, "Copy stays")
-		check_eq(compact.get_item_id(2), Global.EditMenu.NEW_BRUSH, "New Brush stays")
-		check_true(compact.is_item_disabled(2), "item disabled state follows original")
+		check_eq(compact.item_count, 2, "Undo, Redo, History and Preferences are omitted")
+		check_eq(compact.get_item_id(0), Global.EditMenu.COPY, "Copy stays")
+		check_eq(compact.get_item_id(1), Global.EditMenu.NEW_BRUSH, "New Brush stays")
+		check_true(compact.is_item_disabled(1), "item disabled state follows original")
 		edit.set_item_disabled(edit.get_item_index(Global.EditMenu.NEW_BRUSH), false)
 		menu.call("_sync_compact_edit_menu", compact)
-		check_true(not compact.is_item_disabled(2), "compact state follows source updates")
+		check_true(not compact.is_item_disabled(1), "compact state follows source updates")
 	check_eq(edit.item_count, 6, "original Edit menu and shortcuts are intact")
+	check_eq(
+		compact.get_item_index(Global.EditMenu.UNDO_HISTORY),
+		-1,
+		"Undo History must only appear in Timeline",
+	)
 	check_eq(original["File"].get_parent(), bar, "File menu stays live but offscreen")
 	check_eq(edit.get_parent(), bar, "original Edit menu stays live but offscreen")
 	check_eq(original["Select"].get_parent(), bar, "Select menu stays live for shortcuts")
