@@ -186,8 +186,9 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 	var pressed_msec: int = int(candidate.get("pressed_msec", Time.get_ticks_msec()))
 	var held_msec := Time.get_ticks_msec() - pressed_msec
 	var origin: Vector2 = candidate.get("origin", event.position)
-	if held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC and (
-		origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX
+	if (
+		held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC
+		and (origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX)
 	):
 		_ios_touch_candidates[event.index] = candidate
 		_begin_reorder(event.index, event.position)
