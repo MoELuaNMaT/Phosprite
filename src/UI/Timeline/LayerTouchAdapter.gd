@@ -463,12 +463,16 @@ func _animate_swipe_feedback(direction: float) -> void:
 	_stop_swipe_feedback()
 	_swipe_feedback_home_x = _main_button.position.x
 	_swipe_feedback_tween = create_tween()
-	_swipe_feedback_tween.tween_property(
+	var push := _swipe_feedback_tween.tween_property(
 		_main_button, "position:x", _swipe_feedback_home_x + direction * 14.0, 0.10
-	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_swipe_feedback_tween.tween_property(
+	)
+	push.set_trans(Tween.TRANS_SINE)
+	push.set_ease(Tween.EASE_OUT)
+	var spring := _swipe_feedback_tween.tween_property(
 		_main_button, "position:x", _swipe_feedback_home_x, 0.18
-	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	)
+	spring.set_trans(Tween.TRANS_BACK)
+	spring.set_ease(Tween.EASE_OUT)
 
 
 func _stop_swipe_feedback() -> void:
