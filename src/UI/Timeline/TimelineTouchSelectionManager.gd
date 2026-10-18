@@ -680,6 +680,19 @@ func _show_existing_context_menu(kind: int, target: Control, screen_position: Ve
 	var popup := target.get_node_or_null("PopupMenu") as PopupMenu
 	if not is_instance_valid(popup):
 		return
+	# A held, unselected item becomes the action target. Holding any already
+	# selected item preserves the group, allowing multi-item context actions.
+	var project := Global.current_project
+	var has_target := false
+	if kind == TouchTargetKind.CEL:
+		has_target = [int(target.get("frame")), int(target.get("layer"))] in project.selected_cels
+	elif kind == TouchTargetKind.FRAME:
+		for cel in project.selected_cels:
+			if int(cel[0]) == int(target.get("frame")):
+				has_target = true
+				break
+	if not has_target:
+		_apply_touch_selection(kind, target)
 	if kind == TouchTargetKind.FRAME:
 		_prepare_frame_popup(popup, int(target.get("frame")))
 	popup.popup_on_parent(Rect2(screen_position, Vector2.ONE))
