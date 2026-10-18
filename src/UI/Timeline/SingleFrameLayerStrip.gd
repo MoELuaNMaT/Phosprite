@@ -450,6 +450,8 @@ func _show_card_context_menu(layer_index: int, position: Vector2) -> void:
 	# Preserve an existing multi-selection; otherwise target the card under the finger.
 	if not _is_layer_selected(layer_index):
 		_select_only_layer(layer_index)
+	elif _bound_project.current_layer != layer_index:
+		_bound_project.change_cel(-1, layer_index)
 	_sync_context_menu()
 	layer_context_menu.popup_on_parent(Rect2(position, Vector2.ONE))
 
