@@ -270,8 +270,8 @@ func test_single_frame_layer_strip_is_horizontal_and_keeps_add_layer_at_tail() -
 	)
 	check_has(
 		source,
-		"layer_row.move_child(card, layer_row.get_child_count() - 3)",
-		"layer cards must stay before the temporary menu and trailing new-layer button",
+		"layer_row.move_child(card, layer_row.get_child_count() - 2)",
+		"layer cards must stay before the trailing new-layer button",
 	)
 	check_has(
 		source,
