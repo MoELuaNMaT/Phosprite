@@ -12,6 +12,7 @@ enum ContextAction {
 	DUPLICATE,
 	MERGE_RIGHT,
 	EFFECTS,
+	RENAME,
 }
 
 const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.tscn")
@@ -426,6 +427,7 @@ func _on_card_pointer_cancel(layer_index: int) -> void:
 
 func _setup_context_menu() -> void:
 	layer_context_menu.add_item(tr("Properties"), ContextAction.PROPERTIES)
+	layer_context_menu.add_item(tr("Rename"), ContextAction.RENAME)
 	layer_context_menu.add_check_item(
 		tr("Clipping mask (layer to right)"), ContextAction.CLIPPING_MASK
 	)
@@ -494,7 +496,7 @@ func _on_context_action(action: int) -> void:
 	match action:
 		ContextAction.MULTI_SELECT:
 			set_multiselect_mode(true, _context_layer_index)
-		ContextAction.PROPERTIES:
+		ContextAction.PROPERTIES, ContextAction.RENAME:
 			var dialog := Global.control.find_child("LayerProperties") as AcceptDialog
 			if is_instance_valid(dialog):
 				dialog.set("layer_indices", _selected_layer_indices())
