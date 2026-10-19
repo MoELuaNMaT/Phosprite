@@ -3,18 +3,22 @@ extends Node
 
 ## Central iPad GUI policy for touch-first interaction.
 ##
-## Normal GUI Controls still use Godot's touch-to-mouse emulation. This node keeps
-## the emulated pointer from leaking desktop hover tooltips or button focus rings
-## into direct-touch interaction, while restoring normal hover semantics when a
-## real mouse or trackpad is used.
+## Godot can append a Shortcut to a BaseButton tooltip even when tooltip_text
+## is empty. Disable shortcut hints throughout the UI on every platform, while
+## retaining descriptive desktop tooltips. On iOS, also prevent touch-to-mouse
+## emulation from leaking sticky hover tooltips or button focus rings. A genuine
+## mouse/trackpad restores descriptive hover semantics after touch has settled.
 
 const TOOLTIP_META := &"phosprite_touch_original_tooltip"
 const TOUCH_BIND_META := &"phosprite_touch_ui_bound"
+const TOUCH_POINTER_GRACE_MSEC := 500
 
 var enabled := false
 var _tree: SceneTree
 var _ui_root: Node
 var _touch_ui_mode := false
+var _active_touches: Dictionary = {}
+var _last_touch_event_msec := -1
 
 
 func setup(scene_tree: SceneTree, ui_root: Node, force_enabled := false) -> bool:
@@ -23,8 +27,8 @@ func setup(scene_tree: SceneTree, ui_root: Node, force_enabled := false) -> bool
 	_tree = scene_tree
 	_ui_root = ui_root
 	enabled = force_enabled or OS.get_name() == "iOS"
-	if not enabled:
-		return true
+	# Even desktop builds should not automatically append shortcut strings
+	# to hover tooltips. The keyboard shortcuts themselves remain active.
 	if not _tree.node_added.is_connected(_on_node_added):
 		_tree.node_added.connect(_on_node_added)
 	_bind_subtree(_ui_root)
@@ -46,16 +50,37 @@ func _input(event: InputEvent) -> void:
 	if not enabled:
 		return
 	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		_last_touch_event_msec = Time.get_ticks_msec()
+		if touch.pressed and not touch.canceled:
+			_active_touches[touch.index] = true
+		else:
+			_active_touches.erase(touch.index)
 		_enter_touch_ui_mode()
 		call_deferred(&"_suppress_hovered_tooltip")
-		if not (event as InputEventScreenTouch).pressed:
+		if not touch.pressed or touch.canceled:
 			call_deferred(&"_release_touch_button_focus")
 		return
-	if (
-		(event is InputEventMouseMotion or event is InputEventMouseButton)
-		and event.device != InputEvent.DEVICE_ID_EMULATION
-	):
-		_restore_pointer_ui_mode()
+	if event is InputEventScreenDrag:
+		_last_touch_event_msec = Time.get_ticks_msec()
+		return
+	if event is InputEventMouseMotion or event is InputEventMouseButton:
+		if should_restore_pointer_mode(
+			event.device, not _active_touches.is_empty(), Time.get_ticks_msec(),
+			_last_touch_event_msec
+		):
+			_restore_pointer_ui_mode()
+
+
+## Some platforms report a touch-generated mouse event as device 0 rather
+## than DEVICE_ID_EMULATION. Treat nearby mouse events as ambiguous until
+## the final touch is released and a short grace period has elapsed.
+static func should_restore_pointer_mode(
+	device_id: int, has_active_touch: bool, now_msec: int, last_touch_msec: int
+) -> bool:
+	if device_id == InputEvent.DEVICE_ID_EMULATION or has_active_touch:
+		return false
+	return last_touch_msec < 0 or now_msec - last_touch_msec > TOUCH_POINTER_GRACE_MSEC
 
 
 func _enter_touch_ui_mode() -> void:
@@ -73,7 +98,7 @@ func _restore_pointer_ui_mode() -> void:
 
 
 func _on_node_added(node: Node) -> void:
-	if not enabled or not _is_in_ui_scope(node):
+	if not _is_in_ui_scope(node):
 		return
 	_bind_subtree(node)
 
@@ -89,6 +114,12 @@ func _bind_subtree(node: Node) -> void:
 
 
 func _bind_control(control: Control) -> void:
+	# BaseButton creates an additional tooltip for its Shortcut automatically.
+	# This is distinct from Control.tooltip_text and must be disabled separately.
+	if control is BaseButton:
+		(control as BaseButton).shortcut_in_tooltip = false
+	if not enabled:
+		return
 	if not control.has_meta(TOUCH_BIND_META):
 		control.set_meta(TOUCH_BIND_META, true)
 		control.mouse_entered.connect(_on_control_mouse_entered.bind(control))
