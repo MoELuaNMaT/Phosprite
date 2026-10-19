@@ -91,5 +91,3 @@ func _configure_touch_geometry() -> void:
 	_clone_layer.hide()
 	_merge_down_layer.hide()
 	_layer_fx.hide()
-
-
