@@ -639,7 +639,10 @@ func _prepare_frame_popup(popup: PopupMenu, frame: int) -> void:
 	popup.set_item_disabled(
 		FRAME_MENU_MOVE_RIGHT, single_frame or frame >= project.frames.size() - 1
 	)
-	popup.set_item_disabled(FRAME_MENU_REVERSE, single_frame or project.selected_cels.size() <= 1)
+	var frame_count := {}
+	for selected_cel in project.selected_cels:
+		frame_count[int(selected_cel[0])] = true
+	popup.set_item_disabled(FRAME_MENU_REVERSE, single_frame or frame_count.size() <= 1)
 
 
 func _suppress_synthetic_mouse(control: Control) -> void:
