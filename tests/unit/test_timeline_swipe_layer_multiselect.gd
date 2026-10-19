@@ -175,9 +175,7 @@ func test_selected_layer_swipe_cannot_start_native_group_drag() -> void:
 		"direct-touch swipe over an already-selected layer cannot start native group drag",
 	)
 	button.free()
-	var native_source := FileAccess.get_file_as_string(
-		"res://src/UI/Timeline/LayerMainButton.gd"
-	)
+	var native_source := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerMainButton.gd")
 	var gesture_guard := native_source.find("if has_meta(IOS_TOUCH_MOUSE_FILTER_META):")
 	var pressed_guard := native_source.find(
 		"if DisplayServer.is_touchscreen_available() and not button_pressed:"
