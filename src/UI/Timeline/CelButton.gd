@@ -57,7 +57,6 @@ func _ready() -> void:
 		popup_menu.about_to_popup.connect(_sync_link_actions_visibility)
 
 
-
 func _sync_link_actions_visibility() -> void:
 	if OS.get_name() != "iOS" or not cel is PixelCel:
 		return
