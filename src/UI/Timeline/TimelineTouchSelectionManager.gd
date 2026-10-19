@@ -5,8 +5,6 @@ enum TouchTargetKind { NONE, CEL, FRAME }
 const IOS_TOUCH_TAP_SLOP_PX := 12.0
 const IOS_TOUCH_CONTEXT_HOLD_MSEC := 650
 const IOS_TOUCH_REORDER_HOLD_MSEC := 450
-const IOS_MULTI_SELECT_WIDTH := 72.0
-const IOS_MULTI_SELECT_HEIGHT := 44.0
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
 const AUTO_SCROLL_MIN_SPEED := 90.0
 const AUTO_SCROLL_MAX_SPEED := 520.0
@@ -14,17 +12,12 @@ const AUTO_SCROLL_RAMP_PX := 72.0
 const PREVIEW_OPACITY := 0.88
 const SOURCE_OUTLINE_INSET_PX := 4.0
 const SOURCE_OUTLINE_DASH_PX := 3.0
-const FRAME_BUTTONS_PATH := (
-	"TimelineContainer/TimelineButtons/VBoxContainer/AnimationToolsScrollContainer/"
-	+ "AnimationTools/MarginContainer/AnimationButtons/FrameButtons"
-)
 const FRAME_MENU_REMOVE := 1
 const FRAME_MENU_MOVE_LEFT := 3
 const FRAME_MENU_MOVE_RIGHT := 4
 const FRAME_MENU_REVERSE := 7
 
 var _timeline: Control
-var _multi_select_button: Button
 var _touch_candidates: Dictionary = {}
 var _suppressed_controls: Array[Control] = []
 var _active_reorder_touch := -1
@@ -100,26 +93,9 @@ func _install_ios_timeline_selection() -> void:
 	_timeline = get_parent() as Control
 	if not is_instance_valid(_timeline):
 		return
-	var frame_buttons := _timeline.get_node_or_null(FRAME_BUTTONS_PATH) as HBoxContainer
-	if not is_instance_valid(frame_buttons):
-		return
-	_multi_select_button = Button.new()
-	_multi_select_button.name = "TimelineMultiSelectButton"
-	_multi_select_button.text = tr("Select")
-	_multi_select_button.tooltip_text = tr("Toggle Timeline multi-select mode")
-	_multi_select_button.toggle_mode = true
-	_multi_select_button.custom_minimum_size = Vector2(
-		IOS_MULTI_SELECT_WIDTH, IOS_MULTI_SELECT_HEIGHT
-	)
-	_multi_select_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_multi_select_button.toggled.connect(_on_multi_select_toggled)
-	frame_buttons.add_child(_multi_select_button)
-	frame_buttons.move_child(_multi_select_button, 0)
+	# Tap focuses one Cel or Frame; swipe selection has its own gesture handler.
 	if not Global.project_about_to_switch.is_connected(_on_project_about_to_switch):
 		Global.project_about_to_switch.connect(_on_project_about_to_switch)
-	if not Global.project_switched.is_connected(_on_project_switched):
-		Global.project_switched.connect(_on_project_switched)
-
 
 func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 	if event.canceled:
@@ -619,62 +595,16 @@ func _select_cel_for_touch(cel_button: Control) -> void:
 	var project := Global.current_project
 	var frame := int(cel_button.get("frame"))
 	var layer := int(cel_button.get("layer"))
-	var frame_layer := [frame, layer]
-	if not _multi_select_enabled():
-		project.selected_cels.clear()
-		project.selected_cels.append(frame_layer)
-		project.change_cel(frame, layer)
-		return
-
-	if project.selected_cels.has(frame_layer):
-		if project.selected_cels.size() <= 1:
-			project.change_cel(frame, layer)
-			return
-		project.selected_cels.erase(frame_layer)
-		if project.current_frame == frame and project.current_layer == layer:
-			var fallback: Array = project.selected_cels[0]
-			project.change_cel(fallback[0], fallback[1])
-		else:
-			project.change_cel(project.current_frame, project.current_layer)
-	else:
-		project.selected_cels.append(frame_layer)
-		project.change_cel(frame, layer)
-
+	project.selected_cels.clear()
+	project.selected_cels.append([frame, layer])
+	project.change_cel(frame, layer)
 
 func _select_frame_for_touch(frame_button: Control) -> void:
 	var project := Global.current_project
 	var frame := int(frame_button.get("frame"))
-	if not _multi_select_enabled():
-		project.selected_cels.clear()
-		project.selected_cels.append([frame, project.current_layer])
-		project.change_cel(frame, project.current_layer)
-		return
-
-	var frame_cels: Array = []
-	var all_selected := true
-	for layer in project.layers.size():
-		var frame_layer := [frame, layer]
-		frame_cels.append(frame_layer)
-		if not project.selected_cels.has(frame_layer):
-			all_selected = false
-
-	if all_selected:
-		for frame_layer in frame_cels:
-			project.selected_cels.erase(frame_layer)
-		if project.selected_cels.is_empty():
-			project.selected_cels.append([frame, project.current_layer])
-			project.change_cel(frame, project.current_layer)
-		elif project.current_frame == frame:
-			var fallback: Array = project.selected_cels[0]
-			project.change_cel(fallback[0], fallback[1])
-		else:
-			project.change_cel(project.current_frame, project.current_layer)
-	else:
-		for frame_layer in frame_cels:
-			if not project.selected_cels.has(frame_layer):
-				project.selected_cels.append(frame_layer)
-		project.change_cel(frame, project.current_layer)
-
+	project.selected_cels.clear()
+	project.selected_cels.append([frame, project.current_layer])
+	project.change_cel(frame, project.current_layer)
 
 func _show_existing_context_menu(kind: int, target: Control, screen_position: Vector2) -> void:
 	var popup := target.get_node_or_null("PopupMenu") as PopupMenu
@@ -731,21 +661,12 @@ func _restore_pointer_timeline_ui() -> void:
 	_suppressed_controls.clear()
 
 
-func _on_multi_select_toggled(_enabled: bool) -> void:
-	pass
 
 
 func _on_project_about_to_switch() -> void:
 	_restore_pointer_timeline_ui()
 
 
-func _on_project_switched() -> void:
-	if is_instance_valid(_multi_select_button):
-		_multi_select_button.button_pressed = false
-
-
-func _multi_select_enabled() -> bool:
-	return is_instance_valid(_multi_select_button) and _multi_select_button.button_pressed
 
 
 func _is_ready_for_touch() -> bool:
