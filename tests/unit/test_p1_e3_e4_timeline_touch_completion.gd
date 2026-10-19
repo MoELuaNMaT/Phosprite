@@ -95,6 +95,7 @@ func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> v
 		"Frame long press keeps Reverse Frames"
 	)
 	check_has(frame_src, "DrawingAlgos.center(indices)", "Frame long press keeps Center Frames")
+	check_has(cel_src, 'tr("Cel Properties")', "iPad Cel menu labels the targeted properties")
 	check_has(cel_src, "_sync_link_actions_visibility", "Cel long press owns Link and Unlink")
 	check_has(cel_src, "selected_frames.size() >= 2", "Link actions require multi-selection")
 	for layer_action in ["DUPLICATE", "MERGE_DOWN", "EFFECTS"]:
