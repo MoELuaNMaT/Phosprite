@@ -34,19 +34,26 @@ func test_e1_is_ios_only_and_e2_reuses_the_same_touch_manager() -> void:
 	)
 
 
-func test_timeline_multi_select_has_an_explicit_touch_entry() -> void:
-	check_eq(MANAGER.IOS_MULTI_SELECT_HEIGHT, 44.0, "multi-select entry must be finger sized")
+func test_timeline_toolbar_has_no_obsolete_select_mode_button() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(src, 'name = "TimelineMultiSelectButton"', "E1 must expose an explicit mode control")
-	check_has(src, 'text = tr("Select")', "multi-select mode must have a visible label")
-	check_has(src, "toggle_mode = true", "multi-select entry must expose persistent mode state")
-
+	check_true(
+		not src.contains("TimelineMultiSelectButton"),
+		"the iPad Timeline toolbar must not create the obsolete Select toggle",
+	)
+	check_true(
+		not src.contains("IOS_MULTI_SELECT_WIDTH"),
+		"remove unused selection button geometry",
+	)
+	check_true(
+		not src.contains("_multi_select_enabled"),
+		"normal taps must no longer depend on a separate selection mode",
+	)
 
 func test_normal_touch_collapses_to_one_cel_or_current_layer_frame_cel() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(
 		src,
-		"project.selected_cels.append(frame_layer)",
+		"project.selected_cels.append([frame, layer])",
 		"normal Cel touch must select the tapped Cel through selected_cels",
 	)
 	check_has(src, "project.change_cel(frame, layer)", "Cel touch must use Project.change_cel")
@@ -62,29 +69,33 @@ func test_normal_touch_collapses_to_one_cel_or_current_layer_frame_cel() -> void
 	)
 
 
-func test_multi_select_toggles_cels_and_whole_frames_without_empty_selection() -> void:
+func test_direct_touch_selects_one_cel_or_frame_without_an_old_mode_state() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	var cel_begin := src.find("func _select_cel_for_touch(")
+	var frame_begin := src.find("func _select_frame_for_touch(")
+	var context_begin := src.find("func _show_existing_context_menu(")
+	check_true(
+		cel_begin >= 0 and frame_begin > cel_begin and context_begin > frame_begin,
+		"both direct-touch selection handlers must remain available",
+	)
+	if cel_begin < 0 or frame_begin <= cel_begin or context_begin <= frame_begin:
+		return
+	var cel_logic := src.substr(cel_begin, frame_begin - cel_begin)
+	var frame_logic := src.substr(frame_begin, context_begin - frame_begin)
+	check_has(cel_logic, "project.selected_cels.clear()", "Cel tap clears prior selection")
+	check_has(frame_logic, "project.selected_cels.clear()", "Frame tap clears prior selection")
 	check_has(
-		src,
-		"project.selected_cels.erase(frame_layer)",
-		"multi-select Cel touch must support removing an existing selection",
+		cel_logic, "project.selected_cels.append([frame, layer])", "Cel tap sets only its own Cel"
 	)
 	check_has(
-		src,
-		"for layer in project.layers.size()",
-		"multi-select Frame touch must address every Cel in that Frame",
+		frame_logic,
+		"project.selected_cels.append([frame, project.current_layer])",
+		"Frame tap sets only the current-layer Cel",
 	)
-	check_has(
-		src,
-		"if project.selected_cels.is_empty()",
-		"Frame toggling must guard the existing non-empty selected_cels contract",
+	check_true(
+		not cel_logic.contains("project.selected_cels.erase("),
+		"old tap-to-toggle multi-selection must not reactivate",
 	)
-	check_has(
-		src,
-		"if project.selected_cels.size() <= 1",
-		"Cel toggling must not remove the final selected Cel",
-	)
-
 
 func test_stationary_long_press_opens_existing_cel_and_frame_context_menus() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
