@@ -1,22 +1,5 @@
 extends Node
 
-enum TimelineAction {
-	DUPLICATE_FRAME = 3000,
-	MOVE_FRAME_LEFT,
-	MOVE_FRAME_RIGHT,
-	FIRST_FRAME,
-	LAST_FRAME,
-	TIMELINE_SETTINGS,
-	FRAME_PROPERTIES,
-	NEW_TAG,
-	IMPORT_TAG,
-	REVERSE_FRAMES,
-	CENTER_FRAMES,
-	CEL_PROPERTIES,
-	LINK_CELS,
-	UNLINK_CELS,
-}
-
 const IOS_TOUCH_TARGET_PX := 44.0
 const IOS_FPS_TARGET_WIDTH := 88.0
 const IOS_TOOLBAR_SEPARATION := 4
@@ -50,7 +33,8 @@ var _timeline_settings: Button
 var _onion_skinning: Button
 var _loop_animation: Button
 var _fps_value: Control
-var _actions_menu: MenuButton
+var _new_tag_button: Button
+var _import_tag_button: Button
 
 var _tag_resize_touch := -1
 var _tag_resize_ui: Control
@@ -136,7 +120,7 @@ func _install_ios_timeline_toolbar() -> void:
 		return
 
 	_configure_touch_geometry()
-	_build_actions_menu()
+	_build_tag_buttons()
 	if not Global.cel_switched.is_connected(_on_timeline_state_changed):
 		Global.cel_switched.connect(_on_timeline_state_changed)
 	if not Global.project_switched.is_connected(_on_timeline_state_changed):
@@ -182,138 +166,56 @@ func _configure_touch_geometry() -> void:
 		button.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 	_fps_value.custom_minimum_size = Vector2(IOS_FPS_TARGET_WIDTH, IOS_TOUCH_TARGET_PX)
 
-	# Keep the original Buttons alive for shortcuts, disabled state and their business handlers.
-	# iPad only replaces their tiny direct presentation with one touch-sized actions menu.
+	# Preserve the desktop controls and their business handlers, but use gestures
+	# and Frame/Cel long-press menus on iPad instead of the overflow popup.
 	_copy_frame.hide()
 	_move_frame_left.hide()
 	_move_frame_right.hide()
 	_first_frame.hide()
 	_last_frame.hide()
-	_timeline_settings.hide()
+	_timeline_settings.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 
 
-func _build_actions_menu() -> void:
-	_actions_menu = MenuButton.new()
-	_actions_menu.name = "TimelineActionsMenu"
-	_actions_menu.text = "⋯"
-	_actions_menu.tooltip_text = tr("Timeline actions")
-	_actions_menu.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
-	_actions_menu.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_frame_buttons.add_child(_actions_menu)
-	_frame_buttons.move_child(_actions_menu, _delete_frame.get_index() + 1)
-	var popup := _actions_menu.get_popup()
-	popup.add_item(tr("Duplicate frame"), TimelineAction.DUPLICATE_FRAME)
-	popup.add_item(tr("Move frame left"), TimelineAction.MOVE_FRAME_LEFT)
-	popup.add_item(tr("Move frame right"), TimelineAction.MOVE_FRAME_RIGHT)
-	popup.add_separator()
-	popup.add_item(tr("Jump to first frame"), TimelineAction.FIRST_FRAME)
-	popup.add_item(tr("Jump to last frame"), TimelineAction.LAST_FRAME)
-	popup.add_item(tr("Timeline settings"), TimelineAction.TIMELINE_SETTINGS)
-	popup.add_separator()
-	popup.add_item(tr("Frame properties / duration"), TimelineAction.FRAME_PROPERTIES)
-	popup.add_item(tr("New tag"), TimelineAction.NEW_TAG)
-	popup.add_item(tr("Import tag"), TimelineAction.IMPORT_TAG)
-	popup.add_item(tr("Reverse selected frames"), TimelineAction.REVERSE_FRAMES)
-	popup.add_item(tr("Center selected frames"), TimelineAction.CENTER_FRAMES)
-	popup.add_separator()
-	popup.add_item(tr("Cel properties"), TimelineAction.CEL_PROPERTIES)
-	popup.add_item(tr("Link selected cels"), TimelineAction.LINK_CELS)
-	popup.add_item(tr("Unlink selected cels"), TimelineAction.UNLINK_CELS)
-	popup.id_pressed.connect(_on_action_pressed)
-	popup.about_to_popup.connect(_sync_action_states)
+func _build_tag_buttons() -> void:
+	_new_tag_button = Button.new()
+	_new_tag_button.name = "TimelineNewTagButton"
+	_new_tag_button.text = tr("New Tag")
+	_new_tag_button.tooltip_text = tr("Create animation tag at the current frame")
+	_new_tag_button.custom_minimum_size = Vector2(76.0, IOS_TOUCH_TARGET_PX)
+	_new_tag_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_new_tag_button.pressed.connect(_on_new_tag_pressed)
+	_frame_buttons.add_child(_new_tag_button)
+	_frame_buttons.move_child(_new_tag_button, _delete_frame.get_index() + 1)
+
+	_import_tag_button = Button.new()
+	_import_tag_button.name = "TimelineImportTagButton"
+	_import_tag_button.text = tr("Import Tag")
+	_import_tag_button.tooltip_text = tr("Import an animation tag from an open project")
+	_import_tag_button.custom_minimum_size = Vector2(92.0, IOS_TOUCH_TARGET_PX)
+	_import_tag_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_import_tag_button.pressed.connect(_on_import_tag_pressed)
+	_frame_buttons.add_child(_import_tag_button)
+	_frame_buttons.move_child(_import_tag_button, _new_tag_button.get_index() + 1)
 
 
 func _on_timeline_state_changed() -> void:
-	call_deferred("_sync_action_states")
+	call_deferred("_sync_tag_button_states")
 
 
-func _sync_action_states() -> void:
-	if not is_instance_valid(_actions_menu) or not _all_toolbar_nodes_valid():
+func _sync_tag_button_states() -> void:
+	if not is_instance_valid(_new_tag_button) or not is_instance_valid(_import_tag_button):
 		return
-	var popup := _actions_menu.get_popup()
-	_set_action_disabled(
-		popup,
-		TimelineAction.DUPLICATE_FRAME,
-		_copy_frame.disabled or _current_frame_button() == null
-	)
-	_set_action_disabled(
-		popup,
-		TimelineAction.MOVE_FRAME_LEFT,
-		_move_frame_left.disabled or _current_frame_button() == null
-	)
-	_set_action_disabled(
-		popup,
-		TimelineAction.MOVE_FRAME_RIGHT,
-		_move_frame_right.disabled or _current_frame_button() == null,
-	)
-	_set_action_disabled(
-		popup, TimelineAction.FIRST_FRAME, Global.current_project.current_frame <= 0
-	)
-	_set_action_disabled(
-		popup,
-		TimelineAction.LAST_FRAME,
-		Global.current_project.current_frame >= Global.current_project.frames.size() - 1,
-	)
-	var frame_button := _current_frame_button()
-	var has_frame := is_instance_valid(frame_button)
-	_set_action_disabled(popup, TimelineAction.FRAME_PROPERTIES, not has_frame)
-	_set_action_disabled(popup, TimelineAction.NEW_TAG, not has_frame)
-	_set_action_disabled(popup, TimelineAction.IMPORT_TAG, not has_frame)
-	var can_reverse := has_frame and _selected_frame_count() > 1
-	_set_action_disabled(popup, TimelineAction.REVERSE_FRAMES, not can_reverse)
-	_set_action_disabled(popup, TimelineAction.CENTER_FRAMES, not has_frame)
-
-	var cel_button := _current_cel_button()
-	var has_cel := is_instance_valid(cel_button)
-	var is_pixel_cel := has_cel and cel_button.get("cel") is PixelCel
-	_set_action_disabled(popup, TimelineAction.CEL_PROPERTIES, not has_cel)
-	_set_action_disabled(popup, TimelineAction.LINK_CELS, not is_pixel_cel)
-	_set_action_disabled(popup, TimelineAction.UNLINK_CELS, not is_pixel_cel)
+	var has_frame := is_instance_valid(_current_frame_button())
+	_new_tag_button.disabled = not has_frame
+	_import_tag_button.disabled = not has_frame
 
 
-func _set_action_disabled(popup: PopupMenu, id: int, disabled: bool) -> void:
-	var item_index := popup.get_item_index(id)
-	if item_index >= 0:
-		popup.set_item_disabled(item_index, disabled)
+func _on_new_tag_pressed() -> void:
+	_call_current_frame_menu_action(5)
 
 
-func _on_action_pressed(id: int) -> void:
-	if not is_instance_valid(_timeline):
-		return
-	match id:
-		TimelineAction.DUPLICATE_FRAME:
-			if not _copy_frame.disabled:
-				_timeline.call("_on_CopyFrame_pressed")
-		TimelineAction.MOVE_FRAME_LEFT:
-			if not _move_frame_left.disabled:
-				_timeline.call("_on_MoveLeft_pressed")
-		TimelineAction.MOVE_FRAME_RIGHT:
-			if not _move_frame_right.disabled:
-				_timeline.call("_on_MoveRight_pressed")
-		TimelineAction.FIRST_FRAME:
-			_timeline.call("_on_FirstFrame_pressed")
-		TimelineAction.LAST_FRAME:
-			_timeline.call("_on_LastFrame_pressed")
-		TimelineAction.TIMELINE_SETTINGS:
-			_timeline.call("_on_timeline_settings_button_pressed")
-		TimelineAction.FRAME_PROPERTIES:
-			_call_current_frame_menu_action(0)
-		TimelineAction.NEW_TAG:
-			_call_current_frame_menu_action(5)
-		TimelineAction.IMPORT_TAG:
-			_call_current_frame_menu_action(6)
-		TimelineAction.REVERSE_FRAMES:
-			if _selected_frame_count() > 1:
-				_call_current_frame_menu_action(7)
-		TimelineAction.CENTER_FRAMES:
-			_call_current_frame_menu_action(8)
-		TimelineAction.CEL_PROPERTIES:
-			_call_current_cel_menu_action(0)
-		TimelineAction.LINK_CELS:
-			_call_current_cel_menu_action(4)
-		TimelineAction.UNLINK_CELS:
-			_call_current_cel_menu_action(5)
-	call_deferred("_sync_action_states")
+func _on_import_tag_pressed() -> void:
+	_call_current_frame_menu_action(6)
 
 
 func _call_current_frame_menu_action(id: int) -> void:
@@ -322,48 +224,14 @@ func _call_current_frame_menu_action(id: int) -> void:
 		frame_button.call("_on_PopupMenu_id_pressed", id)
 
 
-func _call_current_cel_menu_action(id: int) -> void:
-	var cel_button := _current_cel_button()
-	if not is_instance_valid(cel_button) or not cel_button.has_method("_on_PopupMenu_id_pressed"):
-		return
-	if id in [4, 5] and not (cel_button.get("cel") is PixelCel):
-		return
-	cel_button.call("_on_PopupMenu_id_pressed", id)
-
-
 func _current_frame_button() -> Control:
-	if not is_instance_valid(_timeline):
+	if not is_instance_valid(_timeline) or Global.current_project == null:
 		return null
 	var frame_hbox := _timeline.get("frame_hbox") as HBoxContainer
 	var frame := Global.current_project.current_frame
 	if not is_instance_valid(frame_hbox) or frame < 0 or frame >= frame_hbox.get_child_count():
 		return null
 	return frame_hbox.get_child(frame) as Control
-
-
-func _current_cel_button() -> Control:
-	if not is_instance_valid(_timeline):
-		return null
-	var cel_vbox := _timeline.get("cel_vbox") as VBoxContainer
-	if not is_instance_valid(cel_vbox):
-		return null
-	var project := Global.current_project
-	var row_index := cel_vbox.get_child_count() - 1 - project.current_layer
-	if row_index < 0 or row_index >= cel_vbox.get_child_count():
-		return null
-	var row := cel_vbox.get_child(row_index) as Control
-	if not is_instance_valid(row):
-		return null
-	if project.current_frame < 0 or project.current_frame >= row.get_child_count():
-		return null
-	return row.get_child(project.current_frame) as Control
-
-
-func _selected_frame_count() -> int:
-	var frames: Dictionary = {}
-	for frame_layer in Global.current_project.selected_cels:
-		frames[int(frame_layer[0])] = true
-	return frames.size()
 
 
 func _handle_tag_screen_touch(event: InputEventScreenTouch) -> bool:
