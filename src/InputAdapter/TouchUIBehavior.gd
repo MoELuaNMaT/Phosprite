@@ -66,7 +66,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		if should_restore_pointer_mode(
-			event.device, not _active_touches.is_empty(), Time.get_ticks_msec(),
+			event.device,
+			not _active_touches.is_empty(),
+			Time.get_ticks_msec(),
 			_last_touch_event_msec
 		):
 			_restore_pointer_ui_mode()
