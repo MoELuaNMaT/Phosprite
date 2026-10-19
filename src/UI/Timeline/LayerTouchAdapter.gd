@@ -246,8 +246,11 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 
 
 static func _is_layer_selection_swipe(delta: Vector2, held_msec: int) -> bool:
+	# Horizontal layer selection must take priority even if a deliberate swipe
+	# crosses the 450 ms reorder threshold. Only a stationary 650 ms hold or
+	# a predominantly vertical hold-and-move gesture should start reordering.
 	return (
-		held_msec < IOS_TOUCH_REORDER_HOLD_MSEC
+		held_msec < IOS_TOUCH_CONTEXT_HOLD_MSEC
 		and absf(delta.x) >= IOS_LAYER_SWIPE_DISTANCE_PX
 		and absf(delta.x) >= absf(delta.y) * IOS_LAYER_SWIPE_DIRECTION_RATIO
 	)
@@ -530,6 +533,10 @@ func _enter_ios_touch_layer_ui() -> void:
 
 
 func _restore_pointer_layer_ui() -> void:
+	# A synthetic mouse event can arrive while the real finger is still down.
+	# Do not remove the native-drag suppression marker mid-gesture.
+	if not _ios_touch_candidates.is_empty():
+		return
 	_stop_swipe_feedback()
 	if not _ios_touch_ui_mode:
 		return

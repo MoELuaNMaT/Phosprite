@@ -1,6 +1,7 @@
 extends "res://tests/test_base.gd"
 
 const ANIMATION_GESTURES := preload("res://src/UI/Timeline/LayerTouchAdapter.gd")
+const LAYER_MAIN_BUTTON := preload("res://src/UI/Timeline/LayerMainButton.gd")
 const SINGLE_FRAME_CARD := preload("res://src/UI/Timeline/SingleFrameLayerCard.gd")
 const SINGLE_FRAME_STRIP := preload("res://src/UI/Timeline/SingleFrameLayerStrip.gd")
 const ANIMATION_SOURCE := "res://src/UI/Timeline/LayerTouchAdapter.gd"
@@ -27,8 +28,16 @@ func test_animation_layer_swipes_require_horizontal_direction_and_no_hold() -> v
 		"short pointer jitter cannot toggle layers",
 	)
 	check_true(
-		not ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(35, 10), 450),
-		"long hold followed by movement stays reserved for layer reorder",
+		ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(35, 10), 500),
+		"slow horizontal deselection must not become group reorder after 450ms",
+	)
+	check_true(
+		not ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(35, 10), 650),
+		"stationary long-press context ownership takes priority at 650ms",
+	)
+	check_true(
+		not ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(10, 35), 500),
+		"held vertical movement remains eligible for intentional layer reorder",
 	)
 
 
@@ -151,3 +160,33 @@ func test_animation_swipe_visual_bounces_without_reordering_layers() -> void:
 	check_has(adapter, "direction * 14.0", "swipe nudge is short, not a drag-away")
 	check_has(adapter, "Tween.TRANS_BACK", "button springs back to exact home")
 	check_has(adapter, "_stop_swipe_feedback()", "old animation gets cancelled safely")
+
+
+func test_selected_layer_swipe_cannot_start_native_group_drag() -> void:
+	# Reproduce the reported failure: the tapped layer is already selected,
+	# and would normally qualify for the native multi-layer drag preview.
+	var button := LAYER_MAIN_BUTTON.new() as Button
+	button.toggle_mode = true
+	button.button_pressed = true
+	button.set_meta(LAYER_MAIN_BUTTON.IOS_TOUCH_MOUSE_FILTER_META, Control.MOUSE_FILTER_PASS)
+	check_eq(
+		button.call("_get_drag_data", Vector2(35.0, 0.0)),
+		null,
+		"direct-touch swipe over an already-selected layer cannot start native group drag",
+	)
+	button.free()
+	var native_source := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerMainButton.gd")
+	var gesture_guard := native_source.find("if has_meta(IOS_TOUCH_MOUSE_FILTER_META):")
+	var pressed_guard := native_source.find(
+		"if DisplayServer.is_touchscreen_available() and not button_pressed:"
+	)
+	check_true(
+		gesture_guard >= 0 and pressed_guard > gesture_guard,
+		"direct-touch guard must run before the selected-layer native drag path",
+	)
+	var gesture_source := FileAccess.get_file_as_string(ANIMATION_SOURCE)
+	check_has(
+		gesture_source,
+		"if not _ios_touch_candidates.is_empty():",
+		"synthetic pointer events must not release touch ownership during a swipe",
+	)
