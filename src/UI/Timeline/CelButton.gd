@@ -53,6 +53,27 @@ func _ready() -> void:
 		_set_menu_shortcut(&"clone_cel", popup_menu, "Clone Cel", MenuOptions.CLONE_CEL, true)
 	elif cel is GroupCel:
 		transparent_checker.visible = false
+	if cel is PixelCel:
+		popup_menu.about_to_popup.connect(_sync_link_actions_visibility)
+
+
+
+func _sync_link_actions_visibility() -> void:
+	if OS.get_name() != "iOS" or not cel is PixelCel:
+		return
+	var project := Global.current_project
+	var selected_frames := {}
+	if project != null:
+		for selected_cel in project.selected_cels:
+			if int(selected_cel[1]) == layer:
+				selected_frames[int(selected_cel[0])] = true
+	var multi_selected := (
+		project != null
+		and project.selected_cels.has([frame, layer])
+		and selected_frames.size() >= 2
+	)
+	popup_menu.set_item_hidden(popup_menu.get_item_index(MenuOptions.LINK), not multi_selected)
+	popup_menu.set_item_hidden(popup_menu.get_item_index(MenuOptions.UNLINK), not multi_selected)
 
 
 func _unhandled_input(event: InputEvent) -> void:
