@@ -49,6 +49,7 @@ func test_timeline_toolbar_has_no_obsolete_select_mode_button() -> void:
 		"normal taps must no longer depend on a separate selection mode",
 	)
 
+
 func test_normal_touch_collapses_to_one_cel_or_current_layer_frame_cel() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(
@@ -96,6 +97,7 @@ func test_direct_touch_selects_one_cel_or_frame_without_an_old_mode_state() -> v
 		not cel_logic.contains("project.selected_cels.erase("),
 		"old tap-to-toggle multi-selection must not reactivate",
 	)
+
 
 func test_stationary_long_press_opens_existing_cel_and_frame_context_menus() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
