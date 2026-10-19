@@ -35,7 +35,8 @@ func _ready() -> void:
 	for selected in Global.current_project.selected_cels:
 		if selected[1] == layer and selected[0] == frame:
 			button_pressed = true
-	popup_menu.add_item(tr("Cel Properties") if OS.get_name() == "iOS" else tr("Properties"), MenuOptions.PROPERTIES)
+	var properties_label := tr("Cel Properties") if OS.get_name() == "iOS" else tr("Properties")
+	popup_menu.add_item(properties_label, MenuOptions.PROPERTIES)
 	if cel is AudioCel:
 		popup_menu.add_item("Play audio here", MenuOptions.PLAY_AUDIO)
 		_is_playing_audio()
