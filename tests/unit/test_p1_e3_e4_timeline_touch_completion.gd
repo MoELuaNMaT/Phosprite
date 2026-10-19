@@ -64,6 +64,7 @@ func test_e3_removes_obsolete_overflow_but_preserves_native_frame_handlers() -> 
 	)
 	check_has(src, "_timeline_settings.custom_minimum_size", "Timeline settings is touch sized")
 
+
 func test_e3_tag_actions_reuse_existing_frame_context_handlers() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(src, 'name = "TimelineNewTagButton"', "New Tag has a direct iPad entry")
@@ -72,6 +73,7 @@ func test_e3_tag_actions_reuse_existing_frame_context_handlers() -> void:
 	check_has(src, "_call_current_frame_menu_action(6)", "Import Tag uses the native handler")
 	check_true(not ("undo_redo" in src), "E3/E4 adapter must not create a second UndoRedo path")
 	check_true(not ("move_frames" in src), "E3/E4 adapter must not implement Frame movement")
+
 
 func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> void:
 	var manager_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
@@ -82,10 +84,16 @@ func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> v
 		not manager_src.contains('popup.add_item(tr("Frame properties / duration")'),
 		"per-frame duration must not appear in the iPad toolbar",
 	)
-	check_has(frame_src, "PROPERTIES, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG",
-		"iPad Frame context hides settings relocated to gestures or dedicated controls")
-	check_has(frame_src, "Global.animation_timeline.reverse_frames(indices)",
-		"Frame long press keeps Reverse Frames")
+	check_has(
+		frame_src,
+		"PROPERTIES, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG",
+		"iPad Frame context hides settings relocated to gestures or dedicated controls"
+	)
+	check_has(
+		frame_src,
+		"Global.animation_timeline.reverse_frames(indices)",
+		"Frame long press keeps Reverse Frames"
+	)
 	check_has(frame_src, "DrawingAlgos.center(indices)", "Frame long press keeps Center Frames")
 	check_has(cel_src, "_sync_link_actions_visibility", "Cel long press owns Link and Unlink")
 	check_has(cel_src, "selected_frames.size() >= 2", "Link actions require multi-selection")
@@ -96,6 +104,7 @@ func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> v
 		'frame_button.call("_on_PopupMenu_id_pressed", id)',
 		"dedicated Tag controls still use the original Frame action handler",
 	)
+
 
 func test_e4_onion_skin_stays_direct_without_algorithm_changes() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
