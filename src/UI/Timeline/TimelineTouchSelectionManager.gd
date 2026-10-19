@@ -97,6 +97,7 @@ func _install_ios_timeline_selection() -> void:
 	if not Global.project_about_to_switch.is_connected(_on_project_about_to_switch):
 		Global.project_about_to_switch.connect(_on_project_about_to_switch)
 
+
 func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 	if event.canceled:
 		var was_reordering := false
@@ -599,12 +600,14 @@ func _select_cel_for_touch(cel_button: Control) -> void:
 	project.selected_cels.append([frame, layer])
 	project.change_cel(frame, layer)
 
+
 func _select_frame_for_touch(frame_button: Control) -> void:
 	var project := Global.current_project
 	var frame := int(frame_button.get("frame"))
 	project.selected_cels.clear()
 	project.selected_cels.append([frame, project.current_layer])
 	project.change_cel(frame, project.current_layer)
+
 
 func _show_existing_context_menu(kind: int, target: Control, screen_position: Vector2) -> void:
 	var popup := target.get_node_or_null("PopupMenu") as PopupMenu
@@ -661,12 +664,8 @@ func _restore_pointer_timeline_ui() -> void:
 	_suppressed_controls.clear()
 
 
-
-
 func _on_project_about_to_switch() -> void:
 	_restore_pointer_timeline_ui()
-
-
 
 
 func _is_ready_for_touch() -> bool:
