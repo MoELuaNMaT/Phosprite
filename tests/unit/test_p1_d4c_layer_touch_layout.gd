@@ -62,12 +62,14 @@ func test_low_frequency_layer_actions_use_layer_context_instead_of_overflow() ->
 	for label in ["Duplicate layer", "Merge down", "Layer effects"]:
 		check_has(layer_scene, label, "native layer context menu exposes the action")
 
+
 func test_layer_context_actions_reuse_existing_layer_business_handlers() -> void:
 	var src := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerButton.gd")
 	check_has(src, "Global.animation_timeline._on_CloneLayer_pressed()", "duplicate is native")
 	check_has(src, "Global.animation_timeline._on_MergeDownLayer_pressed()", "merge is native")
 	check_has(src, "Global.animation_timeline.open_current_layer_effects()", "effects are native")
 	check_true(not ("undo_redo" in src), "D4-C context adapter adds no new transaction")
+
 
 func test_layer_context_menu_disabled_state_follows_native_buttons() -> void:
 	var src := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerButton.gd")
@@ -79,6 +81,7 @@ func test_layer_context_menu_disabled_state_follows_native_buttons() -> void:
 		"popup_menu.about_to_popup.connect(_sync_layer_context_menu)",
 		"context state must refresh before opening",
 	)
+
 
 func test_d4c_is_ios_only_and_does_not_touch_timeline_frame_controls() -> void:
 	var bootstrap_src := FileAccess.get_file_as_string(BOOTSTRAP_SOURCE)
