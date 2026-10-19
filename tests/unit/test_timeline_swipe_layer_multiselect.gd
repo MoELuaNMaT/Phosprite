@@ -28,8 +28,16 @@ func test_animation_layer_swipes_require_horizontal_direction_and_no_hold() -> v
 		"short pointer jitter cannot toggle layers",
 	)
 	check_true(
-		not ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(35, 10), 450),
-		"long hold followed by movement stays reserved for layer reorder",
+		ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(35, 10), 500),
+		"slow horizontal deselection must not become group reorder after 450ms",
+	)
+	check_true(
+		not ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(35, 10), 650),
+		"stationary long-press context ownership takes priority at 650ms",
+	)
+	check_true(
+		not ANIMATION_GESTURES._is_layer_selection_swipe(Vector2(10, 35), 500),
+		"held vertical movement remains eligible for intentional layer reorder",
 	)
 
 
@@ -158,6 +166,7 @@ func test_selected_layer_swipe_cannot_start_native_group_drag() -> void:
 	# Reproduce the reported failure: the tapped layer is already selected,
 	# and would normally qualify for the native multi-layer drag preview.
 	var button := LAYER_MAIN_BUTTON.new() as Button
+	button.toggle_mode = true
 	button.button_pressed = true
 	button.set_meta(LAYER_MAIN_BUTTON.IOS_TOUCH_MOUSE_FILTER_META, Control.MOUSE_FILTER_PASS)
 	check_eq(
