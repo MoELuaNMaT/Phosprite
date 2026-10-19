@@ -45,7 +45,7 @@ func test_e3_direct_timeline_actions_use_finger_sized_targets() -> void:
 	)
 
 
-func test_e3_low_frequency_actions_move_into_one_more_menu() -> void:
+func test_e3_removes_obsolete_overflow_but_preserves_native_frame_handlers() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	for hidden_button in [
 		"_copy_frame.hide()",
@@ -53,55 +53,49 @@ func test_e3_low_frequency_actions_move_into_one_more_menu() -> void:
 		"_move_frame_right.hide()",
 		"_first_frame.hide()",
 		"_last_frame.hide()",
-		"_timeline_settings.hide()",
 	]:
-		check_has(src, hidden_button, "low-frequency action must leave the direct iPad toolbar")
-	check_has(src, 'popup.add_item(tr("Duplicate frame")', "More menu must expose Duplicate")
-	check_has(src, 'popup.add_item(tr("Move frame left")', "More menu must expose Move Left")
-	check_has(src, 'popup.add_item(tr("Move frame right")', "More menu must expose Move Right")
-	check_has(src, 'popup.add_item(tr("Jump to first frame")', "More menu must expose First")
-	check_has(src, 'popup.add_item(tr("Jump to last frame")', "More menu must expose Last")
-	check_has(src, 'popup.add_item(tr("Timeline settings")', "More menu must expose settings")
+		check_has(src, hidden_button, "gesture-owned action is no longer an iPad toolbar item")
+	check_true(
+		not src.contains("TimelineActionsMenu"), "obsolete Frame overflow menu must be removed"
+	)
+	check_true(
+		not src.contains("_timeline_settings.hide()"),
+		"Timeline settings must be available as an independent button",
+	)
+	check_has(src, "_timeline_settings.custom_minimum_size", "Timeline settings is touch sized")
 
-
-func test_e3_menu_delegates_to_existing_timeline_handlers() -> void:
+func test_e3_tag_actions_reuse_existing_frame_context_handlers() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	for handler in [
-		'_timeline.call("_on_CopyFrame_pressed")',
-		'_timeline.call("_on_MoveLeft_pressed")',
-		'_timeline.call("_on_MoveRight_pressed")',
-		'_timeline.call("_on_FirstFrame_pressed")',
-		'_timeline.call("_on_LastFrame_pressed")',
-		'_timeline.call("_on_timeline_settings_button_pressed")',
-	]:
-		check_has(src, handler, "E3 must delegate to the existing Timeline handler")
+	check_has(src, 'name = "TimelineNewTagButton"', "New Tag has a direct iPad entry")
+	check_has(src, 'name = "TimelineImportTagButton"', "Import Tag has a direct iPad entry")
+	check_has(src, "_call_current_frame_menu_action(5)", "New Tag uses the native handler")
+	check_has(src, "_call_current_frame_menu_action(6)", "Import Tag uses the native handler")
 	check_true(not ("undo_redo" in src), "E3/E4 adapter must not create a second UndoRedo path")
 	check_true(not ("move_frames" in src), "E3/E4 adapter must not implement Frame movement")
 
-
-func test_e4_frame_and_cel_advanced_actions_reuse_existing_context_handlers() -> void:
-	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(
-		src,
-		'popup.add_item(tr("Frame properties / duration")',
-		"Frame duration must be reachable from the iPad More menu",
+func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> void:
+	var manager_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
+	var cel_src := FileAccess.get_file_as_string("res://src/UI/Timeline/CelButton.gd")
+	var layer_src := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerButton.gd")
+	check_true(
+		not manager_src.contains('popup.add_item(tr("Frame properties / duration")'),
+		"per-frame duration must not appear in the iPad toolbar",
 	)
-	check_has(src, 'popup.add_item(tr("New tag")', "Tag creation must be reachable")
-	check_has(src, 'popup.add_item(tr("Import tag")', "Tag import must be reachable")
-	check_has(src, 'popup.add_item(tr("Cel properties")', "Cel properties must be reachable")
-	check_has(src, 'popup.add_item(tr("Link selected cels")', "Linked Cel must be reachable")
-	check_has(src, 'popup.add_item(tr("Unlink selected cels")', "Unlink must be reachable")
+	check_has(frame_src, "PROPERTIES, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG",
+		"iPad Frame context hides settings relocated to gestures or dedicated controls")
+	check_has(frame_src, "Global.animation_timeline.reverse_frames(indices)",
+		"Frame long press keeps Reverse Frames")
+	check_has(frame_src, "DrawingAlgos.center(indices)", "Frame long press keeps Center Frames")
+	check_has(cel_src, "_sync_link_actions_visibility", "Cel long press owns Link and Unlink")
+	check_has(cel_src, "selected_frames.size() >= 2", "Link actions require multi-selection")
+	for layer_action in ["DUPLICATE", "MERGE_DOWN", "EFFECTS"]:
+		check_has(layer_src, "MenuOptions." + layer_action, "Animation layer menu includes action")
 	check_has(
-		src,
+		manager_src,
 		'frame_button.call("_on_PopupMenu_id_pressed", id)',
-		"Frame advanced actions must reuse FrameButton's context handler",
+		"dedicated Tag controls still use the original Frame action handler",
 	)
-	check_has(
-		src,
-		'cel_button.call("_on_PopupMenu_id_pressed", id)',
-		"Cel advanced actions must reuse CelButton's context handler",
-	)
-
 
 func test_e4_onion_skin_stays_direct_without_algorithm_changes() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
