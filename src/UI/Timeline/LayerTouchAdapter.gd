@@ -246,8 +246,11 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 
 
 static func _is_layer_selection_swipe(delta: Vector2, held_msec: int) -> bool:
+	# Horizontal layer selection must take priority even if a deliberate swipe
+	# crosses the 450 ms reorder threshold. Only a stationary 650 ms hold or
+	# a predominantly vertical hold-and-move gesture should start reordering.
 	return (
-		held_msec < IOS_TOUCH_REORDER_HOLD_MSEC
+		held_msec < IOS_TOUCH_CONTEXT_HOLD_MSEC
 		and absf(delta.x) >= IOS_LAYER_SWIPE_DISTANCE_PX
 		and absf(delta.x) >= absf(delta.y) * IOS_LAYER_SWIPE_DIRECTION_RATIO
 	)
