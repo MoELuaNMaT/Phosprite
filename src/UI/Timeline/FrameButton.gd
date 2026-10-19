@@ -15,6 +15,11 @@ var frame := 0
 func _ready() -> void:
 	if DisplayServer.is_touchscreen_available():
 		mouse_filter = Control.MOUSE_FILTER_PASS
+	if OS.get_name() == "iOS":
+		# Duration remains in the data format, but is not an iPad editing command.
+		# Gestures own frame ordering; tags have their own toolbar buttons.
+		for item_id in [PROPERTIES, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG]:
+			popup_menu.set_item_hidden(item_id, true)
 	Global.cel_switched.connect(func(): z_index = 1 if button_pressed else 0)
 	custom_minimum_size.x = Global.animation_timeline.cel_size
 	text = str(frame + 1)
@@ -68,7 +73,7 @@ func _button_pressed() -> void:
 			popup_menu.set_item_disabled(REVERSE, true)
 		else:
 			popup_menu.set_item_disabled(REMOVE, false)
-			if Global.current_project.selected_cels.size() > 1:
+			if _get_frame_indices().size() > 1:
 				popup_menu.set_item_disabled(REVERSE, false)
 			else:
 				popup_menu.set_item_disabled(REVERSE, true)
