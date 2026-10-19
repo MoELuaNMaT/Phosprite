@@ -1,7 +1,9 @@
 class_name LayerButton
 extends HBoxContainer
 
-enum MenuOptions { PROPERTIES, CLIPPING_MASK, FLATTEN, FLATTEN_VISIBLE, DUPLICATE, MERGE_DOWN, EFFECTS }
+enum MenuOptions {
+	PROPERTIES, CLIPPING_MASK, FLATTEN, FLATTEN_VISIBLE, DUPLICATE, MERGE_DOWN, EFFECTS
+}
 
 const HIERARCHY_DEPTH_PIXEL_SHIFT := 24
 const ARRAY_TEXTURE_TYPES: Array[Texture2D] = [
@@ -453,7 +455,6 @@ func _on_popup_menu_id_pressed(id: int) -> void:
 		Global.animation_timeline.open_current_layer_effects()
 
 
-
 func _sync_layer_context_menu() -> void:
 	_focus_context_layer()
 	var project := Global.current_project
@@ -463,7 +464,9 @@ func _sync_layer_context_menu() -> void:
 	if not is_instance_valid(timeline):
 		return
 	timeline._toggle_layer_buttons()
-	popup_menu.set_item_checked(MenuOptions.CLIPPING_MASK, project.layers[layer_index].clipping_mask)
+	popup_menu.set_item_checked(
+		MenuOptions.CLIPPING_MASK, project.layers[layer_index].clipping_mask
+	)
 	popup_menu.set_item_disabled(MenuOptions.MERGE_DOWN, timeline.merge_down_layer.disabled)
 	popup_menu.set_item_disabled(MenuOptions.EFFECTS, project.layers[layer_index] is AudioLayer)
 
