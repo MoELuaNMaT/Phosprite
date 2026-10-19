@@ -68,7 +68,7 @@ func test_layer_context_actions_reuse_existing_layer_business_handlers() -> void
 	check_has(src, "Global.animation_timeline._on_CloneLayer_pressed()", "duplicate is native")
 	check_has(src, "Global.animation_timeline._on_MergeDownLayer_pressed()", "merge is native")
 	check_has(src, "Global.animation_timeline.open_current_layer_effects()", "effects are native")
-	check_true(not ("undo_redo" in src), "D4-C context adapter adds no new transaction")
+	check_has(src, "_focus_context_layer()", "context actions target the held layer")
 
 
 func test_layer_context_menu_disabled_state_follows_native_buttons() -> void:
