@@ -530,6 +530,10 @@ func _enter_ios_touch_layer_ui() -> void:
 
 
 func _restore_pointer_layer_ui() -> void:
+	# A synthetic mouse event can arrive while the real finger is still down.
+	# Do not remove the native-drag suppression marker mid-gesture.
+	if not _ios_touch_candidates.is_empty():
+		return
 	_stop_swipe_feedback()
 	if not _ios_touch_ui_mode:
 		return
