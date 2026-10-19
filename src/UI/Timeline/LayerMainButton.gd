@@ -2,6 +2,8 @@ extends Button
 
 ## The entire purpose of this script is to handle layer drag and dropping.
 
+const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_layer_touch_mouse_filter"
+
 var layer_index := 0
 var hierarchy_depth_pixel_shift := 16
 
@@ -12,6 +14,11 @@ func _ready() -> void:
 
 
 func _get_drag_data(_position: Vector2) -> Variant:
+	# The LayerTouchAdapter owns direct finger gestures. In particular, a swipe
+	# over an already selected layer must NOT launch Godot's native drag preview
+	# (which would otherwise include every selected layer).
+	if has_meta(IOS_TOUCH_MOUSE_FILTER_META):
+		return null
 	if DisplayServer.is_touchscreen_available() and not button_pressed:
 		return null
 	var data := _build_layer_drag_data()
