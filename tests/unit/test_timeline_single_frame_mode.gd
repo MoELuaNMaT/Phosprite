@@ -445,9 +445,7 @@ func test_single_frame_long_press_opens_layer_menu_with_multiselect_action() -> 
 	check_has(source, "_show_card_context_menu(layer_index", "long press opens context menu")
 	check_has(scene, 'name="LayerContextMenu"', "single frame provides a context menu")
 	check_has(source, "Clipping mask (layer to right)", "clipping uses right-hand lower layer")
-	check_true(
-		not source.contains('tr("Move layer left (up)")'), "gesture owns upward movement"
-	)
+	check_true(not source.contains('tr("Move layer left (up)")'), "gesture owns upward movement")
 	check_true(
 		not source.contains('tr("Move layer right (down)")'), "gesture owns downward movement"
 	)
