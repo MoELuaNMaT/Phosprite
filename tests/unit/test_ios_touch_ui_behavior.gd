@@ -157,9 +157,7 @@ func test_touch_pointer_grace_blocks_ghost_hover_without_blocking_real_mouse() -
 		"post-touch device-0 mouse event is treated as synthetic",
 	)
 	check_true(
-		not POLICY.should_restore_pointer_mode(
-			InputEvent.DEVICE_ID_EMULATION, false, 2000, 1000
-		),
+		not POLICY.should_restore_pointer_mode(InputEvent.DEVICE_ID_EMULATION, false, 2000, 1000),
 		"explicitly emulated input never restores hover",
 	)
 	check_true(
