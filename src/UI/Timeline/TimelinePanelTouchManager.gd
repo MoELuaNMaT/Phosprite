@@ -25,6 +25,7 @@ var _timeline: Control
 var _animation_buttons: HBoxContainer
 var _layer_buttons: HBoxContainer
 var _pixel_layer_button: Button
+var _remove_layer_button: Button
 var _layer_type_menu: MenuButton
 var _group_layer_button: Button
 var _blend_modes: OptionButton
@@ -108,6 +109,7 @@ func _install_ios_timeline_toolbar() -> void:
 	_layer_buttons = _timeline.get_node_or_null(LAYER_BUTTONS_PATH) as HBoxContainer
 	if is_instance_valid(_layer_buttons):
 		_pixel_layer_button = _layer_buttons.get_node_or_null("AddLayer") as Button
+		_remove_layer_button = _layer_buttons.get_node_or_null("RemoveLayer") as Button
 	_layer_type_menu = _timeline.get("add_layer_list") as MenuButton
 	_blend_modes = _timeline.get("blend_modes_button") as OptionButton
 	_frame_buttons = _timeline.get_node_or_null(FRAME_BUTTONS_PATH) as HBoxContainer
@@ -145,6 +147,7 @@ func _all_toolbar_nodes_valid() -> bool:
 		is_instance_valid(_animation_buttons)
 		and is_instance_valid(_layer_buttons)
 		and is_instance_valid(_pixel_layer_button)
+		and is_instance_valid(_remove_layer_button)
 		and is_instance_valid(_layer_type_menu)
 		and is_instance_valid(_blend_modes)
 		and is_instance_valid(_add_frame)
@@ -241,11 +244,10 @@ func _configure_compact_layer_toolbar() -> void:
 		dropdown_icon.offset_right = 6.0
 		dropdown_icon.offset_bottom = 6.0
 
-	# BlendModes used to occupy the second VBox row in LayerTools.
-	# Reparent the *same* OptionButton, so populated modes, signal connection,
-	# layer selection and undo/redo all stay owned by AnimationTimeline.gd.
-	_blend_modes.reparent(_animation_buttons)
-	_animation_buttons.move_child(_blend_modes, _frame_buttons.get_index() + 1)
+	# Keep the native OptionButton instance (and its undoable signal handler).
+	# Place Normal/Darken/etc. directly after RemoveLayer in the layer toolbar.
+	_blend_modes.reparent(_layer_buttons)
+	_layer_buttons.move_child(_blend_modes, _remove_layer_button.get_index() + 1)
 	_blend_modes.custom_minimum_size = Vector2(IOS_BLEND_MODE_WIDTH, IOS_TOUCH_TARGET_PX)
 	_blend_modes.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_blend_modes.size_flags_vertical = Control.SIZE_SHRINK_CENTER
