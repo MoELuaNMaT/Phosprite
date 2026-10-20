@@ -20,6 +20,7 @@ func _ready() -> void:
 		# Gestures own frame ordering; tags have their own toolbar buttons.
 		for item_id in [PROPERTIES, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG]:
 			popup_menu.set_item_hidden(item_id, true)
+		popup_menu.about_to_popup.connect(_sync_ios_new_tag_context)
 	Global.cel_switched.connect(func(): z_index = 1 if button_pressed else 0)
 	custom_minimum_size.x = Global.animation_timeline.cel_size
 	text = str(frame + 1)
@@ -27,6 +28,25 @@ func _ready() -> void:
 		alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	pressed.connect(_button_pressed)
 	mouse_entered.connect(_update_tooltip)
+
+
+
+func _sync_ios_new_tag_context() -> void:
+	# The dedicated New Tag button remains available for a single focused
+	# frame. Put New Tag in the held Frame menu only for a multi-selection.
+	var project := Global.current_project
+	if project == null:
+		return
+	var targeted := false
+	for selected_cel in project.selected_cels:
+		if int(selected_cel[0]) == frame:
+			targeted = true
+			break
+	var in_multi_selection := (
+		project.has_meta(&"phosprite_animation_frame_swipe_multiselect")
+		or _get_frame_indices().size() > 1
+	)
+	popup_menu.set_item_hidden(NEW_TAG, not targeted or not in_multi_selection)
 
 
 func _update_tooltip() -> void:
