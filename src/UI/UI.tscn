@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://c8dsi6ggkqa7a"]
 
 [ext_resource type="PackedScene" uid="uid://byu3rtoipuvoc" path="res://src/UI/ToolsPanel/Tools.tscn" id="1"]
-[ext_resource type="PackedScene" uid="uid://c546tskdu53j1" path="res://src/UI/Canvas/CanvasPreview.tscn" id="2"]
 [ext_resource type="Script" uid="uid://dta2gofr682t4" path="res://src/UI/Tabs.gd" id="3"]
 [ext_resource type="Script" uid="uid://cqx80356eubav" path="res://src/UI/Canvas/Rulers/VerticalRuler.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://3pmb60gpst7b" path="res://src/UI/Nodes/TransparentChecker.tscn" id="5"]
@@ -47,18 +46,6 @@ script = ExtResource("27")
 first = SubResource("Resource_34hle")
 second = SubResource("Resource_l6i6g")
 
-[sub_resource type="Resource" id="Resource_k7omi"]
-resource_name = "Tabs"
-script = ExtResource("36")
-names = PackedStringArray("Second Canvas")
-
-[sub_resource type="Resource" id="Resource_l142s"]
-resource_name = "Split"
-script = ExtResource("27")
-percent = 0.980952
-first = SubResource("Resource_r2r5t")
-second = SubResource("Resource_k7omi")
-
 [sub_resource type="Resource" id="Resource_wobi1"]
 resource_name = "Tabs"
 script = ExtResource("36")
@@ -69,7 +56,7 @@ resource_name = "Split"
 script = ExtResource("27")
 direction = 1
 percent = 0.74711
-first = SubResource("Resource_l142s")
+first = SubResource("Resource_r2r5t")
 second = SubResource("Resource_wobi1")
 
 [sub_resource type="Resource" id="Resource_4egp5"]
@@ -162,8 +149,7 @@ hidden_tabs = {
 "Color Picker Sliders": true,
 "Perspective Editor": true,
 "Recorder": true,
-"Reference Images": true,
-"Second Canvas": true
+"Reference Images": true
 }
 
 [sub_resource type="ShaderMaterial" id="2"]
@@ -180,18 +166,6 @@ shader_parameter/follow_scale = false
 
 [sub_resource type="ShaderMaterial" id="27"]
 shader = ExtResource("8")
-
-[sub_resource type="ShaderMaterial" id="3"]
-shader = ExtResource("9")
-shader_parameter/size = 10.0
-shader_parameter/alpha = 1.0
-shader_parameter/color1 = Color(0.7, 0.7, 0.7, 1)
-shader_parameter/color2 = Color(1, 1, 1, 1)
-shader_parameter/offset = Vector2(0, 0)
-shader_parameter/scale = Vector2(0, 0)
-shader_parameter/rect_size = Vector2(0, 0)
-shader_parameter/follow_movement = false
-shader_parameter/follow_scale = false
 
 [node name="UI" type="Panel" unique_id=1431137400]
 anchors_preset = 15
@@ -302,30 +276,6 @@ offset_right = 40.0
 offset_bottom = 40.0
 mouse_filter = 2
 
-[node name="Second Canvas" type="SubViewportContainer" parent="DockableContainer" unique_id=1483064810]
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-stretch = true
-script = ExtResource("23")
-camera_path = NodePath("SubViewport/Camera2D2")
-
-[node name="SubViewport" type="SubViewport" parent="DockableContainer/Second Canvas" unique_id=2004501249]
-disable_3d = true
-handle_input_locally = false
-canvas_item_default_texture_filter = 0
-size = Vector2i(2, 2)
-render_target_update_mode = 0
-
-[node name="TransparentChecker" parent="DockableContainer/Second Canvas/SubViewport" unique_id=799733885 instance=ExtResource("5")]
-material = SubResource("3")
-
-[node name="CanvasPreview" parent="DockableContainer/Second Canvas/SubViewport" unique_id=1394850393 groups=["CanvasPreviews"] instance=ExtResource("2")]
-
-[node name="Camera2D2" type="Node2D" parent="DockableContainer/Second Canvas/SubViewport" unique_id=1003177582 groups=["CanvasCameras"]]
-script = ExtResource("7")
-index = 1
-
 [node name="Animation Timeline" parent="DockableContainer" unique_id=1139956430 instance=ExtResource("18")]
 layout_mode = 2
 
@@ -389,5 +339,3 @@ layout_mode = 2
 [connection signal="pressed" from="DockableContainer/Main Canvas/ViewportandVerticalRuler/VerticalRuler" to="DockableContainer/Main Canvas/ViewportandVerticalRuler/VerticalRuler" method="_on_VerticalRuler_pressed"]
 [connection signal="mouse_entered" from="DockableContainer/Main Canvas/ViewportandVerticalRuler/SubViewportContainer" to="DockableContainer/Main Canvas/ViewportandVerticalRuler/SubViewportContainer" method="_on_ViewportContainer_mouse_entered"]
 [connection signal="mouse_exited" from="DockableContainer/Main Canvas/ViewportandVerticalRuler/SubViewportContainer" to="DockableContainer/Main Canvas/ViewportandVerticalRuler/SubViewportContainer" method="_on_ViewportContainer_mouse_exited"]
-[connection signal="mouse_entered" from="DockableContainer/Second Canvas" to="DockableContainer/Second Canvas" method="_on_ViewportContainer_mouse_entered"]
-[connection signal="mouse_exited" from="DockableContainer/Second Canvas" to="DockableContainer/Second Canvas" method="_on_ViewportContainer_mouse_exited"]
