@@ -13,8 +13,21 @@ const ANIMATION_BUTTONS_PATH := (
 const FRAME_BUTTONS_PATH := ANIMATION_BUTTONS_PATH + "/FrameButtons"
 const PLAYBACK_BUTTONS_PATH := ANIMATION_BUTTONS_PATH + "/PlaybackButtons"
 const LOOP_BUTTONS_PATH := ANIMATION_BUTTONS_PATH + "/LoopButtons"
+const LAYER_BUTTONS_PATH := (
+	"TimelineContainer/TimelineButtons/LayerTools/MarginContainer/"
+	+ "LayerSettingsContainer/LayerButtons"
+)
+const IOS_BLEND_MODE_WIDTH := 148.0
+const IOS_LAYER_MENU_WIDTH := 40.0
+const GROUP_LAYER_ICON := preload("res://assets/graphics/layers/group_new.png")
 
 var _timeline: Control
+var _animation_buttons: HBoxContainer
+var _layer_buttons: HBoxContainer
+var _pixel_layer_button: Button
+var _layer_type_menu: MenuButton
+var _group_layer_button: Button
+var _blend_modes: OptionButton
 var _frame_buttons: HBoxContainer
 var _playback_buttons: HBoxContainer
 var _loop_buttons: HBoxContainer
@@ -33,8 +46,6 @@ var _timeline_settings: Button
 var _onion_skinning: Button
 var _loop_animation: Button
 var _fps_value: Control
-var _new_tag_button: Button
-var _import_tag_button: Button
 
 var _tag_resize_touch := -1
 var _tag_resize_ui: Control
@@ -93,6 +104,12 @@ func _install_ios_timeline_toolbar() -> void:
 	_timeline = get_parent() as Control
 	if not is_instance_valid(_timeline):
 		return
+	_animation_buttons = _timeline.get_node_or_null(ANIMATION_BUTTONS_PATH) as HBoxContainer
+	_layer_buttons = _timeline.get_node_or_null(LAYER_BUTTONS_PATH) as HBoxContainer
+	if is_instance_valid(_layer_buttons):
+		_pixel_layer_button = _layer_buttons.get_node_or_null("AddLayer") as Button
+	_layer_type_menu = _timeline.get("add_layer_list") as MenuButton
+	_blend_modes = _timeline.get("blend_modes_button") as OptionButton
 	_frame_buttons = _timeline.get_node_or_null(FRAME_BUTTONS_PATH) as HBoxContainer
 	_playback_buttons = _timeline.get_node_or_null(PLAYBACK_BUTTONS_PATH) as HBoxContainer
 	_loop_buttons = _timeline.get_node_or_null(LOOP_BUTTONS_PATH) as HBoxContainer
@@ -120,17 +137,17 @@ func _install_ios_timeline_toolbar() -> void:
 		return
 
 	_configure_touch_geometry()
-	_build_tag_buttons()
-	if not Global.cel_switched.is_connected(_on_timeline_state_changed):
-		Global.cel_switched.connect(_on_timeline_state_changed)
-	if not Global.project_switched.is_connected(_on_timeline_state_changed):
-		Global.project_switched.connect(_on_timeline_state_changed)
-	call_deferred("_sync_action_states")
+	_configure_compact_layer_toolbar()
 
 
 func _all_toolbar_nodes_valid() -> bool:
 	return (
-		is_instance_valid(_add_frame)
+		is_instance_valid(_animation_buttons)
+		and is_instance_valid(_layer_buttons)
+		and is_instance_valid(_pixel_layer_button)
+		and is_instance_valid(_layer_type_menu)
+		and is_instance_valid(_blend_modes)
+		and is_instance_valid(_add_frame)
 		and is_instance_valid(_delete_frame)
 		and is_instance_valid(_copy_frame)
 		and is_instance_valid(_move_frame_left)
@@ -176,62 +193,76 @@ func _configure_touch_geometry() -> void:
 	_timeline_settings.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 
 
-func _build_tag_buttons() -> void:
-	_new_tag_button = Button.new()
-	_new_tag_button.name = "TimelineNewTagButton"
-	_new_tag_button.text = tr("New Tag")
-	_new_tag_button.tooltip_text = tr("Create animation tag at the current frame")
-	_new_tag_button.custom_minimum_size = Vector2(76.0, IOS_TOUCH_TARGET_PX)
-	_new_tag_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_new_tag_button.pressed.connect(_on_new_tag_pressed)
-	_frame_buttons.add_child(_new_tag_button)
-	_frame_buttons.move_child(_new_tag_button, _delete_frame.get_index() + 1)
+func _configure_compact_layer_toolbar() -> void:
+	# Only iPad gets the compact one-row toolbar; the desktop scene and
+	# native layer/Frame action handlers are unchanged.
+	_layer_buttons.add_theme_constant_override("separation", IOS_TOOLBAR_SEPARATION)
+	_pixel_layer_button.custom_minimum_size = Vector2(
+		IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX
+	)
+	_pixel_layer_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_pixel_layer_button.tooltip_text = tr("Add Pixel Layer")
+	var pixel_icon := _pixel_layer_button.get_node_or_null("TextureRect") as Control
+	if is_instance_valid(pixel_icon):
+		pixel_icon.anchor_left = 0.5
+		pixel_icon.anchor_right = 0.5
+		pixel_icon.offset_left = -11.0
+		pixel_icon.offset_right = 11.0
 
-	_import_tag_button = Button.new()
-	_import_tag_button.name = "TimelineImportTagButton"
-	_import_tag_button.text = tr("Import Tag")
-	_import_tag_button.tooltip_text = tr("Import an animation tag from an open project")
-	_import_tag_button.custom_minimum_size = Vector2(92.0, IOS_TOUCH_TARGET_PX)
-	_import_tag_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_import_tag_button.pressed.connect(_on_import_tag_pressed)
-	_frame_buttons.add_child(_import_tag_button)
-	_frame_buttons.move_child(_import_tag_button, _new_tag_button.get_index() + 1)
+	_group_layer_button = Button.new()
+	_group_layer_button.name = "AddGroupLayer"
+	_group_layer_button.icon = GROUP_LAYER_ICON
+	_group_layer_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_group_layer_button.tooltip_text = tr("Add Group Layer")
+	_group_layer_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_group_layer_button.custom_minimum_size = Vector2(
+		IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX
+	)
+	_group_layer_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_group_layer_button.pressed.connect(_on_add_group_layer_pressed)
+	_layer_buttons.add_child(_group_layer_button)
+	_layer_buttons.move_child(_group_layer_button, _pixel_layer_button.get_index() + 1)
+
+	# Move the original dropdown OUT of AddLayer. It remains the unique
+	# AddLayerList referenced by AnimationTimeline.gd and keeps its signal.
+	_layer_type_menu.reparent(_layer_buttons)
+	_layer_buttons.move_child(_layer_type_menu, _group_layer_button.get_index() + 1)
+	_layer_type_menu.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_layer_type_menu.custom_minimum_size = Vector2(
+		IOS_LAYER_MENU_WIDTH, IOS_TOUCH_TARGET_PX
+	)
+	_layer_type_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_layer_type_menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_layer_type_menu.tooltip_text = tr("More layer types")
+	var extra_layer_types := _layer_type_menu.get_popup()
+	extra_layer_types.clear()
+	extra_layer_types.add_item(tr("Add 3D Layer"), Global.LayerTypes.THREE_D)
+	extra_layer_types.add_item(tr("Add Tilemap Layer"), Global.LayerTypes.TILEMAP)
+	extra_layer_types.add_item(tr("Add Audio Layer"), Global.LayerTypes.AUDIO)
+	var dropdown_icon := _layer_type_menu.get_node_or_null("TextureRect") as Control
+	if is_instance_valid(dropdown_icon):
+		dropdown_icon.set_anchors_preset(Control.PRESET_CENTER)
+		dropdown_icon.offset_left = -6.0
+		dropdown_icon.offset_top = -6.0
+		dropdown_icon.offset_right = 6.0
+		dropdown_icon.offset_bottom = 6.0
+
+	# BlendModes used to occupy the second VBox row in LayerTools.
+	# Reparent the *same* OptionButton, so populated modes, signal connection,
+	# layer selection and undo/redo all stay owned by AnimationTimeline.gd.
+	_blend_modes.reparent(_animation_buttons)
+	_animation_buttons.move_child(_blend_modes, _frame_buttons.get_index() + 1)
+	_blend_modes.custom_minimum_size = Vector2(
+		IOS_BLEND_MODE_WIDTH, IOS_TOUCH_TARGET_PX
+	)
+	_blend_modes.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_blend_modes.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_animation_buttons.add_theme_constant_override("separation", IOS_TOOLBAR_SEPARATION)
 
 
-func _on_timeline_state_changed() -> void:
-	call_deferred("_sync_tag_button_states")
-
-
-func _sync_tag_button_states() -> void:
-	if not is_instance_valid(_new_tag_button) or not is_instance_valid(_import_tag_button):
-		return
-	var has_frame := is_instance_valid(_current_frame_button())
-	_new_tag_button.disabled = not has_frame
-	_import_tag_button.disabled = not has_frame
-
-
-func _on_new_tag_pressed() -> void:
-	_call_current_frame_menu_action(5)
-
-
-func _on_import_tag_pressed() -> void:
-	_call_current_frame_menu_action(6)
-
-
-func _call_current_frame_menu_action(id: int) -> void:
-	var frame_button := _current_frame_button()
-	if is_instance_valid(frame_button) and frame_button.has_method("_on_PopupMenu_id_pressed"):
-		frame_button.call("_on_PopupMenu_id_pressed", id)
-
-
-func _current_frame_button() -> Control:
-	if not is_instance_valid(_timeline) or Global.current_project == null:
-		return null
-	var frame_hbox := _timeline.get("frame_hbox") as HBoxContainer
-	var frame := Global.current_project.current_frame
-	if not is_instance_valid(frame_hbox) or frame < 0 or frame >= frame_hbox.get_child_count():
-		return null
-	return frame_hbox.get_child(frame) as Control
+func _on_add_group_layer_pressed() -> void:
+	# The native handler owns GroupLayer creation, focus and undo history.
+	_timeline.call("on_add_layer_list_id_pressed", Global.LayerTypes.GROUP)
 
 
 func _handle_tag_screen_touch(event: InputEventScreenTouch) -> bool:
