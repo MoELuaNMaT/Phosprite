@@ -107,29 +107,32 @@ func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> v
 	)
 
 
-
 func test_frame_context_reveals_new_tag_only_for_frame_multi_selection() -> void:
 	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
 	var manager_src := FileAccess.get_file_as_string(
 		"res://src/UI/Timeline/TimelineTouchSelectionManager.gd"
 	)
 	check_has(
-		frame_src, "popup_menu.about_to_popup.connect(_sync_ios_new_tag_context)",
+		frame_src,
+		"popup_menu.about_to_popup.connect(_sync_ios_new_tag_context)",
 		"Frame long-press must refresh New Tag visibility on each popup",
 	)
 	check_has(
-		frame_src, 'project.has_meta(&"phosprite_animation_frame_swipe_multiselect")',
+		frame_src,
+		'project.has_meta(&"phosprite_animation_frame_swipe_multiselect")',
 		"New Tag checks swipe-selection mode, including one selected frame",
 	)
 	check_has(
-		frame_src, "popup_menu.set_item_hidden(NEW_TAG, not targeted or not in_multi_selection)",
+		frame_src,
+		"popup_menu.set_item_hidden(NEW_TAG, not targeted or not in_multi_selection)",
 		"New Tag is hidden on unselected and normal single-focus Frames",
 	)
 	check_has(
-		manager_src, 'if not has_target:', "long-press on a selected Frame keeps batch selection"
+		manager_src, "if not has_target:", "long-press on a selected Frame keeps batch selection"
 	)
 	check_has(
-		frame_src, "tag_properties.show_dialog(Rect2i(), current_tag_id, false, indices)",
+		frame_src,
+		"tag_properties.show_dialog(Rect2i(), current_tag_id, false, indices)",
 		"New Tag continues using the native selected-frame range dialog",
 	)
 
