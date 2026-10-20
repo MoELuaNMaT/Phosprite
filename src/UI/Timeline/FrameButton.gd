@@ -30,7 +30,6 @@ func _ready() -> void:
 	mouse_entered.connect(_update_tooltip)
 
 
-
 func _sync_ios_new_tag_context() -> void:
 	# The dedicated New Tag button remains available for a single focused
 	# frame. Put New Tag in the held Frame menu only for a multi-selection.
