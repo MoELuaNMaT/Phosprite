@@ -111,7 +111,7 @@ func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> v
 	)
 
 
-func test_ios_timeline_toolbar_splits_create_buttons_and_moves_blend_modes_inline() -> void:
+func test_ios_timeline_toolbar_places_blend_modes_after_remove_layer() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(
 		src, '_pixel_layer_button.tooltip_text = tr("Add Pixel Layer")', "pixel add is direct"
@@ -141,13 +141,18 @@ func test_ios_timeline_toolbar_splits_create_buttons_and_moves_blend_modes_inlin
 		check_true(not menu_src.contains("Global.LayerTypes.GROUP"), "Group is not in popup")
 	check_has(
 		src,
-		"_blend_modes.reparent(_animation_buttons)",
-		"move the existing BlendModes control from the second row into the toolbar",
+		'_remove_layer_button = _layer_buttons.get_node_or_null("RemoveLayer") as Button',
+		"the blend menu must anchor to the real RemoveLayer Button",
 	)
 	check_has(
 		src,
-		"_animation_buttons.move_child(_blend_modes, _frame_buttons.get_index() + 1)",
-		"BlendModes is placed beside frame actions horizontally",
+		"_blend_modes.reparent(_layer_buttons)",
+		"keep the existing BlendModes dropdown in the layer toolbar",
+	)
+	check_has(
+		src,
+		"_layer_buttons.move_child(_blend_modes, _remove_layer_button.get_index() + 1)",
+		"BlendModes is placed immediately after RemoveLayer",
 	)
 	check_has(
 		src,
