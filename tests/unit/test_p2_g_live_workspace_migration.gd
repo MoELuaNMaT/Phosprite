@@ -165,9 +165,7 @@ func test_second_canvas_is_removed_without_breaking_legacy_layout_snapshots() ->
 	var fixture := _make_live_fixture()
 	var manager := fixture["manager"] as WorkspaceModuleManager
 	var store := fixture["store"] as WorkspaceLayoutStore
-	check_true(
-		not manager.has_definition(&"second_canvas"), "removed module cannot be reactivated"
-	)
+	check_true(not manager.has_definition(&"second_canvas"), "removed module cannot be reactivated")
 	var legacy_snapshot := store.capture_snapshot()
 	legacy_snapshot["modules"].append({"id": "second_canvas", "placement": "floating"})
 	check_true(
