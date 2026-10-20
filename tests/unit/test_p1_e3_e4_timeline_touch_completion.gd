@@ -184,9 +184,7 @@ func test_empty_ios_tag_lane_collapses_and_restores_with_tags() -> void:
 
 
 func test_tag_row_reacts_to_creation_deletion_and_project_switching() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/Timeline/AnimationTimeline.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/Timeline/AnimationTimeline.gd")
 	var tags_changed := source.find("func _on_animation_tags_changed()")
 	var tags_changed_end := source.find("func set_timeline_first_and_last_frames()", tags_changed)
 	var tag_logic := source.substr(tags_changed, tags_changed_end - tags_changed)
