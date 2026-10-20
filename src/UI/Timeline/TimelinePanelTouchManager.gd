@@ -197,9 +197,7 @@ func _configure_compact_layer_toolbar() -> void:
 	# Only iPad gets the compact one-row toolbar; the desktop scene and
 	# native layer/Frame action handlers are unchanged.
 	_layer_buttons.add_theme_constant_override("separation", IOS_TOOLBAR_SEPARATION)
-	_pixel_layer_button.custom_minimum_size = Vector2(
-		IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX
-	)
+	_pixel_layer_button.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 	_pixel_layer_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_pixel_layer_button.tooltip_text = tr("Add Pixel Layer")
 	var pixel_icon := _pixel_layer_button.get_node_or_null("TextureRect") as Control
@@ -215,9 +213,7 @@ func _configure_compact_layer_toolbar() -> void:
 	_group_layer_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_group_layer_button.tooltip_text = tr("Add Group Layer")
 	_group_layer_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_group_layer_button.custom_minimum_size = Vector2(
-		IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX
-	)
+	_group_layer_button.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 	_group_layer_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_group_layer_button.pressed.connect(_on_add_group_layer_pressed)
 	_layer_buttons.add_child(_group_layer_button)
@@ -228,9 +224,7 @@ func _configure_compact_layer_toolbar() -> void:
 	_layer_type_menu.reparent(_layer_buttons)
 	_layer_buttons.move_child(_layer_type_menu, _group_layer_button.get_index() + 1)
 	_layer_type_menu.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_layer_type_menu.custom_minimum_size = Vector2(
-		IOS_LAYER_MENU_WIDTH, IOS_TOUCH_TARGET_PX
-	)
+	_layer_type_menu.custom_minimum_size = Vector2(IOS_LAYER_MENU_WIDTH, IOS_TOUCH_TARGET_PX)
 	_layer_type_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_layer_type_menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_layer_type_menu.tooltip_text = tr("More layer types")
@@ -252,9 +246,7 @@ func _configure_compact_layer_toolbar() -> void:
 	# layer selection and undo/redo all stay owned by AnimationTimeline.gd.
 	_blend_modes.reparent(_animation_buttons)
 	_animation_buttons.move_child(_blend_modes, _frame_buttons.get_index() + 1)
-	_blend_modes.custom_minimum_size = Vector2(
-		IOS_BLEND_MODE_WIDTH, IOS_TOUCH_TARGET_PX
-	)
+	_blend_modes.custom_minimum_size = Vector2(IOS_BLEND_MODE_WIDTH, IOS_TOUCH_TARGET_PX)
 	_blend_modes.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_blend_modes.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_animation_buttons.add_theme_constant_override("separation", IOS_TOOLBAR_SEPARATION)
