@@ -65,12 +65,18 @@ func test_e3_removes_obsolete_overflow_but_preserves_native_frame_handlers() -> 
 	check_has(src, "_timeline_settings.custom_minimum_size", "Timeline settings is touch sized")
 
 
-func test_e3_tag_actions_reuse_existing_frame_context_handlers() -> void:
+func test_e3_removes_direct_tag_buttons_but_keeps_native_frame_context_actions() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(src, 'name = "TimelineNewTagButton"', "New Tag has a direct iPad entry")
-	check_has(src, 'name = "TimelineImportTagButton"', "Import Tag has a direct iPad entry")
-	check_has(src, "_call_current_frame_menu_action(5)", "New Tag uses the native handler")
-	check_has(src, "_call_current_frame_menu_action(6)", "Import Tag uses the native handler")
+	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
+	check_true(
+		not src.contains("TimelineNewTagButton"), "New Tag must not be in the iPad toolbar"
+	)
+	check_true(
+		not src.contains("TimelineImportTagButton"), "Import Tag must not be in the iPad toolbar"
+	)
+	check_true(not src.contains("_build_tag_buttons"), "no dynamic Tag toolbar controls remain")
+	check_has(frame_src, "NEW_TAG:", "native Frame menu retains New Tag")
+	check_has(frame_src, "IMPORT_TAG:", "native Frame handler retains Import Tag internally")
 	check_true(not ("undo_redo" in src), "E3/E4 adapter must not create a second UndoRedo path")
 	check_true(not ("move_frames" in src), "E3/E4 adapter must not implement Frame movement")
 
@@ -101,9 +107,45 @@ func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> v
 	for layer_action in ["DUPLICATE", "MERGE_DOWN", "EFFECTS"]:
 		check_has(layer_src, "MenuOptions." + layer_action, "Animation layer menu includes action")
 	check_has(
-		manager_src,
-		'frame_button.call("_on_PopupMenu_id_pressed", id)',
-		"dedicated Tag controls still use the original Frame action handler",
+		frame_src, "tag_properties.show_dialog(Rect2i(), current_tag_id, false, indices)",
+		"Frame context New Tag still uses the original dialog",
+	)
+
+
+func test_ios_timeline_toolbar_splits_create_buttons_and_moves_blend_modes_inline() -> void:
+	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	check_has(src, '_pixel_layer_button.tooltip_text = tr("Add Pixel Layer")', "pixel add is direct")
+	check_has(src, '_group_layer_button.name = "AddGroupLayer"', "group gets an independent button")
+	check_has(src, 'preload("res://assets/graphics/layers/group_new.png")', "group uses folder icon")
+	check_has(
+		src, '_timeline.call("on_add_layer_list_id_pressed", Global.LayerTypes.GROUP)',
+		"group button delegates to existing undoable creation",
+	)
+	check_has(
+		src, '_layer_type_menu.reparent(_layer_buttons)', "the extra layer types get a separate dropdown"
+	)
+	for layer_type in ["THREE_D", "TILEMAP", "AUDIO"]:
+		check_has(
+			src, "Global.LayerTypes." + layer_type, "extra dropdown retains " + layer_type
+		)
+	var start := src.find("extra_layer_types.clear()")
+	var finish := src.find("var dropdown_icon", start)
+	check_true(start >= 0 and finish > start, "extra layer popup must be rebuilt")
+	if finish > start:
+		var menu_src := src.substr(start, finish - start)
+		check_true(not menu_src.contains("Global.LayerTypes.PIXEL"), "Pixel is not in popup")
+		check_true(not menu_src.contains("Global.LayerTypes.GROUP"), "Group is not in popup")
+	check_has(
+		src, '_blend_modes.reparent(_animation_buttons)',
+		"move the existing BlendModes control from the second row into the toolbar",
+	)
+	check_has(
+		src, '_animation_buttons.move_child(_blend_modes, _frame_buttons.get_index() + 1)',
+		"BlendModes is placed beside frame actions horizontally",
+	)
+	check_has(
+		src, 'Vector2(\n\t\tIOS_BLEND_MODE_WIDTH, IOS_TOUCH_TARGET_PX\n\t)',
+		"BlendModes height matches one finger-sized toolbar row",
 	)
 
 
