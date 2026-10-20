@@ -106,7 +106,7 @@ func test_stationary_long_press_opens_existing_cel_and_frame_context_menus() -> 
 	check_has(src, "popup.popup_on_parent", "hold opens native context menu")
 	check_has(src, "_prepare_frame_popup", "Frame menu refreshes disabled actions")
 	check_has(src, 'candidate["menu_opened"] = true', "only open menu once per hold")
-	check_has(src, 'if bool(candidate.get("menu_opened", false)):', "release cannot select")
+	check_has(src, 'or bool(candidate.get("swipe_selected", false)):', "swipe release cannot select")
 	check_true(not src.contains("IOS_TOUCH_DOUBLE_TAP_MSEC"), "double tap no longer opens menu")
 	check_true(not src.contains("_register_tap("), "remove double-tap recognizer")
 	check_has(src, "_apply_touch_selection(kind, target)", "repeated taps remain single taps")
@@ -128,4 +128,75 @@ func test_touch_selection_suppresses_synthetic_mouse_but_preserves_physical_poin
 		src,
 		"control.mouse_filter = int(control.get_meta(IOS_TOUCH_MOUSE_FILTER_META))",
 		"pointer restoration must restore each control's original mouse filter",
+	)
+
+
+
+func test_frame_header_down_swipe_selects_and_deselects_whole_frames() -> void:
+	check_eq(
+		MANAGER.IOS_FRAME_SWIPE_DISTANCE_PX, 28.0, "Frame header follows the 28px swipe distance"
+	)
+	check_true(
+		MANAGER._is_frame_selection_swipe(Vector2(3, 34), 100), "downward swipe selects"
+	)
+	check_true(
+		not MANAGER._is_frame_selection_swipe(Vector2(3, -34), 100),
+		"upward scrolling does not select",
+	)
+	check_true(
+		not MANAGER._is_frame_selection_swipe(Vector2(34, 4), 100),
+		"horizontal scrolling does not select",
+	)
+	check_true(
+		not MANAGER._is_frame_selection_swipe(Vector2(3, 20), 100),
+		"touch jitter under 28px does not select",
+	)
+	check_true(
+		MANAGER._is_frame_selection_swipe(Vector2(2, 32), 500),
+		"slow downward swipes beat the 450ms reorder threshold",
+	)
+	check_true(
+		not MANAGER._is_frame_selection_swipe(Vector2(2, 32), 650),
+		"stationary 650ms hold stays reserved for context menus",
+	)
+
+	var frame_one := MANAGER._toggled_frame_cels([[0, 2]], 1, 3, true)
+	check_eq(frame_one, [[1, 0], [1, 1], [1, 2]], "first swipe ignores stale focus")
+	var frames_one_two := MANAGER._toggled_frame_cels(frame_one, 2, 3, false)
+	check_eq(
+		frames_one_two,
+		[[1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]],
+		"second frame swipe preserves all previously selected frames",
+	)
+	var only_second := MANAGER._toggled_frame_cels(frames_one_two, 1, 3, false)
+	check_eq(only_second, [[2, 0], [2, 1], [2, 2]], "repeat swipe deselects one frame")
+	check_true(
+		MANAGER._toggled_frame_cels(only_second, 2, 3, false).is_empty(),
+		"the last selected Frame can be deselected",
+	)
+
+
+func test_frame_down_swipe_has_exclusive_ownership_and_normal_tap_exits_mode() -> void:
+	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	check_has(
+		src, 'candidate["swipe_selected"] = true', "swipe is consumed only once per finger"
+	)
+	check_has(
+		src, '_toggle_swipe_frame_selection(candidate.get("target") as Control)',
+		"gesture toggles the touched Frame, not whichever Cel was active",
+	)
+	check_has(
+		src, 'or bool(candidate.get("swipe_selected", false))',
+		"release and subsequent drags do not trigger a tap or group reorder",
+	)
+	check_has(
+		src, "Global.cel_switched.emit()", "last deselection updates Frame UI without refocus"
+	)
+	check_has(src, "_clear_swipe_frame_mode()", "ordinary Frame/Cel taps exit frame multi-mode")
+	check_has(
+		src, "if not _updating_frame_swipe:", "other UI selection changes reset swipe mode"
+	)
+	check_has(
+		src, "held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC",
+		"the original long-hold Frame reorder is still available",
 	)
