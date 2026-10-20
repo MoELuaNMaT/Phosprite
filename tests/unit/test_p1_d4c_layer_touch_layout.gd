@@ -51,15 +51,18 @@ func test_layer_toolbar_bootstraps_are_valid_in_either_order() -> void:
 		"res://src/UI/Timeline/TimelinePanelTouchManager.gd"
 	)
 	check_has(
-		layer_src, 'get_node_or_null("AddLayerList")',
+		layer_src,
+		'get_node_or_null("AddLayerList")',
 		"layer bootstrap finds the standalone dropdown if Timeline bootstrap already moved it",
 	)
 	check_has(
-		layer_src, 'if _add_layer_list.get_parent() == _add_layer:',
+		layer_src,
+		"if _add_layer_list.get_parent() == _add_layer:",
 		"legacy split geometry must only apply until compact reparenting completes",
 	)
 	check_has(
-		toolbar_src, "_layer_type_menu.reparent(_layer_buttons)",
+		toolbar_src,
+		"_layer_type_menu.reparent(_layer_buttons)",
 		"Timeline bootstrap moves the existing dropdown instead of cloning handlers",
 	)
 
