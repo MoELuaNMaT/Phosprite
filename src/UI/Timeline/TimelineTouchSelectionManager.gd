@@ -4,6 +4,10 @@ enum TouchTargetKind { NONE, CEL, FRAME }
 
 const IOS_TOUCH_TAP_SLOP_PX := 12.0
 const IOS_TOUCH_CONTEXT_HOLD_MSEC := 650
+const IOS_FRAME_SWIPE_DISTANCE_PX := 28.0
+const IOS_FRAME_SWIPE_DIRECTION_RATIO := 1.35
+const FRAME_SWIPE_MULTI_META := &"phosprite_animation_frame_swipe_multiselect"
+const LAYER_SWIPE_MULTI_META := &"phosprite_animation_layer_swipe_multiselect"
 const IOS_TOUCH_REORDER_HOLD_MSEC := 450
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
 const AUTO_SCROLL_MIN_SPEED := 90.0
@@ -30,6 +34,7 @@ var _drop_target: Control
 var _drop_local_position := Vector2.ZERO
 var _managed_horizontal_scroll := 0.0
 var _managed_vertical_scroll := 0.0
+var _updating_frame_swipe := false
 
 
 func _ready() -> void:
@@ -68,7 +73,11 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec()
 	for touch_index in _touch_candidates:
 		var candidate: Dictionary = _touch_candidates[touch_index]
-		if bool(candidate.get("cancelled", false)) or bool(candidate.get("menu_opened", false)):
+		if (
+			bool(candidate.get("cancelled", false))
+			or bool(candidate.get("menu_opened", false))
+			or bool(candidate.get("swipe_selected", false))
+		):
 			continue
 		if now - int(candidate.get("pressed_msec", now)) < IOS_TOUCH_CONTEXT_HOLD_MSEC:
 			continue
@@ -96,20 +105,27 @@ func _install_ios_timeline_selection() -> void:
 	# Tap focuses one Cel or Frame; swipe selection has its own gesture handler.
 	if not Global.project_about_to_switch.is_connected(_on_project_about_to_switch):
 		Global.project_about_to_switch.connect(_on_project_about_to_switch)
+	if not Global.cel_switched.is_connected(_on_cel_switched):
+		Global.cel_switched.connect(_on_cel_switched)
 
 
 func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 	if event.canceled:
-		var was_reordering := false
+		var was_owned_gesture := false
 		if _touch_candidates.has(event.index):
 			var canceled_candidate: Dictionary = _touch_candidates[event.index]
-			was_reordering = bool(canceled_candidate.get("reordering", false))
+			was_owned_gesture = (
+				bool(canceled_candidate.get("reordering", false))
+				or bool(canceled_candidate.get("swipe_selected", false))
+			)
 			_touch_candidates.erase(event.index)
-		if was_reordering or event.index == _active_reorder_touch:
+		if event.index == _active_reorder_touch:
 			_finish_reorder()
+			was_owned_gesture = true
+		if was_owned_gesture:
 			get_viewport().set_input_as_handled()
 		set_process(not _touch_candidates.is_empty())
-		return was_reordering
+		return was_owned_gesture
 
 	if event.pressed:
 		var target_data := _find_touch_target(event.position)
@@ -126,6 +142,7 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 			"cancelled": false,
 			"reordering": false,
 			"menu_opened": false,
+			"swipe_selected": false,
 		}
 		set_process(true)
 		return true
@@ -146,7 +163,7 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
 
 	_touch_candidates.erase(event.index)
 	set_process(not _touch_candidates.is_empty())
-	if bool(candidate.get("menu_opened", false)):
+	if bool(candidate.get("menu_opened", false)) or bool(candidate.get("swipe_selected", false)):
 		get_viewport().set_input_as_handled()
 		return true
 	if bool(candidate.get("cancelled", false)):
@@ -169,7 +186,7 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 	var candidate: Dictionary = _touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
 		return false
-	if bool(candidate.get("menu_opened", false)):
+	if bool(candidate.get("menu_opened", false)) or bool(candidate.get("swipe_selected", false)):
 		get_viewport().set_input_as_handled()
 		return true
 	candidate["position"] = event.position
@@ -182,6 +199,24 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 	var pressed_msec := int(candidate.get("pressed_msec", Time.get_ticks_msec()))
 	var held_msec := Time.get_ticks_msec() - pressed_msec
 	var origin: Vector2 = candidate.get("origin", event.position)
+	var delta := event.position - origin
+	var is_frame := int(candidate.get("kind", TouchTargetKind.NONE)) == TouchTargetKind.FRAME
+	if is_frame and _is_frame_selection_swipe(delta, held_msec):
+		candidate["swipe_selected"] = true
+		_touch_candidates[event.index] = candidate
+		_toggle_swipe_frame_selection(candidate.get("target") as Control)
+		get_viewport().set_input_as_handled()
+		return true
+	# A downward Frame stroke gets the full 28 px to select, even if it
+	# passes the 450 ms drag threshold. Holding still for 650 ms opens the menu.
+	if (
+		is_frame
+		and held_msec < IOS_TOUCH_CONTEXT_HOLD_MSEC
+		and delta.y > 0.0
+		and delta.y >= absf(delta.x) * IOS_FRAME_SWIPE_DIRECTION_RATIO
+	):
+		_touch_candidates[event.index] = candidate
+		return true
 	if (
 		held_msec >= IOS_TOUCH_REORDER_HOLD_MSEC
 		and (origin.distance_to(event.position) > IOS_TOUCH_TAP_SLOP_PX)
@@ -198,6 +233,71 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 		return false
 	_touch_candidates[event.index] = candidate
 	return true
+
+
+
+static func _is_frame_selection_swipe(delta: Vector2, held_msec: int) -> bool:
+	return (
+		held_msec < IOS_TOUCH_CONTEXT_HOLD_MSEC
+		and delta.y >= IOS_FRAME_SWIPE_DISTANCE_PX
+		and delta.y >= absf(delta.x) * IOS_FRAME_SWIPE_DIRECTION_RATIO
+	)
+
+
+static func _toggled_frame_cels(
+	selected_cels: Array, frame: int, layer_count: int, first_swipe: bool
+) -> Array:
+	var result := [] if first_swipe else selected_cels.duplicate(true)
+	var was_selected := false
+	for item in result:
+		if int(item[0]) == frame:
+			was_selected = true
+			break
+	if was_selected:
+		for index in range(result.size() - 1, -1, -1):
+			if int(result[index][0]) == frame:
+				result.remove_at(index)
+	else:
+		for layer in layer_count:
+			result.append([frame, layer])
+	return result
+
+
+func _toggle_swipe_frame_selection(frame_button: Control) -> void:
+	var project := Global.current_project
+	if not is_instance_valid(project) or not is_instance_valid(frame_button):
+		return
+	var frame := int(frame_button.get("frame"))
+	if frame < 0 or frame >= project.frames.size():
+		return
+	Global.transform_content_confirmed.emit()
+	var first_swipe := not project.has_meta(FRAME_SWIPE_MULTI_META)
+	var new_selection := _toggled_frame_cels(
+		project.selected_cels, frame, project.layers.size(), first_swipe
+	)
+	project.selected_cels = new_selection
+	project.set_meta(FRAME_SWIPE_MULTI_META, true)
+	if project.has_meta(LAYER_SWIPE_MULTI_META):
+		project.remove_meta(LAYER_SWIPE_MULTI_META)
+	_updating_frame_swipe = true
+	if project.selected_cels.is_empty():
+		# change_cel() would silently recreate a selection after deselecting
+		# the last frame. Emit the visual refresh without changing that state.
+		Global.cel_switched.emit()
+	else:
+		project.change_cel(frame, project.current_layer)
+	_updating_frame_swipe = false
+
+
+func _clear_swipe_frame_mode() -> void:
+	var project := Global.current_project
+	if is_instance_valid(project) and project.has_meta(FRAME_SWIPE_MULTI_META):
+		project.remove_meta(FRAME_SWIPE_MULTI_META)
+
+
+func _on_cel_switched() -> void:
+	if not _updating_frame_swipe:
+		_clear_swipe_frame_mode()
 
 
 func _begin_reorder(touch_index: int, screen_position: Vector2) -> bool:
@@ -596,6 +696,7 @@ func _select_cel_for_touch(cel_button: Control) -> void:
 	var project := Global.current_project
 	var frame := int(cel_button.get("frame"))
 	var layer := int(cel_button.get("layer"))
+	_clear_swipe_frame_mode()
 	project.selected_cels.clear()
 	project.selected_cels.append([frame, layer])
 	project.change_cel(frame, layer)
@@ -604,6 +705,7 @@ func _select_cel_for_touch(cel_button: Control) -> void:
 func _select_frame_for_touch(frame_button: Control) -> void:
 	var project := Global.current_project
 	var frame := int(frame_button.get("frame"))
+	_clear_swipe_frame_mode()
 	project.selected_cels.clear()
 	project.selected_cels.append([frame, project.current_layer])
 	project.change_cel(frame, project.current_layer)
@@ -668,6 +770,7 @@ func _restore_pointer_timeline_ui() -> void:
 
 
 func _on_project_about_to_switch() -> void:
+	_clear_swipe_frame_mode()
 	_restore_pointer_timeline_ui()
 
 
