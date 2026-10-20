@@ -48,6 +48,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_clear_swipe_frame_mode()
 	_restore_pointer_timeline_ui()
 
 
@@ -107,6 +108,11 @@ func _install_ios_timeline_selection() -> void:
 		Global.project_about_to_switch.connect(_on_project_about_to_switch)
 	if not Global.cel_switched.is_connected(_on_cel_switched):
 		Global.cel_switched.connect(_on_cel_switched)
+	if (
+		_timeline.has_signal("timeline_mode_changed")
+		and not _timeline.is_connected("timeline_mode_changed", _on_timeline_mode_changed)
+	):
+		_timeline.connect("timeline_mode_changed", _on_timeline_mode_changed)
 
 
 func _handle_screen_touch(event: InputEventScreenTouch) -> bool:
@@ -235,7 +241,6 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> bool:
 	return true
 
 
-
 static func _is_frame_selection_swipe(delta: Vector2, held_msec: int) -> bool:
 	return (
 		held_msec < IOS_TOUCH_CONTEXT_HOLD_MSEC
@@ -298,6 +303,10 @@ func _clear_swipe_frame_mode() -> void:
 func _on_cel_switched() -> void:
 	if not _updating_frame_swipe:
 		_clear_swipe_frame_mode()
+
+
+func _on_timeline_mode_changed(_mode: int) -> void:
+	_clear_swipe_frame_mode()
 
 
 func _begin_reorder(touch_index: int, screen_position: Vector2) -> bool:
