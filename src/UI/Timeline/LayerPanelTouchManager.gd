@@ -37,6 +37,10 @@ func _install_ios_layer_toolbar() -> void:
 		return
 	_add_layer = _layer_buttons.get_node_or_null("AddLayer") as Button
 	_add_layer_list = _layer_buttons.get_node_or_null("AddLayer/AddLayerList") as MenuButton
+	if not is_instance_valid(_add_layer_list):
+		# TimelinePanelTouchManager can already have detached the dropdown
+		# into a standalone compact layer-type button.
+		_add_layer_list = _layer_buttons.get_node_or_null("AddLayerList") as MenuButton
 	_remove_layer = _layer_buttons.get_node_or_null("RemoveLayer") as Button
 	_move_up_layer = _layer_buttons.get_node_or_null("MoveUpLayer") as Button
 	_move_down_layer = _layer_buttons.get_node_or_null("MoveDownLayer") as Button
@@ -66,23 +70,26 @@ func _all_toolbar_nodes_valid() -> bool:
 
 func _configure_touch_geometry() -> void:
 	_layer_buttons.add_theme_constant_override("separation", IOS_LAYER_TOOLBAR_SEPARATION)
-	_add_layer.custom_minimum_size = Vector2(IOS_ADD_LAYER_TARGET_WIDTH, IOS_TOUCH_TARGET_PX)
 	_remove_layer.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 	_keyframe_timeline.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 
-	# AddLayer keeps its existing split behavior: the left half adds a Pixel Layer and the
-	# right half opens the existing layer-type popup. Both halves become 44 pt touch targets.
-	_add_layer_list.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
-	_add_layer_list.offset_left = -IOS_TOUCH_TARGET_PX
-	_add_layer_list.offset_top = -IOS_TOUCH_TARGET_PX * 0.5
-	_add_layer_list.offset_right = 0.0
-	_add_layer_list.offset_bottom = IOS_TOUCH_TARGET_PX * 0.5
-	var add_icon := _add_layer.get_node_or_null("TextureRect") as TextureRect
-	if is_instance_valid(add_icon):
-		add_icon.offset_left = 11.0
-		add_icon.offset_top = -11.0
-		add_icon.offset_right = 33.0
-		add_icon.offset_bottom = 11.0
+	if _add_layer_list.get_parent() == _add_layer:
+		# Preserve the original split button until the compact toolbar
+		# reparenting occurs; whichever bootstrap runs first is valid.
+		_add_layer.custom_minimum_size = Vector2(IOS_ADD_LAYER_TARGET_WIDTH, IOS_TOUCH_TARGET_PX)
+		_add_layer_list.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
+		_add_layer_list.offset_left = -IOS_TOUCH_TARGET_PX
+		_add_layer_list.offset_top = -IOS_TOUCH_TARGET_PX * 0.5
+		_add_layer_list.offset_right = 0.0
+		_add_layer_list.offset_bottom = IOS_TOUCH_TARGET_PX * 0.5
+		var add_icon := _add_layer.get_node_or_null("TextureRect") as TextureRect
+		if is_instance_valid(add_icon):
+			add_icon.offset_left = 11.0
+			add_icon.offset_top = -11.0
+			add_icon.offset_right = 33.0
+			add_icon.offset_bottom = 11.0
+	else:
+		_add_layer.custom_minimum_size = Vector2(IOS_TOUCH_TARGET_PX, IOS_TOUCH_TARGET_PX)
 
 	# Keep the original Buttons for disabled state and desktop shortcuts.
 	# iPad uses each layer's long-press context menu for these operations.
