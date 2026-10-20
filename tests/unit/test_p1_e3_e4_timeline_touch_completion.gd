@@ -156,11 +156,8 @@ func test_ios_timeline_toolbar_splits_create_buttons_and_moves_blend_modes_inlin
 	)
 
 
-
 func test_empty_ios_tag_lane_collapses_and_restores_with_tags() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/Timeline/AnimationTimeline.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/Timeline/AnimationTimeline.gd")
 	check_true(
 		not AnimationTimeline._should_show_tag_row(false, false, true),
 		"iPad without animation tags has no blank Tag row",
@@ -177,14 +174,11 @@ func test_empty_ios_tag_lane_collapses_and_restores_with_tags() -> void:
 		AnimationTimeline._should_show_tag_row(false, false, false),
 		"desktop preserves its existing Tag lane behavior",
 	)
+	check_has(source, "_sync_tag_row_visibility()", "Tag row visibility is synchronized")
+	check_has(source, "tag_scroll_container.visible = show_row", "Tag Scroll collapses in the VBox")
 	check_has(
-		source, "_sync_tag_row_visibility()", "Tag row visibility is synchronized"
-	)
-	check_has(
-		source, "tag_scroll_container.visible = show_row", "Tag Scroll collapses in the VBox"
-	)
-	check_has(
-		source, "adjust_scroll_container.call_deferred()",
+		source,
+		"adjust_scroll_container.call_deferred()",
 		"Tag alignment is refreshed after the row reflows",
 	)
 
@@ -196,9 +190,7 @@ func test_tag_row_reacts_to_creation_deletion_and_project_switching() -> void:
 	var tags_changed := source.find("func _on_animation_tags_changed()")
 	var tags_changed_end := source.find("func set_timeline_first_and_last_frames()", tags_changed)
 	var tag_logic := source.substr(tags_changed, tags_changed_end - tags_changed)
-	check_has(
-		tag_logic, "_sync_tag_row_visibility()", "creating or deleting tags resizes the lane"
-	)
+	check_has(tag_logic, "_sync_tag_row_visibility()", "creating or deleting tags resizes the lane")
 	var project_switched := source.find("func project_changed()")
 	var project_switched_end := source.find("func project_frame_added(", project_switched)
 	var project_logic := source.substr(project_switched, project_switched_end - project_switched)
@@ -209,9 +201,11 @@ func test_tag_row_reacts_to_creation_deletion_and_project_switching() -> void:
 	)
 	var toggle := source.find("func _on_keyframe_timeline_button_pressed()")
 	check_has(
-		source.substr(toggle), "_sync_tag_row_visibility()",
+		source.substr(toggle),
+		"_sync_tag_row_visibility()",
 		"switching Keyframe/Animation view respects empty Tag lanes",
 	)
+
 
 func test_frame_context_reveals_new_tag_only_for_frame_multi_selection() -> void:
 	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
