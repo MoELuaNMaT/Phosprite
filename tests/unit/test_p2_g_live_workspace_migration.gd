@@ -139,8 +139,6 @@ func _free_fixture(fixture: Dictionary) -> void:
 	(fixture["root"] as Control).free()
 
 
-
-
 func test_second_canvas_is_removed_without_breaking_legacy_layout_snapshots() -> void:
 	var definitions := Builtins.create_definitions()
 	for definition in definitions:
