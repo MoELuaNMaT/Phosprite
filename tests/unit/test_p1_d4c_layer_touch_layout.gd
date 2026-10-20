@@ -45,6 +45,25 @@ func test_ios_layer_toolbar_uses_touch_sized_direct_actions() -> void:
 	)
 
 
+func test_layer_toolbar_bootstraps_are_valid_in_either_order() -> void:
+	var layer_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	var toolbar_src := FileAccess.get_file_as_string(
+		"res://src/UI/Timeline/TimelinePanelTouchManager.gd"
+	)
+	check_has(
+		layer_src, 'get_node_or_null("AddLayerList")',
+		"layer bootstrap finds the standalone dropdown if Timeline bootstrap already moved it",
+	)
+	check_has(
+		layer_src, 'if _add_layer_list.get_parent() == _add_layer:',
+		"legacy split geometry must only apply until compact reparenting completes",
+	)
+	check_has(
+		toolbar_src, "_layer_type_menu.reparent(_layer_buttons)",
+		"Timeline bootstrap moves the existing dropdown instead of cloning handlers",
+	)
+
+
 func test_low_frequency_layer_actions_use_layer_context_instead_of_overflow() -> void:
 	var toolbar_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	var layer_scene := FileAccess.get_file_as_string(LAYER_SCENE_SOURCE)
