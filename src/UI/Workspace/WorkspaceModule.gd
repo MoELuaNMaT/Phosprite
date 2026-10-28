@@ -300,9 +300,7 @@ func get_timeline_resize_grip_rect() -> Rect2:
 		return Rect2()
 	if not _header_chrome_visible or size.x < TIMELINE_RESIZE_GRIP_SIZE.x:
 		return Rect2()
-	return Rect2(
-		Vector2(TIMELINE_RESIZE_GRIP_LEFT_MARGIN, -20.0), TIMELINE_RESIZE_GRIP_SIZE
-	)
+	return Rect2(Vector2(TIMELINE_RESIZE_GRIP_LEFT_MARGIN, -20.0), TIMELINE_RESIZE_GRIP_SIZE)
 
 
 func is_timeline_resize_grip_point(local_point: Vector2) -> bool:
