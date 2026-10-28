@@ -956,7 +956,9 @@ func test_timeline_height_cap_blocks_fullscreen_dock_and_reclamps_on_rotation() 
 	var previous := host.layout.get_module_size(timeline_id)
 	var oversized := previous
 	oversized.y = 2000.0
-	check_true(host.set_module_size(timeline_id, oversized), "oversized Timeline request is accepted")
+	check_true(
+		host.set_module_size(timeline_id, oversized), "oversized Timeline request is accepted"
+	)
 	check_almost_eq(
 		host.layout.get_module_size(timeline_id).y,
 		WorkspaceDockHost.timeline_height_limit(host.size.y, 160.0),
