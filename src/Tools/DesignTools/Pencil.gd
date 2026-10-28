@@ -57,7 +57,7 @@ func _exit_tree() -> void:
 	if Global.project_switched.is_connected(_sync_auto_outline_ui):
 		Global.project_switched.disconnect(_sync_auto_outline_ui)
 	if is_instance_valid(_observed_auto_outline_layer):
-		var cb := Callable(self, "_sync_auto_outline_ui")
+		var cb := Callable(self, "_schedule_auto_outline_ui_sync")
 		if _observed_auto_outline_layer.effects_added_removed.is_connected(cb):
 			_observed_auto_outline_layer.effects_added_removed.disconnect(cb)
 	super._exit_tree()
@@ -146,13 +146,18 @@ func _find_auto_outline(layer: PixelLayer) -> LayerEffect:
 	return null
 
 
+func _schedule_auto_outline_ui_sync() -> void:
+	# Undo methods can run in reverse order. Read the final effect state afterward.
+	_sync_auto_outline_ui.call_deferred()
+
+
 func _sync_auto_outline_ui() -> void:
 	if not is_inside_tree():
 		return
 	_syncing_auto_outline = true
 	var layer := _current_outline_layer()
 	if _observed_auto_outline_layer != layer:
-		var callback := Callable(self, "_sync_auto_outline_ui")
+		var callback := Callable(self, "_schedule_auto_outline_ui_sync")
 		if is_instance_valid(_observed_auto_outline_layer):
 			if _observed_auto_outline_layer.effects_added_removed.is_connected(callback):
 				_observed_auto_outline_layer.effects_added_removed.disconnect(callback)
