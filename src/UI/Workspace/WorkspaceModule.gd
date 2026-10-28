@@ -27,7 +27,8 @@ enum ResizeEdge {
 
 const INTERACTION_TARGET_SIZE := 28.0
 const RESIZE_EDGE_HIT_SIZE := 18.0
-const HEADERLESS_RESIZE_EDGE_HIT_SIZE := 24.0
+const HEADERLESS_RESIZE_INNER_HIT_SIZE := 7.0
+const HEADERLESS_RESIZE_OUTER_HIT_SIZE := 14.0
 const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
 const MIN_HEADER_DRAG_WIDTH := 96.0
 
@@ -354,12 +355,16 @@ func is_float_point(local_point: Vector2) -> bool:
 func get_resize_edges(local_point: Vector2) -> int:
 	if _visual_state != &"floating" or _content_collapsed:
 		return ResizeEdge.NONE
-	if not get_visual_rect().has_point(local_point):
+	var visual := get_visual_rect()
+	if _header_chrome_visible:
+		if not visual.has_point(local_point):
+			return ResizeEdge.NONE
+	elif not visual.grow(HEADERLESS_RESIZE_OUTER_HIT_SIZE).has_point(local_point):
 		return ResizeEdge.NONE
+	# Keep interactive content usable: add tolerance outside the frame rather
+	# than turning the first row of tool buttons into a resize target.
 	var edges := ResizeEdge.NONE
-	var edge_hit := (
-		RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else HEADERLESS_RESIZE_EDGE_HIT_SIZE
-	)
+	var edge_hit := RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else HEADERLESS_RESIZE_INNER_HIT_SIZE
 	var top_hit := TOP_RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else edge_hit
 	if definition == null or not definition.is_horizontal_resize_locked():
 		if local_point.x <= edge_hit:
