@@ -1,12 +1,18 @@
 extends BaseDrawTool
 
 const DITHER_SIZES := [2, 4, 8, 16]
+const AUTO_OUTLINE_SHADER := preload("res://src/Shaders/Effects/AutoOutline.gdshader")
+const AUTO_OUTLINE_NAME := "Auto Outline"
 
 var _last_position := Vector2i(Vector2.INF)
 var _changed := false
 var _dither_enabled := false
 var _dither_size := 4
 var _dither_coverage := 50
+var _auto_outline_color := Color.BLACK
+var _auto_outline_width := 1
+var _auto_outline_diagonals := false
+var _syncing_auto_outline := false
 
 
 class PencilOp:
@@ -29,15 +35,26 @@ func _ready() -> void:
 	if pattern.item_count == 0:
 		for size in DITHER_SIZES:
 			pattern.add_item("%d × %d" % [size, size])
+	var outline_shape := $AutoOutlineSettings/ShapeRow/Shape as OptionButton
+	if outline_shape.item_count == 0:
+		outline_shape.add_item("4-way")
+		outline_shape.add_item("8-way")
 	update_config()
 	if not Tools.draw_options_changed.is_connected(_sync_global_draw_options):
 		Tools.draw_options_changed.connect(_sync_global_draw_options)
 	_sync_global_draw_options()
+	Global.cel_switched.connect(_sync_auto_outline_ui)
+	Global.project_switched.connect(_sync_auto_outline_ui)
+	_sync_auto_outline_ui()
 
 
 func _exit_tree() -> void:
 	if Tools.draw_options_changed.is_connected(_sync_global_draw_options):
 		Tools.draw_options_changed.disconnect(_sync_global_draw_options)
+	if Global.cel_switched.is_connected(_sync_auto_outline_ui):
+		Global.cel_switched.disconnect(_sync_auto_outline_ui)
+	if Global.project_switched.is_connected(_sync_auto_outline_ui):
+		Global.project_switched.disconnect(_sync_auto_outline_ui)
 	super._exit_tree()
 
 
@@ -104,6 +121,127 @@ func _on_DitherCoverage_value_changed(value: float) -> void:
 	save_config()
 
 
+
+## Auto Outline is a persisted layer effect, not a set of pixels added at each dab.
+## This keeps the edge correct when the source is erased, moved or repainted.
+func _current_outline_layer() -> PixelLayer:
+	var project := Global.current_project
+	if not is_instance_valid(project):
+		return null
+	if project.current_layer < 0 or project.current_layer >= project.layers.size():
+		return null
+	return project.layers[project.current_layer] as PixelLayer
+
+
+func _find_auto_outline(layer: PixelLayer) -> LayerEffect:
+	if not is_instance_valid(layer):
+		return null
+	for effect in layer.effects:
+		if effect.name == AUTO_OUTLINE_NAME and effect.shader_or_include == AUTO_OUTLINE_SHADER:
+			return effect
+	return null
+
+
+func _sync_auto_outline_ui() -> void:
+	if not is_node_ready():
+		return
+	_syncing_auto_outline = true
+	var layer := _current_outline_layer()
+	var effect := _find_auto_outline(layer)
+	var enabled := is_instance_valid(effect) and effect.enabled
+	$AutoOutline.disabled = not is_instance_valid(layer)
+	$AutoOutline.set_pressed_no_signal(enabled)
+	$AutoOutlineSettings.visible = enabled
+	if is_instance_valid(effect):
+		_auto_outline_color = effect.params.get("outline_color", _auto_outline_color)
+		_auto_outline_width = clampi(int(effect.params.get("outline_width", 1)), 1, 4)
+		_auto_outline_diagonals = bool(effect.params.get("include_diagonals", false))
+	$AutoOutlineSettings/ColorRow/Color.color = _auto_outline_color
+	$AutoOutlineSettings/Thickness.value = _auto_outline_width
+	$AutoOutlineSettings/ShapeRow/Shape.select(1 if _auto_outline_diagonals else 0)
+	_syncing_auto_outline = false
+
+
+func _outline_params() -> Dictionary[String, Variant]:
+	return {
+		"outline_color": _auto_outline_color,
+		"outline_width": _auto_outline_width,
+		"include_diagonals": _auto_outline_diagonals,
+	}
+
+
+func _redraw_outline_layer(layer: PixelLayer) -> void:
+	if not is_instance_valid(layer) or Global.current_project != layer.project:
+		return
+	if is_instance_valid(Global.canvas):
+		Global.canvas.update_all_layers = true
+		Global.canvas.queue_redraw()
+
+
+func _on_auto_outline_toggled(enabled: bool) -> void:
+	if _syncing_auto_outline:
+		return
+	var layer := _current_outline_layer()
+	if not is_instance_valid(layer):
+		_sync_auto_outline_ui()
+		return
+	var project := Global.current_project
+	var effect := _find_auto_outline(layer)
+	if not is_instance_valid(effect):
+		if not enabled:
+			return
+		effect = LayerEffect.new(
+			AUTO_OUTLINE_NAME, AUTO_OUTLINE_SHADER, "Procedural", _outline_params()
+		)
+		effect.layer = layer
+		project.undo_redo.create_action("Add Auto Outline")
+		project.undo_redo.add_do_method(func(): layer.effects.append(effect))
+		project.undo_redo.add_undo_method(func(): layer.effects.erase(effect))
+	else:
+		if effect.enabled == enabled:
+			_sync_auto_outline_ui()
+			return
+		project.undo_redo.create_action("Toggle Auto Outline")
+		project.undo_redo.add_do_property(effect, "enabled", enabled)
+		project.undo_redo.add_undo_property(effect, "enabled", not enabled)
+	project.undo_redo.add_do_method(layer.emit_effects_added_removed)
+	project.undo_redo.add_do_method(_redraw_outline_layer.bind(layer))
+	project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
+	project.undo_redo.add_undo_method(layer.emit_effects_added_removed)
+	project.undo_redo.add_undo_method(_redraw_outline_layer.bind(layer))
+	project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
+	project.undo_redo.commit_action()
+	_sync_auto_outline_ui()
+
+
+func _update_auto_outline_settings() -> void:
+	if _syncing_auto_outline:
+		return
+	var layer := _current_outline_layer()
+	var effect := _find_auto_outline(layer)
+	if is_instance_valid(effect):
+		for key in _outline_params():
+			effect.params[key] = _outline_params()[key]
+		_redraw_outline_layer(layer)
+		Global.current_project.has_changed = true
+	save_config()
+
+
+func _on_auto_outline_color_changed(color: Color) -> void:
+	_auto_outline_color = color
+	_update_auto_outline_settings()
+
+
+func _on_auto_outline_width_changed(value: float) -> void:
+	_auto_outline_width = clampi(roundi(value), 1, 4)
+	_update_auto_outline_settings()
+
+
+func _on_auto_outline_shape_selected(index: int) -> void:
+	_auto_outline_diagonals = index == 1
+	_update_auto_outline_settings()
+
+
 func get_config() -> Dictionary:
 	var config := super.get_config()
 	config.erase("brush_density")
@@ -115,6 +253,9 @@ func get_config() -> Dictionary:
 	config["dither_enabled"] = _dither_enabled
 	config["dither_size"] = _dither_size
 	config["dither_coverage"] = _dither_coverage
+	config["auto_outline_color"] = _auto_outline_color
+	config["auto_outline_width"] = _auto_outline_width
+	config["auto_outline_diagonals"] = _auto_outline_diagonals
 	return config
 
 
@@ -128,6 +269,11 @@ func set_config(config: Dictionary) -> void:
 	var configured_dither_size := int(config.get("dither_size", _dither_size))
 	_dither_size = configured_dither_size if configured_dither_size in DITHER_SIZES else 4
 	_dither_coverage = clampi(int(config.get("dither_coverage", _dither_coverage)), 1, 100)
+	var configured_outline_color = config.get("auto_outline_color", _auto_outline_color)
+	if configured_outline_color is Color:
+		_auto_outline_color = configured_outline_color
+	_auto_outline_width = clampi(int(config.get("auto_outline_width", _auto_outline_width)), 1, 4)
+	_auto_outline_diagonals = bool(config.get("auto_outline_diagonals", _auto_outline_diagonals))
 
 
 func update_config() -> void:
@@ -141,6 +287,7 @@ func update_config() -> void:
 	if dither_index >= 0 and $DitherSettings/PatternRow/Pattern.item_count > dither_index:
 		$DitherSettings/PatternRow/Pattern.select(dither_index)
 	$DitherSettings/Coverage.value = _dither_coverage
+	_sync_auto_outline_ui()
 
 
 func update_brush() -> void:
