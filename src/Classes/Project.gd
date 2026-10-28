@@ -696,7 +696,11 @@ func change_cel(new_frame: int, new_layer := -1) -> void:
 		new_frame = current_frame
 	if new_layer < 0:
 		new_layer = current_layer
-	Global.transform_content_confirmed.emit(self)
+	# A floating paste stays separate when changing layers in the same frame.
+	# Frame changes still confirm it so the preview cannot leak across frames.
+	var pending_paste := is_instance_valid(Global.canvas) and Global.canvas.selection.is_pasting
+	if not pending_paste or new_frame != current_frame:
+		Global.transform_content_confirmed.emit(self)
 
 	if selected_cels.is_empty():
 		selected_cels.append([new_frame, new_layer])
