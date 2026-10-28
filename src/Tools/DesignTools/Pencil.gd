@@ -147,7 +147,7 @@ func _find_auto_outline(layer: PixelLayer) -> LayerEffect:
 
 
 func _sync_auto_outline_ui() -> void:
-	if not is_node_ready():
+	if not is_inside_tree():
 		return
 	_syncing_auto_outline = true
 	var layer := _current_outline_layer()
