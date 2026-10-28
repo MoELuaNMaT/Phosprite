@@ -179,11 +179,14 @@ func _track_touch_and_cancel_unsafe_timeline(event: InputEventScreenTouch) -> bo
 		(_resize_module_id == Builtins.TIMELINE_ID and _resize_touch_index >= 0)
 		or _pending_touch_module_id == Builtins.TIMELINE_ID
 	)
-	var canceled_active_touch := event.canceled and (
-		(_resize_module_id == Builtins.TIMELINE_ID and _resize_touch_index == event.index)
-		or (
-			_pending_touch_module_id == Builtins.TIMELINE_ID
-			and _pending_touch_index == event.index
+	var canceled_active_touch := (
+		event.canceled
+		and (
+			(_resize_module_id == Builtins.TIMELINE_ID and _resize_touch_index == event.index)
+			or (
+				_pending_touch_module_id == Builtins.TIMELINE_ID
+				and _pending_touch_index == event.index
+			)
 		)
 	)
 	if canceled_active_touch or (_active_touch_indices.size() > 1 and timeline_touch_active):
@@ -414,10 +417,7 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 				_update_resize(pointer)
 			get_viewport().set_input_as_handled()
 			return
-		if (
-			absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE
-			and absf(delta.x) > absf(delta.y)
-		):
+		if absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE and absf(delta.x) > absf(delta.y):
 			_clear_pending_touch()
 		else:
 			get_viewport().set_input_as_handled()
