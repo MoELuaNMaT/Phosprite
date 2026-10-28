@@ -121,7 +121,6 @@ func _on_DitherCoverage_value_changed(value: float) -> void:
 	save_config()
 
 
-
 ## Auto Outline is a persisted layer effect, not a set of pixels added at each dab.
 ## This keeps the edge correct when the source is erased, moved or repainted.
 func _current_outline_layer() -> PixelLayer:
