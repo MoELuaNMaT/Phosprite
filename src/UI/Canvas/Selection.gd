@@ -715,7 +715,6 @@ func _project_switched() -> void:
 	queue_redraw()
 
 
-
 ## iPad selection actions live next to the selection, not in a fixed tool row.
 ## The overlay is a GUI child of the viewport container so its buttons stay
 ## large enough to touch regardless of canvas zoom.
@@ -738,9 +737,7 @@ func _create_selection_context_menu() -> void:
 	_add_selection_menu_button(actions, "Copy", Callable(self, "copy"))
 	_add_selection_menu_button(actions, "Cut", Callable(self, "cut"))
 	_add_selection_menu_button(actions, "Paste", Callable(self, "paste"))
-	_add_selection_menu_button(
-		actions, "New Layer", Callable(self, "create_layer_from_selection")
-	)
+	_add_selection_menu_button(actions, "New Layer", Callable(self, "create_layer_from_selection"))
 	_selection_confirm_button = _add_selection_menu_button(
 		actions, "Confirm", Callable(self, "transform_content_confirm")
 	)
@@ -795,9 +792,7 @@ func _update_selection_context_menu() -> void:
 			var transform := transformation_handles.preview_transform
 			anchor = transform * Vector2.ZERO
 			for corner in [
-				Vector2(selection_size.x, 0.0),
-				Vector2(0.0, selection_size.y),
-				selection_size
+				Vector2(selection_size.x, 0.0), Vector2(0.0, selection_size.y), selection_size
 			]:
 				var transformed := transform * corner
 				anchor.x = maxf(anchor.x, transformed.x)
@@ -840,9 +835,9 @@ func create_layer_from_selection() -> void:
 	var selected_image := get_selected_image(source_image)
 	if selected_image.is_empty():
 		return
-	var selection_rect := project.selection_map.return_cropped_copy(
-		project, project.size
-	).get_used_rect()
+	var selection_rect := (
+		project.selection_map.return_cropped_copy(project, project.size).get_used_rect()
+	)
 	var source_frame := project.current_frame
 	Global.animation_timeline.add_layer(PixelLayer.new(project), project)
 	var target := project.frames[source_frame].cels[project.current_layer] as PixelCel
