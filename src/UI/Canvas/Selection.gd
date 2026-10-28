@@ -794,7 +794,7 @@ func _update_selection_context_menu() -> void:
 			for corner in [
 				Vector2(selection_size.x, 0.0), Vector2(0.0, selection_size.y), selection_size
 			]:
-				var transformed := transform * corner
+				var transformed: Vector2 = transform * corner
 				anchor.x = maxf(anchor.x, transformed.x)
 				anchor.y = maxf(anchor.y, transformed.y)
 	var canvas_to_viewport := canvas.get_global_transform_with_canvas()
