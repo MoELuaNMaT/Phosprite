@@ -67,7 +67,7 @@ text = "Auto Outline"
 visible = false
 layout_mode = 2
 
-[node name="ColorRow" type="HBoxContainer" parent="AutoOutlineSettings" index="0"]
+[node name="ColorRow" type="VBoxContainer" parent="AutoOutlineSettings" index="0"]
 layout_mode = 2
 
 [node name="ColorLabel" type="Label" parent="AutoOutlineSettings/ColorRow" index="0"]
@@ -78,6 +78,7 @@ text = "Outline Color"
 [node name="Color" type="ColorPickerButton" parent="AutoOutlineSettings/ColorRow" index="1"]
 custom_minimum_size = Vector2(54, 32)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 color = Color(0, 0, 0, 1)
 
@@ -95,7 +96,7 @@ allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
-[node name="ShapeRow" type="HBoxContainer" parent="AutoOutlineSettings" index="2"]
+[node name="ShapeRow" type="VBoxContainer" parent="AutoOutlineSettings" index="2"]
 layout_mode = 2
 
 [node name="ShapeLabel" type="Label" parent="AutoOutlineSettings/ShapeRow" index="0"]
