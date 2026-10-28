@@ -519,6 +519,9 @@ func paste_from_clipboard() -> void:
 		return
 	if transformation_handles.is_transforming():
 		transform_content_confirm()
+	_paste_target_cels = get_selected_draw_cels()
+	if _paste_target_cels.is_empty():
+		return
 	undo_data = get_undo_data(true)
 	clear_selection()
 	var project := Global.current_project
