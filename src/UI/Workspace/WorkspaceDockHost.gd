@@ -148,14 +148,15 @@ func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
 	return true
 
 
-static func timeline_height_limit(
-	workspace_height: float, minimum_height: float
-) -> float:
+static func timeline_height_limit(workspace_height: float, minimum_height: float) -> float:
 	if workspace_height <= 0.0:
 		return INF
 	return maxf(
 		minimum_height,
-		minf(workspace_height * TIMELINE_MAX_HEIGHT_RATIO, workspace_height - TIMELINE_MIN_CANVAS_HEIGHT)
+		minf(
+			workspace_height * TIMELINE_MAX_HEIGHT_RATIO,
+			workspace_height - TIMELINE_MIN_CANVAS_HEIGHT
+		)
 	)
 
 
@@ -166,10 +167,7 @@ func _constrain_timeline_module_size(module_id: StringName, requested: Vector2) 
 	if definition == null:
 		return requested
 	var constrained := requested
-	constrained.y = minf(
-		requested.y,
-		timeline_height_limit(size.y, definition.minimum_size.y)
-	)
+	constrained.y = minf(requested.y, timeline_height_limit(size.y, definition.minimum_size.y))
 	return constrained
 
 
@@ -367,7 +365,10 @@ func _layout_zones() -> void:
 	if _zone_hosts.is_empty():
 		return
 	# A previously saved height must also fit after a device rotation.
-	if layout != null and layout.get_module_zone(TIMELINE_ID) == WorkspaceDockLayout.DockZone.BOTTOM:
+	if (
+		layout != null
+		and layout.get_module_zone(TIMELINE_ID) == WorkspaceDockLayout.DockZone.BOTTOM
+	):
 		var current := layout.get_module_size(TIMELINE_ID)
 		var constrained := _constrain_timeline_module_size(TIMELINE_ID, current)
 		if constrained != current and layout.set_module_size(TIMELINE_ID, constrained):
