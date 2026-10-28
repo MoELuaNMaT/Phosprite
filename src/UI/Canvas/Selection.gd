@@ -12,15 +12,14 @@ static var flag_tilemode := false
 
 var undo_data: Dictionary
 var is_pasting := false
+var preview_selection_map := SelectionMap.new()
+var preview_selection_texture := ImageTexture.new()
+var _marching_ants_time_elapsed := 0.0
 var _paste_target_cels: Array[BaseCel] = []
 var _selection_context_menu: PanelContainer
 var _selection_action_buttons: Array[Button] = []
 var _selection_confirm_button: Button
 var _selection_cancel_button: Button
-
-var preview_selection_map := SelectionMap.new()
-var preview_selection_texture := ImageTexture.new()
-var _marching_ants_time_elapsed := 0.0
 
 @onready var canvas := get_parent() as Canvas
 @onready var transformation_handles := $TransformationHandles as TransformationHandles
