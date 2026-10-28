@@ -929,7 +929,8 @@ func test_timeline_position_is_locked_but_top_edge_height_resize_remains_availab
 	var grip_rect := timeline.get_timeline_resize_grip_rect()
 	check_eq(grip_rect.size, Vector2(80.0, 24.0), "Timeline has an explicit grip")
 	check_eq(
-		grip_rect.position, Vector2(8.0, -20.0),
+		grip_rect.position,
+		Vector2(8.0, -20.0),
 		"Timeline resize grip stays at the top-left of the frame/layer area",
 	)
 	check_true(
