@@ -13,6 +13,7 @@ var _auto_outline_color := Color.BLACK
 var _auto_outline_width := 1
 var _auto_outline_diagonals := false
 var _syncing_auto_outline := false
+var _observed_auto_outline_layer: PixelLayer
 
 
 class PencilOp:
@@ -55,6 +56,10 @@ func _exit_tree() -> void:
 		Global.cel_switched.disconnect(_sync_auto_outline_ui)
 	if Global.project_switched.is_connected(_sync_auto_outline_ui):
 		Global.project_switched.disconnect(_sync_auto_outline_ui)
+	if is_instance_valid(_observed_auto_outline_layer):
+		var cb := Callable(self, "_sync_auto_outline_ui")
+		if _observed_auto_outline_layer.effects_added_removed.is_connected(cb):
+			_observed_auto_outline_layer.effects_added_removed.disconnect(cb)
 	super._exit_tree()
 
 
@@ -146,6 +151,15 @@ func _sync_auto_outline_ui() -> void:
 		return
 	_syncing_auto_outline = true
 	var layer := _current_outline_layer()
+	if _observed_auto_outline_layer != layer:
+		var callback := Callable(self, "_sync_auto_outline_ui")
+		if is_instance_valid(_observed_auto_outline_layer):
+			if _observed_auto_outline_layer.effects_added_removed.is_connected(callback):
+				_observed_auto_outline_layer.effects_added_removed.disconnect(callback)
+		_observed_auto_outline_layer = layer
+		if is_instance_valid(layer):
+			if not layer.effects_added_removed.is_connected(callback):
+				layer.effects_added_removed.connect(callback)
 	var effect := _find_auto_outline(layer)
 	var enabled := is_instance_valid(effect) and effect.enabled
 	$AutoOutline.disabled = not is_instance_valid(layer)
@@ -219,8 +233,9 @@ func _update_auto_outline_settings() -> void:
 	var layer := _current_outline_layer()
 	var effect := _find_auto_outline(layer)
 	if is_instance_valid(effect):
-		for key in _outline_params():
-			effect.params[key] = _outline_params()[key]
+		var params := _outline_params()
+		for key in params:
+			effect.params[key] = params[key]
 		_redraw_outline_layer(layer)
 		Global.current_project.has_changed = true
 	save_config()
