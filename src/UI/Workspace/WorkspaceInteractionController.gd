@@ -176,7 +176,7 @@ func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
 
 
 func _try_capture_workspace_resize_at(viewport_point: Vector2, touch_index: int) -> bool:
-	var hit := _top_workspace_module_at(viewport_point)
+	var hit := _top_workspace_module_at(viewport_point, true)
 	if hit.is_empty():
 		return false
 	var module_id := hit.get("module_id", &"") as StringName
@@ -217,7 +217,7 @@ func _try_capture_workspace_header_drag(event: InputEventScreenTouch) -> bool:
 	return true
 
 
-func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
+func _top_workspace_module_at(viewport_point: Vector2, include_resize_margin := false) -> Dictionary:
 	if manager == null or surface == null:
 		return {}
 	var best: Dictionary = {}
@@ -234,7 +234,8 @@ func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
 			module.get_global_transform_with_canvas().affine_inverse() * viewport_point
 		)
 		if not module.get_visual_rect().has_point(local_point):
-			continue
+			if not include_resize_margin or module.get_resize_edges(local_point) == WorkspaceModule.ResizeEdge.NONE:
+				continue
 		var layer_priority := 1
 		if (
 			placement == WorkspaceSurface.Placement.FLOATING
