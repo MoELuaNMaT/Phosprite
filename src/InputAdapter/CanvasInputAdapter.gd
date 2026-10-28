@@ -322,7 +322,10 @@ func _begin_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	# begins inside the visible Main Canvas viewport.
 	var info := _consume_pointer_info(event.index)
 	# Menu taps must not create a drawing gesture; GUI receives the same touch.
-	if is_instance_valid(canvas.selection) and canvas.selection.is_selection_menu_point(event.position):
+	if (
+		is_instance_valid(canvas.selection)
+		and canvas.selection.is_selection_menu_point(event.position)
+	):
 		return
 	if not _viewport_position_inside_main_viewport(event.position):
 		return
