@@ -56,12 +56,64 @@ allow_text_input = false
 show_drag_arrows = true
 show_arrows = false
 
-[node name="PressureSettingsLabel" type="Label" parent="." index="9"]
+[node name="AutoOutline" type="CheckBox" parent="." index="9"]
+layout_mode = 2
+size_flags_horizontal = 0
+tooltip_text = "Automatically outline the opaque pixels of the current pixel layer while drawing"
+mouse_default_cursor_shape = 2
+text = "Auto Outline"
+
+[node name="AutoOutlineSettings" type="VBoxContainer" parent="." index="10"]
+visible = false
+layout_mode = 2
+
+[node name="ColorRow" type="HBoxContainer" parent="AutoOutlineSettings" index="0"]
+layout_mode = 2
+
+[node name="ColorLabel" type="Label" parent="AutoOutlineSettings/ColorRow" index="0"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Outline Color"
+
+[node name="Color" type="ColorPickerButton" parent="AutoOutlineSettings/ColorRow" index="1"]
+custom_minimum_size = Vector2(54, 32)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Thickness" parent="AutoOutlineSettings" index="1" instance=ExtResource("2")]
+layout_mode = 2
+focus_mode = 0
+min_value = 1.0
+max_value = 4.0
+value = 1.0
+step = 1.0
+prefix = "Width:"
+suffix = "px"
+show_progress = false
+allow_text_input = false
+show_drag_arrows = true
+show_arrows = false
+
+[node name="ShapeRow" type="HBoxContainer" parent="AutoOutlineSettings" index="2"]
+layout_mode = 2
+
+[node name="ShapeLabel" type="Label" parent="AutoOutlineSettings/ShapeRow" index="0"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Neighbors"
+
+[node name="Shape" type="OptionButton" parent="AutoOutlineSettings/ShapeRow" index="1"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+
+[node name="PressureSettingsLabel" type="Label" parent="." index="11"]
 layout_mode = 2
 text = "Pressure Settings"
 autowrap_mode = 3
 
-[node name="PressureSettings" type="Button" parent="." index="10"]
+[node name="PressureSettings" type="Button" parent="." index="12"]
 custom_minimum_size = Vector2(54, 28)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -69,20 +121,24 @@ tooltip_text = "Open pressure, velocity and stabilizer settings"
 mouse_default_cursor_shape = 2
 text = "…"
 
-[node name="PixelPerfect" type="CheckBox" parent="." index="11"]
+[node name="PixelPerfect" type="CheckBox" parent="." index="13"]
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 tooltip_text = "Pixel Perfect: remove extra corner pixels while drawing"
 text = "Pixel Perfect"
 
-[node name="TransparentOnly" type="CheckBox" parent="." index="12"]
+[node name="TransparentOnly" type="CheckBox" parent="." index="14"]
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 tooltip_text = "Alpha lock: draw only on pixels that are already nontransparent"
 text = "Transparent Only"
 
+[connection signal="toggled" from="AutoOutline" to="." method="_on_auto_outline_toggled"]
+[connection signal="color_changed" from="AutoOutlineSettings/ColorRow/Color" to="." method="_on_auto_outline_color_changed"]
+[connection signal="value_changed" from="AutoOutlineSettings/Thickness" to="." method="_on_auto_outline_width_changed"]
+[connection signal="item_selected" from="AutoOutlineSettings/ShapeRow/Shape" to="." method="_on_auto_outline_shape_selected"]
 [connection signal="pressed" from="PressureSettings" to="." method="_on_pressure_settings_pressed"]
 [connection signal="toggled" from="PixelPerfect" to="." method="_on_pixel_perfect_toggled"]
 [connection signal="toggled" from="TransparentOnly" to="." method="_on_transparent_only_toggled"]
