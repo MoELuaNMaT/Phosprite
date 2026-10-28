@@ -539,7 +539,7 @@ func _layout_header_accessory() -> void:
 	var accessory_size := _header_accessory.get_combined_minimum_size()
 	accessory_size.x = minf(accessory_size.x, available_width)
 	_header_accessory.size = accessory_size
-		_header_accessory.position = Vector2(
+	_header_accessory.position = Vector2(
 		maxf(drag_reserve, right_edge - accessory_size.x),
 		maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
 	)
