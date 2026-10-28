@@ -290,10 +290,7 @@ func get_header_height() -> float:
 		return 0.0
 	var height := _visual_theme.HEADER_HEIGHT if _visual_theme != null else INTERACTION_TARGET_SIZE
 	if is_instance_valid(_header_accessory):
-		var accessory_height := _header_accessory.get_combined_minimum_size().y
-		if get_module_id() == TIMELINE_ID:
-			accessory_height += TIMELINE_RESIZE_GRIP_SIZE.y
-		height = maxf(height, accessory_height)
+		height = maxf(height, _header_accessory.get_combined_minimum_size().y)
 	return height
 
 
@@ -303,7 +300,7 @@ func get_timeline_resize_grip_rect() -> Rect2:
 	if not _header_chrome_visible or size.x < TIMELINE_RESIZE_GRIP_SIZE.x:
 		return Rect2()
 	return Rect2(
-		Vector2((size.x - TIMELINE_RESIZE_GRIP_SIZE.x) * 0.5, 0.0), TIMELINE_RESIZE_GRIP_SIZE
+		Vector2((size.x - TIMELINE_RESIZE_GRIP_SIZE.x) * 0.5, -20.0), TIMELINE_RESIZE_GRIP_SIZE
 	)
 
 
@@ -469,12 +466,6 @@ func _draw() -> void:
 		else:
 			title = String(name)
 	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
-	if get_module_id() == TIMELINE_ID and is_instance_valid(_header_accessory):
-		baseline = (
-			header_height
-			- _header_accessory.get_combined_minimum_size().y * 0.5
-			+ _visual_theme.default_font_size * 0.35
-		)
 	var header_actions_width := _get_header_actions_width()
 	var header_accessory_width := (
 		_header_accessory.size.x if is_instance_valid(_header_accessory) else 0.0
@@ -548,12 +539,9 @@ func _layout_header_accessory() -> void:
 	var accessory_size := _header_accessory.get_combined_minimum_size()
 	accessory_size.x = minf(accessory_size.x, available_width)
 	_header_accessory.size = accessory_size
-	var accessory_y := maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
-	if get_module_id() == TIMELINE_ID:
-		# Reserve the top row exclusively for the drag grip, not toolbar buttons.
-		accessory_y = maxf(0.0, get_header_height() - accessory_size.y)
-	_header_accessory.position = Vector2(
-		maxf(drag_reserve, right_edge - accessory_size.x), accessory_y
+		_header_accessory.position = Vector2(
+		maxf(drag_reserve, right_edge - accessory_size.x),
+		maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
 	)
 
 
