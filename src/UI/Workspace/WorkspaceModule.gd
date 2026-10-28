@@ -303,8 +303,7 @@ func get_timeline_resize_grip_rect() -> Rect2:
 	if not _header_chrome_visible or size.x < TIMELINE_RESIZE_GRIP_SIZE.x:
 		return Rect2()
 	return Rect2(
-		Vector2((size.x - TIMELINE_RESIZE_GRIP_SIZE.x) * 0.5, 0.0),
-		TIMELINE_RESIZE_GRIP_SIZE
+		Vector2((size.x - TIMELINE_RESIZE_GRIP_SIZE.x) * 0.5, 0.0), TIMELINE_RESIZE_GRIP_SIZE
 	)
 
 
@@ -554,8 +553,7 @@ func _layout_header_accessory() -> void:
 		# Reserve the top row exclusively for the drag grip, not toolbar buttons.
 		accessory_y = maxf(0.0, get_header_height() - accessory_size.y)
 	_header_accessory.position = Vector2(
-		maxf(drag_reserve, right_edge - accessory_size.x),
-		accessory_y
+		maxf(drag_reserve, right_edge - accessory_size.x), accessory_y
 	)
 
 
