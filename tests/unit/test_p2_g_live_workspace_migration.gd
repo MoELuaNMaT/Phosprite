@@ -829,9 +829,15 @@ func test_touch_workspace_drag_and_resize_capture_on_press_before_child_gui() ->
 	)
 	check_true(
 		interaction_src.contains(
-			"_begin_resize(\n\t\tmodule_id,\n\t\t_viewport_point_to_host(event.position)"
+			"return _try_capture_workspace_resize_at(event.position, event.index)"
 		),
-		"edge capture must open the resize transaction immediately on press",
+		"touch resize must delegate the initial press to the shared pointer capture path",
+	)
+	check_true(
+		interaction_src.contains(
+			"_begin_resize(\n\t\tmodule_id,\n\t\t_viewport_point_to_host(viewport_point)"
+		),
+		"shared pointer capture must open the resize transaction immediately on press",
 	)
 
 	var fixture := _make_live_fixture()

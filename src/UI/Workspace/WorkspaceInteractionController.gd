@@ -78,6 +78,11 @@ func _input(event: InputEvent) -> void:
 		return
 	if _is_emulated_pointer_event(event):
 		return
+	if not _has_captured_interaction() and event is InputEventMouseButton:
+		var pressed_button := event as InputEventMouseButton
+		if pressed_button.button_index == MOUSE_BUTTON_LEFT and pressed_button.pressed:
+			if _try_capture_workspace_resize_at(pressed_button.position, -1):
+				return
 	if not _has_captured_interaction() and event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
@@ -130,10 +135,12 @@ func _event_over_color_options_popup(event: InputEvent) -> bool:
 		or event is InputEventMouseMotion
 	):
 		return false
-	var popup := get_tree().get_first_node_in_group(&"phosprite_color_options_popup") as Control
-	if popup == null or not popup.is_visible_in_tree():
-		return false
-	return popup.get_global_rect().has_point(event.position)
+	for group_name in [&"phosprite_color_options_popup", &"phosprite_ui3_palette_popup"]:
+		var popup := get_tree().get_first_node_in_group(group_name) as Control
+		if popup != null and popup.is_visible_in_tree():
+			if popup.get_global_rect().has_point(event.position):
+				return true
+	return false
 
 
 func _is_emulated_pointer_event(event: InputEvent) -> bool:
@@ -165,7 +172,11 @@ static func timeline_header_resize_intent(delta: Vector2) -> bool:
 
 
 func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
-	var hit := _top_workspace_module_at(event.position)
+	return _try_capture_workspace_resize_at(event.position, event.index)
+
+
+func _try_capture_workspace_resize_at(viewport_point: Vector2, touch_index: int) -> bool:
+	var hit := _top_workspace_module_at(viewport_point, true)
 	if hit.is_empty():
 		return false
 	var module_id := hit.get("module_id", &"") as StringName
@@ -181,8 +192,8 @@ func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
 	_raise_floating_module(module_id, module)
 	if not _begin_resize(
 		module_id,
-		_viewport_point_to_host(event.position),
-		event.index,
+		_viewport_point_to_host(viewport_point),
+		touch_index,
 		resize_edges,
 	):
 		return false
@@ -206,7 +217,9 @@ func _try_capture_workspace_header_drag(event: InputEventScreenTouch) -> bool:
 	return true
 
 
-func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
+func _top_workspace_module_at(
+	viewport_point: Vector2, include_resize_margin := false
+) -> Dictionary:
 	if manager == null or surface == null:
 		return {}
 	var best: Dictionary = {}
@@ -223,7 +236,11 @@ func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
 			module.get_global_transform_with_canvas().affine_inverse() * viewport_point
 		)
 		if not module.get_visual_rect().has_point(local_point):
-			continue
+			if (
+				not include_resize_margin
+				or module.get_resize_edges(local_point) == WorkspaceModule.ResizeEdge.NONE
+			):
+				continue
 		var layer_priority := 1
 		if (
 			placement == WorkspaceSurface.Placement.FLOATING
