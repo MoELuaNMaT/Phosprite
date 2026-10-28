@@ -33,6 +33,7 @@ const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
 const MIN_HEADER_DRAG_WIDTH := 96.0
 const TIMELINE_ID := &"animation_timeline"
 const TIMELINE_RESIZE_GRIP_SIZE := Vector2(80.0, 24.0)
+const TIMELINE_RESIZE_GRIP_LEFT_MARGIN := 8.0
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -300,7 +301,7 @@ func get_timeline_resize_grip_rect() -> Rect2:
 	if not _header_chrome_visible or size.x < TIMELINE_RESIZE_GRIP_SIZE.x:
 		return Rect2()
 	return Rect2(
-		Vector2((size.x - TIMELINE_RESIZE_GRIP_SIZE.x) * 0.5, -20.0), TIMELINE_RESIZE_GRIP_SIZE
+		Vector2(TIMELINE_RESIZE_GRIP_LEFT_MARGIN, -20.0), TIMELINE_RESIZE_GRIP_SIZE
 	)
 
 
