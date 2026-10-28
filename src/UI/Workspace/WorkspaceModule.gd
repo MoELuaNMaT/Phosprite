@@ -31,6 +31,8 @@ const HEADERLESS_RESIZE_INNER_HIT_SIZE := 7.0
 const HEADERLESS_RESIZE_OUTER_HIT_SIZE := 14.0
 const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
 const MIN_HEADER_DRAG_WIDTH := 96.0
+const TIMELINE_ID := &"animation_timeline"
+const TIMELINE_RESIZE_GRIP_SIZE := Vector2(80.0, 24.0)
 
 var definition: WorkspaceModuleDefinition
 var content: Control
@@ -288,8 +290,27 @@ func get_header_height() -> float:
 		return 0.0
 	var height := _visual_theme.HEADER_HEIGHT if _visual_theme != null else INTERACTION_TARGET_SIZE
 	if is_instance_valid(_header_accessory):
-		height = maxf(height, _header_accessory.get_combined_minimum_size().y)
+		var accessory_height := _header_accessory.get_combined_minimum_size().y
+		if get_module_id() == TIMELINE_ID:
+			accessory_height += TIMELINE_RESIZE_GRIP_SIZE.y
+		height = maxf(height, accessory_height)
 	return height
+
+
+func get_timeline_resize_grip_rect() -> Rect2:
+	if get_module_id() != TIMELINE_ID or _content_collapsed:
+		return Rect2()
+	if not _header_chrome_visible or size.x < TIMELINE_RESIZE_GRIP_SIZE.x:
+		return Rect2()
+	return Rect2(
+		Vector2((size.x - TIMELINE_RESIZE_GRIP_SIZE.x) * 0.5, 0.0),
+		TIMELINE_RESIZE_GRIP_SIZE
+	)
+
+
+func is_timeline_resize_grip_point(local_point: Vector2) -> bool:
+	var rect := get_timeline_resize_grip_rect()
+	return rect.has_area() and rect.has_point(local_point)
 
 
 func set_position_adjustment_enabled(enabled: bool) -> void:
@@ -449,6 +470,12 @@ func _draw() -> void:
 		else:
 			title = String(name)
 	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
+	if get_module_id() == TIMELINE_ID and is_instance_valid(_header_accessory):
+		baseline = (
+			header_height
+			- _header_accessory.get_combined_minimum_size().y * 0.5
+			+ _visual_theme.default_font_size * 0.35
+		)
 	var header_actions_width := _get_header_actions_width()
 	var header_accessory_width := (
 		_header_accessory.size.x if is_instance_valid(_header_accessory) else 0.0
@@ -476,6 +503,23 @@ func _draw() -> void:
 	_draw_float_affordance()
 	_draw_collapse_affordance()
 	_draw_resize_affordance()
+	_draw_timeline_resize_grip()
+
+
+func _draw_timeline_resize_grip() -> void:
+	var grip := get_timeline_resize_grip_rect()
+	if not grip.has_area() or _visual_theme == null:
+		return
+	var inner := grip.grow(-3.0)
+	draw_rect(inner, _visual_theme.border_color.darkened(0.35), false, 1.0)
+	var center := grip.get_center()
+	for line_y in [-3.0, 1.0, 5.0]:
+		draw_line(
+			center + Vector2(-15.0, line_y),
+			center + Vector2(15.0, line_y),
+			_visual_theme.muted_text_color,
+			1.4
+		)
 
 
 func _get_header_actions_width() -> float:
@@ -505,9 +549,13 @@ func _layout_header_accessory() -> void:
 	var accessory_size := _header_accessory.get_combined_minimum_size()
 	accessory_size.x = minf(accessory_size.x, available_width)
 	_header_accessory.size = accessory_size
+	var accessory_y := maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
+	if get_module_id() == TIMELINE_ID:
+		# Reserve the top row exclusively for the drag grip, not toolbar buttons.
+		accessory_y = maxf(0.0, get_header_height() - accessory_size.y)
 	_header_accessory.position = Vector2(
 		maxf(drag_reserve, right_edge - accessory_size.x),
-		maxf(0.0, (get_header_height() - accessory_size.y) * 0.5)
+		accessory_y
 	)
 
 
