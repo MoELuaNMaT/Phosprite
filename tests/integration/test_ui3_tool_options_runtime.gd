@@ -57,6 +57,23 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	check_eq(
 		options_module.get_theme_constant(&"margin_right"), 0, "UI3 has no right chrome gutter"
 	)
+	profile._set_ui3_module_chrome_visible(false)
+	check_true(not options_module.is_header_chrome_visible(), "UI3 hides titlebar and collapse")
+	check_eq(options_module.get_header_height(), 0.0, "UI3 reserves no titlebar height")
+	check_true(not options_module.is_collapse_point(Vector2(50.0, 5.0)), "no fold button")
+	check_true(not options_module.is_header_drag_point(Vector2(25.0, 5.0)), "no drag title")
+	check_eq(
+		options_module.get_resize_edges(Vector2(28.0, 14.0)),
+		WorkspaceModule.ResizeEdge.TOP,
+		"UI3 top border can be grabbed directly",
+	)
+	check_eq(
+		options_module.get_resize_edges(Vector2(28.0, options_module.size.y - 20.0)),
+		WorkspaceModule.ResizeEdge.BOTTOM,
+		"UI3 bottom border has an expanded drag target",
+	)
+	profile._set_ui3_module_chrome_visible(true)
+	check_true(options_module.is_header_chrome_visible(), "normal chrome restores")
 	var options_host := options_module.get_content().get_node("OptionsHost") as MarginContainer
 	check_eq(options_host.get_theme_constant(&"margin_left"), 0, "UI3 has no inner left gutter")
 	check_eq(options_host.get_theme_constant(&"margin_right"), 0, "UI3 has no inner right gutter")
@@ -73,18 +90,15 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	definition.minimum_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
 	definition.preferred_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
 	definition.maximum_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
-	check_true(profile._ensure_options_module_placement(), "UI3 normalizes collapsed width")
+	check_true(profile._ensure_options_module_placement(), "UI3 expands saved collapsed window")
 	check_eq(
 		surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID),
-		WorkspaceSurface.Placement.COLLAPSED,
-		"old collapsed state remains collapsed",
+		WorkspaceSurface.Placement.FLOATING,
+		"UI3 cannot remain folded after restoration",
 	)
-	var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
-	var restore_rect := restore.get("rect", Rect2()) as Rect2
-	check_eq(
-		restore_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "collapsed restore width fixed"
-	)
-	check_eq(restore_rect.size.y, old_rect.size.y, "collapsed restore height preserved")
+	var restored_rect := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
+	check_eq(restored_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "legacy width normalized")
+	check_eq(restored_rect.size.y, old_rect.size.y, "legacy height preserved")
 	root.queue_free()
 	await tree.process_frame
 
