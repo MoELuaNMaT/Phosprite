@@ -845,7 +845,8 @@ func create_layer_from_selection() -> void:
 		return
 	var target_image := target.get_image()
 	target_image.blit_rect_mask(
-		selected_image, selected_image,
+		selected_image,
+		selected_image,
 		Rect2i(Vector2i.ZERO, selected_image.get_size()),
 		selection_rect.position
 	)
