@@ -364,7 +364,9 @@ func get_resize_edges(local_point: Vector2) -> int:
 	# Keep interactive content usable: add tolerance outside the frame rather
 	# than turning the first row of tool buttons into a resize target.
 	var edges := ResizeEdge.NONE
-	var edge_hit := RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else HEADERLESS_RESIZE_INNER_HIT_SIZE
+	var edge_hit := (
+		RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else HEADERLESS_RESIZE_INNER_HIT_SIZE
+	)
 	var top_hit := TOP_RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else edge_hit
 	if definition == null or not definition.is_horizontal_resize_locked():
 		if local_point.x <= edge_hit:
