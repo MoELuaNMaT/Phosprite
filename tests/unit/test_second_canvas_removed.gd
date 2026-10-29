@@ -15,9 +15,12 @@ func test_editor_scene_no_longer_contains_secondary_canvas_viewport() -> void:
 		"Second Canvas must not be instantiated in the editor"
 	)
 	check_true(
-		editor.get_node_or_null(
-			^"DockableContainer/Main Canvas/ViewportandVerticalRuler/SubViewportContainer"
-		) != null,
+		(
+			editor.get_node_or_null(
+				^"DockableContainer/Main Canvas/ViewportandVerticalRuler/SubViewportContainer"
+			)
+			!= null
+		),
 		"the original main canvas must remain"
 	)
 	check_true(
@@ -47,7 +50,9 @@ func test_workspace_does_not_register_or_expose_second_canvas() -> void:
 func test_old_layout_presets_have_no_second_canvas_reference() -> void:
 	for path in ["res://assets/layouts/Default.tres", "res://assets/layouts/Tallscreen.tres"]:
 		var content := FileAccess.get_file_as_string(path)
-		check_true(not content.contains("Second Canvas"), "old layout no longer lists Second Canvas")
+		check_true(
+			not content.contains("Second Canvas"), "old layout no longer lists Second Canvas"
+		)
 		check_true(content.contains("Main Canvas"), "main canvas remains in layout")
 		check_true(content.contains("Canvas Preview"), "Preview remains in layout")
 
