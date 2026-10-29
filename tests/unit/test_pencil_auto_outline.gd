@@ -37,15 +37,15 @@ func test_pencil_configuration_exposes_outline_options() -> void:
 	check_has(pencil, 'config["auto_outline_diagonals"]', "neighbor default is retained")
 
 
-func test_outline_shader_preserves_fills_and_updates_opaque_boundaries() -> void:
+func test_outline_uses_a_safe_nondestructive_render_path() -> void:
 	var shader := FileAccess.get_file_as_string(OUTLINE_SHADER)
-	check_has(shader, "shader_type texture_blit", "outline reuses shader image effects")
-	check_has(
-		shader, "texelFetch(source_texture0, neighbor, 0).a", "neighbor alpha determines contour"
+	var image_effect := FileAccess.get_file_as_string(
+		"res://src/Classes/ShaderImageEffect.gd"
 	)
-	check_has(shader, "COLOR0 = source_color;", "original opaque pixels are preserved")
-	check_has(
-		shader, "COLOR0 = adjacent_to_shape ? outline_color : source_color;", "edge follows shape"
+	var renderer := FileAccess.get_file_as_string(
+		"res://src/Classes/AutoOutlineRenderer.gd"
 	)
-	check_has(shader, "neighbor.x < 0", "canvas boundary does not wrap")
-	check_has(shader, "include_diagonals", "4- and 8-direction modes share one shader")
+	check_has(shader, "COLOR0 = texture(source_texture0, UV);", "GPU fallback copies pixels")
+	check_has(image_effect, "AutoOutlineRenderer.apply(img, params)", "CPU renderer is selected")
+	check_has(renderer, "var original_alpha := PackedByteArray()", "source alpha is immutable")
+	check_has(renderer, "image.set_pixel(nx, ny, color)", "only the outline pixels are changed")
