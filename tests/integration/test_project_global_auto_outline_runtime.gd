@@ -44,9 +44,12 @@ func test_new_pixel_layer_inherits_project_outline_and_switching_layers_keeps_st
 		)
 		new_layer.effects_enabled = true
 
-	project.change_cel(project.current_frame, new_index)
+	# Keep the synthetic layer out of the live Timeline's visual child list.
+	# Selecting it by index is enough to exercise the project-scoped property;
+	# a real layer creation also inserts a corresponding Timeline card.
+	project.current_layer = new_index
 	check_true(project.auto_outline_enabled, "new selected layer retains project checkbox state")
-	project.change_cel(project.current_frame, old_layer)
+	project.current_layer = old_layer
 	check_true(project.auto_outline_enabled, "switching back retains project checkbox state")
 
 	var metadata := project.serialize()
