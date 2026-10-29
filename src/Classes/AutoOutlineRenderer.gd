@@ -29,9 +29,9 @@ static func apply(image: Image, params: Dictionary) -> void:
 	else:
 		for y in image_height:
 			for x in image_width:
-				original_alpha[y * image_width + x] = (
-					roundi(clampf(image.get_pixel(x, y).a, 0.0, 1.0) * 255.0)
-				)
+				original_alpha[y * image_width + x] = (roundi(
+					clampf(image.get_pixel(x, y).a, 0.0, 1.0) * 255.0
+				))
 
 	# Only expand pixels on the four-neighbor boundary of the original shape.
 	# A fully opaque interior requires no work regardless of brush width.
