@@ -70,7 +70,6 @@ var auto_outline_color := Color.BLACK
 var auto_outline_width := 1
 var auto_outline_diagonals := false
 
-
 var selected_cels := [[0, 0]]  ## Array of Arrays of 2 integers (frame & layer)
 ## Array that contains the order of the [BaseLayer] indices that are being drawn.
 ## Takes into account each [BaseCel]'s invidiual z-index. If all z-indexes are 0, then the
