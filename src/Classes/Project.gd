@@ -12,6 +12,7 @@ signal fps_changed
 signal layers_updated
 signal frames_updated
 signal tags_changed
+signal auto_outline_changed
 
 const INDEXED_MODE := -1
 const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
@@ -58,6 +59,32 @@ var frames: Array[Frame] = []
 var layers: Array[BaseLayer] = []
 var current_frame := 0
 var current_layer := 0
+## Project-wide live outline applies to every PixelLayer, including future layers.
+var auto_outline_enabled := false:
+	set(value):
+		if auto_outline_enabled == value:
+			return
+		auto_outline_enabled = value
+		_notify_auto_outline_changed()
+var auto_outline_color := Color.BLACK
+var auto_outline_width := 1
+var auto_outline_diagonals := false
+
+
+func set_auto_outline_settings(color: Color, width: int, diagonals: bool) -> void:
+	auto_outline_color = color
+	auto_outline_width = clampi(width, 1, 4)
+	auto_outline_diagonals = diagonals
+	_notify_auto_outline_changed()
+
+
+func _notify_auto_outline_changed() -> void:
+	auto_outline_changed.emit()
+	if Global.current_project == self and is_instance_valid(Global.canvas):
+		Global.canvas.update_all_layers = true
+		Global.canvas.queue_redraw()
+
+
 var selected_cels := [[0, 0]]  ## Array of Arrays of 2 integers (frame & layer)
 ## Array that contains the order of the [BaseLayer] indices that are being drawn.
 ## Takes into account each [BaseCel]'s invidiual z-index. If all z-indexes are 0, then the
@@ -372,6 +399,10 @@ func serialize() -> Dictionary:
 		"frames": frame_data,
 		"current_frame": current_frame,
 		"current_layer": current_layer,
+		"auto_outline_enabled": auto_outline_enabled,
+		"auto_outline_color": auto_outline_color.to_html(),
+		"auto_outline_width": auto_outline_width,
+		"auto_outline_diagonals": auto_outline_diagonals,
 		"brushes": brush_data,
 		"palettes": palette_data,
 		"project_current_palette_name": project_current_palette_name,
@@ -398,6 +429,10 @@ func serialize() -> Dictionary:
 
 func deserialize(dict: Dictionary, zip_reader: ZIPReader = null, file: FileAccess = null) -> void:
 	about_to_deserialize.emit(dict)
+	auto_outline_enabled = bool(dict.get("auto_outline_enabled", false))
+	auto_outline_color = Color(str(dict.get("auto_outline_color", Color.BLACK.to_html())))
+	auto_outline_width = clampi(int(dict.get("auto_outline_width", 1)), 1, 4)
+	auto_outline_diagonals = bool(dict.get("auto_outline_diagonals", false))
 	var saved_project_uuid := str(dict.get("project_uuid", ""))
 	if ProjectIdentityScript.is_valid_uuid(saved_project_uuid):
 		project_uuid = saved_project_uuid
@@ -555,6 +590,25 @@ func deserialize(dict: Dictionary, zip_reader: ZIPReader = null, file: FileAcces
 					blend_mode += 1
 				layer_dict["blend_mode"] = blend_mode
 			layer.deserialize(layer_dict)
+			# Previous versions kept Auto Outline as an effect on the selected
+			# layer. Upgrade those projects to the project-level setting and
+			# remove every obsolete effect, avoiding duplicate outlines.
+			for effect in layer.effects.duplicate():
+				if (
+					effect.name != "Auto Outline"
+					or not is_instance_valid(effect.shader_or_include)
+					or effect.shader_or_include.resource_path
+					!= "res://src/Shaders/Effects/AutoOutline.gdshader"
+				):
+					continue
+				if not dict.has("auto_outline_enabled") and effect.enabled:
+					auto_outline_enabled = true
+					auto_outline_color = effect.params.get("outline_color", Color.BLACK)
+					auto_outline_width = clampi(
+						int(effect.params.get("outline_width", 1)), 1, 4
+					)
+					auto_outline_diagonals = bool(effect.params.get("include_diagonals", false))
+				layer.effects.erase(effect)
 			_deserialize_metadata(layer, dict.layers[layer_i])
 			if layer is LayerTileMap:
 				for frame in frames:
