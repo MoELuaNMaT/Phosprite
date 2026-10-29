@@ -132,8 +132,12 @@ func _sync_auto_outline_ui() -> void:
 	var project := Global.current_project
 	if _observed_auto_outline_project != project:
 		if is_instance_valid(_observed_auto_outline_project):
-			if _observed_auto_outline_project.auto_outline_changed.is_connected(_sync_auto_outline_ui):
-				_observed_auto_outline_project.auto_outline_changed.disconnect(_sync_auto_outline_ui)
+			if _observed_auto_outline_project.auto_outline_changed.is_connected(
+				_sync_auto_outline_ui
+			):
+				_observed_auto_outline_project.auto_outline_changed.disconnect(
+					_sync_auto_outline_ui
+				)
 		_observed_auto_outline_project = project
 		if is_instance_valid(project):
 			if not project.auto_outline_changed.is_connected(_sync_auto_outline_ui):
