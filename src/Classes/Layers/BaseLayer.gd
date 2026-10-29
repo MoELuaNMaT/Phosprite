@@ -271,6 +271,7 @@ func display_effects(cel: BaseCel, image_override: Image = null) -> Image:
 			image.is_indexed = cel_image.is_indexed
 		image.copy_from_custom(cel_image)
 	if not effects_enabled:
+		_apply_project_auto_outline(image)
 		return image
 	var image_size := image.get_size()
 	var frame := cel.get_frame(project)
@@ -299,7 +300,23 @@ func display_effects(cel: BaseCel, image_override: Image = null) -> Image:
 			interpol_params["PXO_layer_index"] = index
 			var shader_image_effect := ShaderImageEffect.new()
 			shader_image_effect.generate_image(image, effect.shader, interpol_params, image_size)
+	_apply_project_auto_outline(image)
 	return image
+
+
+## Project-wide Auto Outline is independent of a particular layer's effect list.
+## Every pixel layer uses the same settings; group and non-pixel layers do not.
+func _apply_project_auto_outline(image: Image) -> void:
+	if self is not PixelLayer or not project.auto_outline_enabled:
+		return
+	AutoOutlineRenderer.apply(
+		image,
+		{
+			"outline_color": project.auto_outline_color,
+			"outline_width": project.auto_outline_width,
+			"include_diagonals": project.auto_outline_diagonals,
+		}
+	)
 
 
 func emit_effects_added_removed() -> void:
