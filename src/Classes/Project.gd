@@ -71,20 +71,6 @@ var auto_outline_width := 1
 var auto_outline_diagonals := false
 
 
-func set_auto_outline_settings(color: Color, width: int, diagonals: bool) -> void:
-	auto_outline_color = color
-	auto_outline_width = clampi(width, 1, 4)
-	auto_outline_diagonals = diagonals
-	_notify_auto_outline_changed()
-
-
-func _notify_auto_outline_changed() -> void:
-	auto_outline_changed.emit()
-	if Global.current_project == self and is_instance_valid(Global.canvas):
-		Global.canvas.update_all_layers = true
-		Global.canvas.queue_redraw()
-
-
 var selected_cels := [[0, 0]]  ## Array of Arrays of 2 integers (frame & layer)
 ## Array that contains the order of the [BaseLayer] indices that are being drawn.
 ## Takes into account each [BaseCel]'s invidiual z-index. If all z-indexes are 0, then the
@@ -166,6 +152,20 @@ var file_format: Export.FileFormat:
 var was_exported := false
 var export_overwrite := false
 var backup_path := ""
+
+
+func set_auto_outline_settings(color: Color, width: int, diagonals: bool) -> void:
+	auto_outline_color = color
+	auto_outline_width = clampi(width, 1, 4)
+	auto_outline_diagonals = diagonals
+	_notify_auto_outline_changed()
+
+
+func _notify_auto_outline_changed() -> void:
+	auto_outline_changed.emit()
+	if Global.current_project == self and is_instance_valid(Global.canvas):
+		Global.canvas.update_all_layers = true
+		Global.canvas.queue_redraw()
 
 
 ## Whether this platform has no writable system directory and must therefore
