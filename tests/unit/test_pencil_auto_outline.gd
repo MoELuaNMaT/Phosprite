@@ -9,13 +9,23 @@ func test_auto_outline_toggle_is_project_scoped_not_layer_scoped() -> void:
 	var pencil := FileAccess.get_file_as_string(PENCIL_SOURCE)
 	var project := FileAccess.get_file_as_string("res://src/Classes/Project.gd")
 	var layer := FileAccess.get_file_as_string("res://src/Classes/Layers/BaseLayer.gd")
-	check_has(pencil, 'add_do_property(project, "auto_outline_enabled", enabled)', "undoable project toggle")
+	check_has(
+		pencil,
+		'add_do_property(project, "auto_outline_enabled", enabled)',
+		"undoable project toggle"
+	)
 	check_has(pencil, "project.auto_outline_enabled", "checkbox reads the active project")
-	check_has(pencil, "project.auto_outline_changed.connect(_sync_auto_outline_ui)", "UI reflects undo")
+	check_has(
+		pencil, "project.auto_outline_changed.connect(_sync_auto_outline_ui)", "UI reflects undo"
+	)
 	check_has(pencil, "Global.project_switched.connect(_sync_auto_outline_ui)", "project selection")
 	check_true(not pencil.contains("layer.effects.append(effect)"), "no per-layer effect creation")
-	check_has(project, '"auto_outline_enabled": auto_outline_enabled', "enabled state saved per project")
-	check_has(project, "auto_outline_enabled = bool(dict.get(", "enabled state restored per project")
+	check_has(
+		project, '"auto_outline_enabled": auto_outline_enabled', "enabled state saved per project"
+	)
+	check_has(
+		project, "auto_outline_enabled = bool(dict.get(", "enabled state restored per project"
+	)
 	check_has(layer, "_apply_project_auto_outline(image)", "all layers use project settings")
 	check_has(layer, "self is not PixelLayer", "non-pixel layers are not outlined")
 
