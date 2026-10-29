@@ -39,12 +39,8 @@ func test_pencil_configuration_exposes_outline_options() -> void:
 
 func test_outline_uses_a_safe_nondestructive_render_path() -> void:
 	var shader := FileAccess.get_file_as_string(OUTLINE_SHADER)
-	var image_effect := FileAccess.get_file_as_string(
-		"res://src/Classes/ShaderImageEffect.gd"
-	)
-	var renderer := FileAccess.get_file_as_string(
-		"res://src/Classes/AutoOutlineRenderer.gd"
-	)
+	var image_effect := FileAccess.get_file_as_string("res://src/Classes/ShaderImageEffect.gd")
+	var renderer := FileAccess.get_file_as_string("res://src/Classes/AutoOutlineRenderer.gd")
 	check_has(shader, "COLOR0 = texture(source_texture0, UV);", "GPU fallback copies pixels")
 	check_has(image_effect, "AutoOutlineRenderer.apply(img, params)", "CPU renderer is selected")
 	check_has(renderer, "var original_alpha := PackedByteArray()", "source alpha is immutable")
