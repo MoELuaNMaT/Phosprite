@@ -597,16 +597,16 @@ func deserialize(dict: Dictionary, zip_reader: ZIPReader = null, file: FileAcces
 				if (
 					effect.name != "Auto Outline"
 					or not is_instance_valid(effect.shader_or_include)
-					or effect.shader_or_include.resource_path
-					!= "res://src/Shaders/Effects/AutoOutline.gdshader"
+					or (
+						effect.shader_or_include.resource_path
+						!= "res://src/Shaders/Effects/AutoOutline.gdshader"
+					)
 				):
 					continue
 				if not dict.has("auto_outline_enabled") and effect.enabled:
 					auto_outline_enabled = true
 					auto_outline_color = effect.params.get("outline_color", Color.BLACK)
-					auto_outline_width = clampi(
-						int(effect.params.get("outline_width", 1)), 1, 4
-					)
+					auto_outline_width = clampi(int(effect.params.get("outline_width", 1)), 1, 4)
 					auto_outline_diagonals = bool(effect.params.get("include_diagonals", false))
 				layer.effects.erase(effect)
 			_deserialize_metadata(layer, dict.layers[layer_i])
