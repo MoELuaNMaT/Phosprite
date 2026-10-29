@@ -309,14 +309,12 @@ func display_effects(cel: BaseCel, image_override: Image = null) -> Image:
 func _apply_project_auto_outline(image: Image) -> void:
 	if self is not PixelLayer or not project.auto_outline_enabled:
 		return
-	AutoOutlineRenderer.apply(
-		image,
-		{
-			"outline_color": project.auto_outline_color,
-			"outline_width": project.auto_outline_width,
-			"include_diagonals": project.auto_outline_diagonals,
-		}
-	)
+	var params := {
+		"outline_color": project.auto_outline_color,
+		"outline_width": project.auto_outline_width,
+		"include_diagonals": project.auto_outline_diagonals,
+	}
+	AutoOutlineRenderer.apply(image, params)
 
 
 func emit_effects_added_removed() -> void:
