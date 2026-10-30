@@ -29,10 +29,18 @@ func test_selection_toolbar_is_visible_above_canvas_and_hit_test_uses_viewport_c
 	# The test runner skips tool initialization. Test the actual GUI hosting and
 	# hit geometry independently of the tool-selection predicate.
 	selection.set_process(false)
+	# UI3 migrates Main Canvas by temporarily removing it from the tree.
+	# A reparent does not rerun _ready(), so the menu must survive _exit_tree().
+	var parent_node := selection.get_parent()
+	var old_index := selection.get_index()
+	parent_node.remove_child(selection)
+	parent_node.add_child(selection)
+	parent_node.move_child(selection, old_index)
 	menu.show()
 	await tree.process_frame
 	await tree.process_frame
 
+	check_true(is_instance_valid(menu), "toolbar must survive UI3-style scene reparent")
 	check_eq(menu.get_parent(), Global.control, "menu must be hosted by root UI")
 	check_true(menu.is_visible_in_tree(), "menu is rendered above embedded canvas")
 	check_true(menu.get_global_rect().has_area(), "menu has a real GUI hit rectangle")
