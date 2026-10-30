@@ -556,8 +556,25 @@ func paste_from_clipboard() -> void:
 	queue_redraw()
 
 
+## The floating selection menu deletes pixels from the current drawable cel,
+## but keeps the selection rectangle so another action can use the same area.
+func delete_selection_contents() -> void:
+	var project := Global.current_project
+	if (
+		not is_instance_valid(project)
+		or not project.has_selection
+		or is_pasting
+		or transformation_handles.is_transforming()
+	):
+		return
+	if not project.get_current_cel() is PixelCel:
+		return
+	delete(false, true)
+
+
 ## Deletes the drawing enclosed within the selection's area.
-func delete(selected_cels := true) -> void:
+## Toolbar deletion keeps the selection; existing Cut and keyboard actions do not.
+func delete(selected_cels := true, preserve_selection := false) -> void:
 	var project := Global.current_project
 	if !project.layers[project.current_layer].can_layer_get_drawn():
 		return
@@ -619,7 +636,8 @@ func delete(selected_cels := true) -> void:
 		for image in images:
 			image.fill(0)
 			image.convert_rgb_to_indexed()
-	clear_selection()
+	if not preserve_selection:
+		clear_selection()
 	commit_undo("Draw", undo_data_tmp)
 
 
@@ -767,6 +785,8 @@ func _create_selection_context_menu() -> void:
 	_add_selection_menu_button(actions, "Cut", Callable(self, "cut"))
 	_add_selection_menu_button(actions, "Paste", Callable(self, "paste"))
 	_add_selection_menu_button(actions, "New Layer", Callable(self, "create_layer_from_selection"))
+	_add_selection_menu_button(actions, "Delete", Callable(self, "delete_selection_contents"))
+	_selection_action_buttons[4].tooltip_text = tr("Delete selected pixels")
 	_selection_confirm_button = _add_selection_menu_button(
 		actions, "Confirm", Callable(self, "transform_content_confirm")
 	)
@@ -816,6 +836,9 @@ func _update_selection_context_menu() -> void:
 		button.visible = not pending
 		button.disabled = not can_edit and button.text != tr("Paste")
 	_selection_action_buttons[2].disabled = not SelectionNode.has_app_clipboard()
+	_selection_action_buttons[4].disabled = (
+		not can_edit or transformation_handles.is_transforming()
+	)
 	_selection_confirm_button.visible = pending
 	_selection_cancel_button.visible = pending
 
