@@ -726,7 +726,10 @@ func _project_switched() -> void:
 ## Editor UI nodes may be bound after Selection._ready() in any profile.
 ## Retry until the common root is ready rather than losing the toolbar forever.
 func _ensure_selection_context_menu() -> void:
-	if is_instance_valid(_selection_context_menu) and not _selection_context_menu.is_queued_for_deletion():
+	if (
+		is_instance_valid(_selection_context_menu)
+		and not _selection_context_menu.is_queued_for_deletion()
+	):
 		return
 	if not is_inside_tree() or not is_instance_valid(Global.control):
 		return
