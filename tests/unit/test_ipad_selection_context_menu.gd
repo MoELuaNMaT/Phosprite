@@ -56,3 +56,19 @@ func test_menu_touch_does_not_start_painting() -> void:
 		"selection.is_selection_menu_point(event.position)",
 		"mouse input over selection buttons also stays outside canvas drawing"
 	)
+
+
+func test_selection_toolbar_is_shared_by_all_supported_ui_profiles() -> void:
+	var source := FileAccess.get_file_as_string(SELECTION_SOURCE)
+	var profiles := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceUIProfileController.gd"
+	)
+	check_has(profiles, "profile_id in [1, 3, 4]", "UI1, UI3 and UI4 are active profiles")
+	check_has(source, "_ensure_selection_context_menu()", "the menu retries after UI binds")
+	check_has(source, "Global.control.add_child.call_deferred", "menu uses a shared editor root")
+	check_has(source, "Global.main_viewport.is_visible_in_tree()", "menu follows editor visibility")
+	check_true(
+		not source.contains("get_ui_profile()"),
+		"selection actions must not depend on a specific UI mode"
+	)
+	check_has(source, "_selection_action_buttons.clear()", "recreated toolbar drops stale buttons")
