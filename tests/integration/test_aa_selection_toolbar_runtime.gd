@@ -116,6 +116,4 @@ func test_selection_delete_button_is_connected_and_has_touch_target() -> void:
 		delete_button.pressed.is_connected(Callable(selection, "delete_selection_contents")),
 		"Delete triggers the existing selection removal path"
 	)
-	check_true(
-		delete_button.custom_minimum_size.y >= 44.0, "Delete remains reachable by touch"
-	)
+	check_true(delete_button.custom_minimum_size.y >= 44.0, "Delete remains reachable by touch")
