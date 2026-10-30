@@ -43,9 +43,10 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	# The toolbar lives in the root UI, outside this SubViewport's SceneTree branch.
-	# Release it when Canvas is replaced so editor reloads do not leave old menus.
-	if is_instance_valid(_selection_context_menu):
+	# UI3 temporarily removes and re-adds Main Canvas while adopting Workspace
+	# panels. _ready() does not run again, so preserve its root-owned toolbar
+	# across reparenting. Only release the toolbar on actual Canvas deletion.
+	if is_queued_for_deletion() and is_instance_valid(_selection_context_menu):
 		_selection_context_menu.queue_free()
 
 
