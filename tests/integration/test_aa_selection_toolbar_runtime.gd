@@ -72,3 +72,29 @@ func test_selection_toolbar_hides_when_editor_is_not_visible() -> void:
 	await tree.process_frame
 	check_true(not Global.main_viewport.is_visible_in_tree(), "gallery hides editor viewport")
 	editor.visible = was_visible
+
+
+func test_selection_toolbar_can_be_recreated_after_late_editor_binding() -> void:
+	var canvas := Global.canvas
+	check_true(is_instance_valid(canvas), "editor canvas is alive")
+	if not is_instance_valid(canvas):
+		return
+	var selection := canvas.selection
+	var original_menu := selection.get("_selection_context_menu") as PanelContainer
+	check_true(is_instance_valid(original_menu), "selection menu is initialized")
+	if not is_instance_valid(original_menu):
+		return
+	original_menu.free()
+	selection._ensure_selection_context_menu()
+	await tree.process_frame
+	var menu := selection.get("_selection_context_menu") as PanelContainer
+	check_true(is_instance_valid(menu), "selection toolbar initializes after UI is ready")
+	if not is_instance_valid(menu):
+		return
+	check_eq(menu.get_parent(), Global.control, "recovered menu belongs to common root")
+	check_eq(menu.get_child(0).get_child_count(), 6, "all six touch buttons are restored")
+	check_eq(
+		(selection.get("_selection_action_buttons") as Array).size(),
+		4,
+		"only four ordinary action buttons remain after rebuilding"
+	)
