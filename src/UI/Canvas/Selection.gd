@@ -42,6 +42,13 @@ func _ready() -> void:
 	_create_selection_context_menu()
 
 
+func _exit_tree() -> void:
+	# The toolbar lives in the root UI, outside this SubViewport's SceneTree branch.
+	# Release it when Canvas is replaced so editor reloads do not leave old menus.
+	if is_instance_valid(_selection_context_menu):
+		_selection_context_menu.queue_free()
+
+
 func _process(delta: float) -> void:
 	_marching_ants_time_elapsed += delta
 	marching_ants_outline.material.set_shader_parameter("time", _marching_ants_time_elapsed)
@@ -714,11 +721,12 @@ func _project_switched() -> void:
 	queue_redraw()
 
 
-## iPad selection actions live next to the selection, not in a fixed tool row.
-## The overlay is a GUI child of the viewport container so its buttons stay
-## large enough to touch regardless of canvas zoom.
+## iPad selection actions live in the top-level editor GUI.
+## A SubViewportContainer is a render target, not a safe parent for floating GUI
+## controls; its drawing order and clipping can hide children under the canvas.
+## Always attach after the editor scene finishes entering the tree.
 func _create_selection_context_menu() -> void:
-	if not is_instance_valid(Global.main_viewport):
+	if not is_instance_valid(Global.control) or not is_instance_valid(Global.main_viewport):
 		return
 	_selection_context_menu = PanelContainer.new()
 	_selection_context_menu.name = &"SelectionContextMenu"
@@ -729,7 +737,9 @@ func _create_selection_context_menu() -> void:
 	style.set_corner_radius_all(8)
 	style.set_content_margin_all(5)
 	_selection_context_menu.add_theme_stylebox_override(&"panel", style)
-	Global.main_viewport.add_child(_selection_context_menu)
+	# _ready() is running inside the embedded viewport, so defer adding
+	# a sibling under the editor root until its child setup has finished.
+	Global.control.add_child.call_deferred(_selection_context_menu)
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override(&"separation", 4)
 	_selection_context_menu.add_child(actions)
@@ -759,9 +769,13 @@ func _add_selection_menu_button(parent: HBoxContainer, title: String, action: Ca
 
 
 func _update_selection_context_menu() -> void:
-	if not is_instance_valid(_selection_context_menu):
+	if not is_instance_valid(_selection_context_menu) or not _selection_context_menu.is_inside_tree():
 		return
-	if not is_instance_valid(Global.current_project) or not is_instance_valid(Global.main_viewport):
+	if (
+		not is_instance_valid(Global.current_project)
+		or not is_instance_valid(Global.main_viewport)
+		or not Global.main_viewport.is_visible_in_tree()
+	):
 		_selection_context_menu.hide()
 		return
 	var project := Global.current_project
@@ -796,15 +810,26 @@ func _update_selection_context_menu() -> void:
 				var transformed: Vector2 = transform * corner
 				anchor.x = maxf(anchor.x, transformed.x)
 				anchor.y = maxf(anchor.y, transformed.y)
+	# Canvas coordinates are in the embedded SubViewport. Convert through
+	# its container into the root GUI before positioning the floating toolbar.
 	var canvas_to_viewport := canvas.get_global_transform_with_canvas()
-	var viewport_anchor := canvas_to_viewport * anchor
+	var viewport_to_screen := Global.main_viewport.get_global_transform_with_canvas()
+	var screen_to_root := Global.control.get_global_transform_with_canvas().affine_inverse()
+	var viewport_to_root := screen_to_root * viewport_to_screen
+	var root_anchor := viewport_to_root * (canvas_to_viewport * anchor)
+	var top_left := viewport_to_root * Vector2.ZERO
+	var bottom_right := viewport_to_root * Global.main_viewport.size
+	var area := Rect2(top_left, bottom_right - top_left).abs()
 	var menu_size := _selection_context_menu.get_combined_minimum_size()
-	var area := Global.main_viewport.size
-	var point := Vector2(viewport_anchor.x - menu_size.x, viewport_anchor.y + 12.0)
-	if point.y + menu_size.y > area.y - 8.0:
-		point.y = viewport_anchor.y - menu_size.y - 12.0
-	point.x = clampf(point.x, 8.0, maxf(8.0, area.x - menu_size.x - 8.0))
-	point.y = clampf(point.y, 8.0, maxf(8.0, area.y - menu_size.y - 8.0))
+	var point := Vector2(root_anchor.x - menu_size.x, root_anchor.y + 12.0)
+	if point.y + menu_size.y > area.end.y - 8.0:
+		point.y = root_anchor.y - menu_size.y - 12.0
+	point.x = clampf(point.x, area.position.x + 8.0, maxf(
+		area.position.x + 8.0, area.end.x - menu_size.x - 8.0
+	))
+	point.y = clampf(point.y, area.position.y + 8.0, maxf(
+		area.position.y + 8.0, area.end.y - menu_size.y - 8.0
+	))
 	_selection_context_menu.position = point
 	_selection_context_menu.show()
 
@@ -814,7 +839,12 @@ func is_selection_menu_point(screen_point: Vector2) -> bool:
 	return (
 		is_instance_valid(_selection_context_menu)
 		and _selection_context_menu.visible
-		and _selection_context_menu.get_global_rect().has_point(screen_point)
+		and _selection_context_menu.is_visible_in_tree()
+		and (
+			_selection_context_menu.get_global_rect().has_point(
+				Global.main_viewport.get_global_transform_with_canvas() * screen_point
+			)
+		)
 	)
 
 
