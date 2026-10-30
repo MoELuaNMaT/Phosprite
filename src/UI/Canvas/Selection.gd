@@ -741,6 +741,10 @@ func _ensure_selection_context_menu() -> void:
 func _create_selection_context_menu() -> void:
 	if not is_instance_valid(Global.control) or not is_instance_valid(Global.main_viewport):
 		return
+	# Re-creating the overlay must not leave references to old, freed buttons.
+	_selection_action_buttons.clear()
+	_selection_confirm_button = null
+	_selection_cancel_button = null
 	_selection_context_menu = PanelContainer.new()
 	_selection_context_menu.name = &"SelectionContextMenu"
 	_selection_context_menu.mouse_filter = Control.MOUSE_FILTER_STOP
