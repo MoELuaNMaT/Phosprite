@@ -52,7 +52,7 @@ func test_selection_toolbar_is_visible_above_canvas_and_hit_test_uses_viewport_c
 		selection.is_selection_menu_point(local_touch),
 		"iPad touch on menu maps from SubViewport to root GUI"
 	)
-	check_eq(menu.get_child(0).get_child_count(), 6, "four actions plus confirm and cancel")
+	check_eq(menu.get_child(0).get_child_count(), 7, "five actions plus confirm and cancel")
 
 	menu.visible = original_menu_visible
 	selection.set_process(original_processing)
@@ -92,9 +92,30 @@ func test_selection_toolbar_can_be_recreated_after_late_editor_binding() -> void
 	if not is_instance_valid(menu):
 		return
 	check_eq(menu.get_parent(), Global.control, "recovered menu belongs to common root")
-	check_eq(menu.get_child(0).get_child_count(), 6, "all six touch buttons are restored")
+	check_eq(menu.get_child(0).get_child_count(), 7, "all seven touch buttons are restored")
 	check_eq(
 		(selection.get("_selection_action_buttons") as Array).size(),
-		4,
-		"only four ordinary action buttons remain after rebuilding"
+		5,
+		"only five ordinary action buttons remain after rebuilding"
+	)
+
+
+func test_selection_delete_button_is_connected_and_has_touch_target() -> void:
+	var selection := Global.canvas.selection
+	var menu := selection.get("_selection_context_menu") as PanelContainer
+	check_true(is_instance_valid(menu), "global selection toolbar is initialized")
+	if not is_instance_valid(menu):
+		return
+	var actions := selection.get("_selection_action_buttons") as Array
+	check_eq(actions.size(), 5, "global toolbar has five selection actions")
+	if actions.size() != 5:
+		return
+	var delete_button := actions[4] as Button
+	check_eq(delete_button.text, tr("Delete"), "the new action is labeled Delete")
+	check_true(
+		delete_button.pressed.is_connected(Callable(selection, "delete_selection_contents")),
+		"Delete triggers the existing selection removal path"
+	)
+	check_true(
+		delete_button.custom_minimum_size.y >= 44.0, "Delete remains reachable by touch"
 	)
