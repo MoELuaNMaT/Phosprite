@@ -117,3 +117,48 @@ func test_selection_delete_button_is_connected_and_has_touch_target() -> void:
 		"Delete triggers the existing selection removal path"
 	)
 	check_true(delete_button.custom_minimum_size.y >= 44.0, "Delete remains reachable by touch")
+
+
+func test_delete_clears_only_selected_pixels_keeps_selection_and_supports_undo() -> void:
+	var project := Global.current_project
+	check_true(is_instance_valid(project), "project exists for deletion test")
+	if not is_instance_valid(project):
+		return
+	var cel := project.get_current_cel() as PixelCel
+	check_true(is_instance_valid(cel), "current cel supports pixel deletion")
+	if not is_instance_valid(cel):
+		return
+	var image := cel.get_image()
+	var saved_image := Image.new()
+	saved_image.copy_from(image)
+	var saved_selection := SelectionMap.new()
+	saved_selection.copy_from(project.selection_map)
+	var saved_previous := SelectionMap.new()
+	saved_previous.copy_from(project.prev_selection_map)
+	var saved_selected_cels := project.selected_cels.duplicate(true)
+	var saved_changed := project.has_changed
+	project.selected_cels = [[project.current_frame, project.current_layer]]
+	image.set_pixel(4, 4, Color.RED)
+	image.set_pixel(9, 9, Color.GREEN)
+	project.selection_map.clear()
+	project.selection_map.fill_rect(Rect2i(3, 3, 4, 4), Color.WHITE)
+	project.selection_map_changed()
+
+	Global.canvas.selection.delete_selection_contents()
+	check_eq(image.get_pixel(4, 4).a, 0.0, "Delete clears selected pixels")
+	check_eq(image.get_pixel(9, 9), Color.GREEN, "Delete preserves pixels outside the selection")
+	check_true(project.has_selection, "Delete keeps the selection active")
+	check_true(
+		project.selection_map.is_pixel_selected(Vector2i(4, 4), false),
+		"the original marching-ants area remains selected"
+	)
+	project.undo_redo.undo()
+	check_eq(cel.get_image().get_pixel(4, 4), Color.RED, "Undo restores the deleted pixel")
+
+	cel.get_image().copy_from(saved_image)
+	project.selection_map.copy_from(saved_selection)
+	project.prev_selection_map.copy_from(saved_previous)
+	project.selection_map_changed()
+	project.selected_cels = saved_selected_cels
+	project.has_changed = saved_changed
+	Global.canvas.queue_redraw()
