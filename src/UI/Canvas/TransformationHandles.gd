@@ -163,7 +163,9 @@ func _draw() -> void:
 		scale_tmp.x = -1
 	if is_instance_valid(transformed_image) and not transformed_image.is_empty():
 		draw_set_transform(position_top_left, rotation, scale_tmp)
-		var preview_color := Color(1, 1, 1, Global.transformation_preview_alpha)
+		# A pending paste is a separate, opaque visual layer until confirmation.
+		var alpha := 1.0 if selection_node.is_pasting else Global.transformation_preview_alpha
+		var preview_color := Color(1, 1, 1, alpha)
 		draw_texture(image_texture, Vector2.ZERO, preview_color)
 	draw_set_transform(position_tmp, rotation, scale_tmp)
 	if not Tools.selection_tool_has_selection():
