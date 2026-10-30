@@ -9,7 +9,11 @@ func test_selection_toolbar_is_visible_above_canvas_and_hit_test_uses_viewport_c
 	check_true(is_instance_valid(canvas), "live Canvas exists")
 	check_true(is_instance_valid(viewport), "main canvas viewport exists")
 	check_true(is_instance_valid(editor), "editor UI exists")
-	if not is_instance_valid(canvas) or not is_instance_valid(viewport) or not is_instance_valid(editor):
+	if (
+		not is_instance_valid(canvas)
+		or not is_instance_valid(viewport)
+		or not is_instance_valid(editor)
+	):
 		return
 
 	var selection := canvas.selection
