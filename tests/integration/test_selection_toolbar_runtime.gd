@@ -1,7 +1,8 @@
 extends "res://tests/test_base.gd"
 
 
-func test_selection_toolbar_is_visible_above_canvas_and_hit_test_uses_viewport_coordinates() -> void:
+func test_selection_toolbar_is_visible_above_canvas_and_hit_test_uses_viewport_coordinates(
+) -> void:
 	var project := Global.current_project
 	var canvas := Global.canvas
 	var viewport := Global.main_viewport
