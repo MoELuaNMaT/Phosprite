@@ -39,13 +39,12 @@ func _ready() -> void:
 	Global.transform_content_canceled.connect(transform_content_cancel)
 	Global.selection_properties_updated.connect(_on_selection_properties_updated)
 	Global.camera.zoom_changed.connect(_update_on_zoom)
-	_create_selection_context_menu()
+	_ensure_selection_context_menu()
 
 
 func _exit_tree() -> void:
-	# UI3 temporarily removes and re-adds Main Canvas while adopting Workspace
-	# panels. _ready() does not run again, so preserve its root-owned toolbar
-	# across reparenting. Only release the toolbar on actual Canvas deletion.
+	# Any UI profile may reparent the shared Canvas while changing its layout.
+	# Preserve the toolbar across reparenting; only release it on real deletion.
 	if is_queued_for_deletion() and is_instance_valid(_selection_context_menu):
 		_selection_context_menu.queue_free()
 
@@ -53,6 +52,7 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	_marching_ants_time_elapsed += delta
 	marching_ants_outline.material.set_shader_parameter("time", _marching_ants_time_elapsed)
+	_ensure_selection_context_menu()
 	_update_selection_context_menu()
 
 
@@ -722,10 +722,22 @@ func _project_switched() -> void:
 	queue_redraw()
 
 
-## iPad selection actions live in the top-level editor GUI.
-## A SubViewportContainer is a render target, not a safe parent for floating GUI
-## controls; its drawing order and clipping can hide children under the canvas.
-## Always attach after the editor scene finishes entering the tree.
+## The selection toolbar is a canvas feature shared by UI1, UI3 and UI4.
+## Editor UI nodes may be bound after Selection._ready() in any profile.
+## Retry until the common root is ready rather than losing the toolbar forever.
+func _ensure_selection_context_menu() -> void:
+	if is_instance_valid(_selection_context_menu) and not _selection_context_menu.is_queued_for_deletion():
+		return
+	if not is_inside_tree() or not is_instance_valid(Global.control):
+		return
+	if not is_instance_valid(Global.main_viewport):
+		return
+	_selection_context_menu = null
+	_create_selection_context_menu()
+
+
+## The menu lives above the embedded canvas in the shared editor UI, not in
+## a profile-specific panel or SubViewportContainer.
 func _create_selection_context_menu() -> void:
 	if not is_instance_valid(Global.control) or not is_instance_valid(Global.main_viewport):
 		return
