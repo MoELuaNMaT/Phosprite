@@ -82,9 +82,7 @@ func test_selection_toolbar_delete_preserves_selection_and_uses_existing_undo() 
 		"delete command is available in the shared selection toolbar"
 	)
 	check_has(
-		source,
-		'delete(false, true)',
-		"toolbar deletes the current cel and preserves the selection"
+		source, "delete(false, true)", "toolbar deletes the current cel and preserves the selection"
 	)
 	check_has(
 		source,
