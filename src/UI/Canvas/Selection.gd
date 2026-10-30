@@ -769,7 +769,10 @@ func _add_selection_menu_button(parent: HBoxContainer, title: String, action: Ca
 
 
 func _update_selection_context_menu() -> void:
-	if not is_instance_valid(_selection_context_menu) or not _selection_context_menu.is_inside_tree():
+	if (
+		not is_instance_valid(_selection_context_menu)
+		or not _selection_context_menu.is_inside_tree()
+	):
 		return
 	if (
 		not is_instance_valid(Global.current_project)
@@ -824,12 +827,12 @@ func _update_selection_context_menu() -> void:
 	var point := Vector2(root_anchor.x - menu_size.x, root_anchor.y + 12.0)
 	if point.y + menu_size.y > area.end.y - 8.0:
 		point.y = root_anchor.y - menu_size.y - 12.0
-	point.x = clampf(point.x, area.position.x + 8.0, maxf(
-		area.position.x + 8.0, area.end.x - menu_size.x - 8.0
-	))
-	point.y = clampf(point.y, area.position.y + 8.0, maxf(
-		area.position.y + 8.0, area.end.y - menu_size.y - 8.0
-	))
+	point.x = clampf(
+		point.x, area.position.x + 8.0, maxf(area.position.x + 8.0, area.end.x - menu_size.x - 8.0)
+	)
+	point.y = clampf(
+		point.y, area.position.y + 8.0, maxf(area.position.y + 8.0, area.end.y - menu_size.y - 8.0)
+	)
 	_selection_context_menu.position = point
 	_selection_context_menu.show()
 
@@ -840,11 +843,9 @@ func is_selection_menu_point(screen_point: Vector2) -> bool:
 		is_instance_valid(_selection_context_menu)
 		and _selection_context_menu.visible
 		and _selection_context_menu.is_visible_in_tree()
-		and (
-			_selection_context_menu.get_global_rect().has_point(
-				Global.main_viewport.get_global_transform_with_canvas() * screen_point
-			)
-		)
+		and (_selection_context_menu.get_global_rect().has_point(
+			Global.main_viewport.get_global_transform_with_canvas() * screen_point
+		))
 	)
 
 
