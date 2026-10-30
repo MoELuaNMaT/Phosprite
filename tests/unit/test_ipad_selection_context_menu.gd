@@ -7,9 +7,9 @@ const TRANSFORM_SOURCE := "res://src/UI/Canvas/TransformationHandles.gd"
 const PROJECT_SOURCE := "res://src/Classes/Project.gd"
 
 
-func test_selection_menu_has_four_actions_and_pending_controls() -> void:
+func test_selection_menu_has_five_actions_and_pending_controls() -> void:
 	var source := FileAccess.get_file_as_string(SELECTION_SOURCE)
-	for label in ["Copy", "Cut", "Paste", "New Layer"]:
+	for label in ["Copy", "Cut", "Paste", "New Layer", "Delete"]:
 		check_has(source, "_add_selection_menu_button(", "selection actions share one touch menu")
 		check_has(source, '"' + label + '"', "menu includes " + label)
 	check_has(source, 'actions, "Confirm"', "pending paste has explicit confirmation")
@@ -72,3 +72,29 @@ func test_selection_toolbar_is_shared_by_all_supported_ui_profiles() -> void:
 		"selection actions must not depend on a specific UI mode"
 	)
 	check_has(source, "_selection_action_buttons.clear()", "recreated toolbar drops stale buttons")
+
+
+func test_selection_toolbar_delete_preserves_selection_and_uses_existing_undo() -> void:
+	var source := FileAccess.get_file_as_string(SELECTION_SOURCE)
+	check_has(
+		source,
+		'actions, "Delete", Callable(self, "delete_selection_contents")',
+		"delete command is available in the shared selection toolbar"
+	)
+	check_has(
+		source,
+		'delete(false, true)',
+		"toolbar deletes the current cel and preserves the selection"
+	)
+	check_has(
+		source,
+		"func delete(selected_cels := true, preserve_selection := false)",
+		"other delete commands keep their previous behavior by default"
+	)
+	check_has(source, "if not preserve_selection:", "only ordinary deletion clears the selection")
+	check_has(source, 'commit_undo("Draw", undo_data_tmp)', "existing undo machinery is reused")
+	check_has(
+		source,
+		"not can_edit or transformation_handles.is_transforming()",
+		"delete is disabled for unsupported layers or pending transforms"
+	)
