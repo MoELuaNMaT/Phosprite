@@ -4,9 +4,7 @@ const TOP_MENU := preload("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 
 
 func test_ipad_topbar_keeps_only_project_effects_and_settings() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 	check_has(source, 'OS.get_name() == "iOS"', "iPad-only layout gate is retained")
 	check_has(source, "main_menu_button.visible = false", "iPad Main Menu is hidden")
 	check_has(source, "ui_layout_button.visible = false", "iPad UI menu uses Settings")
@@ -16,14 +14,20 @@ func test_ipad_topbar_keeps_only_project_effects_and_settings() -> void:
 		"only Effects remains visible from the original MenuBar on iPad",
 	)
 	check_has(source, 'tr("More Settings…")', "advanced settings remain reachable")
-	check_has(source, "popup.add_item(tr(\"More Settings…\"), Global.EditMenu.PREFERENCES)", "Preferences ID is preserved")
-	check_has(source, "edit_actions.id_pressed.connect(edit_menu_id_pressed)", "Edit commands remain reachable")
+	check_has(
+		source,
+		'popup.add_item(tr("More Settings…"), Global.EditMenu.PREFERENCES)',
+		"Preferences ID is preserved"
+	)
+	check_has(
+		source,
+		"edit_actions.id_pressed.connect(edit_menu_id_pressed)",
+		"Edit commands remain reachable"
+	)
 
 
 func test_ipad_workspace_quick_menu_forwards_to_live_source_commands() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 	for action in [
 		"ui_menu.id_pressed.emit(id)",
 		"panels_submenu.id_pressed.emit(id)",
@@ -58,9 +62,7 @@ func test_ipad_mirrored_popup_tracks_checks_and_disabled_items() -> void:
 
 
 func test_ipad_preferences_organize_categories_without_reparenting_settings() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/Preferences/PreferencesDialog.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/Preferences/PreferencesDialog.gd")
 	for section in [
 		"CurrentProjectSettings",
 		"Canvas & Display",
@@ -73,8 +75,6 @@ func test_ipad_preferences_organize_categories_without_reparenting_settings() ->
 		"Help & About",
 	]:
 		check_has(source, section, "iPad category is implemented")
-	check_has(
-		source, '["Tools", "Selection", "Shortcuts"]', "mouse cursor settings are excluded"
-	)
+	check_has(source, '["Tools", "Selection", "Shortcuts"]', "mouse cursor settings are excluded")
 	check_has(source, "_hide_ipad_desktop_only_controls()", "desktop-only controls are filtered")
 	check_has(source, "pref.node_path", "original preference save paths remain stable")
