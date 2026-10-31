@@ -9,18 +9,6 @@ resource_name = "Tabs"
 script = ExtResource("1_t44r1")
 names = PackedStringArray("Main Canvas")
 
-[sub_resource type="Resource" id="Resource_btw27"]
-resource_name = "Tabs"
-script = ExtResource("1_t44r1")
-names = PackedStringArray("Second Canvas")
-
-[sub_resource type="Resource" id="Resource_bp28t"]
-resource_name = "Split"
-script = ExtResource("2_rngtv")
-percent = 0.829091
-first = SubResource("Resource_kn4x4")
-second = SubResource("Resource_btw27")
-
 [sub_resource type="Resource" id="Resource_10g0s"]
 resource_name = "Tabs"
 script = ExtResource("1_t44r1")
@@ -30,7 +18,7 @@ names = PackedStringArray("Perspective Editor")
 resource_name = "Split"
 script = ExtResource("2_rngtv")
 percent = 0.8625
-first = SubResource("Resource_bp28t")
+first = SubResource("Resource_kn4x4")
 second = SubResource("Resource_10g0s")
 
 [sub_resource type="Resource" id="Resource_12axs"]
@@ -147,6 +135,5 @@ hidden_tabs = {
 "3D Object Tree": true,
 "Perspective Editor": true,
 "Recorder": true,
-"Second Canvas": true,
 "Tiles": true
 }

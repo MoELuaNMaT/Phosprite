@@ -10,7 +10,6 @@ extends RefCounted
 const PREVIEW_ID := &"preview"
 const PALETTE_ID := &"palette"
 const TOOLS_ID := &"tools"
-const SECOND_CANVAS_ID := &"second_canvas"
 const TIMELINE_ID := &"animation_timeline"
 ## Retained only so persisted pre-merge layouts can be recognized as legacy data.
 ## Color Picker now lives inside the Palette Workspace module.
@@ -38,7 +37,6 @@ const UI3_TOOL_OPTIONS_SCENE := preload("res://src/UI/Workspace/UI3ToolOptionsCo
 
 const LIVE_PANEL_NODE_NAMES := {
 	TOOLS_ID: "Tools",
-	SECOND_CANVAS_ID: "Second Canvas",
 	TIMELINE_ID: "Animation Timeline",
 	PREVIEW_ID: "Canvas Preview",
 	RIGHT_TOOL_OPTIONS_ID: "Right Tool Options",
@@ -95,9 +93,6 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	var tools := _external(TOOLS_ID, "Tools", Vector2(168.0, 220.0), Vector2(176.0, 520.0))
 	tools.maximum_size = Vector2(260.0, 0.0)
 	definitions.append(tools)
-	definitions.append(
-		_external(SECOND_CANVAS_ID, "Second Canvas", Vector2(260.0, 180.0), Vector2(420.0, 300.0))
-	)
 	definitions.append(
 		_external(TIMELINE_ID, "Animation Timeline", Vector2(360.0, 160.0), Vector2(760.0, 240.0))
 	)

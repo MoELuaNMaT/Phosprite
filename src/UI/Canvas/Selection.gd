@@ -12,10 +12,14 @@ static var flag_tilemode := false
 
 var undo_data: Dictionary
 var is_pasting := false
-
 var preview_selection_map := SelectionMap.new()
 var preview_selection_texture := ImageTexture.new()
 var _marching_ants_time_elapsed := 0.0
+var _paste_target_cels: Array[BaseCel] = []
+var _selection_context_menu: PanelContainer
+var _selection_action_buttons: Array[Button] = []
+var _selection_confirm_button: Button
+var _selection_cancel_button: Button
 
 @onready var canvas := get_parent() as Canvas
 @onready var transformation_handles := $TransformationHandles as TransformationHandles
@@ -23,7 +27,7 @@ var _marching_ants_time_elapsed := 0.0
 
 
 func _ready() -> void:
-	set_process(false)
+	set_process(true)
 	_on_selection_properties_updated()
 	# Ensure to only call _input() if the cursor is inside the main canvas viewport
 	Global.main_viewport.mouse_entered.connect(set_process_input.bind(true))
@@ -35,11 +39,21 @@ func _ready() -> void:
 	Global.transform_content_canceled.connect(transform_content_cancel)
 	Global.selection_properties_updated.connect(_on_selection_properties_updated)
 	Global.camera.zoom_changed.connect(_update_on_zoom)
+	_ensure_selection_context_menu()
+
+
+func _exit_tree() -> void:
+	# Any UI profile may reparent the shared Canvas while changing its layout.
+	# Preserve the toolbar across reparenting; only release it on real deletion.
+	if is_queued_for_deletion() and is_instance_valid(_selection_context_menu):
+		_selection_context_menu.queue_free()
 
 
 func _process(delta: float) -> void:
 	_marching_ants_time_elapsed += delta
 	marching_ants_outline.material.set_shader_parameter("time", _marching_ants_time_elapsed)
+	_ensure_selection_context_menu()
+	_update_selection_context_menu()
 
 
 func _input(event: InputEvent) -> void:
@@ -52,10 +66,6 @@ func _input(event: InputEvent) -> void:
 
 func _draw() -> void:
 	marching_ants_outline.visible = Global.current_project.has_selection
-	if Global.current_project.has_selection and Global.selection_animated_borders:
-		set_process(true)
-	else:
-		set_process(false)
 	transformation_handles.queue_redraw()
 
 
@@ -125,7 +135,8 @@ func transform_content_confirm(
 		original_selection_rect.size, transformation_handles.preview_transform
 	)
 	bounds.position -= bounds.position
-	for cel in get_selected_draw_cels():
+	var target_cels := _paste_target_cels if is_pasting else get_selected_draw_cels()
+	for cel in target_cels:
 		var cel_image := cel.get_image()
 		var src := Image.new()
 		src.copy_from(preview_image)
@@ -161,6 +172,7 @@ func transform_content_confirm(
 	commit_undo("Move Selection", undo_data)
 
 	is_pasting = false
+	_paste_target_cels.clear()
 	transformation_handles.only_transforms_selection = false
 	queue_redraw()
 	canvas.queue_redraw()
@@ -173,7 +185,8 @@ func transform_content_cancel(project := Global.current_project) -> void:
 		return
 	project.selection_offset = transformation_handles.pre_transform_selection_offset
 	project.selection_map_changed()
-	for cel in get_selected_draw_cels():
+	var target_cels := _paste_target_cels if is_pasting else get_selected_draw_cels()
+	for cel in target_cels:
 		var cel_image := cel.get_image()
 		if !is_pasting and cel.transformed_content:
 			cel_image.blit_rect_mask(
@@ -186,6 +199,7 @@ func transform_content_cancel(project := Global.current_project) -> void:
 	for cel_index in project.selected_cels:
 		canvas.update_texture(cel_index[1])
 	is_pasting = false
+	_paste_target_cels.clear()
 	transformation_handles.only_transforms_selection = false
 	queue_redraw()
 	canvas.queue_redraw()
@@ -229,7 +243,8 @@ func get_undo_data(undo_image: bool) -> Dictionary:
 	data["undo_image"] = undo_image
 
 	if undo_image:
-		project.serialize_cel_undo_data(get_selected_draw_cels(), data)
+		var snapshot_cels := _paste_target_cels if is_pasting else get_selected_draw_cels()
+		project.serialize_cel_undo_data(snapshot_cels, data)
 	return data
 
 
@@ -409,6 +424,9 @@ func paste(in_place := false) -> void:
 
 	if transformation_handles.is_transforming():
 		transform_content_confirm()
+	_paste_target_cels = get_selected_draw_cels()
+	if _paste_target_cels.is_empty():
+		return
 	undo_data = get_undo_data(true)
 	clear_selection()
 	var project := Global.current_project
@@ -508,6 +526,9 @@ func paste_from_clipboard() -> void:
 		return
 	if transformation_handles.is_transforming():
 		transform_content_confirm()
+	_paste_target_cels = get_selected_draw_cels()
+	if _paste_target_cels.is_empty():
+		return
 	undo_data = get_undo_data(true)
 	clear_selection()
 	var project := Global.current_project
@@ -535,8 +556,25 @@ func paste_from_clipboard() -> void:
 	queue_redraw()
 
 
+## The floating selection menu deletes pixels from the current drawable cel,
+## but keeps the selection rectangle so another action can use the same area.
+func delete_selection_contents() -> void:
+	var project := Global.current_project
+	if (
+		not is_instance_valid(project)
+		or not project.has_selection
+		or is_pasting
+		or transformation_handles.is_transforming()
+	):
+		return
+	if not project.get_current_cel() is PixelCel:
+		return
+	delete(false, true)
+
+
 ## Deletes the drawing enclosed within the selection's area.
-func delete(selected_cels := true) -> void:
+## Toolbar deletion keeps the selection; existing Cut and keyboard actions do not.
+func delete(selected_cels := true, preserve_selection := false) -> void:
 	var project := Global.current_project
 	if !project.layers[project.current_layer].can_layer_get_drawn():
 		return
@@ -598,7 +636,8 @@ func delete(selected_cels := true) -> void:
 		for image in images:
 			image.fill(0)
 			image.convert_rgb_to_indexed()
-	clear_selection()
+	if not preserve_selection:
+		clear_selection()
 	commit_undo("Draw", undo_data_tmp)
 
 
@@ -699,6 +738,194 @@ func _project_switched() -> void:
 	marching_ants_outline.offset = Global.current_project.selection_offset
 	_update_marching_ants()
 	queue_redraw()
+
+
+## The selection toolbar is a canvas feature shared by UI1, UI3 and UI4.
+## Editor UI nodes may be bound after Selection._ready() in any profile.
+## Retry until the common root is ready rather than losing the toolbar forever.
+func _ensure_selection_context_menu() -> void:
+	if (
+		is_instance_valid(_selection_context_menu)
+		and not _selection_context_menu.is_queued_for_deletion()
+	):
+		return
+	if not is_inside_tree() or not is_instance_valid(Global.control):
+		return
+	if not is_instance_valid(Global.main_viewport):
+		return
+	_selection_context_menu = null
+	_create_selection_context_menu()
+
+
+## The menu lives above the embedded canvas in the shared editor UI, not in
+## a profile-specific panel or SubViewportContainer.
+func _create_selection_context_menu() -> void:
+	if not is_instance_valid(Global.control) or not is_instance_valid(Global.main_viewport):
+		return
+	# Re-creating the overlay must not leave references to old, freed buttons.
+	_selection_action_buttons.clear()
+	_selection_confirm_button = null
+	_selection_cancel_button = null
+	_selection_context_menu = PanelContainer.new()
+	_selection_context_menu.name = &"SelectionContextMenu"
+	_selection_context_menu.mouse_filter = Control.MOUSE_FILTER_STOP
+	_selection_context_menu.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.12, 0.14, 0.96)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(5)
+	_selection_context_menu.add_theme_stylebox_override(&"panel", style)
+	# _ready() is running inside the embedded viewport, so defer adding
+	# a sibling under the editor root until its child setup has finished.
+	Global.control.add_child.call_deferred(_selection_context_menu)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override(&"separation", 4)
+	_selection_context_menu.add_child(actions)
+	_add_selection_menu_button(actions, "Copy", Callable(self, "copy"))
+	_add_selection_menu_button(actions, "Cut", Callable(self, "cut"))
+	_add_selection_menu_button(actions, "Paste", Callable(self, "paste"))
+	_add_selection_menu_button(actions, "New Layer", Callable(self, "create_layer_from_selection"))
+	_add_selection_menu_button(actions, "Delete", Callable(self, "delete_selection_contents"))
+	_selection_action_buttons[4].tooltip_text = tr("Delete selected pixels")
+	_selection_confirm_button = _add_selection_menu_button(
+		actions, "Confirm", Callable(self, "transform_content_confirm")
+	)
+	_selection_cancel_button = _add_selection_menu_button(
+		actions, "Cancel", Callable(self, "transform_content_cancel")
+	)
+
+
+func _add_selection_menu_button(parent: HBoxContainer, title: String, action: Callable) -> Button:
+	var button := Button.new()
+	button.text = tr(title)
+	button.tooltip_text = tr(title)
+	button.custom_minimum_size = Vector2(54, 44)
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.pressed.connect(action)
+	parent.add_child(button)
+	if title != "Confirm" and title != "Cancel":
+		_selection_action_buttons.append(button)
+	return button
+
+
+func _update_selection_context_menu() -> void:
+	if (
+		not is_instance_valid(_selection_context_menu)
+		or not _selection_context_menu.is_inside_tree()
+	):
+		return
+	if (
+		not is_instance_valid(Global.current_project)
+		or not is_instance_valid(Global.main_viewport)
+		or not Global.main_viewport.is_visible_in_tree()
+	):
+		_selection_context_menu.hide()
+		return
+	var project := Global.current_project
+	if not project.has_selection or not Tools.selection_tool_has_selection():
+		_selection_context_menu.hide()
+		return
+	var pending := is_pasting
+	var can_edit := (
+		project.current_layer >= 0
+		and project.current_layer < project.layers.size()
+		and project.layers[project.current_layer].can_layer_get_drawn()
+		and project.get_current_cel() is PixelCel
+	)
+	for button in _selection_action_buttons:
+		button.visible = not pending
+		button.disabled = not can_edit and button.text != tr("Paste")
+	_selection_action_buttons[2].disabled = not SelectionNode.has_app_clipboard()
+	_selection_action_buttons[4].disabled = (
+		not can_edit or transformation_handles.is_transforming()
+	)
+	_selection_confirm_button.visible = pending
+	_selection_cancel_button.visible = pending
+
+	# The four corners give the correct bottom-right anchor even after rotation.
+	var anchor := Vector2(project.selection_map.get_selection_rect(project).end)
+	if transformation_handles.is_transforming():
+		var map := transformation_handles.transformed_selection_map
+		if is_instance_valid(map):
+			var selection_size := Vector2(map.get_size())
+			var transform := transformation_handles.preview_transform
+			anchor = transform * Vector2.ZERO
+			for corner in [
+				Vector2(selection_size.x, 0.0), Vector2(0.0, selection_size.y), selection_size
+			]:
+				var transformed: Vector2 = transform * corner
+				anchor.x = maxf(anchor.x, transformed.x)
+				anchor.y = maxf(anchor.y, transformed.y)
+	# Canvas coordinates are in the embedded SubViewport. Convert through
+	# its container into the root GUI before positioning the floating toolbar.
+	var canvas_to_viewport := canvas.get_global_transform_with_canvas()
+	var viewport_to_screen := Global.main_viewport.get_global_transform_with_canvas()
+	var screen_to_root := Global.control.get_global_transform_with_canvas().affine_inverse()
+	var viewport_to_root := screen_to_root * viewport_to_screen
+	var root_anchor := viewport_to_root * (canvas_to_viewport * anchor)
+	var top_left := viewport_to_root * Vector2.ZERO
+	var bottom_right := viewport_to_root * Global.main_viewport.size
+	var area := Rect2(top_left, bottom_right - top_left).abs()
+	var menu_size := _selection_context_menu.get_combined_minimum_size()
+	var point := Vector2(root_anchor.x - menu_size.x, root_anchor.y + 12.0)
+	if point.y + menu_size.y > area.end.y - 8.0:
+		point.y = root_anchor.y - menu_size.y - 12.0
+	point.x = clampf(
+		point.x, area.position.x + 8.0, maxf(area.position.x + 8.0, area.end.x - menu_size.x - 8.0)
+	)
+	point.y = clampf(
+		point.y, area.position.y + 8.0, maxf(area.position.y + 8.0, area.end.y - menu_size.y - 8.0)
+	)
+	_selection_context_menu.position = point
+	_selection_context_menu.show()
+
+
+## Used by the iOS input adapter to leave selection-menu touches to GUI buttons.
+func is_selection_menu_point(screen_point: Vector2) -> bool:
+	return (
+		is_instance_valid(_selection_context_menu)
+		and _selection_context_menu.visible
+		and _selection_context_menu.is_visible_in_tree()
+		and (_selection_context_menu.get_global_rect().has_point(
+			Global.main_viewport.get_global_transform_with_canvas() * screen_point
+		))
+	)
+
+
+## Create a real pixel layer containing only the selected pixels. The source
+## layer is not modified, and the normal layer command owns undo/redo.
+func create_layer_from_selection() -> void:
+	var project := Global.current_project
+	if is_pasting or not project.has_selection:
+		return
+	if not project.get_current_cel() is PixelCel:
+		return
+	if not project.layers[project.current_layer].can_layer_get_drawn():
+		return
+	if transformation_handles.is_transforming():
+		transform_content_confirm()
+	var source_image := project.get_current_cel().get_image()
+	var selected_image := get_selected_image(source_image)
+	if selected_image.is_empty():
+		return
+	var selection_rect := (
+		project.selection_map.return_cropped_copy(project, project.size).get_used_rect()
+	)
+	var source_frame := project.current_frame
+	Global.animation_timeline.add_layer(PixelLayer.new(project), project)
+	var target := project.frames[source_frame].cels[project.current_layer] as PixelCel
+	if not is_instance_valid(target):
+		return
+	var target_image := target.get_image()
+	target_image.blit_rect_mask(
+		selected_image,
+		selected_image,
+		Rect2i(Vector2i.ZERO, selected_image.get_size()),
+		selection_rect.position
+	)
+	target_image.convert_rgb_to_indexed()
+	target.update_texture()
+	canvas.queue_redraw()
 
 
 static func get_selected_image(cel_image: Image) -> Image:
