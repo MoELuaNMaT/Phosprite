@@ -641,7 +641,7 @@ func _setup_ipad_settings_pages() -> void:
 	_ipad_add_category("Project", ["CurrentProjectSettings", "Attribution"])
 	_ipad_add_category("Canvas & Display", ["Canvas"])
 	_ipad_add_category("Workspace & Panels", ["WorkspaceSettings"])
-	_ipad_add_category("Tools & Input", ["Tools", "Selection", "Cursors", "Shortcuts"])
+	_ipad_add_category("Tools & Input", ["Tools", "Selection", "Shortcuts"])
 	_ipad_add_category("Animation & Layers", ["Timeline"])
 	_ipad_add_category("Interface & Appearance", ["Interface", "Language"])
 	_ipad_add_category("Files & Backup", ["Image", "Backup", "iPadBackupActions"])
@@ -785,7 +785,8 @@ func _refresh_ipad_workspace_settings() -> void:
 		return
 	var profile_controller: Node = ui.get_parent().get("workspace_ui_profile_controller")
 	if profile_controller != null:
-		var active_id: int = profile_controller.get("store").get_active_layout_slot()
+		var layout_store := profile_controller.get("store") as WorkspaceLayoutStore
+		var active_id := layout_store.get_active_layout_slot() if layout_store != null else 1
 		var index := _ipad_profile_select.get_item_index(active_id)
 		if index >= 0:
 			_ipad_profile_select.select(index)
@@ -834,18 +835,20 @@ func _hide_ipad_desktop_only_controls() -> void:
 	var startup := right_side.get_node_or_null(^"Startup") as Control
 	if startup != null:
 		startup.hide()
-	var collapse_label := right_side.get_node_or_null(
-		^"Interface/InterfaceOptions/CollapseMainMenuLabel"
-	) as Control
+	var collapse_label := (
+		right_side.get_node_or_null(^"Interface/InterfaceOptions/CollapseMainMenuLabel") as Control
+	)
 	if collapse_label != null:
 		collapse_label.hide()
-	var collapse_toggle := right_side.get_node_or_null(
-		^"Interface/InterfaceOptions/CollapseMainMenu"
-	) as Control
+	var collapse_toggle := (
+		right_side.get_node_or_null(^"Interface/InterfaceOptions/CollapseMainMenu") as Control
+	)
 	if collapse_toggle != null:
 		collapse_toggle.hide()
 	for option in ["WindowTransparency", "DummyAudioDriver"]:
-		var node := right_side.get_node_or_null(NodePath("Performance/PerformanceContainer/" + option))
+		var node := right_side.get_node_or_null(
+			NodePath("Performance/PerformanceContainer/" + option)
+		)
 		if node == null:
 			continue
 		var parent := node.get_parent()

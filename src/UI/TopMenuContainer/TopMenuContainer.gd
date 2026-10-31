@@ -4,11 +4,11 @@ signal return_home_requested
 
 enum ColorModes { RGBA, INDEXED }
 
-const DOCS_URL := "https://www.pixelorama.org/Introduction/"
+const DOCS_URL := "https://github.com/MoELuaNMaT/Phosprite#readme"
 const ISSUES_URL := "https://github.com/MoELuaNMaT/Phosprite/issues"
 const SUPPORT_URL := "https://www.patreon.com/OramaInteractive"
 # gdlint: ignore=max-line-length
-const CHANGELOG_URL := "https://github.com/Orama-Interactive/Pixelorama/blob/master/CHANGELOG.md#v122---2026-09-09"
+const CHANGELOG_URL := "https://github.com/MoELuaNMaT/Phosprite/releases"
 const EXTERNAL_LINK_ICON := preload("res://assets/graphics/misc/external_link.svg")
 const PIXELORAMA_ICON := preload("res://assets/graphics/icons/icon_16x16.png")
 const HEART_ICON := preload("res://assets/graphics/misc/heart.svg")
@@ -317,7 +317,9 @@ func _sync_ipad_settings_menu() -> void:
 	var crop_index := _ipad_project_actions.get_item_index(Global.ProjectMenu.CROP_TO_SELECTION)
 	_ipad_project_actions.set_item_disabled(
 		crop_index,
-		project_menu.is_item_disabled(project_menu.get_item_index(Global.ProjectMenu.CROP_TO_SELECTION))
+		project_menu.is_item_disabled(
+			project_menu.get_item_index(Global.ProjectMenu.CROP_TO_SELECTION)
+		)
 	)
 	_ipad_workspace_actions.set_item_checked(
 		_ipad_workspace_actions.get_item_index(Global.WindowMenu.ZEN_MODE),
