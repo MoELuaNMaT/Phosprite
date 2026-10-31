@@ -139,6 +139,42 @@ func _free_fixture(fixture: Dictionary) -> void:
 	(fixture["root"] as Control).free()
 
 
+func test_second_canvas_is_removed_without_breaking_legacy_layout_snapshots() -> void:
+	var definitions := Builtins.create_definitions()
+	for definition in definitions:
+		check_true(
+			definition.module_id != &"second_canvas",
+			"Second Canvas must not be a registered Workspace panel",
+		)
+	check_true(
+		not Builtins.get_live_panel_ids().has(&"second_canvas"),
+		"live Workspace adoption must not resolve a Second Canvas",
+	)
+	var scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
+	check_true(
+		not scene.contains('name="Second Canvas"'),
+		"editor scene must not instantiate a secondary SubViewport or Camera",
+	)
+	check_true(scene.contains('name="Main Canvas"'), "primary editor canvas stays available")
+	for path in [
+		"res://assets/layouts/Default.tres",
+		"res://assets/layouts/Tallscreen.tres",
+	]:
+		var layout := FileAccess.get_file_as_string(path)
+		check_true(not layout.contains("Second Canvas"), "bundled presets drop old panel slots")
+	var fixture := _make_live_fixture()
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var store := fixture["store"] as WorkspaceLayoutStore
+	check_true(not manager.has_definition(&"second_canvas"), "removed module cannot be reactivated")
+	var legacy_snapshot := store.capture_snapshot()
+	legacy_snapshot["modules"].append({"id": "second_canvas", "placement": "floating"})
+	check_true(
+		store.apply_snapshot(legacy_snapshot),
+		"older saved Workspaces containing Second Canvas must still load",
+	)
+	_free_fixture(fixture)
+
+
 func test_live_migration_adopts_existing_controls_and_promotes_main_canvas() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
