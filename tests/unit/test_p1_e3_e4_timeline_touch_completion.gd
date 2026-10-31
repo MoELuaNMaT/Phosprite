@@ -45,7 +45,7 @@ func test_e3_direct_timeline_actions_use_finger_sized_targets() -> void:
 	)
 
 
-func test_e3_low_frequency_actions_move_into_one_more_menu() -> void:
+func test_e3_removes_obsolete_overflow_but_preserves_native_frame_handlers() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	for hidden_button in [
 		"_copy_frame.hide()",
@@ -53,53 +53,190 @@ func test_e3_low_frequency_actions_move_into_one_more_menu() -> void:
 		"_move_frame_right.hide()",
 		"_first_frame.hide()",
 		"_last_frame.hide()",
-		"_timeline_settings.hide()",
 	]:
-		check_has(src, hidden_button, "low-frequency action must leave the direct iPad toolbar")
-	check_has(src, 'popup.add_item(tr("Duplicate frame")', "More menu must expose Duplicate")
-	check_has(src, 'popup.add_item(tr("Move frame left")', "More menu must expose Move Left")
-	check_has(src, 'popup.add_item(tr("Move frame right")', "More menu must expose Move Right")
-	check_has(src, 'popup.add_item(tr("Jump to first frame")', "More menu must expose First")
-	check_has(src, 'popup.add_item(tr("Jump to last frame")', "More menu must expose Last")
-	check_has(src, 'popup.add_item(tr("Timeline settings")', "More menu must expose settings")
+		check_has(src, hidden_button, "gesture-owned action is no longer an iPad toolbar item")
+	check_true(
+		not src.contains("TimelineActionsMenu"), "obsolete Frame overflow menu must be removed"
+	)
+	check_true(
+		not src.contains("_timeline_settings.hide()"),
+		"Timeline settings must be available as an independent button",
+	)
+	check_has(src, "_timeline_settings.custom_minimum_size", "Timeline settings is touch sized")
 
 
-func test_e3_menu_delegates_to_existing_timeline_handlers() -> void:
+func test_e3_removes_direct_tag_buttons_but_keeps_native_frame_context_actions() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	for handler in [
-		'_timeline.call("_on_CopyFrame_pressed")',
-		'_timeline.call("_on_MoveLeft_pressed")',
-		'_timeline.call("_on_MoveRight_pressed")',
-		'_timeline.call("_on_FirstFrame_pressed")',
-		'_timeline.call("_on_LastFrame_pressed")',
-		'_timeline.call("_on_timeline_settings_button_pressed")',
-	]:
-		check_has(src, handler, "E3 must delegate to the existing Timeline handler")
+	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
+	check_true(not src.contains("TimelineNewTagButton"), "New Tag must not be in the iPad toolbar")
+	check_true(
+		not src.contains("TimelineImportTagButton"), "Import Tag must not be in the iPad toolbar"
+	)
+	check_true(not src.contains("_build_tag_buttons"), "no dynamic Tag toolbar controls remain")
+	check_has(frame_src, "NEW_TAG:", "native Frame menu retains New Tag")
+	check_has(frame_src, "IMPORT_TAG:", "native Frame handler retains Import Tag internally")
 	check_true(not ("undo_redo" in src), "E3/E4 adapter must not create a second UndoRedo path")
 	check_true(not ("move_frames" in src), "E3/E4 adapter must not implement Frame movement")
 
 
-func test_e4_frame_and_cel_advanced_actions_reuse_existing_context_handlers() -> void:
+func test_e4_frame_and_cel_actions_are_available_at_the_object_long_press() -> void:
+	var manager_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
+	var cel_src := FileAccess.get_file_as_string("res://src/UI/Timeline/CelButton.gd")
+	var layer_src := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerButton.gd")
+	check_true(
+		not manager_src.contains('popup.add_item(tr("Frame properties / duration")'),
+		"per-frame duration must not appear in the iPad toolbar",
+	)
+	check_has(
+		frame_src,
+		"PROPERTIES, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG",
+		"iPad Frame context hides settings relocated to gestures or dedicated controls"
+	)
+	check_has(
+		frame_src,
+		"Global.animation_timeline.reverse_frames(indices)",
+		"Frame long press keeps Reverse Frames"
+	)
+	check_has(frame_src, "DrawingAlgos.center(indices)", "Frame long press keeps Center Frames")
+	check_has(cel_src, 'tr("Cel Properties")', "iPad Cel menu labels the targeted properties")
+	check_has(cel_src, "_sync_link_actions_visibility", "Cel long press owns Link and Unlink")
+	check_has(cel_src, "selected_frames.size() >= 2", "Link actions require multi-selection")
+	for layer_action in ["DUPLICATE", "MERGE_DOWN", "EFFECTS"]:
+		check_has(layer_src, "MenuOptions." + layer_action, "Animation layer menu includes action")
+	check_has(
+		frame_src,
+		"tag_properties.show_dialog(Rect2i(), current_tag_id, false, indices)",
+		"Frame context New Tag still uses the original dialog",
+	)
+
+
+func test_ios_timeline_toolbar_places_blend_modes_after_remove_layer() -> void:
 	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
 	check_has(
-		src,
-		'popup.add_item(tr("Frame properties / duration")',
-		"Frame duration must be reachable from the iPad More menu",
+		src, '_pixel_layer_button.tooltip_text = tr("Add Pixel Layer")', "pixel add is direct"
 	)
-	check_has(src, 'popup.add_item(tr("New tag")', "Tag creation must be reachable")
-	check_has(src, 'popup.add_item(tr("Import tag")', "Tag import must be reachable")
-	check_has(src, 'popup.add_item(tr("Cel properties")', "Cel properties must be reachable")
-	check_has(src, 'popup.add_item(tr("Link selected cels")', "Linked Cel must be reachable")
-	check_has(src, 'popup.add_item(tr("Unlink selected cels")', "Unlink must be reachable")
+	check_has(src, '_group_layer_button.name = "AddGroupLayer"', "group gets an independent button")
 	check_has(
-		src,
-		'frame_button.call("_on_PopupMenu_id_pressed", id)',
-		"Frame advanced actions must reuse FrameButton's context handler",
+		src, 'preload("res://assets/graphics/layers/group_new.png")', "group uses folder icon"
 	)
 	check_has(
 		src,
-		'cel_button.call("_on_PopupMenu_id_pressed", id)',
-		"Cel advanced actions must reuse CelButton's context handler",
+		'_timeline.call("on_add_layer_list_id_pressed", Global.LayerTypes.GROUP)',
+		"group button delegates to existing undoable creation",
+	)
+	check_has(
+		src,
+		"_layer_type_menu.reparent(_layer_buttons)",
+		"the extra layer types get a separate dropdown"
+	)
+	for layer_type in ["THREE_D", "TILEMAP", "AUDIO"]:
+		check_has(src, "Global.LayerTypes." + layer_type, "extra dropdown retains " + layer_type)
+	var start := src.find("extra_layer_types.clear()")
+	var finish := src.find("var dropdown_icon", start)
+	check_true(start >= 0 and finish > start, "extra layer popup must be rebuilt")
+	if finish > start:
+		var menu_src := src.substr(start, finish - start)
+		check_true(not menu_src.contains("Global.LayerTypes.PIXEL"), "Pixel is not in popup")
+		check_true(not menu_src.contains("Global.LayerTypes.GROUP"), "Group is not in popup")
+	check_has(
+		src,
+		'_remove_layer_button = _layer_buttons.get_node_or_null("RemoveLayer") as Button',
+		"the blend menu must anchor to the real RemoveLayer Button",
+	)
+	check_has(
+		src,
+		"_blend_modes.reparent(_layer_buttons)",
+		"keep the existing BlendModes dropdown in the layer toolbar",
+	)
+	check_has(
+		src,
+		"_layer_buttons.move_child(_blend_modes, _remove_layer_button.get_index() + 1)",
+		"BlendModes is placed immediately after RemoveLayer",
+	)
+	check_has(
+		src,
+		"Vector2(IOS_BLEND_MODE_WIDTH, IOS_TOUCH_TARGET_PX)",
+		"BlendModes height matches one finger-sized toolbar row",
+	)
+
+
+func test_empty_ios_tag_lane_collapses_and_restores_with_tags() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Timeline/AnimationTimeline.gd")
+	check_true(
+		not AnimationTimeline._should_show_tag_row(false, false, true),
+		"iPad without animation tags has no blank Tag row",
+	)
+	check_true(
+		AnimationTimeline._should_show_tag_row(true, false, true),
+		"iPad with any animation tag expands the Tag row",
+	)
+	check_true(
+		not AnimationTimeline._should_show_tag_row(true, true, true),
+		"keyframe timeline hides the Tag row even when tags exist",
+	)
+	check_true(
+		AnimationTimeline._should_show_tag_row(false, false, false),
+		"desktop preserves its existing Tag lane behavior",
+	)
+	check_has(source, "_sync_tag_row_visibility()", "Tag row visibility is synchronized")
+	check_has(source, "tag_scroll_container.visible = show_row", "Tag Scroll collapses in the VBox")
+	check_has(
+		source,
+		"adjust_scroll_container.call_deferred()",
+		"Tag alignment is refreshed after the row reflows",
+	)
+
+
+func test_tag_row_reacts_to_creation_deletion_and_project_switching() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Timeline/AnimationTimeline.gd")
+	var tags_changed := source.find("func _on_animation_tags_changed()")
+	var tags_changed_end := source.find("func set_timeline_first_and_last_frames()", tags_changed)
+	var tag_logic := source.substr(tags_changed, tags_changed_end - tags_changed)
+	check_has(tag_logic, "_sync_tag_row_visibility()", "creating or deleting tags resizes the lane")
+	var project_switched := source.find("func project_changed()")
+	var project_switched_end := source.find("func project_frame_added(", project_switched)
+	var project_logic := source.substr(project_switched, project_switched_end - project_switched)
+	check_has(
+		project_logic,
+		"_on_animation_tags_changed()",
+		"switching projects restores both the Tag contents and lane visibility",
+	)
+	var toggle := source.find("func _on_keyframe_timeline_button_pressed()")
+	check_has(
+		source.substr(toggle),
+		"_sync_tag_row_visibility()",
+		"switching Keyframe/Animation view respects empty Tag lanes",
+	)
+
+
+func test_frame_context_reveals_new_tag_only_for_frame_multi_selection() -> void:
+	var frame_src := FileAccess.get_file_as_string("res://src/UI/Timeline/FrameButton.gd")
+	var manager_src := FileAccess.get_file_as_string(
+		"res://src/UI/Timeline/TimelineTouchSelectionManager.gd"
+	)
+	check_has(
+		frame_src,
+		"popup_menu.about_to_popup.connect(_sync_ios_new_tag_context)",
+		"Frame long-press must refresh New Tag visibility on each popup",
+	)
+	check_has(
+		frame_src,
+		'project.has_meta(&"phosprite_animation_frame_swipe_multiselect")',
+		"New Tag checks swipe-selection mode, including one selected frame",
+	)
+	check_has(
+		frame_src,
+		"popup_menu.set_item_hidden(NEW_TAG, not targeted or not in_multi_selection)",
+		"New Tag is hidden on unselected and normal single-focus Frames",
+	)
+	check_has(
+		manager_src, "if not has_target:", "long-press on a selected Frame keeps batch selection"
+	)
+	check_has(
+		frame_src,
+		"tag_properties.show_dialog(Rect2i(), current_tag_id, false, indices)",
+		"New Tag continues using the native selected-frame range dialog",
 	)
 
 

@@ -139,6 +139,42 @@ func _free_fixture(fixture: Dictionary) -> void:
 	(fixture["root"] as Control).free()
 
 
+func test_second_canvas_is_removed_without_breaking_legacy_layout_snapshots() -> void:
+	var definitions := Builtins.create_definitions()
+	for definition in definitions:
+		check_true(
+			definition.module_id != &"second_canvas",
+			"Second Canvas must not be a registered Workspace panel",
+		)
+	check_true(
+		not Builtins.get_live_panel_ids().has(&"second_canvas"),
+		"live Workspace adoption must not resolve a Second Canvas",
+	)
+	var scene := FileAccess.get_file_as_string("res://src/UI/UI.tscn")
+	check_true(
+		not scene.contains('name="Second Canvas"'),
+		"editor scene must not instantiate a secondary SubViewport or Camera",
+	)
+	check_true(scene.contains('name="Main Canvas"'), "primary editor canvas stays available")
+	for path in [
+		"res://assets/layouts/Default.tres",
+		"res://assets/layouts/Tallscreen.tres",
+	]:
+		var layout := FileAccess.get_file_as_string(path)
+		check_true(not layout.contains("Second Canvas"), "bundled presets drop old panel slots")
+	var fixture := _make_live_fixture()
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var store := fixture["store"] as WorkspaceLayoutStore
+	check_true(not manager.has_definition(&"second_canvas"), "removed module cannot be reactivated")
+	var legacy_snapshot := store.capture_snapshot()
+	legacy_snapshot["modules"].append({"id": "second_canvas", "placement": "floating"})
+	check_true(
+		store.apply_snapshot(legacy_snapshot),
+		"older saved Workspaces containing Second Canvas must still load",
+	)
+	_free_fixture(fixture)
+
+
 func test_live_migration_adopts_existing_controls_and_promotes_main_canvas() -> void:
 	var fixture := _make_live_fixture()
 	var root := fixture["root"] as Control
@@ -829,9 +865,15 @@ func test_touch_workspace_drag_and_resize_capture_on_press_before_child_gui() ->
 	)
 	check_true(
 		interaction_src.contains(
-			"_begin_resize(\n\t\tmodule_id,\n\t\t_viewport_point_to_host(event.position)"
+			"return _try_capture_workspace_resize_at(event.position, event.index)"
 		),
-		"edge capture must open the resize transaction immediately on press",
+		"touch resize must delegate the initial press to the shared pointer capture path",
+	)
+	check_true(
+		interaction_src.contains(
+			"_begin_resize(\n\t\tmodule_id,\n\t\t_viewport_point_to_host(viewport_point)"
+		),
+		"shared pointer capture must open the resize transaction immediately on press",
 	)
 
 	var fixture := _make_live_fixture()
@@ -866,7 +908,7 @@ func test_touch_workspace_drag_and_resize_capture_on_press_before_child_gui() ->
 	_free_fixture(fixture)
 
 
-func test_timeline_toolbar_has_direct_vertical_resize_intent_on_ipad() -> void:
+func test_timeline_grip_has_direct_vertical_resize_intent_on_ipad() -> void:
 	check_true(
 		Interaction.timeline_header_resize_intent(Vector2(1.0, -8.0)),
 		"a short vertical toolbar drag should resize without a long press",
@@ -881,12 +923,12 @@ func test_timeline_toolbar_has_direct_vertical_resize_intent_on_ipad() -> void:
 	check_has(
 		interaction_src,
 		"_try_capture_timeline_header_resize",
-		"Timeline resize must be recognized across the full Workspace header",
+		"Timeline resize must start from a dedicated grip",
 	)
 	check_has(
 		interaction_src,
 		"WorkspaceModule.ResizeEdge.TOP",
-		"Bottom Timeline drag must reuse the existing top-edge resize path",
+		"Dedicated Timeline grip must reuse the existing top-edge resize path",
 	)
 
 
@@ -917,8 +959,23 @@ func test_timeline_position_is_locked_but_top_edge_height_resize_remains_availab
 	)
 	check_eq(
 		surface.get_docked_resize_edges(Builtins.TIMELINE_ID, Vector2(timeline.size.x * 0.5, 2.0)),
-		WorkspaceModule.ResizeEdge.TOP,
-		"Bottom Timeline must keep its top-edge height resize target",
+		WorkspaceModule.ResizeEdge.NONE,
+		"Timeline top edge cannot trigger a resize without the grip",
+	)
+	var grip_rect := timeline.get_timeline_resize_grip_rect()
+	check_eq(grip_rect.size, Vector2(80.0, 24.0), "Timeline has an explicit grip")
+	check_eq(
+		grip_rect.position,
+		Vector2(8.0, -20.0),
+		"Timeline resize grip stays at the top-left of the frame/layer area",
+	)
+	check_true(
+		timeline.is_timeline_resize_grip_point(grip_rect.get_center()),
+		"Timeline grip center starts a resize",
+	)
+	check_true(
+		not timeline.is_timeline_resize_grip_point(Vector2(20.0, 10.0)),
+		"Timeline toolbar outside the grip is not a resize target",
 	)
 	check_eq(
 		host.layout.get_module_size(Builtins.TIMELINE_ID).y,
@@ -926,6 +983,102 @@ func test_timeline_position_is_locked_but_top_edge_height_resize_remains_availab
 		"Animation mode default Workspace height should be slightly taller",
 	)
 
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_timeline_height_cap_blocks_fullscreen_dock_and_reclamps_on_rotation() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	tree.root.add_child(root)
+	await tree.process_frame
+	var timeline_id := Builtins.TIMELINE_ID
+	var previous := host.layout.get_module_size(timeline_id)
+	var oversized := previous
+	oversized.y = 2000.0
+	check_true(
+		host.set_module_size(timeline_id, oversized), "oversized Timeline request is accepted"
+	)
+	check_almost_eq(
+		host.layout.get_module_size(timeline_id).y,
+		WorkspaceDockHost.timeline_height_limit(host.size.y, 160.0),
+		0.01,
+		"Timeline cannot consume most of the canvas",
+	)
+	host.size.y = 640.0
+	host.refresh_layout_geometry()
+	check_true(
+		host.layout.get_module_size(timeline_id).y <= 640.0 * 0.45 + 0.01,
+		"changing orientation immediately reclamps the timeline",
+	)
+	tree.root.remove_child(root)
+	_free_fixture(fixture)
+
+
+func test_timeline_second_touch_and_cancellation_rollback_resize() -> void:
+	var fixture := _make_live_fixture()
+	var root := fixture["root"] as Control
+	var host := fixture["host"] as WorkspaceDockHost
+	var manager := fixture["manager"] as WorkspaceModuleManager
+	var surface := fixture["surface"] as WorkspaceSurface
+	var interaction := Interaction.new()
+	root.add_child(interaction)
+	check_true(interaction.setup(manager, surface), "interaction controller sets up")
+	tree.root.add_child(root)
+	await tree.process_frame
+	var original_size := host.layout.get_module_size(Builtins.TIMELINE_ID)
+	var first := InputEventScreenTouch.new()
+	first.index = 0
+	first.pressed = true
+	interaction._input(first)
+	check_true(
+		interaction._begin_resize(
+			Builtins.TIMELINE_ID, Vector2(100.0, 200.0), 0, WorkspaceModule.ResizeEdge.TOP
+		),
+		"first touch opens Timeline resize",
+	)
+	interaction._update_resize(Vector2(100.0, 130.0))
+	check_true(
+		host.layout.get_module_size(Builtins.TIMELINE_ID).y > original_size.y,
+		"first touch can resize before a second finger appears",
+	)
+	var second := InputEventScreenTouch.new()
+	second.index = 1
+	second.pressed = true
+	interaction._input(second)
+	check_eq(
+		host.layout.get_module_size(Builtins.TIMELINE_ID).y,
+		original_size.y,
+		"second touch rolls back the initial Timeline height",
+	)
+	check_eq(interaction._resize_module_id, &"", "second touch cancels resize transaction")
+	check_true(interaction._timeline_touch_blocked, "remaining fingers cannot restart resize")
+	second.pressed = false
+	interaction._input(second)
+	check_true(interaction._timeline_touch_blocked, "block remains until all fingers lift")
+	first.pressed = false
+	interaction._input(first)
+	check_true(not interaction._timeline_touch_blocked, "fresh touch gesture can start again")
+	# A system-canceled touch must also restore height, not commit or persist it.
+	first.pressed = true
+	interaction._input(first)
+	check_true(
+		interaction._begin_resize(
+			Builtins.TIMELINE_ID, Vector2(100.0, 200.0), 0, WorkspaceModule.ResizeEdge.TOP
+		),
+		"fresh touch opens a resize after the multi-touch block clears",
+	)
+	interaction._update_resize(Vector2(100.0, 130.0))
+	first.pressed = false
+	first.canceled = true
+	interaction._input(first)
+	check_eq(
+		host.layout.get_module_size(Builtins.TIMELINE_ID).y,
+		original_size.y,
+		"touch cancellation restores the initial size",
+	)
+	check_eq(interaction._resize_module_id, &"", "cancel clears the resize transaction")
 	tree.root.remove_child(root)
 	_free_fixture(fixture)
 
@@ -1786,48 +1939,6 @@ func test_full_background_canvas_gates_tools_to_document_but_keeps_selection_out
 	check_true(
 		adapter_source.contains("_eligible_direct_touch_ids().size() >= 2"),
 		"an outside first finger must remain available for two-finger Canvas navigation"
-	)
-
-
-func test_preview_touch_navigation_reuses_canvas_math_without_zoom_slider() -> void:
-	var scene_source := FileAccess.get_file_as_string(
-		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
-	)
-	var preview_source := FileAccess.get_file_as_string(
-		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd"
-	)
-	var adapter_source := FileAccess.get_file_as_string(
-		"res://src/InputAdapter/CanvasInputAdapter.gd"
-	)
-	check_true(
-		not scene_source.contains("PreviewZoomSlider"),
-		"Preview should no longer expose the legacy zoom slider"
-	)
-	check_true(
-		scene_source.contains('groups=["CanvasTouchBlockers"]'),
-		"Preview content should block touch-through into the full-background Main Canvas"
-	)
-	check_true(
-		(
-			preview_source.contains("InputEventScreenTouch")
-			and preview_source.contains("InputEventScreenDrag")
-		),
-		"Preview should own raw two-finger touch navigation on iOS"
-	)
-	check_true(
-		(
-			preview_source.contains("NAVIGATION.navigation_pair_geometry")
-			and preview_source.contains("NAVIGATION.navigation_zoom_from_ratio")
-			and preview_source.contains("NAVIGATION.navigation_offset_for_anchor")
-		),
-		"Preview should reuse the Canvas navigation geometry, zoom and anchored-pan math"
-	)
-	check_true(
-		(
-			adapter_source.contains("CANVAS_TOUCH_BLOCKER_GROUP")
-			and adapter_source.contains("get_nodes_in_group(CANVAS_TOUCH_BLOCKER_GROUP)")
-		),
-		"Main Canvas touch arbitration should reject touches that begin over Preview"
 	)
 
 

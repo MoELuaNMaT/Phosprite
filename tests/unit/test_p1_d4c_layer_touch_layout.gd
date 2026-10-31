@@ -45,8 +45,31 @@ func test_ios_layer_toolbar_uses_touch_sized_direct_actions() -> void:
 	)
 
 
-func test_low_frequency_layer_actions_move_into_one_more_menu() -> void:
-	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+func test_layer_toolbar_bootstraps_are_valid_in_either_order() -> void:
+	var layer_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	var toolbar_src := FileAccess.get_file_as_string(
+		"res://src/UI/Timeline/TimelinePanelTouchManager.gd"
+	)
+	check_has(
+		layer_src,
+		'get_node_or_null("AddLayerList")',
+		"layer bootstrap finds the standalone dropdown if Timeline bootstrap already moved it",
+	)
+	check_has(
+		layer_src,
+		"if _add_layer_list.get_parent() == _add_layer:",
+		"legacy split geometry must only apply until compact reparenting completes",
+	)
+	check_has(
+		toolbar_src,
+		"_layer_type_menu.reparent(_layer_buttons)",
+		"Timeline bootstrap moves the existing dropdown instead of cloning handlers",
+	)
+
+
+func test_low_frequency_layer_actions_use_layer_context_instead_of_overflow() -> void:
+	var toolbar_src := FileAccess.get_file_as_string(MANAGER_SOURCE)
+	var layer_scene := FileAccess.get_file_as_string(LAYER_SCENE_SOURCE)
 	for hidden_button in [
 		"_move_up_layer.hide()",
 		"_move_down_layer.hide()",
@@ -54,43 +77,31 @@ func test_low_frequency_layer_actions_move_into_one_more_menu() -> void:
 		"_merge_down_layer.hide()",
 		"_layer_fx.hide()",
 	]:
-		check_has(src, hidden_button, "low-frequency Layer actions must leave the direct iPad row")
-	check_has(src, 'popup.add_item(tr("Move layer up")', "More menu must expose Move Up")
-	check_has(src, 'popup.add_item(tr("Move layer down")', "More menu must expose Move Down")
-	check_has(src, 'popup.add_item(tr("Duplicate layer")', "More menu must expose Duplicate")
-	check_has(src, 'popup.add_item(tr("Merge down")', "More menu must expose Merge Down")
-	check_has(src, 'popup.add_item(tr("Layer effects")', "More menu must expose Layer Effects")
+		check_has(toolbar_src, hidden_button, "secondary actions are not direct iPad buttons")
+	check_true(
+		not toolbar_src.contains("LayerActionsMenu"), "obsolete layer overflow button is removed"
+	)
+	for label in ["Duplicate layer", "Merge down", "Layer effects"]:
+		check_has(layer_scene, label, "native layer context menu exposes the action")
 
 
-func test_more_menu_reuses_existing_layer_business_handlers() -> void:
-	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(
-		src, '_timeline.call("change_layer_order", true)', "Move Up must reuse existing handler"
-	)
-	check_has(
-		src, '_timeline.call("change_layer_order", false)', "Move Down must reuse existing handler"
-	)
-	check_has(
-		src, '_timeline.call("_on_CloneLayer_pressed")', "Duplicate must reuse existing handler"
-	)
-	check_has(
-		src, '_timeline.call("_on_MergeDownLayer_pressed")', "Merge must reuse existing handler"
-	)
-	check_has(src, '_timeline.call("_on_layer_fx_pressed")', "Layer FX must reuse existing handler")
-	check_true(not ("undo_redo" in src), "D4-C must not introduce a second Layer transaction")
-	check_true(not ("move_layers" in src), "D4-C must not introduce Layer movement logic")
+func test_layer_context_actions_reuse_existing_layer_business_handlers() -> void:
+	var src := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerButton.gd")
+	check_has(src, "Global.animation_timeline._on_CloneLayer_pressed()", "duplicate is native")
+	check_has(src, "Global.animation_timeline._on_MergeDownLayer_pressed()", "merge is native")
+	check_has(src, "Global.animation_timeline.open_current_layer_effects()", "effects are native")
+	check_has(src, "_focus_context_layer()", "context actions target the held layer")
 
 
-func test_more_menu_disabled_state_follows_existing_buttons() -> void:
-	var src := FileAccess.get_file_as_string(MANAGER_SOURCE)
-	check_has(src, "_move_up_layer.disabled", "Move Up menu state must follow the existing Button")
+func test_layer_context_menu_disabled_state_follows_native_buttons() -> void:
+	var src := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerButton.gd")
+	check_has(src, "timeline._toggle_layer_buttons()", "context state refreshes on open")
+	check_has(src, "timeline.merge_down_layer.disabled", "merge disabled state is native")
+	check_has(src, "project.layers[layer_index] is AudioLayer", "effects exclude Audio Layers")
 	check_has(
-		src, "_move_down_layer.disabled", "Move Down menu state must follow the existing Button"
-	)
-	check_has(src, "_merge_down_layer.disabled", "Merge menu state must follow the existing Button")
-	check_has(src, "_layer_fx.disabled", "Layer FX menu state must follow the existing Button")
-	check_has(
-		src, "popup.about_to_popup.connect(_sync_action_states)", "state must refresh before open"
+		src,
+		"popup_menu.about_to_popup.connect(_sync_layer_context_menu)",
+		"context state must refresh before opening",
 	)
 
 

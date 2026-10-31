@@ -752,6 +752,29 @@ func load_last_project(using_previous_session := false) -> void:
 		(func(): Global.cel_switched.emit()).call_deferred()
 
 
+## Import an image into the active project's reference images.
+## This must not use the project-gallery import path.
+func request_reference_image_import(use_photos := false) -> void:
+	if Global.current_project == null:
+		return
+	if is_instance_valid(app_shell_controller) and app_shell_controller.is_gallery():
+		return
+	if OS.get_name() == "iOS":
+		if (
+			not is_instance_valid(ios_document_bridge)
+			or not ios_document_bridge.request_reference_image_import(use_photos)
+		):
+			Global.popup_error(tr("The iOS image picker is unavailable."))
+		return
+	Global.popup_image_file_dialog(
+		func(texture: Texture2D):
+			if is_instance_valid(texture):
+				var image := texture.get_image()
+				if not image.is_empty():
+					OpenSave.import_reference_image_from_image(image)
+	)
+
+
 func load_recent_project_file(path: String) -> void:
 	if OS.get_name() == "Web":
 		return

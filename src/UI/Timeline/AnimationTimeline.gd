@@ -154,6 +154,7 @@ func _ready() -> void:
 	drag_highlight.visibility_changed.connect(clear_highlight)
 	single_frame_layer_strip.set_project(Global.current_project)
 	set_timeline_mode(get_project_timeline_mode(Global.current_project), false)
+	_sync_tag_row_visibility()
 
 
 func _notification(what: int) -> void:
@@ -296,6 +297,7 @@ func set_timeline_mode(
 	timeline_mode = next_mode
 	timeline_container.visible = timeline_mode == TimelineMode.ANIMATION
 	single_frame_layer_strip.visible = timeline_mode == TimelineMode.SINGLE_FRAME
+	_sync_tag_row_visibility()
 	if timeline_mode == TimelineMode.SINGLE_FRAME:
 		single_frame_layer_strip.set_project(Global.current_project)
 	if persist_project_state:
@@ -1601,6 +1603,7 @@ func update_cel_button_ui(layer_index: int) -> void:
 
 func _on_animation_tags_changed() -> void:
 	var project := Global.current_project
+	_sync_tag_row_visibility()
 	for child in tag_container.get_children():
 		child.queue_free()
 
@@ -1612,6 +1615,25 @@ func _on_animation_tags_changed() -> void:
 		tag_container.move_child(tag_c, tag_position)
 
 	set_timeline_first_and_last_frames()
+
+
+static func _should_show_tag_row(has_tags: bool, keyframe_enabled: bool, on_ios: bool) -> bool:
+	# Desktop retains its existing Tag lane. iPad eliminates the empty lane.
+	return not keyframe_enabled and (has_tags or not on_ios)
+
+
+func _sync_tag_row_visibility() -> void:
+	var project := Global.current_project
+	var has_tags := is_instance_valid(project) and not project.animation_tags.is_empty()
+	var show_row := _should_show_tag_row(
+		has_tags, keyframe_timeline.visible, OS.get_name() == "iOS"
+	)
+	if tag_scroll_container.visible == show_row:
+		return
+	tag_scroll_container.visible = show_row
+	# VBoxContainer now immediately reclaims/restores the Tag lane's 24px.
+	# Recalculate the frame/tag horizontal alignment after layout settles.
+	adjust_scroll_container.call_deferred()
 
 
 ## This is useful in case tags get modified DURING the animation is playing
@@ -1677,6 +1699,9 @@ func project_changed() -> void:
 	fps_spinbox.value = project.fps
 	_toggle_frame_buttons()
 	_toggle_layer_buttons()
+	# Changing projects does not emit tags_changed on the incoming project.
+	# Rebuild both the Tag lane contents and its empty/nonempty layout.
+	_on_animation_tags_changed()
 	# These must be removed from tree immediately to not mess up the indices of
 	# the new buttons, so use either free or queue_free + parent.remove_child
 	for layer_button in layer_vbox.get_children():
@@ -1947,7 +1972,7 @@ func _on_layer_frame_h_split_dragged(offset: int) -> void:
 func _on_keyframe_timeline_button_pressed() -> void:
 	var keyframe_timeline_enabled := not keyframe_timeline.visible
 	keyframe_timeline.visible = keyframe_timeline_enabled
-	tag_scroll_container.visible = not keyframe_timeline_enabled
+	_sync_tag_row_visibility()
 	layer_frame_header_h_split.get_parent().visible = not keyframe_timeline_enabled
 	frame_scroll_container.get_parent().visible = not keyframe_timeline_enabled
 	var texture_button: TextureRect = keyframe_timeline_button.get_child(0)

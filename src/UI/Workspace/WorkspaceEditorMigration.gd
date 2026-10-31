@@ -231,6 +231,28 @@ func is_panel_visible(module_id: StringName) -> bool:
 func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 	if not live or not manager.has_definition(module_id):
 		return false
+	# A reference panel has no collapsed state: it is either open or parked.
+	if module_id == Builtins.REFERENCE_IMAGES_ID:
+		if (
+			visible
+			and (
+				Global.current_project == null or Global.current_project.reference_images.is_empty()
+			)
+		):
+			return false
+		if visible:
+			var reference_module := manager.get_instance(module_id)
+			if reference_module != null and reference_module.get_content() != null:
+				reference_module.get_content().visible = true
+		if (
+			visible
+			and surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED
+		):
+			var restored := surface.restore_module(module_id)
+			if restored:
+				panel_visibility_changed.emit(module_id, true)
+			return restored
+		return set_context_panel_visible(module_id, visible)
 	if (
 		_active_ui_profile == 3
 		and module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]
@@ -1001,7 +1023,12 @@ func _restore_timeline_height(mode: int) -> void:
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if timeline == null:
 		return
-	_set_timeline_workspace_height(timeline.get_saved_workspace_height(mode))
+	var saved_height := timeline.get_saved_workspace_height(mode)
+	if _set_timeline_workspace_height(saved_height):
+		var applied_height := _get_timeline_workspace_height()
+		if applied_height > 0.0 and not is_equal_approx(applied_height, saved_height):
+			# Repair old accidentally full-screen sizes in per-project mode storage.
+			timeline.store_workspace_height(applied_height, mode)
 
 
 func _get_timeline_workspace_height() -> float:

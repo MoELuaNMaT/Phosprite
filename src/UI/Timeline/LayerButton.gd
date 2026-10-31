@@ -1,7 +1,9 @@
 class_name LayerButton
 extends HBoxContainer
 
-enum MenuOptions { PROPERTIES, CLIPPING_MASK, FLATTEN, FLATTEN_VISIBLE }
+enum MenuOptions {
+	PROPERTIES, CLIPPING_MASK, FLATTEN, FLATTEN_VISIBLE, DUPLICATE, MERGE_DOWN, EFFECTS
+}
 
 const HIERARCHY_DEPTH_PIXEL_SHIFT := 24
 const ARRAY_TEXTURE_TYPES: Array[Texture2D] = [
@@ -53,6 +55,7 @@ func _ready() -> void:
 	main_button.hierarchy_depth_pixel_shift = HIERARCHY_DEPTH_PIXEL_SHIFT
 	hierarchy_spacer.hierarchy_depth_pixel_shift = HIERARCHY_DEPTH_PIXEL_SHIFT
 	Global.cel_switched.connect(_on_cel_switched)
+	popup_menu.about_to_popup.connect(_sync_layer_context_menu)
 	var layer := Global.current_project.layers[layer_index]
 	layer.name_changed.connect(
 		func():
@@ -193,7 +196,7 @@ func update_buttons() -> void:
 
 	visibility_button.modulate.a = 1
 	lock_button.modulate.a = 1
-	popup_menu.set_item_checked(0, layer.clipping_mask)
+	popup_menu.set_item_checked(MenuOptions.CLIPPING_MASK, layer.clipping_mask)
 	clipping_mask_icon.visible = layer.clipping_mask
 	if is_instance_valid(layer.parent):
 		if not layer.parent.is_visible_in_hierarchy():
@@ -439,6 +442,48 @@ func _on_popup_menu_id_pressed(id: int) -> void:
 	elif id == MenuOptions.FLATTEN_VISIBLE:
 		var indices := _get_layer_indices()
 		Global.animation_timeline.flatten_layers.call_deferred(indices, true)
+	elif id == MenuOptions.DUPLICATE:
+		_focus_context_layer()
+		Global.animation_timeline._on_CloneLayer_pressed()
+	elif id == MenuOptions.MERGE_DOWN:
+		_focus_context_layer()
+		Global.animation_timeline._toggle_layer_buttons()
+		if not Global.animation_timeline.merge_down_layer.disabled:
+			Global.animation_timeline._on_MergeDownLayer_pressed()
+	elif id == MenuOptions.EFFECTS:
+		_focus_context_layer()
+		Global.animation_timeline.open_current_layer_effects()
+
+
+func _sync_layer_context_menu() -> void:
+	_focus_context_layer()
+	var project := Global.current_project
+	if project == null or layer_index >= project.layers.size():
+		return
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if not is_instance_valid(timeline):
+		return
+	timeline._toggle_layer_buttons()
+	popup_menu.set_item_checked(
+		MenuOptions.CLIPPING_MASK, project.layers[layer_index].clipping_mask
+	)
+	popup_menu.set_item_disabled(MenuOptions.MERGE_DOWN, timeline.merge_down_layer.disabled)
+	popup_menu.set_item_disabled(MenuOptions.EFFECTS, project.layers[layer_index] is AudioLayer)
+
+
+func _focus_context_layer() -> void:
+	var project := Global.current_project
+	if project == null or layer_index < 0 or layer_index >= project.layers.size():
+		return
+	var selected := false
+	for selected_cel in project.selected_cels:
+		if int(selected_cel[1]) == layer_index:
+			selected = true
+			break
+	if not selected:
+		_select_current_layer()
+	elif project.current_layer != layer_index:
+		project.change_cel(-1, layer_index)
 
 
 func _get_layer_indices() -> PackedInt32Array:
