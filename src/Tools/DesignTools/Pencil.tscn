@@ -7,6 +7,15 @@
 [node name="ToolOptions" unique_id=450758674 instance=ExtResource("1")]
 script = ExtResource("3")
 
+[node name="NewBrush" type="Button" parent="Brush" index="3"]
+custom_minimum_size = Vector2(54, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+tooltip_text = "Create a new project brush from the selected pixels"
+mouse_default_cursor_shape = 2
+text = "New Brush"
+
 [node name="Opacity" parent="." index="6" unique_id=1395956544 instance=ExtResource("2")]
 layout_mode = 2
 focus_mode = 0
@@ -136,6 +145,7 @@ mouse_default_cursor_shape = 2
 tooltip_text = "Alpha lock: draw only on pixels that are already nontransparent"
 text = "Transparent Only"
 
+[connection signal="pressed" from="Brush/NewBrush" to="." method="_on_new_brush_pressed"]
 [connection signal="toggled" from="AutoOutline" to="." method="_on_auto_outline_toggled"]
 [connection signal="color_changed" from="AutoOutlineSettings/ColorRow/Color" to="." method="_on_auto_outline_color_changed"]
 [connection signal="value_changed" from="AutoOutlineSettings/Thickness" to="." method="_on_auto_outline_width_changed"]
