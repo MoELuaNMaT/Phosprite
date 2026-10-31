@@ -155,9 +155,10 @@ func _rebuild_panels_menu() -> void:
 	panels_submenu.clear()
 	panels_submenu.hide_on_checkable_item_selection = false
 	for module_id in migration.get_panel_ids():
-		if module_id in [
-			Builtins.TILES_ID, Builtins.OBJECT_TREE_3D_ID, Builtins.REFERENCE_IMAGES_ID
-		]:
+		if (
+			module_id
+			in [Builtins.TILES_ID, Builtins.OBJECT_TREE_3D_ID, Builtins.REFERENCE_IMAGES_ID]
+		):
 			continue
 		var item_id := panels_submenu.item_count
 		panels_submenu.add_check_item(migration.get_panel_name(module_id), item_id)
