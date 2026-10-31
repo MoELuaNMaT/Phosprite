@@ -26,6 +26,7 @@ public:
 	Dictionary pop_event();
 	void enqueue_paths(const PackedStringArray &p_paths, const String &p_source);
 	void enqueue_error(const String &p_message);
+	void enqueue_picker_finished(const String &p_source);
 
 	PhospriteNativeDocuments();
 	~PhospriteNativeDocuments();
