@@ -4,11 +4,11 @@ signal return_home_requested
 
 enum ColorModes { RGBA, INDEXED }
 
-const DOCS_URL := "https://www.pixelorama.org/Introduction/"
+const DOCS_URL := "https://github.com/MoELuaNMaT/Phosprite#readme"
 const ISSUES_URL := "https://github.com/MoELuaNMaT/Phosprite/issues"
 const SUPPORT_URL := "https://www.patreon.com/OramaInteractive"
 # gdlint: ignore=max-line-length
-const CHANGELOG_URL := "https://github.com/Orama-Interactive/Pixelorama/blob/master/CHANGELOG.md#v122---2026-09-09"
+const CHANGELOG_URL := "https://github.com/MoELuaNMaT/Phosprite/releases"
 const EXTERNAL_LINK_ICON := preload("res://assets/graphics/misc/external_link.svg")
 const PIXELORAMA_ICON := preload("res://assets/graphics/icons/icon_16x16.png")
 const HEART_ICON := preload("res://assets/graphics/misc/heart.svg")
@@ -66,6 +66,15 @@ var about_dialog := Dialog.new("res://src/UI/Dialogs/AboutDialog.tscn")
 var backup_dialog := Dialog.new("res://src/UI/Dialogs/BackupRestoreDialog.tscn")
 var _compact_edit_menu: PopupMenu
 var _compact_view_menu: PopupMenu
+var _ipad_settings_populated := false
+var _ipad_project_actions: PopupMenu
+var _ipad_canvas_actions: PopupMenu
+var _ipad_workspace_actions: PopupMenu
+var _ipad_ui_actions: PopupMenu
+var _ipad_panels_actions: PopupMenu
+var _ipad_layouts_actions: PopupMenu
+var _ipad_snap_actions: PopupMenu
+var _ipad_tile_actions: PopupMenu
 
 @onready var main := $"../.." as Control
 @onready var main_ui := main.find_child("DockableContainer") as DockableContainer
@@ -145,17 +154,24 @@ func set_return_home_visible(should_show: bool) -> void:
 			settings_button.visible = false
 		_detach_settings_project_menu()
 		ui_menu = desktop_ui_menu
+		handle_main_menu_collapse()
 		return
 	_ensure_ui_layout_button()
 	_ensure_settings_button()
 	if not is_instance_valid(ui_layout_button) or not is_instance_valid(settings_button):
 		return
-	ui_layout_button.visible = true
+	ui_menu = ui_layout_button.get_popup()
 	settings_button.visible = true
-	_attach_settings_project_menu()
+	if OS.get_name() == "iOS":
+		ui_layout_button.visible = false
+		_setup_ipad_settings_menu()
+	else:
+		ui_layout_button.visible = true
+		_attach_settings_project_menu()
 	var row := return_home_button.get_parent()
 	if row == null:
 		return
+	_apply_ipad_topbar_visibility()
 	_arrange_topbar_menu_buttons()
 
 
@@ -209,6 +225,155 @@ func _attach_settings_project_menu() -> void:
 		parent.remove_child(project_menu)
 	popup.add_submenu_node_item(tr("Project"), project_menu)
 	popup.add_item(tr("Preferences"), Global.EditMenu.PREFERENCES)
+
+
+## Keep original MenuBar nodes and command IDs alive for shortcuts and extensions.
+## Only the editor's iPad presentation is compacted; desktop menus are unchanged.
+func _is_ipad_editor() -> bool:
+	return OS.get_name() == "iOS" and return_home_button.visible
+
+
+func _apply_ipad_topbar_visibility() -> void:
+	if not _is_ipad_editor():
+		return
+	main_menu_button.visible = false
+	if is_instance_valid(ui_layout_button):
+		ui_layout_button.visible = false
+	for index in menu_bar.get_menu_count():
+		menu_bar.set_menu_hidden(index, menu_bar.get_menu_popup(index) != effects_menu)
+
+
+func _new_ipad_submenu(parent: PopupMenu, title: String) -> PopupMenu:
+	var submenu := PopupMenu.new()
+	submenu.name = StringName("iPadSettings%d" % parent.get_child_count())
+	submenu.hide_on_checkable_item_selection = false
+	parent.add_child(submenu)
+	parent.add_submenu_node_item(title, submenu)
+	return submenu
+
+
+func _setup_ipad_settings_menu() -> void:
+	if _ipad_settings_populated:
+		return
+	var popup := settings_button.get_popup()
+	_ipad_project_actions = _new_ipad_submenu(popup, tr("Project Operations"))
+	for entry in [
+		[Global.ProjectMenu.PROJECT_PROPERTIES, "Project Properties"],
+		[Global.ProjectMenu.RESIZE_CANVAS, "Resize Canvas"],
+		[Global.ProjectMenu.SCALE_IMAGE, "Scale Image"],
+		[Global.ProjectMenu.CROP_TO_SELECTION, "Crop to Selection"],
+		[Global.ProjectMenu.CROP_TO_CONTENT, "Crop to Content"],
+	]:
+		_ipad_project_actions.add_item(tr(entry[1]), entry[0])
+	_ipad_project_actions.id_pressed.connect(project_menu_id_pressed)
+
+	_ipad_canvas_actions = _new_ipad_submenu(popup, tr("Canvas Aids"))
+	_ipad_canvas_actions.add_check_item(tr("Show Rulers"), Global.ViewMenu.SHOW_RULERS)
+	_ipad_canvas_actions.add_check_item(tr("Show Guides"), Global.ViewMenu.SHOW_GUIDES)
+	_ipad_canvas_actions.id_pressed.connect(view_menu_id_pressed)
+	_ipad_snap_actions = _new_ipad_submenu(_ipad_canvas_actions, tr("Snap To"))
+	_ipad_tile_actions = _new_ipad_submenu(_ipad_canvas_actions, tr("Tile Mode"))
+	_ipad_snap_actions.id_pressed.connect(_forward_ipad_snap)
+	_ipad_tile_actions.id_pressed.connect(_forward_ipad_tile)
+
+	_ipad_workspace_actions = _new_ipad_submenu(popup, tr("Workspace"))
+	_ipad_ui_actions = _new_ipad_submenu(_ipad_workspace_actions, tr("UI Layout"))
+	_ipad_panels_actions = _new_ipad_submenu(_ipad_workspace_actions, tr("Panels"))
+	_ipad_layouts_actions = _new_ipad_submenu(_ipad_workspace_actions, tr("Layout Presets"))
+	_ipad_workspace_actions.add_check_item(tr("Zen Mode"), Global.WindowMenu.ZEN_MODE)
+	_ipad_workspace_actions.id_pressed.connect(_forward_ipad_window)
+	_ipad_ui_actions.id_pressed.connect(_forward_ipad_ui)
+	_ipad_panels_actions.id_pressed.connect(_forward_ipad_panels)
+	_ipad_layouts_actions.id_pressed.connect(_forward_ipad_layouts)
+
+	var edit_actions := _new_ipad_submenu(popup, tr("Edit Actions"))
+	for entry in [
+		[Global.EditMenu.COPY, "Copy"],
+		[Global.EditMenu.CUT, "Cut"],
+		[Global.EditMenu.PASTE, "Paste"],
+		[Global.EditMenu.PASTE_IN_PLACE, "Paste in Place"],
+		[Global.EditMenu.PASTE_FROM_CLIPBOARD, "Paste from Clipboard"],
+		[Global.EditMenu.DELETE, "Delete"],
+	]:
+		edit_actions.add_item(tr(entry[1]), entry[0])
+	edit_actions.id_pressed.connect(edit_menu_id_pressed)
+	popup.add_separator()
+	popup.add_item(tr("More Settings…"), Global.EditMenu.PREFERENCES)
+	popup.about_to_popup.connect(_sync_ipad_settings_menu)
+	_ipad_workspace_actions.about_to_popup.connect(_sync_ipad_settings_menu)
+	_ipad_canvas_actions.about_to_popup.connect(_sync_ipad_settings_menu)
+	_ipad_settings_populated = true
+	_sync_ipad_settings_menu()
+
+
+func _sync_ipad_settings_menu() -> void:
+	if not _ipad_settings_populated:
+		return
+	for item_id in [Global.ViewMenu.SHOW_RULERS, Global.ViewMenu.SHOW_GUIDES]:
+		var index := _ipad_canvas_actions.get_item_index(item_id)
+		_ipad_canvas_actions.set_item_checked(
+			index, view_menu.is_item_checked(view_menu.get_item_index(item_id))
+		)
+	var crop_index := _ipad_project_actions.get_item_index(Global.ProjectMenu.CROP_TO_SELECTION)
+	_ipad_project_actions.set_item_disabled(
+		crop_index,
+		project_menu.is_item_disabled(
+			project_menu.get_item_index(Global.ProjectMenu.CROP_TO_SELECTION)
+		)
+	)
+	_ipad_workspace_actions.set_item_checked(
+		_ipad_workspace_actions.get_item_index(Global.WindowMenu.ZEN_MODE),
+		window_menu.is_item_checked(window_menu.get_item_index(Global.WindowMenu.ZEN_MODE))
+	)
+	_copy_ipad_source_menu(ui_menu, _ipad_ui_actions)
+	_copy_ipad_source_menu(panels_submenu, _ipad_panels_actions)
+	_copy_ipad_source_menu(layouts_submenu, _ipad_layouts_actions)
+	_copy_ipad_source_menu(snap_to_submenu, _ipad_snap_actions)
+	_copy_ipad_source_menu(tile_mode_submenu, _ipad_tile_actions)
+
+
+func _copy_ipad_source_menu(source: PopupMenu, destination: PopupMenu) -> void:
+	if source == null or destination == null:
+		return
+	destination.clear()
+	for i in source.item_count:
+		var id := source.get_item_id(i)
+		var title := source.get_item_text(i)
+		if source.is_item_separator(i):
+			destination.add_separator(title, id)
+		elif source.is_item_radio_checkable(i):
+			destination.add_radio_check_item(title, id)
+		elif source.is_item_checkable(i):
+			destination.add_check_item(title, id)
+		else:
+			destination.add_item(title, id)
+		var target := destination.item_count - 1
+		destination.set_item_checked(target, source.is_item_checked(i))
+		destination.set_item_disabled(target, source.is_item_disabled(i))
+
+
+func _forward_ipad_ui(id: int) -> void:
+	ui_menu.id_pressed.emit(id)
+
+
+func _forward_ipad_panels(id: int) -> void:
+	panels_submenu.id_pressed.emit(id)
+
+
+func _forward_ipad_layouts(id: int) -> void:
+	layouts_submenu.id_pressed.emit(id)
+
+
+func _forward_ipad_snap(id: int) -> void:
+	snap_to_submenu.id_pressed.emit(id)
+
+
+func _forward_ipad_tile(id: int) -> void:
+	tile_mode_submenu.id_pressed.emit(id)
+
+
+func _forward_ipad_window(id: int) -> void:
+	window_menu.id_pressed.emit(id)
 
 
 func _detach_settings_project_menu() -> void:
@@ -279,12 +444,18 @@ func handle_main_menu_collapse() -> void:
 				_compact_edit_menu.get_parent().remove_child(_compact_edit_menu)
 			_compact_edit_menu.queue_free()
 			_compact_edit_menu = null
+	_apply_ipad_topbar_visibility()
 	_arrange_topbar_menu_buttons()
 
 
 func _arrange_topbar_menu_buttons() -> void:
 	var row := return_home_button.get_parent()
 	if row == null:
+		return
+	if _is_ipad_editor() and is_instance_valid(settings_button):
+		row.move_child(return_home_button, 0)
+		row.move_child(settings_button, 1)
+		row.move_child(menu_bar, 2)
 		return
 	if (
 		Global.collapse_main_menu
