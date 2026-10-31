@@ -93,7 +93,10 @@ func _handle_native_event(event: Dictionary) -> void:
 	var event_type := str(event.get("type", ""))
 	if event_type == "paths":
 		var paths: PackedStringArray = event.get("paths", PackedStringArray())
-		if str(event.get("source", "")) == _reference_import_source and not _reference_import_source.is_empty():
+		if (
+			str(event.get("source", "")) == _reference_import_source
+			and not _reference_import_source.is_empty()
+		):
 			_import_reference_paths(paths)
 		else:
 			enqueue_import_paths(paths)
