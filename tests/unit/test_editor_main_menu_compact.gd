@@ -1,6 +1,7 @@
 extends "res://tests/test_base.gd"
 
 const TopMenuScript := preload("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
+const PENCIL_SCENE := preload("res://src/Tools/DesignTools/Pencil.tscn")
 
 
 func test_compact_topbar_exposes_full_effects_view_window_help_and_only_edit_in_main_menu() -> void:
@@ -117,8 +118,7 @@ func test_new_brush_removed_from_edit_but_keeps_command_id_and_pencil_entry() ->
 		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
 	)
 	var pencil_source := FileAccess.get_file_as_string("res://src/Tools/DesignTools/Pencil.gd")
-	var pencil_scene := preload("res://src/Tools/DesignTools/Pencil.tscn")
-	var pencil := pencil_scene.instantiate()
+	var pencil := PENCIL_SCENE.instantiate()
 	var new_brush := pencil.get_node_or_null(^"Brush/NewBrush") as Button
 	check_true(is_instance_valid(new_brush), "Pencil has New Brush near its brush controls")
 	if is_instance_valid(new_brush):
