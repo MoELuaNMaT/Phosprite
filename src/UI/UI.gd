@@ -47,7 +47,10 @@ func _ready() -> void:
 	Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)
 	Global.project_switched.connect(_sync_reference_panel_visibility)
 	OpenSave.reference_image_imported.connect(_sync_reference_panel_visibility)
-	if is_instance_valid(Global.canvas) and is_instance_valid(Global.canvas.reference_image_container):
+	if (
+		is_instance_valid(Global.canvas)
+		and is_instance_valid(Global.canvas.reference_image_container)
+	):
 		Global.canvas.reference_image_container.reference_image_removed.connect(
 			_sync_reference_panel_visibility
 		)
