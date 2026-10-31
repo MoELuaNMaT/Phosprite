@@ -56,8 +56,12 @@ func enqueue_import_paths(paths: PackedStringArray) -> void:
 ## Reference imports stay in the editor and do not create a Gallery project.
 func request_reference_image_import(use_photos: bool) -> bool:
 	if (
-		not active or native_bridge == null or _busy or not _pending_paths.is_empty()
-		or not _reference_import_source.is_empty() or Global.current_project == null
+		not active
+		or native_bridge == null
+		or _busy
+		or not _pending_paths.is_empty()
+		or not _reference_import_source.is_empty()
+		or Global.current_project == null
 	):
 		return false
 	var started := (
