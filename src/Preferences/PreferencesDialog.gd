@@ -845,6 +845,11 @@ func _hide_ipad_desktop_only_controls() -> void:
 	)
 	if collapse_toggle != null:
 		collapse_toggle.hide()
+		var before := collapse_toggle.get_index() - 1
+		if before >= 0:
+			var reset_control := collapse_toggle.get_parent().get_child(before)
+			if reset_control is RestoreDefaultButton:
+				reset_control.hide()
 	for option in ["WindowTransparency", "DummyAudioDriver"]:
 		var node := right_side.get_node_or_null(
 			NodePath("Performance/PerformanceContainer/" + option)
