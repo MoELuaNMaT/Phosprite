@@ -126,9 +126,7 @@ func test_new_brush_removed_from_edit_but_keeps_command_id_and_pencil_entry() ->
 		check_true(new_brush.disabled, "New Brush requires a selection")
 	check_has(menu_source, 'if item != "New Brush":', "the Edit menu omits New Brush")
 	check_has(
-		menu_source,
-		"i += 1",
-		"the original Edit command ID sequence is kept for all other items"
+		menu_source, "i += 1", "the original Edit command ID sequence is kept for all other items"
 	)
 	check_has(pencil_source, "Global.canvas.selection.new_brush()", "Pencil reuses brush action")
 	check_has(
