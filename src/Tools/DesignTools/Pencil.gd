@@ -12,6 +12,7 @@ var _auto_outline_width := 1
 var _auto_outline_diagonals := false
 var _syncing_auto_outline := false
 var _observed_auto_outline_project: Project
+var _observed_new_brush_project: Project
 
 
 class PencilOp:
@@ -44,7 +45,10 @@ func _ready() -> void:
 	_sync_global_draw_options()
 	Global.cel_switched.connect(_sync_auto_outline_ui)
 	Global.project_switched.connect(_sync_auto_outline_ui)
+	Global.project_switched.connect(_sync_new_brush_button)
+	Global.cel_switched.connect(_sync_new_brush_button)
 	_sync_auto_outline_ui()
+	_sync_new_brush_button()
 
 
 func _exit_tree() -> void:
@@ -57,7 +61,40 @@ func _exit_tree() -> void:
 	if is_instance_valid(_observed_auto_outline_project):
 		if _observed_auto_outline_project.auto_outline_changed.is_connected(_sync_auto_outline_ui):
 			_observed_auto_outline_project.auto_outline_changed.disconnect(_sync_auto_outline_ui)
+	if Global.project_switched.is_connected(_sync_new_brush_button):
+		Global.project_switched.disconnect(_sync_new_brush_button)
+	if Global.cel_switched.is_connected(_sync_new_brush_button):
+		Global.cel_switched.disconnect(_sync_new_brush_button)
+	if is_instance_valid(_observed_new_brush_project):
+		if _observed_new_brush_project.selection_changed.is_connected(_sync_new_brush_button):
+			_observed_new_brush_project.selection_changed.disconnect(_sync_new_brush_button)
 	super._exit_tree()
+
+
+## Create a project brush from the current selection, using the same
+## command previously exposed through Edit > New Brush.
+func _on_new_brush_pressed() -> void:
+	var project := Global.current_project
+	if not is_instance_valid(project) or not project.has_selection:
+		return
+	if not is_instance_valid(Global.canvas):
+		return
+	Global.canvas.selection.new_brush()
+
+
+func _sync_new_brush_button() -> void:
+	if not is_inside_tree():
+		return
+	var project := Global.current_project
+	if _observed_new_brush_project != project:
+		if is_instance_valid(_observed_new_brush_project):
+			if _observed_new_brush_project.selection_changed.is_connected(_sync_new_brush_button):
+				_observed_new_brush_project.selection_changed.disconnect(_sync_new_brush_button)
+		_observed_new_brush_project = project
+		if is_instance_valid(project):
+			if not project.selection_changed.is_connected(_sync_new_brush_button):
+				project.selection_changed.connect(_sync_new_brush_button)
+	$Brush/NewBrush.disabled = not is_instance_valid(project) or not project.has_selection
 
 
 func _global_draw_options() -> Node:
