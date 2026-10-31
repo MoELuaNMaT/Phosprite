@@ -1,5 +1,6 @@
 extends "res://tests/test_base.gd"
 
+
 func test_preview_touch_navigation_reuses_canvas_math_without_zoom_slider() -> void:
 	var scene_source := FileAccess.get_file_as_string(
 		"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
@@ -40,4 +41,3 @@ func test_preview_touch_navigation_reuses_canvas_math_without_zoom_slider() -> v
 		),
 		"Main Canvas touch arbitration should reject touches that begin over Preview"
 	)
-
