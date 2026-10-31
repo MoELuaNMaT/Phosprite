@@ -3,6 +3,7 @@ extends Node2D
 ## This node contains [ReferenceImage] nodes
 
 signal reference_image_changed(index: int)
+signal reference_image_removed
 
 enum Mode { SELECT, MOVE, ROTATE, SCALE }
 
@@ -257,6 +258,7 @@ func remove_reference_image(idx: int) -> void:
 	ri.queue_free()
 	Global.current_project.set_reference_image_index(-1)
 	Global.current_project.change_project()
+	reference_image_removed.emit()
 
 
 func _update_on_zoom() -> void:
