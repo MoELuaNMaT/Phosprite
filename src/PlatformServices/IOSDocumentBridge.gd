@@ -10,6 +10,8 @@ var active := false
 var _pending_paths := PackedStringArray()
 var _busy := false
 var _current_temp_path := ""
+var _reference_import_source := ""
+var _reference_import_project: Project
 
 
 func configure(shell: AppShellController) -> void:
@@ -51,6 +53,40 @@ func enqueue_import_paths(paths: PackedStringArray) -> void:
 	call_deferred("_drain_next")
 
 
+## Reference imports stay in the editor and do not create a Gallery project.
+func request_reference_image_import(use_photos: bool) -> bool:
+	if (
+		not active
+		or native_bridge == null
+		or _busy
+		or not _pending_paths.is_empty()
+		or not _reference_import_source.is_empty()
+		or Global.current_project == null
+	):
+		return false
+	var started := (
+		bool(native_bridge.present_photo_picker())
+		if use_photos
+		else bool(native_bridge.present_document_picker())
+	)
+	if started:
+		_reference_import_source = "photos" if use_photos else "files"
+		_reference_import_project = Global.current_project
+	return started
+
+
+func _import_reference_paths(paths: PackedStringArray) -> void:
+	for path in paths:
+		if Global.current_project == _reference_import_project and FileAccess.file_exists(path):
+			var image := Image.load_from_file(path)
+			if is_instance_valid(image) and not image.is_empty():
+				OpenSave.import_reference_image_from_image(image)
+			else:
+				Global.popup_error(tr("Could not load reference image: %s") % path.get_file())
+		if native_bridge != null:
+			native_bridge.cleanup_temp_file(path)
+
+
 func reveal_in_files(path: String) -> bool:
 	if native_bridge == null or path.is_empty():
 		return false
@@ -61,7 +97,17 @@ func _handle_native_event(event: Dictionary) -> void:
 	var event_type := str(event.get("type", ""))
 	if event_type == "paths":
 		var paths: PackedStringArray = event.get("paths", PackedStringArray())
-		enqueue_import_paths(paths)
+		if (
+			str(event.get("source", "")) == _reference_import_source
+			and not _reference_import_source.is_empty()
+		):
+			_import_reference_paths(paths)
+		else:
+			enqueue_import_paths(paths)
+	elif event_type == "picker_finished":
+		if str(event.get("source", "")) == _reference_import_source:
+			_reference_import_source = ""
+			_reference_import_project = null
 	elif event_type == "error":
 		var message := str(event.get("message", ""))
 		if not message.is_empty():

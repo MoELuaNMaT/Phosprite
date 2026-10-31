@@ -156,15 +156,7 @@ func set_return_home_visible(should_show: bool) -> void:
 	var row := return_home_button.get_parent()
 	if row == null:
 		return
-	# iPadOS owns the center of the title bar for its multitasking ellipsis.
-	# Keep Projects, UI and Settings grouped immediately after Main Menu.
-	row.move_child(return_home_button, mini(menu_bar.get_index() + 1, row.get_child_count() - 1))
-	row.move_child(
-		ui_layout_button, mini(return_home_button.get_index() + 1, row.get_child_count() - 1)
-	)
-	row.move_child(
-		settings_button, mini(ui_layout_button.get_index() + 1, row.get_child_count() - 1)
-	)
+	_arrange_topbar_menu_buttons()
 
 
 func _ensure_ui_layout_button() -> void:
@@ -259,81 +251,60 @@ func _notification(what: int) -> void:
 			_toggle_zen_mode()
 
 
+## Keep the four shared application menus in the header in compact mode.
+## Their original PopupMenu nodes remain in the MenuBar, so signals,
+## check states, shortcuts, effect submenus and Workspace Window bridge
+## all continue to use the same authoritative menu objects.
 func handle_main_menu_collapse() -> void:
-	var main_menu_button_popup := main_menu_button.get_popup()
+	var popup := main_menu_button.get_popup()
+	main_menu_button.visible = Global.collapse_main_menu
+	menu_bar.visible = true
 	if Global.collapse_main_menu:
-		if menu_bar.visible:
-			main_menu_button.visible = true
-			menu_bar.visible = false
-			var menu_options := menu_bar.get_children()
-			for menu_option in menu_options:
-				# The editor's compact menu does not duplicate Project Manager's File menu.
-				# Keep the original File and Edit popups in the hidden MenuBar so
-				# shortcuts, action IDs and quick-access buttons remain unchanged.
-				if menu_option in [file_menu, select_menu, project_menu, desktop_ui_menu]:
-					# Selection commands are available in the selection tools' options.
-					# Retain the original menus for shortcuts and desktop layouts.
-					continue
-				if menu_option == edit_menu:
-					_compact_edit_menu = _create_compact_edit_menu()
-					main_menu_button_popup.add_submenu_node_item(
-						menu_option.name, _compact_edit_menu
-					)
-					continue
-				if menu_option == view_menu:
-					_compact_view_menu = _create_compact_view_menu()
-					main_menu_button_popup.add_submenu_node_item(
-						menu_option.name, _compact_view_menu
-					)
-					continue
-				menu_bar.remove_child(menu_option)
-				main_menu_button_popup.add_submenu_node_item(menu_option.name, menu_option)
+		if not is_instance_valid(_compact_edit_menu):
+			_compact_edit_menu = _create_compact_edit_menu()
+			popup.add_submenu_node_item(tr("Edit"), _compact_edit_menu)
+		for index in menu_bar.get_menu_count():
+			var menu := menu_bar.get_menu_popup(index)
+			menu_bar.set_menu_hidden(
+				index, menu not in [effects_menu, view_menu, window_menu, help_menu]
+			)
 	else:
-		if not menu_bar.visible:
-			main_menu_button.visible = false
-			menu_bar.visible = true
-			var menu_options: Array[PopupMenu]
-			for i in range(main_menu_button_popup.item_count - 1, -1, -1):
-				var submenu := main_menu_button_popup.get_item_submenu_node(i)
-				main_menu_button_popup.remove_item(i)
-				submenu.get_parent().remove_child(submenu)
-				if submenu == _compact_edit_menu:
-					_compact_edit_menu = null
-					submenu.queue_free()
-					continue
-				if submenu == _compact_view_menu:
-					_compact_view_menu = null
-					submenu.queue_free()
-					continue
-				menu_options.append(submenu)
-			menu_options.reverse()
-			for menu_option in menu_options:
-				menu_bar.add_child(menu_option)
-			# Reinsert the original menus kept hidden for their command IDs and shortcuts.
-			for original_menu in [
-				file_menu, edit_menu, select_menu, project_menu, desktop_ui_menu, view_menu
-			]:
-				if original_menu.get_parent() == menu_bar:
-					continue
-				if original_menu.get_parent() == null:
-					menu_bar.add_child(original_menu)
-			# Restore the defined desktop menu order regardless of compact view filtering.
-			var original_order := [
-				file_menu,
-				edit_menu,
-				select_menu,
-				project_menu,
-				desktop_ui_menu,
-				effects_menu,
-				view_menu,
-				window_menu,
-				help_menu
-			]
-			for index in original_order.size():
-				if original_order[index].get_parent() == menu_bar:
-					menu_bar.move_child(
-						original_order[index], mini(index, menu_bar.get_child_count() - 1)
-					)
+		for index in menu_bar.get_menu_count():
+			menu_bar.set_menu_hidden(index, false)
+		if is_instance_valid(_compact_edit_menu):
+			for index in range(popup.item_count - 1, -1, -1):
+				if popup.get_item_submenu_node(index) == _compact_edit_menu:
+					popup.remove_item(index)
+			if _compact_edit_menu.get_parent() != null:
+				_compact_edit_menu.get_parent().remove_child(_compact_edit_menu)
+			_compact_edit_menu.queue_free()
+			_compact_edit_menu = null
+	_arrange_topbar_menu_buttons()
+
+
+func _arrange_topbar_menu_buttons() -> void:
+	var row := return_home_button.get_parent()
+	if row == null:
+		return
+	if (
+		Global.collapse_main_menu
+		and return_home_button.visible
+		and is_instance_valid(ui_layout_button)
+		and is_instance_valid(settings_button)
+	):
+		# Independent Effects / View / Window / Help menus follow editor buttons.
+		row.move_child(
+			return_home_button, mini(main_menu_button.get_index() + 1, row.get_child_count() - 1)
+		)
+		row.move_child(
+			ui_layout_button, mini(return_home_button.get_index() + 1, row.get_child_count() - 1)
+		)
+		row.move_child(
+			settings_button, mini(ui_layout_button.get_index() + 1, row.get_child_count() - 1)
+		)
+		row.move_child(menu_bar, mini(settings_button.get_index() + 1, row.get_child_count() - 1))
+	else:
+		row.move_child(menu_bar, mini(main_menu_button.get_index() + 1, row.get_child_count() - 1))
 
 
 ## Show only the non-duplicated Edit actions in the compact Main Menu.
@@ -352,7 +323,7 @@ func _sync_compact_edit_menu(compact: PopupMenu) -> void:
 	for index in edit_menu.item_count:
 		var item_id := edit_menu.get_item_id(index)
 		# Undo History is now in the Timeline header, next to Undo and Redo.
-		if item_id == Global.EditMenu.UNDO_HISTORY:
+		if item_id in [Global.EditMenu.UNDO_HISTORY, Global.EditMenu.NEW_BRUSH]:
 			continue
 		if item_id in [Global.EditMenu.UNDO, Global.EditMenu.REDO, Global.EditMenu.PREFERENCES]:
 			continue
@@ -448,7 +419,6 @@ func _on_project_switched() -> void:
 	if not project.selection_changed.is_connected(_on_project_selection_changed):
 		project.selection_changed.connect(_on_project_selection_changed)
 	_on_project_selection_changed()
-	edit_menu.set_item_disabled(Global.EditMenu.NEW_BRUSH, not project.has_selection)
 	_update_file_menu_buttons(project)
 	for j in Tiles.MODE.values():
 		tile_mode_submenu.set_item_checked(j, j == project.tiles.mode)
@@ -459,7 +429,6 @@ func _on_project_selection_changed() -> void:
 	var project := Global.current_project
 	var has_selection := project.has_selection
 	var can_reselect := has_selection or project.prev_selection_map.is_invisible()
-	edit_menu.set_item_disabled(Global.EditMenu.NEW_BRUSH, not has_selection)
 	select_menu.set_item_disabled(Global.SelectMenu.CLEAR, not has_selection)
 	select_menu.set_item_disabled(Global.SelectMenu.RESELECT, can_reselect)
 	project_menu.set_item_disabled(Global.ProjectMenu.CROP_TO_SELECTION, not has_selection)
@@ -547,10 +516,10 @@ func _setup_edit_menu() -> void:
 		var echo := false
 		if item in ["Undo", "Redo"]:
 			echo = true
-		_set_menu_shortcut(edit_menu_items[item], edit_menu, i, item, false, echo)
+		# Keep Global.EditMenu IDs stable even though New Brush now lives in Pencil.
+		if item != "New Brush":
+			_set_menu_shortcut(edit_menu_items[item], edit_menu, i, item, false, echo)
 		i += 1
-
-	edit_menu.set_item_disabled(Global.EditMenu.NEW_BRUSH, true)
 	edit_menu.id_pressed.connect(edit_menu_id_pressed)
 
 
@@ -931,7 +900,7 @@ func _set_menu_shortcut(
 			menu.add_check_shortcut(shortcut, index)
 		else:
 			menu.add_shortcut(shortcut, index, false, echo)
-		menu.set_item_text(index, text)
+		menu.set_item_text(menu.item_count - 1, text)
 	if is_instance_valid(icon):
 		menu.set_item_icon(index, icon)
 
