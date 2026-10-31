@@ -267,6 +267,7 @@ var _ipad_categories: Array[Dictionary] = []
 var _ipad_filtered_categories := PackedInt32Array()
 var _ipad_profile_select: OptionButton
 var _ipad_color_mode_select: OptionButton
+var _ipad_view_toggles: Dictionary = {}
 var _ipad_workspace_panels: VBoxContainer
 var _ipad_workspace_layouts: MenuButton
 
@@ -614,6 +615,17 @@ func _setup_ipad_settings_pages() -> void:
 	_ipad_color_mode_select.item_selected.connect(_ipad_change_project_color_mode)
 	project_page.add_child(_ipad_color_mode_select)
 
+	var canvas_page := _new_ipad_settings_page("iPadCanvasDisplay")
+	_ipad_add_heading(canvas_page, tr("Canvas Display"))
+	_ipad_add_view_toggle(canvas_page, tr("Show Pixel Indices"), Global.ViewMenu.SHOW_PIXEL_INDICES)
+	_ipad_add_view_toggle(
+		canvas_page, tr("Show Reference Images"), Global.ViewMenu.SHOW_REFERENCE_IMAGES
+	)
+	_ipad_add_view_toggle(
+		canvas_page, tr("Display Layer Effects"), Global.ViewMenu.DISPLAY_LAYER_EFFECTS
+	)
+	_ipad_add_action(canvas_page, tr("Tile Mode Offsets"), _ipad_open_tile_offsets)
+
 	var workspace_page := _new_ipad_settings_page("WorkspaceSettings")
 	_ipad_add_heading(workspace_page, tr("UI Layout"))
 	_ipad_profile_select = OptionButton.new()
@@ -633,13 +645,14 @@ func _setup_ipad_settings_pages() -> void:
 	var backup_page := _new_ipad_settings_page("iPadBackupActions")
 	_ipad_add_action(backup_page, tr("Restore Backup"), _ipad_restore_backup)
 	var help_page := _new_ipad_settings_page("iPadHelp")
+	_ipad_add_action(help_page, tr("View Welcome Screen"), _ipad_show_welcome)
 	_ipad_add_action(help_page, tr("Online Documentation"), _ipad_open_documentation)
 	_ipad_add_action(help_page, tr("Report an Issue"), _ipad_report_issue)
 	_ipad_add_action(help_page, tr("Changelog"), _ipad_open_changelog)
 	_ipad_add_action(help_page, tr("About Phosprite"), _ipad_show_about)
 
 	_ipad_add_category("Project", ["CurrentProjectSettings", "Attribution"])
-	_ipad_add_category("Canvas & Display", ["Canvas"])
+	_ipad_add_category("Canvas & Display", ["Canvas", "iPadCanvasDisplay"])
 	_ipad_add_category("Workspace & Panels", ["WorkspaceSettings"])
 	_ipad_add_category("Tools & Input", ["Tools", "Selection", "Shortcuts"])
 	_ipad_add_category("Animation & Layers", ["Timeline"])
@@ -670,6 +683,35 @@ func _ipad_add_action(page: VBoxContainer, label: String, action: Callable) -> v
 	button.custom_minimum_size.y = 40.0
 	button.pressed.connect(action)
 	page.add_child(button)
+
+
+func _ipad_add_view_toggle(page: VBoxContainer, title: String, id: int) -> void:
+	var toggle := CheckBox.new()
+	toggle.text = title
+	toggle.toggled.connect(_ipad_change_view_setting.bind(id))
+	_ipad_view_toggles[id] = toggle
+	page.add_child(toggle)
+
+
+func _ipad_change_view_setting(_enabled: bool, id: int) -> void:
+	_ipad_invoke_top_menu(&"view_menu_id_pressed", id)
+	_refresh_ipad_canvas_settings()
+
+
+func _refresh_ipad_canvas_settings() -> void:
+	var states := {
+		Global.ViewMenu.SHOW_PIXEL_INDICES: Global.show_pixel_indices,
+		Global.ViewMenu.SHOW_REFERENCE_IMAGES: Global.show_reference_images,
+		Global.ViewMenu.DISPLAY_LAYER_EFFECTS: Global.display_layer_effects,
+	}
+	for id in states:
+		var toggle := _ipad_view_toggles.get(id) as CheckBox
+		if toggle != null:
+			toggle.set_pressed_no_signal(states[id])
+
+
+func _ipad_open_tile_offsets() -> void:
+	_ipad_invoke_top_menu(&"view_menu_id_pressed", Global.ViewMenu.TILE_MODE_OFFSETS)
 
 
 func _ipad_add_category(title: String, pages: Array[String]) -> void:
@@ -718,6 +760,8 @@ func _show_ipad_settings_category(index: int) -> void:
 		child.visible = child.name in pages
 	if index == 0:
 		_refresh_ipad_project_settings()
+	elif index == 1:
+		_refresh_ipad_canvas_settings()
 	elif index == 2:
 		_refresh_ipad_workspace_settings()
 
@@ -812,6 +856,10 @@ func _refresh_ipad_workspace_settings() -> void:
 
 func _ipad_restore_backup() -> void:
 	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.RESTORE_BACKUP)
+
+
+func _ipad_show_welcome() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.VIEW_SPLASH_SCREEN)
 
 
 func _ipad_open_documentation() -> void:
