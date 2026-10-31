@@ -231,6 +231,18 @@ func is_panel_visible(module_id: StringName) -> bool:
 func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 	if not live or not manager.has_definition(module_id):
 		return false
+	# A reference panel has no collapsed state: it is either open or parked.
+	if module_id == Builtins.REFERENCE_IMAGES_ID:
+		if visible and (
+			Global.current_project == null or Global.current_project.reference_images.is_empty()
+		):
+			return false
+		if visible and surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED:
+			var restored := surface.restore_module(module_id)
+			if restored:
+				panel_visibility_changed.emit(module_id, true)
+			return restored
+		return set_context_panel_visible(module_id, visible)
 	if (
 		_active_ui_profile == 3
 		and module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]
