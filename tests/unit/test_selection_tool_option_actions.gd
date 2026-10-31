@@ -41,7 +41,7 @@ func test_selection_actions_use_existing_handlers_and_ios_visibility() -> void:
 	var menu := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 	check_has(
 		menu,
-		"menu_option in [file_menu, select_menu, project_menu, desktop_ui_menu]",
-		"hide only entry"
+		"menu_bar.set_menu_hidden(",
+		"the Select popup remains in the source bar but is hidden in compact mode"
 	)
 	check_has(menu, "select_menu.id_pressed.connect(select_menu_id_pressed)", "shortcuts remain")

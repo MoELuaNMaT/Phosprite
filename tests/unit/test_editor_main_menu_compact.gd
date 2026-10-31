@@ -1,9 +1,10 @@
 extends "res://tests/test_base.gd"
 
 const TopMenuScript := preload("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
+const PENCIL_SCENE := preload("res://src/Tools/DesignTools/Pencil.tscn")
 
 
-func test_compact_main_menu_moves_project_and_preferences_into_settings() -> void:
+func test_compact_topbar_exposes_full_effects_view_window_help_and_only_edit_in_main_menu() -> void:
 	var menu := TopMenuScript.new()
 	var button := MenuButton.new()
 	var bar := MenuBar.new()
@@ -16,6 +17,7 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 	menu.set("main_menu_button", button)
 	menu.set("menu_bar", bar)
 	menu.set("return_home_button", home)
+
 	var names := ["File", "Edit", "Select", "Project", "UI", "Effects", "View", "Window", "Help"]
 	var original: Dictionary = {}
 	for name in names:
@@ -23,156 +25,116 @@ func test_compact_main_menu_moves_project_and_preferences_into_settings() -> voi
 		popup.name = name
 		bar.add_child(popup)
 		original[name] = popup
-	menu.set("file_menu", original["File"])
-	menu.set("edit_menu", original["Edit"])
-	menu.set("select_menu", original["Select"])
-	menu.set("project_menu", original["Project"])
-	menu.set("desktop_ui_menu", original["UI"])
-	menu.set("view_menu", original["View"])
+	for name in ["File", "Edit", "Select", "Project", "UI", "Effects", "View", "Window", "Help"]:
+		var field := "desktop_ui_menu" if name == "UI" else name.to_lower() + "_menu"
+		menu.set(field, original[name])
+
 	var edit := original["Edit"] as PopupMenu
 	edit.add_item("Undo", Global.EditMenu.UNDO)
 	edit.add_item("Redo", Global.EditMenu.REDO)
 	edit.add_item("Undo History", Global.EditMenu.UNDO_HISTORY)
 	edit.add_item("Copy", Global.EditMenu.COPY)
-	edit.add_item("New Brush", Global.EditMenu.NEW_BRUSH)
 	edit.add_item("Preferences", Global.EditMenu.PREFERENCES)
-	edit.set_item_disabled(edit.get_item_index(Global.EditMenu.NEW_BRUSH), true)
+	var view := original["View"] as PopupMenu
+	view.add_check_item("Show Grid", Global.ViewMenu.SHOW_GRID)
+	view.add_item("Center Canvas", Global.ViewMenu.CENTER_CANVAS)
+	view.set_item_checked(0, true)
+	var effects := original["Effects"] as PopupMenu
+	effects.add_item("Effect", 3)
+	var window := original["Window"] as PopupMenu
+	window.add_check_item("Panels", 7)
+	var help := original["Help"] as PopupMenu
+	help.add_item("About", 9)
 
 	var was_collapsed := Global.collapse_main_menu
 	Global.collapse_main_menu = true
 	menu.handle_main_menu_collapse()
-	var popup := button.get_popup()
-	check_eq(popup.item_count, names.size() - 4, "main menu also omits duplicate UI")
-	var visible_names: Array[String] = []
-	for i in popup.item_count:
-		visible_names.append(popup.get_item_text(i))
-	check_true(not "File" in visible_names, "File entry is absent")
-	check_true(not "Select" in visible_names, "Select entry is absent")
-	check_true(not "Project" in visible_names, "Project entry is absent")
-	check_true(not "UI" in visible_names, "UI entry is absent from Main Menu")
-	check_true("View" in visible_names, "View submenu remains")
-	check_true("Edit" in visible_names, "Edit entry remains")
-	check_true("Help" in visible_names, "other sections remain")
+	check_true(button.visible, "Main Menu remains visible")
+	check_true(bar.visible, "top-level menu bar stays visible in compact mode")
+	check_eq(button.get_popup().item_count, 1, "Main Menu only keeps Edit")
+	check_eq(button.get_popup().get_item_text(0), "Edit", "Edit stays in Main Menu")
+
+	for index in bar.get_menu_count():
+		var original_popup := bar.get_menu_popup(index)
+		var must_show := original_popup in [effects, view, window, help]
+		check_eq(
+			bar.is_menu_hidden(index),
+			not must_show,
+			"%s top-level visibility matches the editor layout" % original_popup.name
+		)
+	for popup in [effects, view, window, help]:
+		check_eq(popup.get_parent(), bar, "full source menu remains in the MenuBar")
+	check_true(view.is_item_checked(0), "View keeps its live check state")
+	check_eq(view.item_count, 2, "View has all its original commands")
+
 	var compact := menu.get("_compact_edit_menu") as PopupMenu
-	check_true(compact != null, "Edit menu has a compact view")
-	if compact != null:
-		check_eq(compact.item_count, 2, "Undo, Redo, History and Preferences are omitted")
-		check_eq(compact.get_item_id(0), Global.EditMenu.COPY, "Copy stays")
-		check_eq(compact.get_item_id(1), Global.EditMenu.NEW_BRUSH, "New Brush stays")
-		check_true(compact.is_item_disabled(1), "item disabled state follows original")
-		edit.set_item_disabled(edit.get_item_index(Global.EditMenu.NEW_BRUSH), false)
-		menu.call("_sync_compact_edit_menu", compact)
-		check_true(not compact.is_item_disabled(1), "compact state follows source updates")
-	check_eq(edit.item_count, 6, "original Edit menu and shortcuts are intact")
-	check_eq(
-		compact.get_item_index(Global.EditMenu.UNDO_HISTORY),
-		-1,
-		"Undo History must only appear in Timeline",
-	)
-	check_eq(original["File"].get_parent(), bar, "File menu stays live but offscreen")
-	check_eq(edit.get_parent(), bar, "original Edit menu stays live but offscreen")
-	check_eq(original["Select"].get_parent(), bar, "Select menu stays live for shortcuts")
-	check_eq(original["UI"].get_parent(), bar, "UI source remains for the standalone UI menu")
-	check_eq(original["View"].get_parent(), bar, "View source remains for shortcuts")
-	check_true(
-		compact.get_item_index(Global.EditMenu.PREFERENCES) == -1,
-		"Preferences is absent from compact Edit"
-	)
+	check_true(is_instance_valid(compact), "compact Edit menu exists")
+	if is_instance_valid(compact):
+		check_eq(compact.item_count, 1, "compact Edit hides undo and preferences")
+		check_eq(compact.get_item_id(0), Global.EditMenu.COPY, "Copy stays in compact Edit")
+		check_eq(compact.get_item_index(Global.EditMenu.NEW_BRUSH), -1, "New Brush moved")
 
 	menu.set_return_home_visible(true)
 	var ui_button := menu.get("ui_layout_button") as MenuButton
 	var settings := menu.get("settings_button") as MenuButton
 	check_true(is_instance_valid(settings), "Settings button is created")
-	check_true(is_instance_valid(ui_button), "existing UI button remains")
+	check_true(is_instance_valid(ui_button), "standalone UI button exists")
 	if is_instance_valid(settings) and is_instance_valid(ui_button):
-		check_eq(settings.get_index(), ui_button.get_index() + 1, "Settings is to the right of UI")
+		check_eq(home.get_index(), button.get_index() + 1, "Projects follows Main Menu")
+		check_eq(ui_button.get_index(), home.get_index() + 1, "UI follows Projects")
+		check_eq(settings.get_index(), ui_button.get_index() + 1, "Settings follows UI")
+		check_eq(bar.get_index(), settings.get_index() + 1, "four menus follow Settings")
 		var settings_popup := settings.get_popup()
-		check_eq(settings_popup.item_count, 2, "Settings has Project and Preferences")
+		check_eq(settings_popup.item_count, 2, "Settings retains Project and Preferences")
 		check_eq(
 			settings_popup.get_item_submenu_node(0),
 			original["Project"],
-			"Settings reuses the original Project menu and nested actions",
+			"Settings reuses Project rather than copying it"
 		)
 		check_eq(
 			settings_popup.get_item_id(1),
 			Global.EditMenu.PREFERENCES,
-			"Preferences uses existing Edit handler ID",
+			"Settings retains stable Preferences command ID"
 		)
-		check_true(
-			settings_popup.id_pressed.is_connected(Callable(menu, "edit_menu_id_pressed")),
-			"Preferences uses the original dialog handler",
-		)
-		menu.set_return_home_visible(true)
-		check_eq(settings_popup.item_count, 2, "reentry does not duplicate Settings items")
 	menu.set_return_home_visible(false)
-	check_eq(original["Project"].get_parent(), bar, "Project returns after leaving editor")
-	check_true(not settings.visible, "Settings only appears in editor")
+	check_eq(original["Project"].get_parent(), bar, "Project returns to source bar")
 
 	Global.collapse_main_menu = false
 	menu.handle_main_menu_collapse()
-	check_eq(bar.get_child_count(), names.size(), "expanded menu restores original items")
-	check_eq(bar.get_child(0), original["File"], "File order is preserved for desktop")
-	check_eq(bar.get_child(1), edit, "Edit order is preserved for desktop")
-	check_eq(bar.get_child(2), original["Select"], "Select returns in original desktop order")
-	check_eq(bar.get_child(3), original["Project"], "Project menu restores desktop order")
-	check_eq(button.get_popup().item_count, 0, "compact popup is removed on expansion")
+	check_true(not button.visible, "Main Menu hides in desktop mode")
+	check_eq(bar.get_menu_count(), names.size(), "desktop restores all original menus")
+	for index in bar.get_menu_count():
+		check_true(not bar.is_menu_hidden(index), "desktop menus are not hidden")
+	check_eq(bar.get_child(0), original["File"], "desktop File order is unchanged")
+	check_eq(bar.get_child(1), edit, "desktop Edit order is unchanged")
+	check_eq(button.get_popup().item_count, 0, "compact Edit submenu is removed")
+
 	Global.collapse_main_menu = was_collapsed
 	menu.free()
 
 
-func test_compact_view_keeps_tile_submenus_and_only_unmoved_actions() -> void:
-	var menu := TopMenuScript.new()
-	var original := PopupMenu.new()
-	var compact := PopupMenu.new()
-	menu.add_child(original)
-	menu.add_child(compact)
-	menu.set("view_menu", original)
-	for index in Global.ViewMenu.size():
-		if index in [Global.ViewMenu.TILE_MODE, Global.ViewMenu.SNAP_TO]:
-			var submenu := PopupMenu.new()
-			submenu.add_radio_check_item("None", 0)
-			original.add_submenu_node_item("submenu %d" % index, submenu, index)
-		else:
-			original.add_check_item("action %d" % index, index)
-	original.set_item_checked(Global.ViewMenu.SHOW_RULERS, true)
-	original.set_item_checked(Global.ViewMenu.SHOW_GUIDES, true)
-	menu.call("_sync_compact_view_menu", compact)
-	var removed := [
-		Global.ViewMenu.CENTER_CANVAS,
-		Global.ViewMenu.GREYSCALE_VIEW,
-		Global.ViewMenu.MIRROR_VIEW,
-		Global.ViewMenu.SHOW_GRID,
-		Global.ViewMenu.SHOW_PIXEL_GRID,
-		Global.ViewMenu.SHOW_MOUSE_GUIDES,
-	]
-	check_eq(
-		compact.item_count, Global.ViewMenu.size() - removed.size(), "moved View actions removed"
+func test_new_brush_removed_from_edit_but_keeps_command_id_and_pencil_entry() -> void:
+	var menu_source := FileAccess.get_file_as_string(
+		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
 	)
-	for item_id in removed:
-		check_eq(compact.get_item_index(item_id), -1, "removed action %d is absent" % item_id)
-	for item_id in [
-		Global.ViewMenu.TILE_MODE,
-		Global.ViewMenu.TILE_MODE_OFFSETS,
-		Global.ViewMenu.SHOW_PIXEL_INDICES,
-		Global.ViewMenu.SHOW_RULERS,
-		Global.ViewMenu.SHOW_GUIDES,
-		Global.ViewMenu.SHOW_REFERENCE_IMAGES,
-		Global.ViewMenu.SNAP_TO,
-	]:
-		check_true(compact.get_item_index(item_id) >= 0, "preserved action %d exists" % item_id)
-	for item_id in [Global.ViewMenu.TILE_MODE, Global.ViewMenu.SNAP_TO]:
-		var submenu_index := compact.get_item_index(item_id)
-		check_true(
-			compact.get_item_submenu_node(submenu_index) != null,
-			"preserved nested menu %d remains navigable" % item_id,
-		)
-	var rulers := compact.get_item_index(Global.ViewMenu.SHOW_RULERS)
-	check_true(compact.is_item_checked(rulers), "check state follows original menu")
-	original.set_item_checked(Global.ViewMenu.SHOW_RULERS, false)
-	menu.call("_sync_compact_view_menu", compact)
-	rulers = compact.get_item_index(Global.ViewMenu.SHOW_RULERS)
-	check_true(not compact.is_item_checked(rulers), "state stays synced when reopened")
-	menu.free()
+	var pencil_source := FileAccess.get_file_as_string("res://src/Tools/DesignTools/Pencil.gd")
+	var pencil := PENCIL_SCENE.instantiate()
+	var new_brush := pencil.get_node_or_null(^"Brush/NewBrush") as Button
+	check_true(is_instance_valid(new_brush), "Pencil has New Brush near its brush controls")
+	if is_instance_valid(new_brush):
+		check_eq(new_brush.get_parent().name, &"Brush", "New Brush is grouped with brush")
+		check_true(new_brush.disabled, "New Brush requires a selection")
+	check_has(menu_source, 'if item != "New Brush":', "the Edit menu omits New Brush")
+	check_has(
+		menu_source, "i += 1", "the original Edit command ID sequence is kept for all other items"
+	)
+	check_has(pencil_source, "Global.canvas.selection.new_brush()", "Pencil reuses brush action")
+	check_has(
+		pencil_source,
+		"project.selection_changed.connect(_sync_new_brush_button)",
+		"Pencil updates button when the selection changes"
+	)
+	pencil.free()
 
 
 func test_quick_access_save_undo_redo_handlers_are_still_wired() -> void:

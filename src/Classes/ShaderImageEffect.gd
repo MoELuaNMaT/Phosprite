@@ -15,6 +15,12 @@ func generate_image(
 	respect_indexed := true,
 	dest_mat_after_gen := true
 ) -> void:
+	# Auto Outline must never replace a cel with an invalid GPU blit result.
+	# Apply it deterministically on the temporary display image instead.
+	if shader.resource_path == "res://src/Shaders/Effects/AutoOutline.gdshader":
+		AutoOutlineRenderer.apply(img, params)
+		done.emit()
+		return
 	# duplicate shader before modifying code to avoid affecting original resource
 	var resized_width := false
 	var resized_height := false
