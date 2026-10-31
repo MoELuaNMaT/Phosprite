@@ -20,6 +20,7 @@ const TRAY_BUTTON_MIN_HEIGHT := 32.0
 var manager: WorkspaceModuleManager
 var surface: WorkspaceSurface
 var dock_host: WorkspaceDockHost
+var editor_migration: WorkspaceEditorMigration
 
 var _tray: HBoxContainer
 var _bound_modules: Dictionary = {}
@@ -43,7 +44,11 @@ var _pending_touch_start_pointer := Vector2.ZERO
 var _pending_touch_can_drag := false
 
 
-func setup(module_manager: WorkspaceModuleManager, workspace_surface: WorkspaceSurface) -> bool:
+func setup(
+	module_manager: WorkspaceModuleManager,
+	workspace_surface: WorkspaceSurface,
+	workspace_migration: WorkspaceEditorMigration = null
+) -> bool:
 	if module_manager == null or workspace_surface == null or manager != null:
 		return false
 	if workspace_surface.manager != module_manager or workspace_surface.dock_host == null:
@@ -51,6 +56,7 @@ func setup(module_manager: WorkspaceModuleManager, workspace_surface: WorkspaceS
 	manager = module_manager
 	surface = workspace_surface
 	dock_host = surface.dock_host
+	editor_migration = workspace_migration
 	manager.module_created.connect(_on_module_created)
 	surface.module_collapsed.connect(_on_module_placement_changed)
 	surface.module_restored.connect(_on_module_restored)
@@ -545,6 +551,8 @@ func _raise_floating_module(module_id: StringName, module: WorkspaceModule) -> v
 func _toggle_module_collapse(module_id: StringName) -> bool:
 	if surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED:
 		return surface.restore_module(module_id)
+	if module_id == Builtins.REFERENCE_IMAGES_ID and is_instance_valid(editor_migration):
+		return editor_migration.set_panel_visible(module_id, false)
 	return surface.collapse_module(module_id)
 
 
