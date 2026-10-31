@@ -237,6 +237,10 @@ func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 			Global.current_project == null or Global.current_project.reference_images.is_empty()
 		):
 			return false
+		if visible:
+			var reference_module := manager.get_instance(module_id)
+			if reference_module != null and reference_module.get_content() != null:
+				reference_module.get_content().visible = true
 		if visible and surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED:
 			var restored := surface.restore_module(module_id)
 			if restored:
