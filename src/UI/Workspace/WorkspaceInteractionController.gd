@@ -12,7 +12,7 @@ const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
 const TOUCH_DIRECT_DRAG_DISTANCE := 4.0
 const TIMELINE_HORIZONTAL_CANCEL_DISTANCE := 12.0
-const TIMELINE_DIRECT_RESIZE_DISTANCE := 6.0
+const TIMELINE_DIRECT_RESIZE_DISTANCE := 8.0
 const TIMELINE_VERTICAL_INTENT_RATIO := 1.15
 const TRAY_MARGIN := 8.0
 const TRAY_BUTTON_MIN_HEIGHT := 32.0
@@ -42,6 +42,8 @@ var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
 var _pending_touch_start_pointer := Vector2.ZERO
 var _pending_touch_can_drag := false
+var _active_touch_indices: Dictionary = {}
+var _timeline_touch_blocked := false
 
 
 func setup(
@@ -80,13 +82,28 @@ func _input(event: InputEvent) -> void:
 	# Workspace resize/drag is captured in _input before Control._gui_input.
 	# Ignore pointers on the floating numeric color panel, so slider drags
 	# cannot also resize, drag, or activate the Animation Timeline underneath.
-	if _event_over_color_options_popup(event):
-		return
 	if _is_emulated_pointer_event(event):
 		return
+	if event is InputEventScreenTouch:
+		if _track_touch_and_cancel_unsafe_timeline(event as InputEventScreenTouch):
+			return
+	if _event_over_color_options_popup(event) and not _has_captured_interaction():
+		return
+	if not _has_captured_interaction() and event is InputEventMouseButton:
+		var pressed_button := event as InputEventMouseButton
+		if pressed_button.button_index == MOUSE_BUTTON_LEFT and pressed_button.pressed:
+			if pressed_button.double_click and _try_reset_timeline_grip_at(pressed_button.position):
+				return
+			if _try_capture_timeline_grip_mouse(pressed_button):
+				return
+			if _try_capture_workspace_resize_at(pressed_button.position, -1):
+				return
 	if not _has_captured_interaction() and event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
+			if touch.double_tap and not _timeline_touch_blocked:
+				if _try_reset_timeline_grip_at(touch.position):
+					return
 			if _try_capture_workspace_resize(touch):
 				return
 			if _try_capture_timeline_header_resize(touch):
@@ -136,10 +153,12 @@ func _event_over_color_options_popup(event: InputEvent) -> bool:
 		or event is InputEventMouseMotion
 	):
 		return false
-	var popup := get_tree().get_first_node_in_group(&"phosprite_color_options_popup") as Control
-	if popup == null or not popup.is_visible_in_tree():
-		return false
-	return popup.get_global_rect().has_point(event.position)
+	for group_name in [&"phosprite_color_options_popup", &"phosprite_ui3_palette_popup"]:
+		var popup := get_tree().get_first_node_in_group(group_name) as Control
+		if popup != null and popup.is_visible_in_tree():
+			if popup.get_global_rect().has_point(event.position):
+				return true
+	return false
 
 
 func _is_emulated_pointer_event(event: InputEvent) -> bool:
@@ -157,6 +176,44 @@ func _has_captured_interaction() -> bool:
 	return _drag_module_id != &"" or _resize_module_id != &"" or _pending_touch_module_id != &""
 
 
+func _track_touch_and_cancel_unsafe_timeline(event: InputEventScreenTouch) -> bool:
+	if event.pressed and not event.canceled:
+		_active_touch_indices[event.index] = true
+	else:
+		_active_touch_indices.erase(event.index)
+	var timeline_touch_active := (
+		(_resize_module_id == Builtins.TIMELINE_ID and _resize_touch_index >= 0)
+		or _pending_touch_module_id == Builtins.TIMELINE_ID
+	)
+	var canceled_active_touch := (
+		event.canceled
+		and (
+			(_resize_module_id == Builtins.TIMELINE_ID and _resize_touch_index == event.index)
+			or (
+				_pending_touch_module_id == Builtins.TIMELINE_ID
+				and _pending_touch_index == event.index
+			)
+		)
+	)
+	if canceled_active_touch or (_active_touch_indices.size() > 1 and timeline_touch_active):
+		_cancel_timeline_touch_resize()
+		_timeline_touch_blocked = not _active_touch_indices.is_empty()
+		get_viewport().set_input_as_handled()
+		return true
+	if _active_touch_indices.is_empty():
+		_timeline_touch_blocked = false
+	return false
+
+
+func _cancel_timeline_touch_resize() -> void:
+	if _pending_touch_module_id == Builtins.TIMELINE_ID:
+		_clear_pending_touch()
+	if _resize_module_id == Builtins.TIMELINE_ID and _resize_touch_index >= 0:
+		if _resize_is_docked and dock_host != null:
+			dock_host.set_module_size(Builtins.TIMELINE_ID, _resize_start_size)
+		_clear_resize_state()
+
+
 static func touch_direct_drag_intent(delta: Vector2) -> bool:
 	return delta.length() >= TOUCH_DIRECT_DRAG_DISTANCE
 
@@ -171,10 +228,16 @@ static func timeline_header_resize_intent(delta: Vector2) -> bool:
 
 
 func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
-	var hit := _top_workspace_module_at(event.position)
+	return _try_capture_workspace_resize_at(event.position, event.index)
+
+
+func _try_capture_workspace_resize_at(viewport_point: Vector2, touch_index: int) -> bool:
+	var hit := _top_workspace_module_at(viewport_point, true)
 	if hit.is_empty():
 		return false
 	var module_id := hit.get("module_id", &"") as StringName
+	if module_id == Builtins.TIMELINE_ID:
+		return false
 	var module := hit.get("module") as WorkspaceModule
 	var local_point := hit.get("local_point", Vector2.ZERO) as Vector2
 	if module == null:
@@ -187,8 +250,8 @@ func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
 	_raise_floating_module(module_id, module)
 	if not _begin_resize(
 		module_id,
-		_viewport_point_to_host(event.position),
-		event.index,
+		_viewport_point_to_host(viewport_point),
+		touch_index,
 		resize_edges,
 	):
 		return false
@@ -212,7 +275,9 @@ func _try_capture_workspace_header_drag(event: InputEventScreenTouch) -> bool:
 	return true
 
 
-func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
+func _top_workspace_module_at(
+	viewport_point: Vector2, include_resize_margin := false
+) -> Dictionary:
 	if manager == null or surface == null:
 		return {}
 	var best: Dictionary = {}
@@ -229,7 +294,11 @@ func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
 			module.get_global_transform_with_canvas().affine_inverse() * viewport_point
 		)
 		if not module.get_visual_rect().has_point(local_point):
-			continue
+			if (
+				not include_resize_margin
+				or module.get_resize_edges(local_point) == WorkspaceModule.ResizeEdge.NONE
+			):
+				continue
 		var layer_priority := 1
 		if (
 			placement == WorkspaceSurface.Placement.FLOATING
@@ -254,37 +323,83 @@ func _top_workspace_module_at(viewport_point: Vector2) -> Dictionary:
 	return best
 
 
-func _try_capture_timeline_header_resize(event: InputEventScreenTouch) -> bool:
-	if OS.get_name() != "iOS" or manager == null or surface == null or dock_host == null:
+func _timeline_grip_at(viewport_point: Vector2) -> bool:
+	if manager == null or surface == null or dock_host == null:
 		return false
-	if _has_captured_interaction():
+	if surface.get_module_placement(Builtins.TIMELINE_ID) != WorkspaceSurface.Placement.DOCKED:
 		return false
 	var module := manager.get_instance(Builtins.TIMELINE_ID)
-	if module == null or module.is_content_collapsed():
+	if module == null or not module.is_visible_in_tree():
 		return false
-	if (
-		surface.get_module_placement(Builtins.TIMELINE_ID) != WorkspaceSurface.Placement.DOCKED
-		or (
-			dock_host.layout.get_module_zone(Builtins.TIMELINE_ID)
-			!= WorkspaceDockLayout.DockZone.BOTTOM
+	var local := module.get_global_transform_with_canvas().affine_inverse() * viewport_point
+	return module.is_timeline_resize_grip_point(local)
+
+
+func _reset_timeline_height_to_default() -> bool:
+	if dock_host == null or dock_host.layout == null:
+		return false
+	var requested := dock_host.layout.get_module_size(Builtins.TIMELINE_ID)
+	if requested == Vector2.ZERO:
+		return false
+	var mode := AnimationTimeline.TimelineMode.ANIMATION
+	var timeline := Global.animation_timeline as AnimationTimeline
+	if timeline != null:
+		mode = timeline.get_timeline_mode()
+	requested.y = (
+		AnimationTimeline.DEFAULT_SINGLE_FRAME_WORKSPACE_HEIGHT
+		if mode == AnimationTimeline.TimelineMode.SINGLE_FRAME
+		else AnimationTimeline.DEFAULT_ANIMATION_WORKSPACE_HEIGHT
+	)
+	if not dock_host.set_module_size(Builtins.TIMELINE_ID, requested):
+		return false
+	if timeline != null:
+		timeline.store_workspace_height(
+			dock_host.layout.get_module_size(Builtins.TIMELINE_ID).y, mode
 		)
-		or not dock_host.layout.is_module_region_fill(Builtins.TIMELINE_ID)
+	return true
+
+
+func _try_reset_timeline_grip_at(viewport_point: Vector2) -> bool:
+	if not _timeline_grip_at(viewport_point):
+		return false
+	if not _reset_timeline_height_to_default():
+		return false
+	get_viewport().set_input_as_handled()
+	return true
+
+
+func _try_capture_timeline_grip_mouse(event: InputEventMouseButton) -> bool:
+	if not _timeline_grip_at(event.position):
+		return false
+	if not _begin_resize(
+		Builtins.TIMELINE_ID,
+		_viewport_point_to_host(event.position),
+		-1,
+		WorkspaceModule.ResizeEdge.TOP,
 	):
 		return false
-	var local_point := module.get_global_transform_with_canvas().affine_inverse() * event.position
-	var header_rect := Rect2(Vector2.ZERO, Vector2(module.size.x, module.get_header_height()))
-	if not header_rect.has_point(local_point):
+	get_viewport().set_input_as_handled()
+	return true
+
+
+func _try_capture_timeline_header_resize(event: InputEventScreenTouch) -> bool:
+	if OS.get_name() != "iOS" or _timeline_touch_blocked:
 		return false
-	if module.is_collapse_point(local_point) or module.is_float_point(local_point):
+	if _active_touch_indices.size() != 1 or _has_captured_interaction():
+		return false
+	if not _timeline_grip_at(event.position):
 		return false
 	_pending_touch_module_id = Builtins.TIMELINE_ID
 	_pending_touch_index = event.index
 	_pending_touch_start_pointer = _viewport_point_to_host(event.position)
-	_pending_touch_can_drag = module.is_header_drag_point(local_point)
+	_pending_touch_can_drag = false
+	get_viewport().set_input_as_handled()
 	return true
 
 
 func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
+	if _timeline_touch_blocked:
+		return
 	var pointer := _viewport_point_to_host(event.position)
 	if _resize_module_id != &"" and _resize_touch_index == event.index:
 		_update_resize(pointer)
@@ -308,13 +423,11 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 				_update_resize(pointer)
 			get_viewport().set_input_as_handled()
 			return
-		if not _pending_touch_can_drag:
-			if (
-				absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE
-				and absf(delta.x) > absf(delta.y)
-			):
-				_clear_pending_touch()
-			return
+		if absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE and absf(delta.x) > absf(delta.y):
+			_clear_pending_touch()
+		else:
+			get_viewport().set_input_as_handled()
+		return
 	if not touch_direct_drag_intent(delta):
 		get_viewport().set_input_as_handled()
 		return
@@ -390,9 +503,11 @@ func _handle_mouse_button(
 		if surface.float_from_dock(module_id):
 			module.accept_event()
 		return
-	var resize_edges := module.get_resize_edges(event.position)
-	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
-		resize_edges = surface.get_docked_resize_edges(module_id, event.position)
+	var resize_edges := WorkspaceModule.ResizeEdge.NONE
+	if module_id != Builtins.TIMELINE_ID:
+		resize_edges = module.get_resize_edges(event.position)
+		if resize_edges == WorkspaceModule.ResizeEdge.NONE:
+			resize_edges = surface.get_docked_resize_edges(module_id, event.position)
 	if resize_edges != WorkspaceModule.ResizeEdge.NONE:
 		if _begin_resize(module_id, pointer, -1, resize_edges):
 			module.accept_event()
@@ -418,9 +533,11 @@ func _handle_screen_touch(
 		if surface.float_from_dock(module_id):
 			module.accept_event()
 		return
-	var resize_edges := module.get_resize_edges(event.position)
-	if resize_edges == WorkspaceModule.ResizeEdge.NONE:
-		resize_edges = surface.get_docked_resize_edges(module_id, event.position)
+	var resize_edges := WorkspaceModule.ResizeEdge.NONE
+	if module_id != Builtins.TIMELINE_ID:
+		resize_edges = module.get_resize_edges(event.position)
+		if resize_edges == WorkspaceModule.ResizeEdge.NONE:
+			resize_edges = surface.get_docked_resize_edges(module_id, event.position)
 	if resize_edges != WorkspaceModule.ResizeEdge.NONE:
 		if _begin_resize(module_id, pointer, event.index, resize_edges):
 			module.accept_event()
@@ -511,6 +628,10 @@ func _finish_resize() -> void:
 				else Global.current_project
 			)
 			Global.animation_timeline.store_workspace_height(final_height, mode, project)
+	_clear_resize_state()
+
+
+func _clear_resize_state() -> void:
 	_resize_module_id = &""
 	_resize_touch_index = -1
 	_resize_start_pointer = Vector2.ZERO

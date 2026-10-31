@@ -1023,7 +1023,12 @@ func _restore_timeline_height(mode: int) -> void:
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if timeline == null:
 		return
-	_set_timeline_workspace_height(timeline.get_saved_workspace_height(mode))
+	var saved_height := timeline.get_saved_workspace_height(mode)
+	if _set_timeline_workspace_height(saved_height):
+		var applied_height := _get_timeline_workspace_height()
+		if applied_height > 0.0 and not is_equal_approx(applied_height, saved_height):
+			# Repair old accidentally full-screen sizes in per-project mode storage.
+			timeline.store_workspace_height(applied_height, mode)
 
 
 func _get_timeline_workspace_height() -> float:
