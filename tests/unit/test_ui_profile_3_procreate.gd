@@ -266,7 +266,7 @@ func test_ui4_uses_its_own_fixed_panes_after_switching_from_ui3() -> void:
 	_free_fixture(fixture)
 
 
-func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
+func test_profile_3_tool_options_are_advanced_and_floating() -> void:
 	var profile_source := FileAccess.get_file_as_string(
 		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
 	)
@@ -278,8 +278,8 @@ func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
 	)
 	check_has(
 		profile_source,
-		"current.set_compact_option_layout(true)",
-		"UI 3 must opt the active tool into the compact floating property layout",
+		"current.set_compact_option_layout(false)",
+		"UI3 full settings use the existing controls without the 56px compact constraint",
 	)
 	check_has(
 		profile_source,
@@ -294,22 +294,22 @@ func test_profile_3_tool_options_are_compact_and_wrap_family_tools() -> void:
 	check_has(
 		content_scene,
 		'[node name="FamilyChooser" type="HFlowContainer" parent="."]',
-		"tool-family shortcuts must wrap inside a narrow floating panel",
+		"advanced tools retain the existing family chooser",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.minimum_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 104.0)",
-		"UI3 must match the actual 56px tool-options column",
+		"ui3_tool_options.minimum_size = Vector2(248.0, 200.0)",
+		"secondary tool options must be usable on a touch screen",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.preferred_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 360.0)",
-		"UI3 Tool Options must match the UI1/UI4 options column, not the whole sidebar",
+		"ui3_tool_options.preferred_size = Vector2(300.0, 440.0)",
+		"secondary options are a proper resizable floating window",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.maximum_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 620.0)",
-		"UI3 Tool Options height stays adjustable while width is fixed",
+		"ui3_tool_options.maximum_size = Vector2(440.0, 700.0)",
+		"secondary options have room for larger dynamic tool forms",
 	)
 
 
@@ -357,4 +357,61 @@ func test_profile_3_toolbar_and_config_panel_contract() -> void:
 		source,
 		'content.get_node_or_null(^"FamilyChooser")',
 		"selection and shape family choices must live inside the Workspace config module",
+	)
+
+
+func test_profile_3_quick_controls_are_separate_from_full_options() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	for expected in [
+		"UIProfile3QuickControls",
+		"_add_quick_slider(tool, ^\"Brush/BrushSize\"",
+		"_add_quick_modes(tool, ^\"ModeButtons\")",
+		"_add_quick_modes(tool, ^\"FillAreaOptions\")",
+		"_add_quick_modes(tool, ^\"ColorPicker/ExtractModeButtons\")",
+		"_add_quick_family(tool_name, SELECTION_TOOLS)",
+		"_add_quick_family(tool_name, SHAPE_TOOLS)",
+		"_hide_advanced_panel()",
+		"surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)",
+	]:
+		check_has(source, expected, "UI3 exposes touch-first controls without losing tool state")
+	check_has(
+		source,
+		"source.value_changed.connect(callback)",
+		"quick sliders must track external tool value changes",
+	)
+	check_has(
+		source,
+		"source.value = value",
+		"quick sliders must write into the existing tool option",
+	)
+	check_true(
+		not source.contains("current.set_compact_option_layout(true)"),
+		"the former 56px full options layout is no longer used",
+	)
+
+
+func test_profile_3_slider_writes_to_existing_range_without_duplicate_state() -> void:
+	var profile := UIProfile3.new()
+	var source := HSlider.new()
+	source.min_value = 1.0
+	source.max_value = 64.0
+	source.step = 1.0
+	profile._on_quick_slider_changed(7.0, source)
+	check_eq(source.value, 7.0, "quick control changes authoritative Range")
+	profile._on_quick_slider_changed(0.0, source)
+	check_eq(source.value, 1.0, "tool's own minimum value is honored")
+	source.free()
+	profile.free()
+
+
+func test_profile_3_tool_options_are_dismissible_without_collapsing_titlebar() -> void:
+	var scene := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/UI3ToolOptionsContent.tscn"
+	)
+	check_has(scene, 'name="CloseOptions"', "full tool options include an explicit close action")
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	check_has(
+		source,
+		"surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)",
+		"closing detail window removes both content and its floating titlebar",
 	)

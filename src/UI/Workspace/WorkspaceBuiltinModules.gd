@@ -82,9 +82,9 @@ static func create_definitions() -> Array[WorkspaceModuleDefinition]:
 	ui3_tool_options.module_id = UI3_TOOL_OPTIONS_ID
 	ui3_tool_options.display_name = "Tool Options"
 	ui3_tool_options.content_scene = UI3_TOOL_OPTIONS_SCENE
-	ui3_tool_options.minimum_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 104.0)
-	ui3_tool_options.preferred_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 360.0)
-	ui3_tool_options.maximum_size = Vector2(TOOL_OPTIONS_COLUMN_WIDTH, 620.0)
+	ui3_tool_options.minimum_size = Vector2(248.0, 200.0)
+	ui3_tool_options.preferred_size = Vector2(300.0, 440.0)
+	ui3_tool_options.maximum_size = Vector2(440.0, 700.0)
 	ui3_tool_options.can_dock = false
 	ui3_tool_options.can_float = true
 	ui3_tool_options.can_collapse = true

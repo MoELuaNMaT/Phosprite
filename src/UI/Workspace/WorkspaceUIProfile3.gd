@@ -6,7 +6,8 @@ extends Node
 ## Profile 3 keeps the existing editor/tool state authoritative and only changes
 ## how it is presented: Preview defaults to the upper-left, standalone Tools and
 ## Palette workspace modules are parked, all first-level tools live in the top-right
-## taskbar, and a persistent floating options panel follows the active tool.
+## taskbar. A fixed left touch strip adjusts frequent values; full tool options
+## are available on demand without duplicating the authoritative tool state.
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 
@@ -35,7 +36,11 @@ const TASK_BUTTON_SIZE := Vector2(38.0, 38.0)
 const FAMILY_BUTTON_SIZE := Vector2(34.0, 32.0)
 const POPUP_GAP := 6.0
 const PALETTE_POPUP_SIZE := Vector2(320.0, 460.0)
-const PREVIEW_MARGIN := Vector2(8.0, 8.0)
+const PREVIEW_MARGIN := Vector2(124.0, 8.0)
+const QUICK_BAR_X := 8.0
+const QUICK_BAR_MIN_Y := 68.0
+const QUICK_BAR_WIDTH := 100.0
+const QUICK_SLIDER_HEIGHT := 106.0
 const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
 const SELECTED_TOOL_TINT := Color(0.45, 0.78, 1.0, 1.0)
 const UNSELECTED_TOOL_TINT := Color.WHITE
@@ -52,7 +57,15 @@ var _brush_button: Button
 var _eraser_button: Button
 var _color_button: Button
 var _color_indicator: Control
+var _settings_button: Button
 var _toolbar_sources: Dictionary = {}
+
+var _quick_bar: PanelContainer
+var _quick_title: Label
+var _quick_controls: VBoxContainer
+var _quick_bindings: Array[Dictionary] = []
+var _quick_mode_pairs: Array[Dictionary] = []
+var _advanced_open := false
 
 var _options_module: WorkspaceModule
 var _family_row: HFlowContainer
@@ -94,7 +107,14 @@ func activate() -> bool:
 	if not _ensure_presentation():
 		return false
 	_taskbar.visible = true
-	if not _ensure_options_module_placement():
+	if is_instance_valid(_quick_bar):
+		_quick_bar.visible = true
+	# Keep tool nodes mounted and active while the optional full panel is hidden.
+	if not _advanced_open and not surface.is_module_parked(Builtins.UI3_TOOL_OPTIONS_ID):
+		if not _ensure_options_module_placement():
+			return false
+		_hide_advanced_panel()
+	elif _advanced_open and not _ensure_options_module_placement():
 		return false
 	_set_ui3_module_chrome_visible(false)
 	_last_active_tool = _current_left_tool_name()
@@ -109,9 +129,13 @@ func deactivate() -> void:
 		return
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
-	_capture_options_module_state()
+	_hide_advanced_panel()
+	_advanced_open = false
 	_set_ui3_module_chrome_visible(true)
 	_set_current_options_compact(false)
+	_clear_quick_bindings()
+	if is_instance_valid(_quick_bar):
+		_quick_bar.visible = false
 	_restore_left_tool_options()
 	if surface != null and surface.manager.has_instance(Builtins.UI3_TOOL_OPTIONS_ID):
 		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
@@ -131,7 +155,11 @@ func _set_ui3_module_chrome_visible(visible: bool) -> void:
 	for module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.UI3_TOOL_OPTIONS_ID]:
 		var module := surface.manager.get_instance(module_id)
 		if module != null:
-			module.set_header_chrome_visible(visible)
+			# The optional settings window keeps its own drag header; tool
+			# palette overlays stay chrome-free in the Procreate profile.
+			module.set_header_chrome_visible(
+				visible or module_id == Builtins.UI3_TOOL_OPTIONS_ID
+			)
 
 
 func enforce_workspace() -> bool:
@@ -190,6 +218,8 @@ func _ensure_presentation() -> bool:
 	if not _ensure_options_module():
 		return false
 	if not _create_palette_popup():
+		return false
+	if not _create_quick_bar():
 		return false
 	_connect_runtime_signals()
 	return true
@@ -276,6 +306,15 @@ func _build_toolbar_tools() -> bool:
 	_eraser_button = _make_primary_button(ERASER_TOOL, "Eraser")
 	_taskbar.add_child(_brush_button)
 	_taskbar.add_child(_eraser_button)
+	_settings_button = Button.new()
+	_settings_button.name = &"UIProfile3ToolSettings"
+	_settings_button.custom_minimum_size = TASK_BUTTON_SIZE
+	_settings_button.focus_mode = Control.FOCUS_NONE
+	_settings_button.flat = true
+	_settings_button.text = "⚙"
+	_settings_button.tooltip_text = tr("Tool Settings")
+	_settings_button.pressed.connect(_on_settings_pressed)
+	_taskbar.add_child(_settings_button)
 	_taskbar.add_child(_color_button)
 	return true
 
@@ -330,6 +369,9 @@ func _ensure_options_module() -> bool:
 	_family_row = content.get_node_or_null(^"FamilyChooser") as HFlowContainer
 	_options_separator = content.get_node_or_null(^"OptionsSeparator") as HSeparator
 	_options_host = content.get_node_or_null(^"OptionsHost") as MarginContainer
+	var done := content.get_node_or_null(^"CloseOptions") as Button
+	if done != null and not done.pressed.is_connected(_hide_advanced_panel):
+		done.pressed.connect(_hide_advanced_panel)
 	return (
 		is_instance_valid(_family_row)
 		and is_instance_valid(_options_separator)
@@ -433,6 +475,11 @@ func _source_icon(source: BaseButton) -> Texture2D:
 func _on_primary_button_pressed(tool_name: StringName) -> void:
 	if not active:
 		return
+	if _current_left_tool_name() == tool_name and tool_name == BRUSH_TOOL:
+		# Re-tapping the selected brush opens the existing brush library.
+		if _show_advanced_panel():
+			_open_brush_library.call_deferred()
+		return
 	if _current_left_tool_name() != tool_name:
 		Tools.assign_tool(String(tool_name), MOUSE_BUTTON_LEFT)
 		Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
@@ -484,7 +531,7 @@ func _refresh_config_panel() -> void:
 		"%s · %s" % [tr("Tool Options"), _tool_display_name(current)]
 	)
 	_refresh_family_row(current)
-	_set_current_options_compact(true)
+	_set_current_options_compact(false)
 	_reparent_left_options(_options_host)
 
 	var has_options := _has_left_tool_options()
@@ -496,6 +543,11 @@ func _refresh_config_panel() -> void:
 	left_tool_options.visible = has_options
 	_options_host.visible = has_options
 	_options_separator.visible = _family_row.visible and has_options
+	_refresh_quick_bar(current)
+	# Crop uses explicit margins and Apply; there is no useful permanent
+	# slider. Give it the complete settings panel when first selected.
+	if current == &"CropTool" and not _advanced_open:
+		_show_advanced_panel()
 
 
 func _refresh_family_row(current: StringName) -> void:
@@ -554,6 +606,279 @@ func _place_popup_below(popup: Control, anchor: Control, desired_size: Vector2) 
 	)
 	popup.visible = true
 	popup.move_to_front()
+
+
+
+## UI3 is a view over existing tool options, not a second set of preferences.
+## The original BaseDrawTool/selection nodes continue to save their own values.
+func _create_quick_bar() -> bool:
+	if ui_root == null:
+		return false
+	_quick_bar = PanelContainer.new()
+	_quick_bar.name = &"UIProfile3QuickControls"
+	_quick_bar.mouse_filter = Control.MOUSE_FILTER_STOP
+	_quick_bar.visible = false
+	_quick_bar.z_index = 50
+	_quick_bar.custom_minimum_size.x = QUICK_BAR_WIDTH
+	ui_root.add_child(_quick_bar)
+
+	var padding := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		padding.add_theme_constant_override(StringName("margin_" + side), 6)
+	_quick_bar.add_child(padding)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", 6)
+	padding.add_child(column)
+	_quick_title = Label.new()
+	_quick_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_quick_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_quick_title)
+	_quick_controls = VBoxContainer.new()
+	_quick_controls.add_theme_constant_override(&"separation", 8)
+	column.add_child(_quick_controls)
+	var more := Button.new()
+	more.name = &"MoreToolOptions"
+	more.text = tr("More…")
+	more.tooltip_text = tr("Full Tool Options")
+	more.pressed.connect(_on_settings_pressed)
+	column.add_child(more)
+	return true
+
+
+func _place_quick_bar() -> void:
+	if not is_instance_valid(_quick_bar) or not is_instance_valid(ui_root):
+		return
+	var height := _quick_bar.get_combined_minimum_size().y
+	_quick_bar.position = Vector2(
+		QUICK_BAR_X,
+		clampf(
+			(ui_root.size.y - height) * 0.42,
+			QUICK_BAR_MIN_Y,
+			maxf(QUICK_BAR_MIN_Y, ui_root.size.y - height - 12.0)
+		)
+	)
+
+
+func _clear_quick_bindings() -> void:
+	for binding in _quick_bindings:
+		var source := binding.get("source") as Range
+		var callback := binding.get("callback") as Callable
+		if is_instance_valid(source) and source.value_changed.is_connected(callback):
+			source.value_changed.disconnect(callback)
+	_quick_bindings.clear()
+	_quick_mode_pairs.clear()
+	if is_instance_valid(_quick_controls):
+		for child in _quick_controls.get_children():
+			_quick_controls.remove_child(child)
+			child.queue_free()
+
+
+func _refresh_quick_bar(tool_name: StringName) -> void:
+	if not is_instance_valid(_quick_controls):
+		return
+	_clear_quick_bindings()
+	_quick_title.text = _tool_display_name(tool_name)
+	var tool := _current_tool_options()
+	if tool == null:
+		_quick_bar.visible = false
+		return
+	if tool_name == BRUSH_TOOL or tool_name == ERASER_TOOL:
+		_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
+		_add_quick_slider(
+			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider",
+			tr("Opacity"), false
+		)
+	elif tool_name in SELECTION_TOOLS:
+		_add_quick_family(tool_name, SELECTION_TOOLS)
+		_add_quick_modes(tool, ^"ModeButtons")
+	elif tool_name in SHAPE_TOOLS:
+		_add_quick_family(tool_name, SHAPE_TOOLS)
+		_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
+		_add_quick_checkbox(tool, ^"FillCheckbox", tr("Fill"))
+	elif tool_name == &"Bucket":
+		_add_quick_modes(tool, ^"FillAreaOptions")
+		_add_quick_slider(tool, ^"ToleranceSlider", tr("Tolerance"), false)
+	elif tool_name == &"ColorPicker":
+		_add_quick_modes(tool, ^"ColorPicker/ExtractModeButtons")
+	elif tool_name == &"Gradient":
+		_add_quick_action(tr("Gradient"), _on_settings_pressed)
+	elif tool_name == &"CropTool":
+		_quick_bar.visible = false
+		return
+	else:
+		# No false "brush size" slider for tools that do not draw strokes.
+		_quick_bar.visible = false
+		return
+	_quick_bar.visible = active
+	_place_quick_bar()
+
+
+func _add_quick_slider(tool: BaseTool, path: NodePath, title: String, size_value: bool) -> void:
+	var source := tool.get_node_or_null(path) as Range
+	if source == null:
+		return
+	var group := VBoxContainer.new()
+	group.add_theme_constant_override(&"separation", 2)
+	_quick_controls.add_child(group)
+	var caption := Label.new()
+	caption.text = title
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	group.add_child(caption)
+	var slider := VSlider.new()
+	slider.custom_minimum_size = Vector2(44.0, QUICK_SLIDER_HEIGHT)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.min_value = source.min_value
+	# Image brushes use a percentage convention; keep that tool's real unit.
+	slider.max_value = maxf(source.max_value, 256.0 if size_value else 100.0)
+	slider.step = maxf(source.step, 1.0)
+	slider.value = source.value
+	group.add_child(slider)
+	var value_label := Label.new()
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	group.add_child(value_label)
+	var suffix := "px" if size_value else "%"
+	if size_value and tool is BaseDrawTool:
+		suffix = str((source as ValueSlider).suffix) if source is ValueSlider else "px"
+	_update_quick_value_label(value_label, source.value, suffix)
+	slider.value_changed.connect(_on_quick_slider_changed.bind(source))
+	var callback := _on_quick_source_value_changed.bind(slider, value_label, suffix)
+	source.value_changed.connect(callback)
+	_quick_bindings.append({"source": source, "callback": callback})
+
+
+func _on_quick_slider_changed(value: float, source: Range) -> void:
+	if is_instance_valid(source):
+		source.value = value
+
+
+func _on_quick_source_value_changed(
+	value: float, slider: VSlider, value_label: Label, suffix: String
+) -> void:
+	if not is_instance_valid(slider) or not is_instance_valid(value_label):
+		return
+	if value > slider.max_value:
+		slider.max_value = value
+	slider.set_value_no_signal(value)
+	_update_quick_value_label(value_label, value, suffix)
+
+
+func _update_quick_value_label(label: Label, value: float, suffix: String) -> void:
+	label.text = "%d%s" % [roundi(value), suffix]
+
+
+func _add_quick_modes(tool: BaseTool, container_path: NodePath) -> void:
+	var source_modes := tool.get_node_or_null(container_path)
+	if source_modes == null:
+		return
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override(&"h_separation", 3)
+	grid.add_theme_constant_override(&"v_separation", 3)
+	_quick_controls.add_child(grid)
+	for child in source_modes.get_children():
+		var source := child as BaseButton
+		if source == null:
+			continue
+		var proxy := Button.new()
+		proxy.custom_minimum_size = Vector2(40.0, 38.0)
+		proxy.toggle_mode = true
+		proxy.focus_mode = Control.FOCUS_NONE
+		proxy.tooltip_text = source.tooltip_text
+		proxy.text = source.text if not source.text.is_empty() else String(source.name)
+		proxy.set_pressed_no_signal(source.button_pressed)
+		proxy.pressed.connect(_on_quick_mode_pressed.bind(source))
+		grid.add_child(proxy)
+		_quick_mode_pairs.append({"proxy": proxy, "source": source})
+
+
+func _on_quick_mode_pressed(source: BaseButton) -> void:
+	if not is_instance_valid(source):
+		return
+	# Emit the existing control action; its script updates selection/fill state.
+	source.pressed.emit()
+	_sync_quick_modes.call_deferred()
+
+
+func _sync_quick_modes() -> void:
+	for pair in _quick_mode_pairs:
+		var proxy := pair.get("proxy") as BaseButton
+		var source := pair.get("source") as BaseButton
+		if is_instance_valid(proxy) and is_instance_valid(source):
+			proxy.set_pressed_no_signal(source.button_pressed)
+
+
+func _add_quick_family(active_tool: StringName, family: Array[StringName]) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override(&"h_separation", 3)
+	grid.add_theme_constant_override(&"v_separation", 3)
+	_quick_controls.add_child(grid)
+	for tool_name in family:
+		if not Tools.tools.has(String(tool_name)):
+			continue
+		var tool: Tools.Tool = Tools.tools[String(tool_name)]
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(40.0, 38.0)
+		button.icon = tool.icon
+		button.tooltip_text = tr(tool.display_name)
+		button.toggle_mode = true
+		button.set_pressed_no_signal(tool_name == active_tool)
+		button.pressed.connect(_on_family_tool_pressed.bind(tool_name))
+		grid.add_child(button)
+
+
+func _add_quick_checkbox(tool: BaseTool, path: NodePath, label: String) -> void:
+	var source := tool.get_node_or_null(path) as BaseButton
+	if source == null:
+		return
+	var checkbox := CheckBox.new()
+	checkbox.text = label
+	checkbox.set_pressed_no_signal(source.button_pressed)
+	checkbox.toggled.connect(func(enabled: bool): source.button_pressed = enabled)
+	_quick_controls.add_child(checkbox)
+
+
+func _add_quick_action(label: String, action: Callable) -> void:
+	var button := Button.new()
+	button.text = label
+	button.pressed.connect(action)
+	_quick_controls.add_child(button)
+
+
+func _on_settings_pressed() -> void:
+	if _advanced_open:
+		_hide_advanced_panel()
+	else:
+		_show_advanced_panel()
+
+
+func _show_advanced_panel() -> bool:
+	if not active:
+		return false
+	if not _ensure_options_module_placement():
+		return false
+	_advanced_open = true
+	return true
+
+
+func _hide_advanced_panel() -> void:
+	if surface == null:
+		return
+	_capture_options_module_state()
+	if surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID) != WorkspaceSurface.Placement.NONE:
+		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
+	_advanced_open = false
+
+
+func _open_brush_library() -> void:
+	if not active or not _advanced_open:
+		return
+	var tool := _current_tool_options()
+	if tool == null or _current_left_tool_name() != BRUSH_TOOL:
+		return
+	var brush_picker := tool.get_node_or_null(^"Brush/Type") as Button
+	if brush_picker != null:
+		brush_picker.pressed.emit()
 
 
 func _set_current_options_compact(enabled: bool) -> void:
@@ -681,6 +1006,7 @@ func _on_single_tool_mode_changed(_enabled: bool) -> void:
 func _on_workspace_resized() -> void:
 	if active and is_instance_valid(_palette_popup) and _palette_popup.visible:
 		_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
+	_place_quick_bar()
 
 
 func _refresh_taskbar() -> void:
@@ -713,6 +1039,8 @@ func _refresh_taskbar() -> void:
 		_apply_tool_button_highlight(_eraser_button, eraser_selected)
 	if is_instance_valid(_color_indicator):
 		_color_indicator.queue_redraw()
+	if is_instance_valid(_settings_button):
+		_settings_button.visible = current != &""
 
 
 func _source_button(tool_name: StringName) -> BaseButton:
