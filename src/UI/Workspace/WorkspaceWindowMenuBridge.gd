@@ -176,10 +176,10 @@ func _on_panels_submenu_id_pressed(id: int) -> void:
 	var module_id := panels_submenu.get_item_metadata(index) as StringName
 	if module_id == &"":
 		return
-	var was_visible := panels_submenu.is_item_checked(index)
-	var target_visible := not was_visible
-	if migration.set_panel_visible(module_id, target_visible):
-		panels_submenu.set_item_checked(index, target_visible)
+	# Menu state must follow Workspace placement, not the previous checkbox.
+	var target_visible := not migration.is_panel_visible(module_id)
+	migration.set_panel_visible(module_id, target_visible)
+	panels_submenu.set_item_checked(index, migration.is_panel_visible(module_id))
 
 
 func _on_panel_visibility_changed(module_id: StringName, visible: bool) -> void:

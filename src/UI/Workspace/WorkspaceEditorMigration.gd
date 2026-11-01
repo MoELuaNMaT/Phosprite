@@ -222,10 +222,9 @@ func is_panel_visible(module_id: StringName) -> bool:
 	):
 		return false
 	var placement := surface.get_module_placement(module_id)
-	return (
-		placement == WorkspaceSurface.Placement.DOCKED
-		or placement == WorkspaceSurface.Placement.FLOATING
-	)
+	# A collapsed panel still occupies screen space through its header.
+	# Only a module with no placement is hidden from Workspace.
+	return placement != WorkspaceSurface.Placement.NONE
 
 
 func set_panel_visible(module_id: StringName, visible: bool) -> bool:
@@ -258,28 +257,9 @@ func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 		and module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]
 	):
 		return not visible
-	var placement := surface.get_module_placement(module_id)
-	var changed := false
-	if visible:
-		if placement == WorkspaceSurface.Placement.COLLAPSED:
-			changed = surface.restore_module(module_id)
-		elif placement == WorkspaceSurface.Placement.NONE:
-			changed = _dock_default(module_id)
-		else:
-			return true
-	else:
-		if (
-			placement == WorkspaceSurface.Placement.DOCKED
-			or placement == WorkspaceSurface.Placement.FLOATING
-		):
-			changed = surface.collapse_module(module_id)
-		elif placement == WorkspaceSurface.Placement.COLLAPSED:
-			return true
-		else:
-			return true
-	if changed:
-		panel_visibility_changed.emit(module_id, visible)
-	return changed
+	# The Settings panel checkbox controls whole-window visibility.
+	# Header collapse/expand remains a separate Workspace interaction.
+	return set_context_panel_visible(module_id, visible)
 
 
 func set_context_panel_visible(module_id: StringName, visible: bool) -> bool:
@@ -292,7 +272,14 @@ func set_context_panel_visible(module_id: StringName, visible: bool) -> bool:
 		if placement != WorkspaceSurface.Placement.NONE:
 			return true
 		if _context_restore.has(module_id):
-			var restored := _restore_state(module_id, _context_restore[module_id] as Dictionary)
+			var saved_state := _context_restore[module_id] as Dictionary
+			# The whole-window show command always restores expanded content.
+			if (
+				int(saved_state.get("placement", WorkspaceSurface.Placement.NONE))
+				== WorkspaceSurface.Placement.COLLAPSED
+			):
+				saved_state = saved_state.get("restore", {}) as Dictionary
+			var restored := _restore_state(module_id, saved_state)
 			if restored:
 				_context_restore.erase(module_id)
 				panel_visibility_changed.emit(module_id, true)
