@@ -157,9 +157,7 @@ func _set_ui3_module_chrome_visible(visible: bool) -> void:
 		if module != null:
 			# The optional settings window keeps its own drag header; tool
 			# palette overlays stay chrome-free in the Procreate profile.
-			module.set_header_chrome_visible(
-				visible or module_id == Builtins.UI3_TOOL_OPTIONS_ID
-			)
+			module.set_header_chrome_visible(visible or module_id == Builtins.UI3_TOOL_OPTIONS_ID)
 
 
 func enforce_workspace() -> bool:
@@ -608,7 +606,6 @@ func _place_popup_below(popup: Control, anchor: Control, desired_size: Vector2) 
 	popup.move_to_front()
 
 
-
 ## UI3 is a view over existing tool options, not a second set of preferences.
 ## The original BaseDrawTool/selection nodes continue to save their own values.
 func _create_quick_bar() -> bool:
@@ -685,8 +682,7 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 	if tool_name == BRUSH_TOOL or tool_name == ERASER_TOOL:
 		_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
 		_add_quick_slider(
-			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider",
-			tr("Opacity"), false
+			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
 		)
 	elif tool_name in SELECTION_TOOLS:
 		_add_quick_family(tool_name, SELECTION_TOOLS)
@@ -784,7 +780,24 @@ func _add_quick_modes(tool: BaseTool, container_path: NodePath) -> void:
 		proxy.toggle_mode = true
 		proxy.focus_mode = Control.FOCUS_NONE
 		proxy.tooltip_text = source.tooltip_text
-		proxy.text = source.text if not source.text.is_empty() else String(source.name)
+		# Keep touch targets within the left strip; full descriptions remain
+		# available through tooltips and the original advanced configuration.
+		var short_names := {
+			"Replace": "R",
+			"Add": "+",
+			"Subtract": "−",
+			"Intersect": "∩",
+			"SimilarArea": "Area",
+			"SimilarColors": "Color",
+			"WholeSelection": "All",
+			"TopColor": "Top",
+			"CurrentLayer": "Layer",
+		}
+		proxy.text = str(short_names.get(String(source.name), source.text))
+		if proxy.text.is_empty():
+			proxy.text = String(source.name).substr(0, 5)
+		elif proxy.text.length() > 6:
+			proxy.text = proxy.text.substr(0, 6)
 		proxy.set_pressed_no_signal(source.button_pressed)
 		proxy.pressed.connect(_on_quick_mode_pressed.bind(source))
 		grid.add_child(proxy)
@@ -865,7 +878,10 @@ func _hide_advanced_panel() -> void:
 	if surface == null:
 		return
 	_capture_options_module_state()
-	if surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID) != WorkspaceSurface.Placement.NONE:
+	if (
+		surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+		!= WorkspaceSurface.Placement.NONE
+	):
 		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
 	_advanced_open = false
 
