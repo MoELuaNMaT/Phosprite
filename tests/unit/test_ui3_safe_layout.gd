@@ -129,8 +129,10 @@ func test_live_timeline_height_limits_actual_quick_panel_and_more_button() -> vo
 	)
 	check_true(profile._quick_bar.visible, "quick bar remains accessible")
 	check_true(
-		profile._quick_more_button.get_global_rect().end.y
-		<= profile._quick_bar.get_global_rect().end.y,
+		(
+			profile._quick_more_button.get_global_rect().end.y
+			<= profile._quick_bar.get_global_rect().end.y
+		),
 		"More remains inside visible panel below the scroll area",
 	)
 	root.queue_free()
