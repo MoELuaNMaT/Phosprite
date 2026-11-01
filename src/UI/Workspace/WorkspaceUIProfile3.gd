@@ -70,6 +70,7 @@ var _quick_more_button: Button
 var _quick_controls: VBoxContainer
 var _quick_bindings: Array[Dictionary] = []
 var _quick_mode_pairs: Array[Dictionary] = []
+var _quick_has_controls := false
 var _advanced_open := false
 
 var _options_module: WorkspaceModule
@@ -741,7 +742,7 @@ static func find_quick_rect(
 func _place_quick_bar() -> void:
 	if not is_instance_valid(_quick_bar) or not is_instance_valid(_quick_controls):
 		return
-	if not active or _current_left_tool_name() == &"":
+	if not active or not _quick_has_controls:
 		_quick_bar.visible = false
 		return
 	var bounds := _quick_safe_bounds()
@@ -761,6 +762,7 @@ func _place_quick_bar() -> void:
 		return
 	_quick_bar.position = rect.position
 	_quick_bar.size = rect.size
+	_quick_bar.visible = true
 
 
 func _clear_quick_bindings() -> void:
@@ -781,6 +783,7 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 	if not is_instance_valid(_quick_controls):
 		return
 	_clear_quick_bindings()
+	_quick_has_controls = false
 	_quick_title.text = _tool_display_name(tool_name)
 	var tool := _current_tool_options()
 	if tool == null:
@@ -812,7 +815,8 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 		# No false "brush size" slider for tools that do not draw strokes.
 		_quick_bar.visible = false
 		return
-	_quick_bar.visible = active
+	_quick_has_controls = _quick_controls.get_child_count() > 0
+	_quick_bar.visible = active and _quick_has_controls
 	_place_quick_bar()
 	# Container layout of freshly rebuilt tool controls can settle next frame.
 	_place_quick_bar.call_deferred()
