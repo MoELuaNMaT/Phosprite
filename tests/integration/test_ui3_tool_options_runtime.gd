@@ -8,7 +8,7 @@ const Migration := preload("res://src/UI/Workspace/WorkspaceEditorMigration.gd")
 var _spawned_tools: Array[Node] = []
 
 
-func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
+func test_ui3_options_use_touch_width_and_restore_legacy_narrow_layouts() -> void:
 	var manager := WorkspaceModuleManager.new()
 	var dock_host := WorkspaceDockHost.new()
 	var surface := WorkspaceSurface.new()
@@ -19,7 +19,7 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	root.add_child(dock_host)
 	root.add_child(surface)
 	dock_host.size = root.size
-	check_true(Builtins.register_defaults(manager), "workspace module definitions register")
+	check_true(Builtins.register_defaults(manager), "workspace definitions register")
 	check_true(dock_host.setup(manager), "dock host initializes")
 	check_true(surface.setup(manager, dock_host), "workspace surface initializes")
 	var left_options := ScrollContainer.new()
@@ -29,81 +29,49 @@ func test_ui3_options_matches_narrow_config_column_and_legacy_layouts() -> void:
 	check_true(profile.setup(root, left_options, surface), "UI3 profile initializes")
 
 	var definition := manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
-	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 width matches")
-	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Profile4.RIGHT_WIDTH, "UI4 Tools width matches")
-	check_eq(
-		Builtins.TOOL_OPTIONS_COLUMN_WIDTH,
-		Migration.TOOL_OPTIONS_WIDTH,
-		"Options column width matches"
-	)
-	check_eq(definition.minimum_size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "UI3 minimum width")
-	check_eq(definition.preferred_size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "UI3 default width")
-	check_eq(definition.maximum_size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "UI3 maximum width")
-	check_true(definition.is_horizontal_resize_locked(), "UI3 only resizes vertically")
+	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 unchanged")
+	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Profile4.RIGHT_WIDTH, "UI4 unchanged")
+	check_eq(Builtins.TOOL_OPTIONS_COLUMN_WIDTH, Migration.TOOL_OPTIONS_WIDTH, "UI1 remains 56px")
+	check_eq(definition.minimum_size.x, 248.0, "UI3 advanced options have a usable width")
+	check_eq(definition.preferred_size.x, 300.0, "UI3 advanced options default to 300px")
+	check_eq(definition.maximum_size.x, 440.0, "UI3 advanced options can be resized")
+	check_true(not definition.is_horizontal_resize_locked(), "full options resize horizontally")
 
-	# Recreate a saved wider floating panel from the previous release.
-	definition.minimum_size.x = 144.0
-	definition.preferred_size.x = 220.0
-	definition.maximum_size.x = 440.0
-	var old_rect := Rect2(Vector2(30.0, 60.0), Vector2(220.0, 400.0))
-	check_true(surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, old_rect), "legacy float loads")
+	# Recreate the previous version's saved 56px module, then upgrade it.
 	definition.minimum_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
 	definition.preferred_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
-	definition.maximum_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
-	check_true(profile._ensure_options_module_placement(), "UI3 normalizes old floating width")
-	var options_module := manager.get_instance(Builtins.UI3_TOOL_OPTIONS_ID)
-	options_module.apply_visual_theme(WorkspaceVisualTheme.new(), &"floating")
-	check_eq(options_module.get_theme_constant(&"margin_left"), 0, "UI3 has no left chrome gutter")
-	check_eq(
-		options_module.get_theme_constant(&"margin_right"), 0, "UI3 has no right chrome gutter"
-	)
+	var old_rect := Rect2(Vector2(130.0, 60.0), Vector2(56.0, 400.0))
+	check_true(surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, old_rect), "old layout loads")
+	definition.minimum_size.x = 248.0
+	definition.preferred_size.x = 300.0
+	check_true(profile._ensure_options_module_placement(), "old options are normalized")
+	var module := manager.get_instance(Builtins.UI3_TOOL_OPTIONS_ID)
+	module.apply_visual_theme(WorkspaceVisualTheme.new(), &"floating")
 	profile._set_ui3_module_chrome_visible(false)
-	check_true(not options_module.is_header_chrome_visible(), "UI3 hides titlebar and collapse")
-	check_eq(options_module.get_header_height(), 0.0, "UI3 reserves no titlebar height")
-	check_true(not options_module.is_collapse_point(Vector2(50.0, 5.0)), "no fold button")
-	check_true(not options_module.is_header_drag_point(Vector2(25.0, 5.0)), "no drag title")
+	check_true(module.is_header_chrome_visible(), "detail window retains drag header")
+	check_true(module.get_header_height() > 0.0, "detail window has a touch header")
 	check_eq(
-		options_module.get_resize_edges(Vector2(28.0, -10.0)),
-		WorkspaceModule.ResizeEdge.TOP,
-		"UI3 top border can be grabbed directly",
+		surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID).size.x,
+		248.0,
+		"legacy 56px options expand to the new minimum",
 	)
 	check_eq(
-		options_module.get_resize_edges(Vector2(28.0, options_module.size.y + 10.0)),
-		WorkspaceModule.ResizeEdge.BOTTOM,
-		"UI3 bottom border has an expanded drag target",
+		surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID).size.y,
+		old_rect.size.y,
+		"old window height remains unchanged",
 	)
-	check_eq(
-		options_module.get_resize_edges(Vector2(28.0, 14.0)),
-		WorkspaceModule.ResizeEdge.NONE,
-		"UI3 first row of controls must not turn into a resize target",
-	)
-	profile._set_ui3_module_chrome_visible(true)
-	check_true(options_module.is_header_chrome_visible(), "normal chrome restores")
-	var options_host := options_module.get_content().get_node("OptionsHost") as MarginContainer
-	check_eq(options_host.get_theme_constant(&"margin_left"), 0, "UI3 has no inner left gutter")
-	check_eq(options_host.get_theme_constant(&"margin_right"), 0, "UI3 has no inner right gutter")
-	var resized := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
-	check_eq(resized.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "legacy floating width replaced")
-	check_eq(resized.size.y, old_rect.size.y, "legacy floating height preserved")
-
-	# A collapsed window must also normalize its saved restore width.
-	definition.minimum_size.x = 144.0
-	definition.preferred_size.x = 220.0
-	definition.maximum_size.x = 440.0
-	check_true(surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, old_rect), "legacy size")
-	check_true(surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID), "legacy collapse")
-	definition.minimum_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
-	definition.preferred_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
-	definition.maximum_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
-	check_true(profile._ensure_options_module_placement(), "UI3 expands saved collapsed window")
+	check_true(surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID), "legacy fold loads")
+	check_true(profile._ensure_options_module_placement(), "old collapsed window unfolds")
 	check_eq(
 		surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID),
 		WorkspaceSurface.Placement.FLOATING,
-		"UI3 cannot remain folded after restoration",
+		"advanced options restore expanded",
 	)
-	var restored_rect := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
-	check_eq(restored_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH, "legacy width normalized")
-	check_eq(restored_rect.size.y, old_rect.size.y, "legacy height preserved")
+	check_eq(
+		surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID).size.x,
+		248.0,
+		"restored legacy window maintains minimum readable width",
+	)
 	root.queue_free()
 	await tree.process_frame
 
@@ -242,3 +210,44 @@ func _child_names(tool: BaseTool) -> PackedStringArray:
 	for child in tool.get_children():
 		names.append(child.name)
 	return names
+
+
+func test_ui3_quick_pencil_slider_mirrors_live_tool_value() -> void:
+	var tool := await _spawn_tool("Pencil")
+	var root := Control.new()
+	tree.root.add_child(root)
+	var profile := Profile3.new()
+	root.add_child(profile)
+	profile.ui_root = root
+	check_true(profile._create_quick_bar(), "quick controls can be created on canvas")
+	profile._add_quick_slider(tool, ^"Brush/BrushSize", "Size", true)
+	var group := profile._quick_controls.get_child(0) as VBoxContainer
+	var slider := group.get_child(1) as VSlider
+	var actual := tool.get_node("Brush/BrushSize") as Range
+	slider.value = 8.0
+	check_eq(actual.value, 8.0, "UI3 quick slider edits original Pencil size")
+	actual.value = 12.0
+	check_eq(slider.value, 12.0, "UI3 quick slider follows original size updates")
+	profile._clear_quick_bindings()
+	root.queue_free()
+	await tree.process_frame
+
+
+func test_ui3_quick_bucket_modes_drive_existing_source_buttons() -> void:
+	var tool := await _spawn_tool("Bucket")
+	var root := Control.new()
+	tree.root.add_child(root)
+	var profile := Profile3.new()
+	root.add_child(profile)
+	profile.ui_root = root
+	check_true(profile._create_quick_bar(), "bucket quick controls can be created")
+	profile._add_quick_modes(tool, ^"FillAreaOptions")
+	var mode2 := tool.get_node("FillAreaOptions/SimilarColors") as BaseButton
+	profile._on_quick_mode_pressed(mode2)
+	await tree.process_frame
+	check_true(mode2.button_pressed, "source Bucket selects matching-color fill")
+	var proxy := (profile._quick_mode_pairs[1] as Dictionary).get("proxy") as BaseButton
+	check_true(proxy.button_pressed, "UI3 mode button follows the Bucket selection")
+	profile._clear_quick_bindings()
+	root.queue_free()
+	await tree.process_frame
