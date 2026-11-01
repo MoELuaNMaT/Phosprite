@@ -501,7 +501,8 @@ func apply_ui_profile_initial_defaults(profile_id: int) -> bool:
 			return false
 		var bounds := surface.get_floating_bounds()
 		var preview_rect := Rect2(
-			bounds.position + Vector2(8.0, 8.0), preview_definition.get_constrained_preferred_size()
+			bounds.position + UI_PROFILE_3_SCRIPT.PREVIEW_MARGIN,
+			preview_definition.get_constrained_preferred_size()
 		)
 		if surface.get_module_placement(Builtins.PREVIEW_ID) == WorkspaceSurface.Placement.FLOATING:
 			return surface.set_floating_rect(Builtins.PREVIEW_ID, preview_rect)

@@ -278,8 +278,8 @@ func test_profile_3_tool_options_are_advanced_and_floating() -> void:
 	)
 	check_has(
 		profile_source,
-		"current.set_compact_option_layout(false)",
-		"UI3 full settings use the existing controls without the 56px compact constraint",
+		"_set_current_options_compact(false)",
+		"UI3 must use the original complete settings instead of compacting their width",
 	)
 	check_has(
 		profile_source,
@@ -384,9 +384,10 @@ func test_profile_3_quick_controls_are_separate_from_full_options() -> void:
 		"source.value = value",
 		"quick sliders must write into the existing tool option",
 	)
-	check_true(
-		not source.contains("current.set_compact_option_layout(true)"),
-		"the former 56px full options layout is no longer used",
+	check_has(
+		source,
+		"_set_current_options_compact(false)\n\t_reparent_left_options(_options_host)",
+		"UI3 no longer compacts the actual options when displaying them",
 	)
 
 
