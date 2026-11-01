@@ -79,3 +79,61 @@ func test_timeline_layout_changes_trigger_quick_relayout() -> void:
 		not source.contains("_quick_bar.z_index = 50"),
 		"quick-strip draw order must not hide Tool Settings",
 	)
+
+
+func test_live_timeline_height_limits_actual_quick_panel_and_more_button() -> void:
+	var root := Control.new()
+	root.size = Vector2(920.0, 640.0)
+	tree.root.add_child(root)
+	var manager := WorkspaceModuleManager.new()
+	root.add_child(manager)
+	check_true(Builtins.register_defaults(manager), "all Workspace definitions register")
+	var host := WorkspaceDockHost.new()
+	root.add_child(host)
+	host.size = root.size
+	check_true(host.setup(manager), "Workspace host initializes")
+	var surface := WorkspaceSurface.new()
+	root.add_child(surface)
+	check_true(surface.setup(manager, host), "Workspace surface initializes")
+	check_true(
+		host.layout.place_module(Builtins.TIMELINE_ID, WorkspaceDockLayout.DockZone.BOTTOM, 0),
+		"Timeline occupies the bottom dock",
+	)
+	check_true(
+		host.layout.set_module_size(Builtins.TIMELINE_ID, Vector2(880.0, 270.0)),
+		"Timeline height is set",
+	)
+	host.refresh_layout_geometry()
+	var profile := Profile3.new()
+	root.add_child(profile)
+	var source := ScrollContainer.new()
+	root.add_child(source)
+	check_true(profile.setup(root, source, surface), "profile uses live Workspace geometry")
+	check_true(profile._create_quick_bar(), "left touch bar exists")
+	profile.active = true
+	profile._quick_has_controls = true
+	profile._quick_title.text = "Selection"
+	for index in 18:
+		var control := Button.new()
+		control.text = "Mode %d" % index
+		control.custom_minimum_size = Vector2(56.0, 30.0)
+		profile._quick_controls.add_child(control)
+	await tree.process_frame
+	profile._place_quick_bar()
+	var content := host.get_content_rect()
+	check_true(
+		profile._quick_bar.get_rect().end.y <= content.end.y,
+		"long quick bar does not overlap actual docked Timeline",
+	)
+	check_true(
+		profile._quick_bar.size.y < profile._quick_controls.get_combined_minimum_size().y,
+		"long quick controls use internal scrolling",
+	)
+	check_true(profile._quick_bar.visible, "quick bar remains accessible")
+	check_true(
+		profile._quick_more_button.get_global_rect().end.y
+		<= profile._quick_bar.get_global_rect().end.y,
+		"More remains inside visible panel below the scroll area",
+	)
+	root.queue_free()
+	await tree.process_frame
