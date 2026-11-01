@@ -1,0 +1,81 @@
+extends "res://tests/test_base.gd"
+
+const Profile3 := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+
+
+func test_quick_strip_never_crosses_timeline_safe_boundary() -> void:
+	var content := Rect2(Vector2(8.0, 0.0), Vector2(1184.0, 510.0))
+	var long_selection := Vector2(100.0, 780.0)
+	var rect := Profile3.find_quick_rect(content, long_selection, [])
+	check_true(rect.has_area(), "long selection controls keep a visible strip")
+	check_true(rect.position.y >= content.position.y, "strip stays below project tabs")
+	check_true(rect.end.y <= content.end.y, "strip does not cover the docked Timeline")
+	check_true(rect.size.y < long_selection.y, "long tool controls require scrolling")
+
+
+func test_quick_strip_avoids_repositioned_preview() -> void:
+	var available := Rect2(Vector2(8.0, 0.0), Vector2(1100.0, 510.0))
+	var preview := Rect2(Vector2(8.0, 8.0), Vector2(328.0, 220.0))
+	var obstacles: Array[Rect2] = [preview]
+	var rect := Profile3.find_quick_rect(available, Vector2(100.0, 400.0), obstacles)
+	check_true(not rect.intersects(preview), "quick strip avoids freely moved Preview")
+	check_true(rect.end.x <= available.end.x, "Preview avoidance stays inside the canvas")
+
+
+func test_quick_strip_scroll_keeps_more_accessible_and_float_panels_on_top() -> void:
+	var root := Control.new()
+	root.size = Vector2(1100.0, 800.0)
+	tree.root.add_child(root)
+	var manager := WorkspaceModuleManager.new()
+	root.add_child(manager)
+	check_true(Builtins.register_defaults(manager), "workspace modules register")
+	var dock := WorkspaceDockHost.new()
+	root.add_child(dock)
+	dock.size = Vector2(1100.0, 720.0)
+	check_true(dock.setup(manager), "dock host initializes")
+	var surface := WorkspaceSurface.new()
+	root.add_child(surface)
+	check_true(surface.setup(manager, dock), "Workspace surface initializes")
+	var left := ScrollContainer.new()
+	root.add_child(left)
+	var profile := Profile3.new()
+	root.add_child(profile)
+	check_true(profile.setup(root, left, surface), "profile has Workspace coordinates")
+	check_true(profile._create_quick_bar(), "quick bar builds")
+	check_eq(profile._quick_bar.get_parent(), dock, "quick bar belongs to Workspace host")
+	check_true(
+		profile._quick_bar.get_index() < surface.get_floating_layer().get_index(),
+		"floating settings must render above the quick strip",
+	)
+	check_true(
+		profile._quick_more_button.get_parent() != profile._quick_scroll,
+		"More remains accessible when the quick controls scroll",
+	)
+	check_eq(
+		profile._quick_scroll.vertical_scroll_mode,
+		ScrollContainer.SCROLL_MODE_AUTO,
+		"the quick bar scrolls when controls exceed its safe height",
+	)
+	root.queue_free()
+	await tree.process_frame
+
+
+func test_timeline_layout_changes_trigger_quick_relayout() -> void:
+	var source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
+	)
+	check_has(
+		source,
+		"surface.dock_host.layout_geometry_changed.connect(_on_quick_layout_changed)",
+		"Timeline resizing must update quick-strip available area",
+	)
+	check_has(
+		source,
+		"surface.module_floated.connect(_on_quick_floating_changed)",
+		"Preview and floating-window moves must update quick-strip placement",
+	)
+	check_true(
+		not source.contains("_quick_bar.z_index = 50"),
+		"quick-strip draw order must not hide Tool Settings",
+	)
