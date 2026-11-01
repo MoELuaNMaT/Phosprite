@@ -759,7 +759,10 @@ func _on_quick_source_value_changed(
 
 
 func _update_quick_value_label(label: Label, value: float, suffix: String) -> void:
-	label.text = "%d%s" % [roundi(value), suffix]
+	if suffix.contains("00"):
+		label.text = "%d%%" % (roundi(value) * 100)
+	else:
+		label.text = "%d%s" % [roundi(value), suffix]
 
 
 func _add_quick_modes(tool: BaseTool, container_path: NodePath) -> void:
@@ -793,11 +796,14 @@ func _add_quick_modes(tool: BaseTool, container_path: NodePath) -> void:
 			"TopColor": "Top",
 			"CurrentLayer": "Layer",
 		}
-		proxy.text = str(short_names.get(String(source.name), source.text))
-		if proxy.text.is_empty():
-			proxy.text = String(source.name).substr(0, 5)
-		elif proxy.text.length() > 6:
-			proxy.text = proxy.text.substr(0, 6)
+		proxy.icon = source.icon
+		proxy.expand_icon = source.icon != null
+		if source.icon == null:
+			proxy.text = str(short_names.get(String(source.name), source.text))
+			if proxy.text.is_empty():
+				proxy.text = String(source.name).substr(0, 5)
+			elif proxy.text.length() > 6:
+				proxy.text = proxy.text.substr(0, 6)
 		proxy.set_pressed_no_signal(source.button_pressed)
 		proxy.pressed.connect(_on_quick_mode_pressed.bind(source))
 		grid.add_child(proxy)

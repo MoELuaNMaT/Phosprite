@@ -75,6 +75,7 @@ func test_ui3_options_use_touch_width_and_restore_legacy_narrow_layouts() -> voi
 	root.queue_free()
 	await tree.process_frame
 
+
 func teardown() -> void:
 	for tool in _spawned_tools:
 		if is_instance_valid(tool):
@@ -209,3 +210,44 @@ func _child_names(tool: BaseTool) -> PackedStringArray:
 	for child in tool.get_children():
 		names.append(child.name)
 	return names
+
+
+func test_ui3_quick_pencil_slider_mirrors_live_tool_value() -> void:
+	var tool := await _spawn_tool("Pencil")
+	var root := Control.new()
+	tree.root.add_child(root)
+	var profile := Profile3.new()
+	root.add_child(profile)
+	profile.ui_root = root
+	check_true(profile._create_quick_bar(), "quick controls can be created on canvas")
+	profile._add_quick_slider(tool, ^"Brush/BrushSize", "Size", true)
+	var group := profile._quick_controls.get_child(0) as VBoxContainer
+	var slider := group.get_child(1) as VSlider
+	var actual := tool.get_node("Brush/BrushSize") as Range
+	slider.value = 8.0
+	check_eq(actual.value, 8.0, "UI3 quick slider edits original Pencil size")
+	actual.value = 12.0
+	check_eq(slider.value, 12.0, "UI3 quick slider follows original size updates")
+	profile._clear_quick_bindings()
+	root.queue_free()
+	await tree.process_frame
+
+
+func test_ui3_quick_bucket_modes_drive_existing_source_buttons() -> void:
+	var tool := await _spawn_tool("Bucket")
+	var root := Control.new()
+	tree.root.add_child(root)
+	var profile := Profile3.new()
+	root.add_child(profile)
+	profile.ui_root = root
+	check_true(profile._create_quick_bar(), "bucket quick controls can be created")
+	profile._add_quick_modes(tool, ^"FillAreaOptions")
+	var mode2 := tool.get_node("FillAreaOptions/SimilarColors") as BaseButton
+	profile._on_quick_mode_pressed(mode2)
+	await tree.process_frame
+	check_true(mode2.button_pressed, "source Bucket selects matching-color fill")
+	var proxy := (profile._quick_mode_pairs[1] as Dictionary).get("proxy") as BaseButton
+	check_true(proxy.button_pressed, "UI3 mode button follows the Bucket selection")
+	profile._clear_quick_bindings()
+	root.queue_free()
+	await tree.process_frame
