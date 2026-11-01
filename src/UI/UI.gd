@@ -176,12 +176,21 @@ func _setup_workspace_window_menu() -> void:
 		push_error("Failed to initialize Workspace UI profile switching")
 		return
 	workspace_ui_profile_controller.profile_changed.connect(_on_ui_profile_changed)
+	if OS.get_name() == "iOS":
+		var sync_panel := Callable(menu_root, "_on_ipad_panel_visibility_changed")
+		if not workspace_migration.panel_visibility_changed.is_connected(sync_panel):
+			# The Window bridge connects first, so the source checkmark is current.
+			workspace_migration.panel_visibility_changed.connect(sync_panel)
 
 
 func _on_ui_profile_changed(_profile_id: int) -> void:
 	_apply_context_panel_visibility()
 	if workspace_window_menu_bridge != null:
 		workspace_window_menu_bridge.refresh()
+	if OS.get_name() == "iOS":
+		var top := Global.top_menu_container as Control
+		if is_instance_valid(top):
+			top.call_deferred(&"_sync_ipad_settings_menu")
 
 
 func _refresh_workspace_theme() -> void:
