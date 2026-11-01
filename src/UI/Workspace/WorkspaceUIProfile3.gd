@@ -40,6 +40,9 @@ const PREVIEW_MARGIN := Vector2(124.0, 8.0)
 const QUICK_BAR_X := 8.0
 const QUICK_BAR_MIN_Y := 68.0
 const QUICK_BAR_WIDTH := 100.0
+const QUICK_MARGIN := 8.0
+const QUICK_CLEARANCE := 8.0
+const QUICK_MIN_VISIBLE_HEIGHT := 104.0
 const QUICK_SLIDER_HEIGHT := 106.0
 const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
 const SELECTED_TOOL_TINT := Color(0.45, 0.78, 1.0, 1.0)
@@ -62,6 +65,8 @@ var _toolbar_sources: Dictionary = {}
 
 var _quick_bar: PanelContainer
 var _quick_title: Label
+var _quick_scroll: ScrollContainer
+var _quick_more_button: Button
 var _quick_controls: VBoxContainer
 var _quick_bindings: Array[Dictionary] = []
 var _quick_mode_pairs: Array[Dictionary] = []
@@ -107,8 +112,8 @@ func activate() -> bool:
 	if not _ensure_presentation():
 		return false
 	_taskbar.visible = true
-	if is_instance_valid(_quick_bar):
-		_quick_bar.visible = true
+	# The quick bar is made visible by the selected tool only after its
+	# safe placement and size have been calculated.
 	# Keep tool nodes mounted and active while the optional full panel is hidden.
 	if not _advanced_open and not surface.is_module_parked(Builtins.UI3_TOOL_OPTIONS_ID):
 		if not _ensure_options_module_placement():
@@ -615,9 +620,17 @@ func _create_quick_bar() -> bool:
 	_quick_bar.name = &"UIProfile3QuickControls"
 	_quick_bar.mouse_filter = Control.MOUSE_FILTER_STOP
 	_quick_bar.visible = false
-	_quick_bar.z_index = 50
-	_quick_bar.custom_minimum_size.x = QUICK_BAR_WIDTH
-	ui_root.add_child(_quick_bar)
+	_quick_bar.custom_minimum_size = Vector2(QUICK_BAR_WIDTH, 0.0)
+	# Keep docked Timeline and floating Workspace modules above the quick
+	# strip. A high z_index on the quick strip previously hid advanced options.
+	var parent: Control = ui_root
+	if surface != null and is_instance_valid(surface.dock_host):
+		parent = surface.dock_host
+	parent.add_child(_quick_bar)
+	if surface != null and parent == surface.dock_host:
+		var floating_layer := surface.get_floating_layer()
+		if is_instance_valid(floating_layer):
+			parent.move_child(_quick_bar, floating_layer.get_index())
 
 	var padding := MarginContainer.new()
 	for side in ["left", "top", "right", "bottom"]:
@@ -630,30 +643,124 @@ func _create_quick_bar() -> bool:
 	_quick_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_quick_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_quick_title)
+	_quick_scroll = ScrollContainer.new()
+	_quick_scroll.name = &"QuickOptionsScroll"
+	_quick_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_quick_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_quick_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_quick_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(_quick_scroll)
 	_quick_controls = VBoxContainer.new()
+	_quick_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_quick_controls.add_theme_constant_override(&"separation", 8)
-	column.add_child(_quick_controls)
-	var more := Button.new()
-	more.name = &"MoreToolOptions"
-	more.text = tr("More…")
-	more.tooltip_text = tr("Full Tool Options")
-	more.pressed.connect(_on_settings_pressed)
-	column.add_child(more)
+	_quick_scroll.add_child(_quick_controls)
+	_quick_more_button = Button.new()
+	_quick_more_button.name = &"MoreToolOptions"
+	_quick_more_button.text = tr("More…")
+	_quick_more_button.tooltip_text = tr("Full Tool Options")
+	_quick_more_button.pressed.connect(_on_settings_pressed)
+	# The More button is never inside the scrolling content.
+	column.add_child(_quick_more_button)
 	return true
 
 
-func _place_quick_bar() -> void:
-	if not is_instance_valid(_quick_bar) or not is_instance_valid(ui_root):
-		return
-	var height := _quick_bar.get_combined_minimum_size().y
-	_quick_bar.position = Vector2(
-		QUICK_BAR_X,
-		clampf(
-			(ui_root.size.y - height) * 0.42,
-			QUICK_BAR_MIN_Y,
-			maxf(QUICK_BAR_MIN_Y, ui_root.size.y - height - 12.0)
-		)
+## The Workspace content rect excludes the docked Timeline, including
+## project-specific Timeline height changes. The quick strip lives in host
+## coordinates, not in the full-screen UI root's coordinates.
+func _quick_safe_bounds() -> Rect2:
+	if not is_instance_valid(_quick_bar):
+		return Rect2()
+	var parent := _quick_bar.get_parent() as Control
+	if parent == null:
+		return Rect2()
+	if surface != null and parent == surface.dock_host:
+		return surface.dock_host.get_content_rect()
+	return Rect2(Vector2.ZERO, parent.size)
+
+
+func _quick_obstacles() -> Array[Rect2]:
+	var obstacles: Array[Rect2] = []
+	if surface == null or surface.manager == null:
+		return obstacles
+	for module_id in surface.manager.get_registered_ids():
+		if surface.get_module_placement(module_id) == WorkspaceSurface.Placement.FLOATING:
+			var rect := surface.get_floating_rect(module_id)
+			if rect.has_area():
+				obstacles.append(rect)
+	return obstacles
+
+
+## Prefer the left edge. If a user drags Preview onto the strip, move the
+## strip to a clear nearby area rather than making either control untouchable.
+static func find_quick_rect(
+	bounds: Rect2, desired_size: Vector2, obstacles: Array[Rect2]
+) -> Rect2:
+	if not bounds.has_area():
+		return Rect2()
+	var maximum := Vector2(
+		maxf(0.0, bounds.size.x - QUICK_MARGIN * 2.0),
+		maxf(0.0, bounds.size.y - QUICK_MARGIN * 2.0)
 	)
+	var size := Vector2(
+		minf(desired_size.x, maximum.x),
+		minf(desired_size.y, maximum.y)
+	)
+	if size.x <= 0.0 or size.y <= 0.0:
+		return Rect2()
+	var max_x := bounds.end.x - QUICK_MARGIN - size.x
+	var max_y := bounds.end.y - QUICK_MARGIN - size.y
+	var base_x := bounds.position.x + QUICK_MARGIN
+	var base_y := bounds.position.y + QUICK_MARGIN
+	var xs: Array[float] = [base_x]
+	var ys: Array[float] = [base_y]
+	for obstacle in obstacles:
+		if not obstacle.intersects(bounds):
+			continue
+		var right := obstacle.end.x + QUICK_CLEARANCE
+		var below := obstacle.end.y + QUICK_CLEARANCE
+		if right <= max_x:
+			xs.append(maxf(base_x, right))
+		if below <= max_y:
+			ys.append(maxf(base_y, below))
+	xs.sort()
+	ys.sort()
+	for x in xs:
+		for y in ys:
+			var candidate := Rect2(Vector2(x, y), size)
+			var intersects_other := false
+			for obstacle in obstacles:
+				if candidate.grow(QUICK_CLEARANCE * 0.5).intersects(obstacle):
+					intersects_other = true
+					break
+			if not intersects_other:
+				return candidate
+	# If every free slot is occupied, remain inside the canvas safe area.
+	return Rect2(Vector2(base_x, base_y), size)
+
+
+func _place_quick_bar() -> void:
+	if not is_instance_valid(_quick_bar) or not is_instance_valid(_quick_controls):
+		return
+	if not active or _current_left_tool_name() == &"":
+		_quick_bar.visible = false
+		return
+	var bounds := _quick_safe_bounds()
+	if not bounds.has_area():
+		_quick_bar.visible = false
+		return
+	var natural_height := (
+		_quick_controls.get_combined_minimum_size().y
+		+ _quick_title.get_combined_minimum_size().y
+		+ _quick_more_button.get_combined_minimum_size().y
+		+ 44.0
+	)
+	var desired := Vector2(QUICK_BAR_WIDTH, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
+	var rect := find_quick_rect(bounds, desired, _quick_obstacles())
+	if not rect.has_area() or rect.size.y < QUICK_MIN_VISIBLE_HEIGHT:
+		_quick_bar.visible = false
+		return
+	_quick_bar.position = rect.position
+	_quick_bar.size = rect.size
 
 
 func _clear_quick_bindings() -> void:
@@ -707,6 +814,8 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 		return
 	_quick_bar.visible = active
 	_place_quick_bar()
+	# Container layout of freshly rebuilt tool controls can settle next frame.
+	_place_quick_bar.call_deferred()
 
 
 func _add_quick_slider(tool: BaseTool, path: NodePath, title: String, size_value: bool) -> void:
@@ -877,7 +986,31 @@ func _show_advanced_panel() -> bool:
 	if not _ensure_options_module_placement():
 		return false
 	_advanced_open = true
+	_relocate_advanced_if_over_quick_bar()
+	_place_quick_bar()
 	return true
+
+
+func _relocate_advanced_if_over_quick_bar() -> void:
+	if surface == null or not is_instance_valid(_quick_bar) or not _quick_bar.visible:
+		return
+	if surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID) != WorkspaceSurface.Placement.FLOATING:
+		return
+	var rect := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
+	if not rect.intersects(Rect2(_quick_bar.position, _quick_bar.size)):
+		return
+	var bounds := surface.get_floating_bounds()
+	# Prefer the opposite side of the workspace. This also repairs saved
+	# tool-panel layouts from the former 56px left-column implementation.
+	var target := Rect2(
+		Vector2(
+			bounds.end.x - rect.size.x - TOOL_OPTIONS_MARGIN.x,
+			bounds.position.y + TOOL_OPTIONS_MARGIN.y
+		),
+		rect.size
+	)
+	if not target.intersects(Rect2(_quick_bar.position, _quick_bar.size)):
+		surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, target)
 
 
 func _hide_advanced_panel() -> void:
@@ -998,6 +1131,37 @@ func _connect_runtime_signals() -> void:
 		Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)
 	if is_instance_valid(ui_root) and not ui_root.resized.is_connected(_on_workspace_resized):
 		ui_root.resized.connect(_on_workspace_resized)
+	if surface != null:
+		if not surface.module_floated.is_connected(_on_quick_floating_changed):
+			surface.module_floated.connect(_on_quick_floating_changed)
+		if not surface.module_cleared.is_connected(_on_quick_module_cleared):
+			surface.module_cleared.connect(_on_quick_module_cleared)
+		if not surface.module_collapsed.is_connected(_on_quick_module_cleared):
+			surface.module_collapsed.connect(_on_quick_module_cleared)
+		if not surface.module_restored.is_connected(_on_quick_module_restored):
+			surface.module_restored.connect(_on_quick_module_restored)
+		if not surface.dock_host.layout_geometry_changed.is_connected(_on_quick_layout_changed):
+			surface.dock_host.layout_geometry_changed.connect(_on_quick_layout_changed)
+
+
+func _on_quick_layout_changed(_content_rect: Rect2) -> void:
+	if active:
+		_place_quick_bar.call_deferred()
+
+
+func _on_quick_floating_changed(_module_id: StringName, _rect: Rect2) -> void:
+	if active:
+		_place_quick_bar.call_deferred()
+
+
+func _on_quick_module_cleared(_module_id: StringName) -> void:
+	if active:
+		_place_quick_bar.call_deferred()
+
+
+func _on_quick_module_restored(_module_id: StringName, _placement: int) -> void:
+	if active:
+		_place_quick_bar.call_deferred()
 
 
 func _on_tool_changed(_tool_name: String, button: int) -> void:
@@ -1028,7 +1192,7 @@ func _on_single_tool_mode_changed(_enabled: bool) -> void:
 func _on_workspace_resized() -> void:
 	if active and is_instance_valid(_palette_popup) and _palette_popup.visible:
 		_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
-	_place_quick_bar()
+	_place_quick_bar.call_deferred()
 
 
 func _refresh_taskbar() -> void:
