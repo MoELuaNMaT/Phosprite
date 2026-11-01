@@ -15,6 +15,9 @@ signal layout_geometry_changed(content_rect: Rect2)
 const EMPTY_ZONE_EXTENT := 56.0
 const EDGE_DOCK_TARGET_EXTENT := 120.0
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
+const TIMELINE_ID := &"animation_timeline"
+const TIMELINE_MAX_HEIGHT_RATIO := 0.45
+const TIMELINE_MIN_CANVAS_HEIGHT := 120.0
 
 var manager: WorkspaceModuleManager
 var layout: WorkspaceDockLayout
@@ -84,6 +87,8 @@ func dock_module(
 	var resolved_size := requested_size
 	if region_fill:
 		resolved_size = _region_fill_requested_size(module_id, zone, requested_size)
+	if resolved_size != Vector2.ZERO:
+		resolved_size = _constrain_timeline_module_size(module_id, resolved_size)
 	if resolved_size != Vector2.ZERO and not layout.set_module_size(module_id, resolved_size):
 		_restore_layout(module_id, old_zone, old_index, old_size, old_region_fill)
 		return false
@@ -135,11 +140,35 @@ func undock_module(module_id: StringName) -> bool:
 
 
 func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
-	if layout == null or not layout.set_module_size(module_id, requested_size):
+	var constrained := _constrain_timeline_module_size(module_id, requested_size)
+	if layout == null or not layout.set_module_size(module_id, constrained):
 		return false
 	_apply_module_size(module_id)
 	_layout_zones()
 	return true
+
+
+static func timeline_height_limit(workspace_height: float, minimum_height: float) -> float:
+	if workspace_height <= 0.0:
+		return INF
+	return maxf(
+		minimum_height,
+		minf(
+			workspace_height * TIMELINE_MAX_HEIGHT_RATIO,
+			workspace_height - TIMELINE_MIN_CANVAS_HEIGHT
+		)
+	)
+
+
+func _constrain_timeline_module_size(module_id: StringName, requested: Vector2) -> Vector2:
+	if module_id != TIMELINE_ID or manager == null:
+		return requested
+	var definition := manager.get_definition(module_id)
+	if definition == null:
+		return requested
+	var constrained := requested
+	constrained.y = minf(requested.y, timeline_height_limit(size.y, definition.minimum_size.y))
+	return constrained
 
 
 func set_preview_color(color: Color) -> void:
@@ -335,6 +364,15 @@ func _notification(what: int) -> void:
 func _layout_zones() -> void:
 	if _zone_hosts.is_empty():
 		return
+	# A previously saved height must also fit after a device rotation.
+	if (
+		layout != null
+		and layout.get_module_zone(TIMELINE_ID) == WorkspaceDockLayout.DockZone.BOTTOM
+	):
+		var current := layout.get_module_size(TIMELINE_ID)
+		var constrained := _constrain_timeline_module_size(TIMELINE_ID, current)
+		if constrained != current and layout.set_module_size(TIMELINE_ID, constrained):
+			_apply_module_size(TIMELINE_ID)
 	var top_h := _zone_extent(WorkspaceDockLayout.DockZone.TOP)
 	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
 	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
