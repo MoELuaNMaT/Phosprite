@@ -365,15 +365,19 @@ func test_profile_3_quick_controls_are_separate_from_full_options() -> void:
 	for expected in [
 		"UIProfile3QuickControls",
 		'_add_quick_slider(tool, ^"Brush/BrushSize"',
-		'_add_quick_modes(tool, ^"ModeButtons")',
-		'_add_quick_modes(tool, ^"FillAreaOptions")',
-		'_add_quick_modes(tool, ^"ColorPicker/ExtractModeButtons")',
-		"_add_quick_family(tool_name, SELECTION_TOOLS)",
-		"_add_quick_family(tool_name, SHAPE_TOOLS)",
 		"_hide_advanced_panel()",
 		"surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)",
 	]:
 		check_has(source, expected, "UI3 exposes touch-first controls without losing tool state")
+	check_has(
+		source,
+		"if not is_primary_tool(tool_name):",
+		"only Pencil and Eraser may display the left strip",
+	)
+	check_true(
+		not source.contains("MoreToolOptions") and not source.contains("UIProfile3ToolSettings"),
+		"left More and redundant top gear must not duplicate the tool button entry",
+	)
 	check_has(
 		source,
 		"source.value_changed.connect(callback)",
@@ -413,4 +417,32 @@ func test_profile_3_tool_options_are_dismissible_without_collapsing_titlebar() -
 		source,
 		"surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)",
 		"closing detail window removes both content and its floating titlebar",
+	)
+
+
+func test_ui3_top_right_tool_icons_own_full_settings() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	check_has(
+		source,
+		"_select_tool_and_toggle_options(tool_name)",
+		"the Pencil and Eraser buttons use the shared tool-settings entry",
+	)
+	check_has(
+		source,
+		"_select_tool_and_toggle_options(target)",
+		"all other first-level tool buttons use the same tool-settings entry",
+	)
+	check_has(
+		source,
+		"if already_selected and _advanced_open:",
+		"tapping the current tool a second time closes the complete settings",
+	)
+	check_has(
+		source,
+		"_show_advanced_panel.call_deferred()",
+		"switching tools opens settings after the new BaseTool is available",
+	)
+	check_true(
+		not source.contains('current == &"CropTool" and not _advanced_open'),
+		"changing to Crop through another route must not auto-open a floating window",
 	)
