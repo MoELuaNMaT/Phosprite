@@ -364,10 +364,10 @@ func test_profile_3_quick_controls_are_separate_from_full_options() -> void:
 	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	for expected in [
 		"UIProfile3QuickControls",
-		"_add_quick_slider(tool, ^\"Brush/BrushSize\"",
-		"_add_quick_modes(tool, ^\"ModeButtons\")",
-		"_add_quick_modes(tool, ^\"FillAreaOptions\")",
-		"_add_quick_modes(tool, ^\"ColorPicker/ExtractModeButtons\")",
+		'_add_quick_slider(tool, ^"Brush/BrushSize"',
+		'_add_quick_modes(tool, ^"ModeButtons")',
+		'_add_quick_modes(tool, ^"FillAreaOptions")',
+		'_add_quick_modes(tool, ^"ColorPicker/ExtractModeButtons")',
 		"_add_quick_family(tool_name, SELECTION_TOOLS)",
 		"_add_quick_family(tool_name, SHAPE_TOOLS)",
 		"_hide_advanced_panel()",
@@ -405,9 +405,7 @@ func test_profile_3_slider_writes_to_existing_range_without_duplicate_state() ->
 
 
 func test_profile_3_tool_options_are_dismissible_without_collapsing_titlebar() -> void:
-	var scene := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/UI3ToolOptionsContent.tscn"
-	)
+	var scene := FileAccess.get_file_as_string("res://src/UI/Workspace/UI3ToolOptionsContent.tscn")
 	check_has(scene, 'name="CloseOptions"', "full tool options include an explicit close action")
 	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(
