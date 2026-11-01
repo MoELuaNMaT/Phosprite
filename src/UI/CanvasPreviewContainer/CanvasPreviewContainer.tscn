@@ -133,6 +133,15 @@ toggle_mode = true
 text = "Pixel Grid"
 tooltip_text = "Show Pixel Grid"
 
+[node name="AddReferenceButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 32)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+text = "Add Reference"
+tooltip_text = "Add Reference Image"
+
 [node name="GrayscaleButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(88, 32)
@@ -233,6 +242,7 @@ prefix = "End frame:"
 [connection signal="toggled" from="VBox/Animation/PreviewViewButtons/MirrorViewButton" to="." method="_on_mirror_view_toggled"]
 [connection signal="toggled" from="VBox/Animation/PreviewViewButtons/ShowGridButton" to="." method="_on_show_grid_toggled"]
 [connection signal="toggled" from="VBox/Animation/PreviewViewButtons/ShowPixelGridButton" to="." method="_on_show_pixel_grid_toggled"]
+[connection signal="pressed" from="VBox/Animation/PreviewViewButtons/AddReferenceButton" to="." method="_on_add_reference_pressed"]
 [connection signal="toggled" from="VBox/Animation/PreviewViewButtons/GrayscaleButton" to="." method="_on_GrayscaleButton_toggled"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/HFrames" to="." method="_on_HFrames_value_changed"]
 [connection signal="value_changed" from="VBox/Animation/VBoxContainer/Options/GridContainer/VFrames" to="." method="_on_VFrames_value_changed"]

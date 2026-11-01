@@ -45,6 +45,15 @@ func _ready() -> void:
 	_setup_workspace_foundation()
 	Global.cel_switched.connect(_on_cel_switched)
 	Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)
+	Global.project_switched.connect(_sync_reference_panel_visibility)
+	OpenSave.reference_image_imported.connect(_sync_reference_panel_visibility)
+	if (
+		is_instance_valid(Global.canvas)
+		and is_instance_valid(Global.canvas.reference_image_container)
+	):
+		Global.canvas.reference_image_container.reference_image_removed.connect(
+			_sync_reference_panel_visibility
+		)
 	if Global.window_transparency:
 		transparency_material = ShaderMaterial.new()
 		transparency_material.shader = UI_TRANSPARENCY_SHADER
@@ -127,7 +136,9 @@ func _setup_workspace_foundation() -> void:
 	workspace_interaction_controller = WORKSPACE_INTERACTION_CONTROLLER_SCRIPT.new()
 	workspace_interaction_controller.name = "WorkspaceInteractionController"
 	add_child(workspace_interaction_controller)
-	if not workspace_interaction_controller.setup(workspace_manager, workspace_surface):
+	if not workspace_interaction_controller.setup(
+		workspace_manager, workspace_surface, workspace_migration
+	):
 		push_error("Failed to initialize P2-G Workspace interactions")
 		return
 
@@ -165,12 +176,21 @@ func _setup_workspace_window_menu() -> void:
 		push_error("Failed to initialize Workspace UI profile switching")
 		return
 	workspace_ui_profile_controller.profile_changed.connect(_on_ui_profile_changed)
+	if OS.get_name() == "iOS":
+		var sync_panel := Callable(menu_root, "_on_ipad_panel_visibility_changed")
+		if not workspace_migration.panel_visibility_changed.is_connected(sync_panel):
+			# The Window bridge connects first, so the source checkmark is current.
+			workspace_migration.panel_visibility_changed.connect(sync_panel)
 
 
 func _on_ui_profile_changed(_profile_id: int) -> void:
 	_apply_context_panel_visibility()
 	if workspace_window_menu_bridge != null:
 		workspace_window_menu_bridge.refresh()
+	if OS.get_name() == "iOS":
+		var top := Global.top_menu_container as Control
+		if is_instance_valid(top):
+			top.call_deferred(&"_sync_ipad_settings_menu")
 
 
 func _refresh_workspace_theme() -> void:
@@ -196,6 +216,18 @@ func _apply_context_panel_visibility() -> void:
 		return
 	_on_single_tool_mode_changed(Global.single_tool_mode)
 	_on_cel_switched()
+	_sync_reference_panel_visibility()
+
+
+func _sync_reference_panel_visibility() -> void:
+	if not is_workspace_live():
+		return
+	var has_references := (
+		Global.current_project != null and not Global.current_project.reference_images.is_empty()
+	)
+	workspace_layout_store.begin_transient_update()
+	workspace_migration.set_panel_visible(WORKSPACE_BUILTINS.REFERENCE_IMAGES_ID, has_references)
+	workspace_layout_store.end_transient_update()
 
 
 func _on_cel_switched() -> void:

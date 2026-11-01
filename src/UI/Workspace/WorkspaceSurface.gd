@@ -433,6 +433,9 @@ func resize_floating_rect(
 
 
 func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int:
+	# The fixed timeline can only be resized from its explicit grip.
+	if module_id == &"animation_timeline":
+		return WorkspaceModule.ResizeEdge.NONE
 	if get_module_placement(module_id) != Placement.DOCKED or dock_host == null:
 		return WorkspaceModule.ResizeEdge.NONE
 	var module := manager.get_instance(module_id)
