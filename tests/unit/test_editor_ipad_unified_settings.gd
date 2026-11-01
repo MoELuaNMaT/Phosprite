@@ -78,3 +78,60 @@ func test_ipad_preferences_organize_categories_without_reparenting_settings() ->
 	check_has(source, '["Tools", "Selection", "Shortcuts"]', "mouse cursor settings are excluded")
 	check_has(source, "_hide_ipad_desktop_only_controls()", "desktop-only controls are filtered")
 	check_has(source, "pref.node_path", "original preference save paths remain stable")
+
+
+func test_ipad_workspace_panel_checkmarks_follow_actions_immediately() -> void:
+	var menu := TOP_MENU.new()
+	var original := PopupMenu.new()
+	var mirror := PopupMenu.new()
+	original.add_check_item("Preview", 0)
+	original.add_check_item("Timeline", 1)
+	original.set_item_checked(1, true)
+	menu.set("panels_submenu", original)
+	menu.set("_ipad_panels_actions", mirror)
+	menu.set("_ipad_settings_populated", true)
+	menu._copy_ipad_source_menu(original, mirror)
+	# Represent the source Window bridge, which accepts a click and updates
+	# the authoritative menu check state before the iPad mirror is updated.
+	original.id_pressed.connect(
+		func(id: int) -> void:
+			var i := original.get_item_index(id)
+			original.set_item_checked(i, not original.is_item_checked(i))
+	)
+	menu._forward_ipad_panels(0)
+	check_true(mirror.is_item_checked(0), "opening Preview checks the menu immediately")
+	menu._forward_ipad_panels(0)
+	check_true(not mirror.is_item_checked(0), "closing Preview clears the check immediately")
+	check_true(mirror.is_item_checked(1), "unrelated Timeline checkmark stays enabled")
+	# A different Workspace entry point can change visibility without a menu tap.
+	original.set_item_checked(1, false)
+	menu._on_ipad_panel_visibility_changed(&"timeline", false)
+	check_true(not mirror.is_item_checked(1), "external Workspace change updates the mirror")
+	original.set_item_checked(1, true)
+	menu._sync_ipad_panel_checkmarks()
+	check_true(mirror.is_item_checked(1), "opening the submenu reads the latest source")
+	original.free()
+	mirror.free()
+	menu.free()
+
+
+func test_ipad_workspace_panel_signal_is_wired_after_bridge_and_profiles_refresh() -> void:
+	var ui_source := FileAccess.get_file_as_string("res://src/UI/UI.gd")
+	check_has(
+		ui_source,
+		'Callable(menu_root, "_on_ipad_panel_visibility_changed")',
+		"source Workspace signals update the visible iPad menu",
+	)
+	check_has(
+		ui_source,
+		'top.call_deferred(&"_sync_ipad_settings_menu")',
+		"UI layout switches refresh the panel menu checkmarks",
+	)
+	var top_source := FileAccess.get_file_as_string(
+		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
+	)
+	check_has(
+		top_source,
+		"_ipad_panels_actions.about_to_popup.connect(_sync_ipad_panel_checkmarks)",
+		"opening Panels refreshes checks without rebuilding an open submenu",
+	)

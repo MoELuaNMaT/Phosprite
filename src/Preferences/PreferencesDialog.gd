@@ -810,14 +810,35 @@ func _ipad_select_layout_preset(id: int) -> void:
 	_refresh_ipad_workspace_settings.call_deferred()
 
 
-func _ipad_toggle_panel(_enabled: bool, id: int) -> void:
+func _ipad_workspace_migration() -> WorkspaceEditorMigration:
 	var top := _ipad_top_menu()
 	if not is_instance_valid(top):
-		return
-	var menu := top.get("panels_submenu") as PopupMenu
-	if menu != null:
-		menu.id_pressed.emit(id)
-	_refresh_ipad_workspace_settings.call_deferred()
+		return null
+	var legacy := top.get("main_ui") as Node
+	if legacy == null or legacy.get_parent() == null:
+		return null
+	return legacy.get_parent().get("workspace_migration") as WorkspaceEditorMigration
+
+
+func _ipad_toggle_panel(enabled: bool, module_id: StringName) -> void:
+	var migration := _ipad_workspace_migration()
+	if migration != null:
+		migration.set_panel_visible(module_id, enabled)
+	# Restore the checkmark if the operation was rejected (e.g. by UI3).
+	_ipad_update_panel_checkbox(
+		module_id, migration != null and migration.is_panel_visible(module_id)
+	)
+
+
+func _ipad_update_panel_checkbox(module_id: StringName, visible: bool) -> void:
+	for child in _ipad_workspace_panels.get_children():
+		if child is CheckBox and child.get_meta(&"module_id", &"") == module_id:
+			(child as CheckBox).set_pressed_no_signal(visible)
+			return
+
+
+func _on_ipad_panel_visibility_changed(module_id: StringName, visible: bool) -> void:
+	_ipad_update_panel_checkbox(module_id, visible)
 
 
 func _refresh_ipad_workspace_settings() -> void:
@@ -842,15 +863,22 @@ func _refresh_ipad_workspace_settings() -> void:
 		_ipad_workspace_panels.remove_child(child)
 		child.queue_free()
 	var panels := top.get("panels_submenu") as PopupMenu
-	if panels == null:
+	var migration := _ipad_workspace_migration()
+	if panels == null or migration == null:
 		return
+	if not migration.panel_visibility_changed.is_connected(_on_ipad_panel_visibility_changed):
+		migration.panel_visibility_changed.connect(_on_ipad_panel_visibility_changed)
 	for i in panels.item_count:
 		if panels.is_item_separator(i):
 			continue
+		var module_id := panels.get_item_metadata(i) as StringName
+		if module_id == &"":
+			continue
 		var toggle := CheckBox.new()
 		toggle.text = panels.get_item_text(i)
-		toggle.button_pressed = panels.is_item_checked(i)
-		toggle.toggled.connect(_ipad_toggle_panel.bind(panels.get_item_id(i)))
+		toggle.set_meta(&"module_id", module_id)
+		toggle.set_pressed_no_signal(migration.is_panel_visible(module_id))
+		toggle.toggled.connect(_ipad_toggle_panel.bind(module_id))
 		_ipad_workspace_panels.add_child(toggle)
 
 

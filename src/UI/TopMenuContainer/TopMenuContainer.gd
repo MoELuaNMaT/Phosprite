@@ -284,6 +284,9 @@ func _setup_ipad_settings_menu() -> void:
 	_ipad_workspace_actions.id_pressed.connect(_forward_ipad_window)
 	_ipad_ui_actions.id_pressed.connect(_forward_ipad_ui)
 	_ipad_panels_actions.id_pressed.connect(_forward_ipad_panels)
+	# A submenu can remain open after a check action. Refresh its checkmarks
+	# without rebuilding the active PopupMenu or moving the touch target.
+	_ipad_panels_actions.about_to_popup.connect(_sync_ipad_panel_checkmarks)
 	_ipad_layouts_actions.id_pressed.connect(_forward_ipad_layouts)
 
 	var edit_actions := _new_ipad_submenu(popup, tr("Edit Actions"))
@@ -327,6 +330,7 @@ func _sync_ipad_settings_menu() -> void:
 	)
 	_copy_ipad_source_menu(ui_menu, _ipad_ui_actions)
 	_copy_ipad_source_menu(panels_submenu, _ipad_panels_actions)
+	_sync_ipad_panel_checkmarks()
 	_copy_ipad_source_menu(layouts_submenu, _ipad_layouts_actions)
 	_copy_ipad_source_menu(snap_to_submenu, _ipad_snap_actions)
 	_copy_ipad_source_menu(tile_mode_submenu, _ipad_tile_actions)
@@ -352,12 +356,34 @@ func _copy_ipad_source_menu(source: PopupMenu, destination: PopupMenu) -> void:
 		destination.set_item_disabled(target, source.is_item_disabled(i))
 
 
+## The original Window bridge owns actual panel visibility.
+## The iPad submenu is only a visual mirror and must never own a second state.
+func _sync_ipad_panel_checkmarks() -> void:
+	if not _ipad_settings_populated or not is_instance_valid(_ipad_panels_actions):
+		return
+	for i in _ipad_panels_actions.item_count:
+		if _ipad_panels_actions.is_item_separator(i):
+			continue
+		var original := panels_submenu.get_item_index(_ipad_panels_actions.get_item_id(i))
+		if original < 0:
+			continue
+		_ipad_panels_actions.set_item_checked(i, panels_submenu.is_item_checked(original))
+		_ipad_panels_actions.set_item_disabled(i, panels_submenu.is_item_disabled(original))
+
+
+func _on_ipad_panel_visibility_changed(_module_id: StringName, _visible: bool) -> void:
+	_sync_ipad_panel_checkmarks()
+
+
 func _forward_ipad_ui(id: int) -> void:
 	ui_menu.id_pressed.emit(id)
 
 
 func _forward_ipad_panels(id: int) -> void:
 	panels_submenu.id_pressed.emit(id)
+	# id_pressed runs the bridge synchronously; reflect the confirmed result,
+	# including rejected changes, before the user taps the checkbox again.
+	_sync_ipad_panel_checkmarks()
 
 
 func _forward_ipad_layouts(id: int) -> void:
