@@ -693,19 +693,13 @@ func _quick_obstacles() -> Array[Rect2]:
 
 ## Prefer the left edge. If a user drags Preview onto the strip, move the
 ## strip to a clear nearby area rather than making either control untouchable.
-static func find_quick_rect(
-	bounds: Rect2, desired_size: Vector2, obstacles: Array[Rect2]
-) -> Rect2:
+static func find_quick_rect(bounds: Rect2, desired_size: Vector2, obstacles: Array[Rect2]) -> Rect2:
 	if not bounds.has_area():
 		return Rect2()
 	var maximum := Vector2(
-		maxf(0.0, bounds.size.x - QUICK_MARGIN * 2.0),
-		maxf(0.0, bounds.size.y - QUICK_MARGIN * 2.0)
+		maxf(0.0, bounds.size.x - QUICK_MARGIN * 2.0), maxf(0.0, bounds.size.y - QUICK_MARGIN * 2.0)
 	)
-	var size := Vector2(
-		minf(desired_size.x, maximum.x),
-		minf(desired_size.y, maximum.y)
-	)
+	var size := Vector2(minf(desired_size.x, maximum.x), minf(desired_size.y, maximum.y))
 	if size.x <= 0.0 or size.y <= 0.0:
 		return Rect2()
 	var max_x := bounds.end.x - QUICK_MARGIN - size.x
@@ -998,7 +992,10 @@ func _show_advanced_panel() -> bool:
 func _relocate_advanced_if_over_quick_bar() -> void:
 	if surface == null or not is_instance_valid(_quick_bar) or not _quick_bar.visible:
 		return
-	if surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID) != WorkspaceSurface.Placement.FLOATING:
+	if (
+		surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+		!= WorkspaceSurface.Placement.FLOATING
+	):
 		return
 	var rect := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
 	if not rect.intersects(Rect2(_quick_bar.position, _quick_bar.size)):
