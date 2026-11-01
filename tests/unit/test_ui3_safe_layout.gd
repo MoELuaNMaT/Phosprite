@@ -62,9 +62,7 @@ func test_quick_strip_scroll_keeps_more_accessible_and_float_panels_on_top() -> 
 
 
 func test_timeline_layout_changes_trigger_quick_relayout() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(
 		source,
 		"surface.dock_host.layout_geometry_changed.connect(_on_quick_layout_changed)",
