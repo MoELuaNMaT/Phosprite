@@ -23,7 +23,7 @@ func test_quick_strip_avoids_repositioned_preview() -> void:
 	check_true(rect.end.x <= available.end.x, "Preview avoidance stays inside the canvas")
 
 
-func test_quick_strip_scroll_keeps_more_accessible_and_float_panels_on_top() -> void:
+func test_quick_strip_scroll_and_float_panels_on_top() -> void:
 	var root := Control.new()
 	root.size = Vector2(1100.0, 800.0)
 	tree.root.add_child(root)
@@ -48,9 +48,10 @@ func test_quick_strip_scroll_keeps_more_accessible_and_float_panels_on_top() -> 
 		profile._quick_bar.get_index() < surface.get_floating_layer().get_index(),
 		"floating settings must render above the quick strip",
 	)
-	check_true(
-		profile._quick_more_button.get_parent() != profile._quick_scroll,
-		"More remains accessible when the quick controls scroll",
+	check_eq(
+		profile._quick_bar.find_child("MoreToolOptions", true, false),
+		null,
+		"left strip contains only Pencil/Eraser controls, not another options entry",
 	)
 	check_eq(
 		profile._quick_scroll.vertical_scroll_mode,
@@ -79,7 +80,7 @@ func test_timeline_layout_changes_trigger_quick_relayout() -> void:
 	)
 
 
-func test_live_timeline_height_limits_actual_quick_panel_and_more_button() -> void:
+func test_live_timeline_height_limits_actual_quick_panel() -> void:
 	var root := Control.new()
 	root.size = Vector2(920.0, 640.0)
 	tree.root.add_child(root)
@@ -129,11 +130,8 @@ func test_live_timeline_height_limits_actual_quick_panel_and_more_button() -> vo
 	)
 	check_true(profile._quick_bar.visible, "quick bar remains accessible")
 	check_true(
-		(
-			profile._quick_more_button.get_global_rect().end.y
-			<= profile._quick_bar.get_global_rect().end.y
-		),
-		"More remains inside visible panel below the scroll area",
+		profile._quick_scroll.get_global_rect().end.y <= profile._quick_bar.get_global_rect().end.y,
+		"scrolling Pencil/Eraser controls stay within the visible strip",
 	)
 	root.queue_free()
 	await tree.process_frame
