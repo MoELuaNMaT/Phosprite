@@ -7,6 +7,12 @@ var _changed := false
 var _dither_enabled := false
 var _dither_size := 4
 var _dither_coverage := 50
+var _auto_outline_color := Color.BLACK
+var _auto_outline_width := 1
+var _auto_outline_diagonals := false
+var _syncing_auto_outline := false
+var _observed_auto_outline_project: Project
+var _observed_new_brush_project: Project
 
 
 class PencilOp:
@@ -29,16 +35,66 @@ func _ready() -> void:
 	if pattern.item_count == 0:
 		for size in DITHER_SIZES:
 			pattern.add_item("%d × %d" % [size, size])
+	var outline_shape := $AutoOutlineSettings/ShapeRow/Shape as OptionButton
+	if outline_shape.item_count == 0:
+		outline_shape.add_item("4-way")
+		outline_shape.add_item("8-way")
 	update_config()
 	if not Tools.draw_options_changed.is_connected(_sync_global_draw_options):
 		Tools.draw_options_changed.connect(_sync_global_draw_options)
 	_sync_global_draw_options()
+	Global.cel_switched.connect(_sync_auto_outline_ui)
+	Global.project_switched.connect(_sync_auto_outline_ui)
+	Global.project_switched.connect(_sync_new_brush_button)
+	Global.cel_switched.connect(_sync_new_brush_button)
+	_sync_auto_outline_ui()
+	_sync_new_brush_button()
 
 
 func _exit_tree() -> void:
 	if Tools.draw_options_changed.is_connected(_sync_global_draw_options):
 		Tools.draw_options_changed.disconnect(_sync_global_draw_options)
+	if Global.cel_switched.is_connected(_sync_auto_outline_ui):
+		Global.cel_switched.disconnect(_sync_auto_outline_ui)
+	if Global.project_switched.is_connected(_sync_auto_outline_ui):
+		Global.project_switched.disconnect(_sync_auto_outline_ui)
+	if is_instance_valid(_observed_auto_outline_project):
+		if _observed_auto_outline_project.auto_outline_changed.is_connected(_sync_auto_outline_ui):
+			_observed_auto_outline_project.auto_outline_changed.disconnect(_sync_auto_outline_ui)
+	if Global.project_switched.is_connected(_sync_new_brush_button):
+		Global.project_switched.disconnect(_sync_new_brush_button)
+	if Global.cel_switched.is_connected(_sync_new_brush_button):
+		Global.cel_switched.disconnect(_sync_new_brush_button)
+	if is_instance_valid(_observed_new_brush_project):
+		if _observed_new_brush_project.selection_changed.is_connected(_sync_new_brush_button):
+			_observed_new_brush_project.selection_changed.disconnect(_sync_new_brush_button)
 	super._exit_tree()
+
+
+## Create a project brush from the current selection, using the same
+## command previously exposed through Edit > New Brush.
+func _on_new_brush_pressed() -> void:
+	var project := Global.current_project
+	if not is_instance_valid(project) or not project.has_selection:
+		return
+	if not is_instance_valid(Global.canvas):
+		return
+	Global.canvas.selection.new_brush()
+
+
+func _sync_new_brush_button() -> void:
+	if not is_inside_tree():
+		return
+	var project := Global.current_project
+	if _observed_new_brush_project != project:
+		if is_instance_valid(_observed_new_brush_project):
+			if _observed_new_brush_project.selection_changed.is_connected(_sync_new_brush_button):
+				_observed_new_brush_project.selection_changed.disconnect(_sync_new_brush_button)
+		_observed_new_brush_project = project
+		if is_instance_valid(project):
+			if not project.selection_changed.is_connected(_sync_new_brush_button):
+				project.selection_changed.connect(_sync_new_brush_button)
+	$Brush/NewBrush.disabled = not is_instance_valid(project) or not project.has_selection
 
 
 func _global_draw_options() -> Node:
@@ -104,6 +160,85 @@ func _on_DitherCoverage_value_changed(value: float) -> void:
 	save_config()
 
 
+## Auto Outline belongs to the project, never to the selected layer.
+## Project-level rendering also covers layers created after the toggle is enabled.
+func _sync_auto_outline_ui() -> void:
+	if not is_inside_tree():
+		return
+	_syncing_auto_outline = true
+	var project := Global.current_project
+	if _observed_auto_outline_project != project:
+		if is_instance_valid(_observed_auto_outline_project):
+			if _observed_auto_outline_project.auto_outline_changed.is_connected(
+				_sync_auto_outline_ui
+			):
+				_observed_auto_outline_project.auto_outline_changed.disconnect(
+					_sync_auto_outline_ui
+				)
+		_observed_auto_outline_project = project
+		if is_instance_valid(project):
+			if not project.auto_outline_changed.is_connected(_sync_auto_outline_ui):
+				project.auto_outline_changed.connect(_sync_auto_outline_ui)
+	var enabled := is_instance_valid(project) and project.auto_outline_enabled
+	$AutoOutline.disabled = not is_instance_valid(project)
+	$AutoOutline.set_pressed_no_signal(enabled)
+	$AutoOutlineSettings.visible = enabled
+	if is_instance_valid(project):
+		_auto_outline_color = project.auto_outline_color
+		_auto_outline_width = project.auto_outline_width
+		_auto_outline_diagonals = project.auto_outline_diagonals
+	$AutoOutlineSettings/ColorRow/Color.color = _auto_outline_color
+	$AutoOutlineSettings/Thickness.value = _auto_outline_width
+	$AutoOutlineSettings/ShapeRow/Shape.select(1 if _auto_outline_diagonals else 0)
+	_syncing_auto_outline = false
+
+
+func _on_auto_outline_toggled(enabled: bool) -> void:
+	if _syncing_auto_outline:
+		return
+	var project := Global.current_project
+	if not is_instance_valid(project):
+		_sync_auto_outline_ui()
+		return
+	if project.auto_outline_enabled == enabled:
+		_sync_auto_outline_ui()
+		return
+	project.undo_redo.create_action("Toggle Project Auto Outline")
+	project.undo_redo.add_do_property(project, "auto_outline_enabled", enabled)
+	project.undo_redo.add_undo_property(project, "auto_outline_enabled", not enabled)
+	project.undo_redo.add_do_method(Global.undo_or_redo.bind(false))
+	project.undo_redo.add_undo_method(Global.undo_or_redo.bind(true))
+	project.undo_redo.commit_action()
+	_sync_auto_outline_ui()
+
+
+func _update_auto_outline_settings() -> void:
+	if _syncing_auto_outline:
+		return
+	var project := Global.current_project
+	if not is_instance_valid(project):
+		return
+	project.set_auto_outline_settings(
+		_auto_outline_color, _auto_outline_width, _auto_outline_diagonals
+	)
+	project.has_changed = true
+
+
+func _on_auto_outline_color_changed(color: Color) -> void:
+	_auto_outline_color = color
+	_update_auto_outline_settings()
+
+
+func _on_auto_outline_width_changed(value: float) -> void:
+	_auto_outline_width = clampi(roundi(value), 1, 4)
+	_update_auto_outline_settings()
+
+
+func _on_auto_outline_shape_selected(index: int) -> void:
+	_auto_outline_diagonals = index == 1
+	_update_auto_outline_settings()
+
+
 func get_config() -> Dictionary:
 	var config := super.get_config()
 	config.erase("brush_density")
@@ -141,6 +276,7 @@ func update_config() -> void:
 	if dither_index >= 0 and $DitherSettings/PatternRow/Pattern.item_count > dither_index:
 		$DitherSettings/PatternRow/Pattern.select(dither_index)
 	$DitherSettings/Coverage.value = _dither_coverage
+	_sync_auto_outline_ui()
 
 
 func update_brush() -> void:

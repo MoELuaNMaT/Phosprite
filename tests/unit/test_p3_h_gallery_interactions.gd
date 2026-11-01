@@ -260,7 +260,7 @@ func test_p3_h_gallery_source_uses_explicit_multiselect_and_long_press_menus() -
 	)
 	check_has(
 		top_menu_src,
-		"row.move_child(return_home_button, mini(menu_bar.get_index() + 1",
+		"return_home_button, mini(main_menu_button.get_index() + 1",
 		"managed Projects/Home button must stay left of the iPadOS center multitasking control",
 	)
 

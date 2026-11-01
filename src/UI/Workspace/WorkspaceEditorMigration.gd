@@ -222,42 +222,44 @@ func is_panel_visible(module_id: StringName) -> bool:
 	):
 		return false
 	var placement := surface.get_module_placement(module_id)
-	return (
-		placement == WorkspaceSurface.Placement.DOCKED
-		or placement == WorkspaceSurface.Placement.FLOATING
-	)
+	# A collapsed panel still occupies screen space through its header.
+	# Only a module with no placement is hidden from Workspace.
+	return placement != WorkspaceSurface.Placement.NONE
 
 
 func set_panel_visible(module_id: StringName, visible: bool) -> bool:
 	if not live or not manager.has_definition(module_id):
 		return false
+	# A reference panel has no collapsed state: it is either open or parked.
+	if module_id == Builtins.REFERENCE_IMAGES_ID:
+		if (
+			visible
+			and (
+				Global.current_project == null or Global.current_project.reference_images.is_empty()
+			)
+		):
+			return false
+		if visible:
+			var reference_module := manager.get_instance(module_id)
+			if reference_module != null and reference_module.get_content() != null:
+				reference_module.get_content().visible = true
+		if (
+			visible
+			and surface.get_module_placement(module_id) == WorkspaceSurface.Placement.COLLAPSED
+		):
+			var restored := surface.restore_module(module_id)
+			if restored:
+				panel_visibility_changed.emit(module_id, true)
+			return restored
+		return set_context_panel_visible(module_id, visible)
 	if (
 		_active_ui_profile == 3
 		and module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]
 	):
 		return not visible
-	var placement := surface.get_module_placement(module_id)
-	var changed := false
-	if visible:
-		if placement == WorkspaceSurface.Placement.COLLAPSED:
-			changed = surface.restore_module(module_id)
-		elif placement == WorkspaceSurface.Placement.NONE:
-			changed = _dock_default(module_id)
-		else:
-			return true
-	else:
-		if (
-			placement == WorkspaceSurface.Placement.DOCKED
-			or placement == WorkspaceSurface.Placement.FLOATING
-		):
-			changed = surface.collapse_module(module_id)
-		elif placement == WorkspaceSurface.Placement.COLLAPSED:
-			return true
-		else:
-			return true
-	if changed:
-		panel_visibility_changed.emit(module_id, visible)
-	return changed
+	# The Settings panel checkbox controls whole-window visibility.
+	# Header collapse/expand remains a separate Workspace interaction.
+	return set_context_panel_visible(module_id, visible)
 
 
 func set_context_panel_visible(module_id: StringName, visible: bool) -> bool:
@@ -270,7 +272,14 @@ func set_context_panel_visible(module_id: StringName, visible: bool) -> bool:
 		if placement != WorkspaceSurface.Placement.NONE:
 			return true
 		if _context_restore.has(module_id):
-			var restored := _restore_state(module_id, _context_restore[module_id] as Dictionary)
+			var saved_state := _context_restore[module_id] as Dictionary
+			# The whole-window show command always restores expanded content.
+			if (
+				int(saved_state.get("placement", WorkspaceSurface.Placement.NONE))
+				== WorkspaceSurface.Placement.COLLAPSED
+			):
+				saved_state = saved_state.get("restore", {}) as Dictionary
+			var restored := _restore_state(module_id, saved_state)
 			if restored:
 				_context_restore.erase(module_id)
 				panel_visibility_changed.emit(module_id, true)
@@ -492,7 +501,8 @@ func apply_ui_profile_initial_defaults(profile_id: int) -> bool:
 			return false
 		var bounds := surface.get_floating_bounds()
 		var preview_rect := Rect2(
-			bounds.position + Vector2(8.0, 8.0), preview_definition.get_constrained_preferred_size()
+			bounds.position + UI_PROFILE_3_SCRIPT.PREVIEW_MARGIN,
+			preview_definition.get_constrained_preferred_size()
 		)
 		if surface.get_module_placement(Builtins.PREVIEW_ID) == WorkspaceSurface.Placement.FLOATING:
 			return surface.set_floating_rect(Builtins.PREVIEW_ID, preview_rect)
@@ -1001,7 +1011,12 @@ func _restore_timeline_height(mode: int) -> void:
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if timeline == null:
 		return
-	_set_timeline_workspace_height(timeline.get_saved_workspace_height(mode))
+	var saved_height := timeline.get_saved_workspace_height(mode)
+	if _set_timeline_workspace_height(saved_height):
+		var applied_height := _get_timeline_workspace_height()
+		if applied_height > 0.0 and not is_equal_approx(applied_height, saved_height):
+			# Repair old accidentally full-screen sizes in per-project mode storage.
+			timeline.store_workspace_height(applied_height, mode)
 
 
 func _get_timeline_workspace_height() -> float:

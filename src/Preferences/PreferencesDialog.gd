@@ -263,6 +263,13 @@ var preferences: Array[Preference] = [
 
 var content_list := PackedStringArray([])
 var selected_item := 0
+var _ipad_categories: Array[Dictionary] = []
+var _ipad_filtered_categories := PackedInt32Array()
+var _ipad_profile_select: OptionButton
+var _ipad_color_mode_select: OptionButton
+var _ipad_view_toggles: Dictionary = {}
+var _ipad_workspace_panels: VBoxContainer
+var _ipad_workspace_layouts: MenuButton
 
 @onready var search_line_edit: LineEdit = %SearchLineEdit
 @onready var list: ItemList = $HSplitContainer/SearchandList/List
@@ -358,8 +365,11 @@ func _ready() -> void:
 		# to avoid requesting permission, which Google discourages.
 		get_tree().call_group(&"NativeFileDialog", &"free")
 
-	for child in right_side.get_children():
-		content_list.append(child.name)
+	if OS.get_name() == "iOS":
+		_setup_ipad_settings_pages()
+	else:
+		for child in right_side.get_children():
+			content_list.append(child.name)
 
 	# Create buttons for each language
 	var button_group: ButtonGroup = system_language.button_group
@@ -429,6 +439,8 @@ func _ready() -> void:
 			is_default = value.is_equal_approx(pref.default_value)
 		restore_default_button.set_disabled_status(is_default)
 	_on_theme_switched()
+	if OS.get_name() == "iOS":
+		_hide_ipad_desktop_only_controls()
 	SteamManager.set_achievement("ACH_PREFERENCES")
 
 
@@ -496,6 +508,9 @@ func _on_PreferencesDialog_about_to_show() -> void:
 
 
 func add_tabs(changed_language := false) -> void:
+	if OS.get_name() == "iOS":
+		_filter_ipad_navigation(search_line_edit.text)
+		return
 	for item in content_list:
 		list.add_item(" " + tr(item))
 
@@ -512,6 +527,9 @@ func _on_PreferencesDialog_visibility_changed() -> void:
 
 
 func _on_search_line_edit_text_changed(new_text: String) -> void:
+	if OS.get_name() == "iOS":
+		_filter_ipad_navigation(new_text)
+		return
 	if new_text.is_empty():
 		# If the text is empty/the search bar gets cleared.
 		get_tree().call_group(&"HeaderLabels", &"show")
@@ -573,11 +591,356 @@ func _show_node_when_searching(node: Control, search_text: String) -> void:
 
 
 func _on_List_item_selected(index: int) -> void:
+	if OS.get_name() == "iOS":
+		if index >= 0 and index < _ipad_filtered_categories.size():
+			_show_ipad_settings_category(_ipad_filtered_categories[index])
+		return
 	if not search_line_edit.text.is_empty():
 		search_line_edit.clear()
 	selected_item = index
 	for child in right_side.get_children():
 		child.visible = child.name == content_list[index]
+
+
+## The iPad navigation groups existing preference controls without reparenting them.
+## Their node paths remain stable for settings persistence and reset buttons.
+func _setup_ipad_settings_pages() -> void:
+	size = Vector2i(960, 620)
+	var project_page := _new_ipad_settings_page("CurrentProjectSettings")
+	_ipad_add_action(project_page, tr("Project Properties"), _ipad_show_project_properties)
+	_ipad_add_heading(project_page, tr("Project Color Mode"))
+	_ipad_color_mode_select = OptionButton.new()
+	_ipad_color_mode_select.add_item("RGBA", 0)
+	_ipad_color_mode_select.add_item("Indexed", 1)
+	_ipad_color_mode_select.item_selected.connect(_ipad_change_project_color_mode)
+	project_page.add_child(_ipad_color_mode_select)
+
+	var canvas_page := _new_ipad_settings_page("iPadCanvasDisplay")
+	_ipad_add_heading(canvas_page, tr("Canvas Display"))
+	_ipad_add_view_toggle(canvas_page, tr("Show Pixel Indices"), Global.ViewMenu.SHOW_PIXEL_INDICES)
+	_ipad_add_view_toggle(
+		canvas_page, tr("Show Reference Images"), Global.ViewMenu.SHOW_REFERENCE_IMAGES
+	)
+	_ipad_add_view_toggle(
+		canvas_page, tr("Display Layer Effects"), Global.ViewMenu.DISPLAY_LAYER_EFFECTS
+	)
+	_ipad_add_action(canvas_page, tr("Tile Mode Offsets"), _ipad_open_tile_offsets)
+
+	var workspace_page := _new_ipad_settings_page("WorkspaceSettings")
+	_ipad_add_heading(workspace_page, tr("UI Layout"))
+	_ipad_profile_select = OptionButton.new()
+	for id in [1, 3, 4]:
+		_ipad_profile_select.add_item("UI%d" % id, id)
+	_ipad_profile_select.item_selected.connect(_ipad_change_ui_profile)
+	workspace_page.add_child(_ipad_profile_select)
+	_ipad_add_heading(workspace_page, tr("Layout Presets"))
+	_ipad_workspace_layouts = MenuButton.new()
+	_ipad_workspace_layouts.text = tr("Choose or Manage Layout")
+	_ipad_workspace_layouts.get_popup().id_pressed.connect(_ipad_select_layout_preset)
+	workspace_page.add_child(_ipad_workspace_layouts)
+	_ipad_add_heading(workspace_page, tr("Panels"))
+	_ipad_workspace_panels = VBoxContainer.new()
+	workspace_page.add_child(_ipad_workspace_panels)
+
+	var backup_page := _new_ipad_settings_page("iPadBackupActions")
+	_ipad_add_action(backup_page, tr("Restore Backup"), _ipad_restore_backup)
+	var help_page := _new_ipad_settings_page("iPadHelp")
+	_ipad_add_action(help_page, tr("View Welcome Screen"), _ipad_show_welcome)
+	_ipad_add_action(help_page, tr("Online Documentation"), _ipad_open_documentation)
+	_ipad_add_action(help_page, tr("Report an Issue"), _ipad_report_issue)
+	_ipad_add_action(help_page, tr("Changelog"), _ipad_open_changelog)
+	_ipad_add_action(help_page, tr("About Phosprite"), _ipad_show_about)
+
+	_ipad_add_category("Project", ["CurrentProjectSettings", "Attribution"])
+	_ipad_add_category("Canvas & Display", ["Canvas", "iPadCanvasDisplay"])
+	_ipad_add_category("Workspace & Panels", ["WorkspaceSettings"])
+	_ipad_add_category("Tools & Input", ["Tools", "Selection", "Shortcuts"])
+	_ipad_add_category("Animation & Layers", ["Timeline"])
+	_ipad_add_category("Interface & Appearance", ["Interface", "Language"])
+	_ipad_add_category("Files & Backup", ["Image", "Backup", "iPadBackupActions"])
+	_ipad_add_category("Advanced & System", ["Performance", "Extensions", "Reset"])
+	_ipad_add_category("Help & About", ["iPadHelp"])
+
+
+func _new_ipad_settings_page(page_name: String) -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.name = page_name
+	page.add_theme_constant_override("separation", 12)
+	right_side.add_child(page)
+	return page
+
+
+func _ipad_add_heading(page: VBoxContainer, title: String) -> void:
+	var heading := Label.new()
+	heading.text = title
+	page.add_child(heading)
+
+
+func _ipad_add_action(page: VBoxContainer, label: String, action: Callable) -> void:
+	var button := Button.new()
+	button.text = label
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	button.custom_minimum_size.y = 40.0
+	button.pressed.connect(action)
+	page.add_child(button)
+
+
+func _ipad_add_view_toggle(page: VBoxContainer, title: String, id: int) -> void:
+	var toggle := CheckBox.new()
+	toggle.text = title
+	toggle.toggled.connect(_ipad_change_view_setting.bind(id))
+	_ipad_view_toggles[id] = toggle
+	page.add_child(toggle)
+
+
+func _ipad_change_view_setting(_enabled: bool, id: int) -> void:
+	_ipad_invoke_top_menu(&"view_menu_id_pressed", id)
+	_refresh_ipad_canvas_settings()
+
+
+func _refresh_ipad_canvas_settings() -> void:
+	var states := {
+		Global.ViewMenu.SHOW_PIXEL_INDICES: Global.show_pixel_indices,
+		Global.ViewMenu.SHOW_REFERENCE_IMAGES: Global.show_reference_images,
+		Global.ViewMenu.DISPLAY_LAYER_EFFECTS: Global.display_layer_effects,
+	}
+	for id in states:
+		var toggle := _ipad_view_toggles.get(id) as CheckBox
+		if toggle != null:
+			toggle.set_pressed_no_signal(states[id])
+
+
+func _ipad_open_tile_offsets() -> void:
+	_ipad_invoke_top_menu(&"view_menu_id_pressed", Global.ViewMenu.TILE_MODE_OFFSETS)
+
+
+func _ipad_add_category(title: String, pages: Array[String]) -> void:
+	_ipad_categories.append({"title": title, "pages": pages})
+	content_list.append(title)
+
+
+func _filter_ipad_navigation(query: String) -> void:
+	list.clear()
+	_ipad_filtered_categories.clear()
+	for index in _ipad_categories.size():
+		var category := _ipad_categories[index]
+		var title := str(category["title"])
+		var matches := query.is_empty() or query.is_subsequence_ofn(title)
+		if not matches:
+			for pref in preferences:
+				if not right_side.has_node(pref.node_path):
+					continue
+				for page_name in category["pages"]:
+					if pref.node_path.begins_with(page_name + "/"):
+						if query.is_subsequence_ofn(pref.prop_name):
+							matches = true
+						break
+				if matches:
+					break
+		if matches:
+			_ipad_filtered_categories.append(index)
+			list.add_item(" " + tr(title))
+	if not _ipad_filtered_categories.is_empty():
+		var filtered_index := _ipad_filtered_categories.find(selected_item)
+		if filtered_index < 0:
+			filtered_index = 0
+		list.select(filtered_index)
+		_show_ipad_settings_category(_ipad_filtered_categories[filtered_index])
+	else:
+		for child in right_side.get_children():
+			child.visible = false
+
+
+func _show_ipad_settings_category(index: int) -> void:
+	if index < 0 or index >= _ipad_categories.size():
+		return
+	selected_item = index
+	var pages: Array = _ipad_categories[index]["pages"]
+	for child in right_side.get_children():
+		child.visible = child.name in pages
+	if index == 0:
+		_refresh_ipad_project_settings()
+	elif index == 1:
+		_refresh_ipad_canvas_settings()
+	elif index == 2:
+		_refresh_ipad_workspace_settings()
+
+
+func _ipad_top_menu() -> Control:
+	return Global.top_menu_container as Control
+
+
+func _ipad_invoke_top_menu(method: StringName, id: int) -> void:
+	var top := _ipad_top_menu()
+	if is_instance_valid(top):
+		top.call(method, id)
+
+
+func _ipad_show_project_properties() -> void:
+	_ipad_invoke_top_menu(&"project_menu_id_pressed", Global.ProjectMenu.PROJECT_PROPERTIES)
+
+
+func _ipad_change_project_color_mode(index: int) -> void:
+	var top := _ipad_top_menu()
+	if is_instance_valid(top) and Global.current_project != null:
+		top.call(&"_color_mode_submenu_id_pressed", _ipad_color_mode_select.get_item_id(index))
+
+
+func _refresh_ipad_project_settings() -> void:
+	if Global.current_project != null:
+		_ipad_color_mode_select.select(1 if Global.current_project.is_indexed() else 0)
+
+
+func _ipad_change_ui_profile(index: int) -> void:
+	var top := _ipad_top_menu()
+	if not is_instance_valid(top):
+		return
+	var menu := top.get("ui_menu") as PopupMenu
+	if menu != null:
+		menu.id_pressed.emit(_ipad_profile_select.get_item_id(index))
+
+
+func _ipad_select_layout_preset(id: int) -> void:
+	var top := _ipad_top_menu()
+	if not is_instance_valid(top):
+		return
+	var menu := top.get("layouts_submenu") as PopupMenu
+	if menu != null:
+		menu.id_pressed.emit(id)
+	_refresh_ipad_workspace_settings.call_deferred()
+
+
+func _ipad_workspace_migration() -> WorkspaceEditorMigration:
+	var top := _ipad_top_menu()
+	if not is_instance_valid(top):
+		return null
+	var legacy := top.get("main_ui") as Node
+	if legacy == null or legacy.get_parent() == null:
+		return null
+	return legacy.get_parent().get("workspace_migration") as WorkspaceEditorMigration
+
+
+func _ipad_toggle_panel(enabled: bool, module_id: StringName) -> void:
+	var migration := _ipad_workspace_migration()
+	if migration != null:
+		migration.set_panel_visible(module_id, enabled)
+	# Restore the checkmark if the operation was rejected (e.g. by UI3).
+	_ipad_update_panel_checkbox(
+		module_id, migration != null and migration.is_panel_visible(module_id)
+	)
+
+
+func _ipad_update_panel_checkbox(module_id: StringName, visible: bool) -> void:
+	for child in _ipad_workspace_panels.get_children():
+		if child is CheckBox and child.get_meta(&"module_id", &"") == module_id:
+			(child as CheckBox).set_pressed_no_signal(visible)
+			return
+
+
+func _on_ipad_panel_visibility_changed(module_id: StringName, visible: bool) -> void:
+	_ipad_update_panel_checkbox(module_id, visible)
+
+
+func _refresh_ipad_workspace_settings() -> void:
+	var top := _ipad_top_menu()
+	if not is_instance_valid(top):
+		return
+	var ui: Node = top.get("main_ui")
+	if ui == null:
+		return
+	var profile_controller: Node = ui.get_parent().get("workspace_ui_profile_controller")
+	if profile_controller != null:
+		var layout_store := profile_controller.get("store") as WorkspaceLayoutStore
+		var active_id := layout_store.get_active_layout_slot() if layout_store != null else 1
+		var index := _ipad_profile_select.get_item_index(active_id)
+		if index >= 0:
+			_ipad_profile_select.select(index)
+	var layouts := top.get("layouts_submenu") as PopupMenu
+	var layout_target := _ipad_workspace_layouts.get_popup()
+	if layouts != null:
+		top.call(&"_copy_ipad_source_menu", layouts, layout_target)
+	for child in _ipad_workspace_panels.get_children():
+		_ipad_workspace_panels.remove_child(child)
+		child.queue_free()
+	var panels := top.get("panels_submenu") as PopupMenu
+	var migration := _ipad_workspace_migration()
+	if panels == null or migration == null:
+		return
+	if not migration.panel_visibility_changed.is_connected(_on_ipad_panel_visibility_changed):
+		migration.panel_visibility_changed.connect(_on_ipad_panel_visibility_changed)
+	for i in panels.item_count:
+		if panels.is_item_separator(i):
+			continue
+		var module_id := panels.get_item_metadata(i) as StringName
+		if module_id == &"":
+			continue
+		var toggle := CheckBox.new()
+		toggle.text = panels.get_item_text(i)
+		toggle.set_meta(&"module_id", module_id)
+		toggle.set_pressed_no_signal(migration.is_panel_visible(module_id))
+		toggle.toggled.connect(_ipad_toggle_panel.bind(module_id))
+		_ipad_workspace_panels.add_child(toggle)
+
+
+func _ipad_restore_backup() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.RESTORE_BACKUP)
+
+
+func _ipad_show_welcome() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.VIEW_SPLASH_SCREEN)
+
+
+func _ipad_open_documentation() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.ONLINE_DOCS)
+
+
+func _ipad_report_issue() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.ISSUE_TRACKER)
+
+
+func _ipad_open_changelog() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.CHANGELOG)
+
+
+func _ipad_show_about() -> void:
+	_ipad_invoke_top_menu(&"help_menu_id_pressed", Global.HelpMenu.ABOUT_PIXELORAMA)
+
+
+func _hide_ipad_desktop_only_controls() -> void:
+	# Startup is managed by the iPad project gallery, not the legacy PC menu.
+	var startup := right_side.get_node_or_null(^"Startup") as Control
+	if startup != null:
+		startup.hide()
+	var collapse_label := (
+		right_side.get_node_or_null(^"Interface/InterfaceOptions/CollapseMainMenuLabel") as Control
+	)
+	if collapse_label != null:
+		collapse_label.hide()
+	var collapse_toggle := (
+		right_side.get_node_or_null(^"Interface/InterfaceOptions/CollapseMainMenu") as Control
+	)
+	if collapse_toggle != null:
+		collapse_toggle.hide()
+		var before := collapse_toggle.get_index() - 1
+		if before >= 0:
+			var reset_control := collapse_toggle.get_parent().get_child(before)
+			if reset_control is RestoreDefaultButton:
+				reset_control.hide()
+	for option in ["WindowTransparency", "DummyAudioDriver"]:
+		var node := right_side.get_node_or_null(
+			NodePath("Performance/PerformanceContainer/" + option)
+		)
+		if node == null:
+			continue
+		var parent := node.get_parent()
+		var index := node.get_index()
+		if index > 0:
+			(parent.get_child(index - 1) as Control).hide()
+		node.hide()
+		if index + 1 < parent.get_child_count():
+			var next := parent.get_child(index + 1)
+			if next is RestoreDefaultButton:
+				next.hide()
 
 
 func _on_shrink_apply_button_pressed() -> void:

@@ -207,6 +207,15 @@ static void enqueue_error_on_main(NSString *p_message) {
 	});
 }
 
+static void enqueue_picker_finished_on_main(NSString *p_source) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		PhospriteNativeDocuments *bridge = PhospriteNativeDocuments::get_singleton();
+		if (bridge) {
+			bridge->enqueue_picker_finished(to_godot_string(p_source));
+		}
+	});
+}
+
 static void capture_open_url(NSURL *p_url) {
 	if (!p_url || !p_url.isFileURL) {
 		return;
@@ -266,6 +275,7 @@ static void install_scene_url_hooks() {
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
 	if (urls.count == 0) {
+		enqueue_picker_finished_on_main(@"files");
 		return;
 	}
 	dispatch_group_t group = dispatch_group_create();
@@ -297,7 +307,12 @@ static void install_scene_url_hooks() {
 		if (paths.count != urls.count) {
 			enqueue_error_on_main(@"One or more selected files could not be copied.");
 		}
+		enqueue_picker_finished_on_main(@"files");
 	});
+}
+
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+	enqueue_picker_finished_on_main(@"files");
 }
 
 @end
@@ -310,6 +325,7 @@ static void install_scene_url_hooks() {
 - (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results {
 	[picker dismissViewControllerAnimated:YES completion:nil];
 	if (results.count == 0) {
+		enqueue_picker_finished_on_main(@"photos");
 		return;
 	}
 
@@ -348,6 +364,7 @@ static void install_scene_url_hooks() {
 		if (paths.count != results.count) {
 			enqueue_error_on_main(@"One or more selected photos could not be prepared for import.");
 		}
+		enqueue_picker_finished_on_main(@"photos");
 	});
 }
 
@@ -512,6 +529,13 @@ void PhospriteNativeDocuments::enqueue_error(const String &p_message) {
 	Dictionary event;
 	event["type"] = "error";
 	event["message"] = p_message;
+	pending_events.push_back(event);
+}
+
+void PhospriteNativeDocuments::enqueue_picker_finished(const String &p_source) {
+	Dictionary event;
+	event["type"] = "picker_finished";
+	event["source"] = p_source;
 	pending_events.push_back(event);
 }
 

@@ -6,6 +6,11 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
+[node name="CloseOptions" type="Button" parent="."]
+layout_mode = 2
+text = "Done"
+tooltip_text = "Close detailed tool options"
+
 [node name="FamilyChooser" type="HFlowContainer" parent="."]
 visible = false
 layout_mode = 2
