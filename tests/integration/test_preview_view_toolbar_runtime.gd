@@ -17,6 +17,7 @@ func test_preview_view_toolbar_wraps_with_window_width() -> void:
 		"ShowGridButton",
 		"ShowPixelGridButton",
 		"GrayscaleButton",
+		"AddReferenceButton",
 	]:
 		var button := toolbar.get_node_or_null(name) as Button
 		check_true(button != null, "%s lives beside Grayscale" % name)
@@ -28,6 +29,12 @@ func test_preview_view_toolbar_wraps_with_window_width() -> void:
 	await tree.process_frame
 	await tree.process_frame
 	check_true(toolbar.get_line_count() > wide_lines, "narrow Preview wraps toolbar to extra rows")
+	check_true(
+		(toolbar.get_node_or_null("AddReferenceButton") as Button).pressed.is_connected(
+			Callable(preview, "_on_add_reference_pressed")
+		),
+		"Add Reference button is connected to the import action"
+	)
 	preview.queue_free()
 
 

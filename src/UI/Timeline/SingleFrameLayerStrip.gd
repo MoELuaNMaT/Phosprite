@@ -430,8 +430,6 @@ func _setup_context_menu() -> void:
 	layer_context_menu.add_item(tr("Flatten"), ContextAction.FLATTEN)
 	layer_context_menu.add_item(tr("Flatten visible"), ContextAction.FLATTEN_VISIBLE)
 	layer_context_menu.add_separator()
-	layer_context_menu.add_item(tr("Move layer left (up)"), ContextAction.MOVE_LEFT)
-	layer_context_menu.add_item(tr("Move layer right (down)"), ContextAction.MOVE_RIGHT)
 	layer_context_menu.add_item(tr("Duplicate layer"), ContextAction.DUPLICATE)
 	layer_context_menu.add_item(tr("Create folder from selection"), ContextAction.CREATE_FOLDER)
 	layer_context_menu.add_item(tr("Merge selected layers"), ContextAction.MERGE_SELECTED)
@@ -470,8 +468,6 @@ func _sync_context_menu() -> void:
 	# The horizontal card order is reversed from the underlying layer indices.
 	# A higher-index layer is left (above); a lower-index layer is right (below).
 	timeline._toggle_layer_buttons()
-	_set_context_disabled(ContextAction.MOVE_LEFT, timeline.move_up_layer.disabled)
-	_set_context_disabled(ContextAction.MOVE_RIGHT, timeline.move_down_layer.disabled)
 	_set_context_disabled(ContextAction.MERGE_RIGHT, timeline.merge_down_layer.disabled)
 	_set_context_disabled(ContextAction.EFFECTS, timeline.layer_fx.disabled)
 	var selection := _selected_layer_indices()

@@ -60,7 +60,6 @@ var _family_buttons: Dictionary = {}
 var _options_separator: HSeparator
 var _options_host: MarginContainer
 var _options_last_rect := Rect2()
-var _options_was_collapsed := false
 
 var _palette_popup: PanelContainer
 var _palette_content: Control
@@ -97,6 +96,7 @@ func activate() -> bool:
 	_taskbar.visible = true
 	if not _ensure_options_module_placement():
 		return false
+	_set_ui3_module_chrome_visible(false)
 	_last_active_tool = _current_left_tool_name()
 	_refresh_taskbar()
 	_refresh_config_panel()
@@ -110,6 +110,7 @@ func deactivate() -> void:
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
 	_capture_options_module_state()
+	_set_ui3_module_chrome_visible(true)
 	_set_current_options_compact(false)
 	_restore_left_tool_options()
 	if surface != null and surface.manager.has_instance(Builtins.UI3_TOOL_OPTIONS_ID):
@@ -122,6 +123,15 @@ func refresh_after_tools_ready() -> bool:
 	if not active:
 		return true
 	return activate()
+
+
+func _set_ui3_module_chrome_visible(visible: bool) -> void:
+	if surface == null or surface.manager == null:
+		return
+	for module_id in [Builtins.TOOLS_ID, Builtins.PALETTE_ID, Builtins.UI3_TOOL_OPTIONS_ID]:
+		var module := surface.manager.get_instance(module_id)
+		if module != null:
+			module.set_header_chrome_visible(visible)
 
 
 func enforce_workspace() -> bool:
@@ -331,6 +341,11 @@ func _ensure_options_module_placement() -> bool:
 	if not _ensure_options_module():
 		return false
 	var placement := surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+	# Unfold saved UI3 windows before removing their titlebar and collapse control.
+	if placement == WorkspaceSurface.Placement.COLLAPSED:
+		if not surface.restore_module(Builtins.UI3_TOOL_OPTIONS_ID):
+			return false
+		placement = surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		var definition := surface.manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
 		if definition == null:
@@ -340,20 +355,6 @@ func _ensure_options_module_placement() -> bool:
 		if constrained_size != current_rect.size:
 			current_rect.size = constrained_size
 			return surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, current_rect)
-		return true
-	if placement == WorkspaceSurface.Placement.COLLAPSED:
-		# Saved UI3 windows may still have a 220px or 112px width. Normalize
-		# its restore size without changing its collapsed state.
-		var restore := surface.get_restore_state(Builtins.UI3_TOOL_OPTIONS_ID)
-		if (
-			int(restore.get("placement", WorkspaceSurface.Placement.NONE))
-			== WorkspaceSurface.Placement.FLOATING
-		):
-			var restore_rect := restore.get("rect", Rect2()) as Rect2
-			if not is_equal_approx(restore_rect.size.x, Builtins.TOOL_OPTIONS_COLUMN_WIDTH):
-				if not surface.restore_module(Builtins.UI3_TOOL_OPTIONS_ID):
-					return false
-				return surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID)
 		return true
 	if placement == WorkspaceSurface.Placement.DOCKED:
 		return true
@@ -371,19 +372,13 @@ func _ensure_options_module_placement() -> bool:
 			),
 			size,
 		)
-	if not surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, rect):
-		return false
-	if _options_was_collapsed:
-		_options_was_collapsed = false
-		return surface.collapse_module(Builtins.UI3_TOOL_OPTIONS_ID)
-	return true
+	return surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, rect)
 
 
 func _capture_options_module_state() -> void:
 	if surface == null:
 		return
 	var placement := surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
-	_options_was_collapsed = placement == WorkspaceSurface.Placement.COLLAPSED
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		_options_last_rect = surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
 	elif placement == WorkspaceSurface.Placement.COLLAPSED:
@@ -404,6 +399,7 @@ func _create_palette_popup() -> bool:
 
 	_palette_popup = PanelContainer.new()
 	_palette_popup.name = &"UIProfile3PalettePopup"
+	_palette_popup.add_to_group(&"phosprite_ui3_palette_popup")
 	_palette_popup.visible = false
 	_palette_popup.z_index = 1001
 	_palette_popup.mouse_filter = Control.MOUSE_FILTER_STOP

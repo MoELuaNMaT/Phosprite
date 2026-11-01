@@ -12,6 +12,7 @@ var _baseline_angle := 0.0
 var _anchor_canvas := Vector2.ZERO
 var _pan_active := false
 var _pinch_active := false
+var _reference_import_menu: PopupMenu
 
 @onready
 var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
@@ -19,6 +20,7 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var camera := $"%CameraPreview" as CanvasCamera
 @onready var play_button := $"%PlayButton" as Button
 @onready var grayscale_button := $"%GrayscaleButton" as Button
+@onready var add_reference_button := $"%AddReferenceButton" as Button
 @onready var mirror_view_button := $"%MirrorViewButton" as Button
 @onready var show_grid_button := $"%ShowGridButton" as Button
 @onready var show_pixel_grid_button := $"%ShowPixelGridButton" as Button
@@ -41,6 +43,12 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_on_greyscale_view_changed(Global.greyscale_view)
 	_sync_view_controls()
+	if OS.get_name() == "iOS":
+		_reference_import_menu = PopupMenu.new()
+		_reference_import_menu.add_item(tr("Files"), 0)
+		_reference_import_menu.add_item(tr("Photos"), 1)
+		add_child(_reference_import_menu)
+		_reference_import_menu.id_pressed.connect(_on_reference_import_source_selected)
 
 
 func _exit_tree() -> void:
@@ -192,6 +200,24 @@ func _preview_navigation_geometry() -> Dictionary:
 	var first: Vector2 = _preview_touches[_navigation_ids[0]]
 	var second: Vector2 = _preview_touches[_navigation_ids[1]]
 	return NAVIGATION.navigation_pair_geometry(first, second)
+
+
+## The Reference Images panel opens only after an image is imported.
+func _on_add_reference_pressed() -> void:
+	if Global.current_project == null or not is_instance_valid(Global.control):
+		return
+	if OS.get_name() == "iOS":
+		if is_instance_valid(_reference_import_menu):
+			_reference_import_menu.popup_on_parent(
+				Rect2i(Vector2i(add_reference_button.global_position), Vector2i.ONE)
+			)
+	else:
+		Global.control.call(&"request_reference_image_import", false)
+
+
+func _on_reference_import_source_selected(source: int) -> void:
+	if is_instance_valid(Global.control):
+		Global.control.call(&"request_reference_image_import", source == 1)
 
 
 ## Preview actions share the existing View menu handlers and global canvas state.
