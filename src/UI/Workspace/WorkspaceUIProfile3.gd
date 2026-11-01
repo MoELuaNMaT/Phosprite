@@ -499,6 +499,7 @@ func _select_tool_and_toggle_options(tool_name: StringName) -> void:
 		# Refresh the original BaseTool controls first, then show their panel.
 		_show_advanced_panel.call_deferred()
 
+
 func _on_family_tool_pressed(tool_name: StringName) -> void:
 	if not active or not Tools.tools.has(String(tool_name)):
 		return
@@ -772,6 +773,7 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 	# Tool option controls can finish sizing on the next layout frame.
 	_place_quick_bar.call_deferred()
 
+
 func _add_quick_slider(tool: BaseTool, path: NodePath, title: String, size_value: bool) -> void:
 	var source := tool.get_node_or_null(path) as Range
 	if source == null:
@@ -828,12 +830,13 @@ func _update_quick_value_label(label: Label, value: float, suffix: String) -> vo
 		label.text = "%d%s" % [roundi(value), suffix]
 
 
-
-
 func _show_advanced_panel() -> bool:
 	if not active:
 		return false
-	if not _has_left_tool_options() and not (is_instance_valid(_family_row) and _family_row.visible):
+	if (
+		not _has_left_tool_options()
+		and not (is_instance_valid(_family_row) and _family_row.visible)
+	):
 		return false
 	if not _ensure_options_module_placement():
 		return false

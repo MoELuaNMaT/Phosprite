@@ -375,8 +375,7 @@ func test_profile_3_quick_controls_are_separate_from_full_options() -> void:
 		"only Pencil and Eraser may display the left strip",
 	)
 	check_true(
-		not source.contains("MoreToolOptions")
-		and not source.contains("UIProfile3ToolSettings"),
+		not source.contains("MoreToolOptions") and not source.contains("UIProfile3ToolSettings"),
 		"left More and redundant top gear must not duplicate the tool button entry",
 	)
 	check_has(
