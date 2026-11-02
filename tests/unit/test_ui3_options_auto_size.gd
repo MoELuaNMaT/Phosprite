@@ -14,8 +14,10 @@ func test_content_sized_popup_is_short_for_small_tool_and_grows_for_long_options
 	var long := Profile3.content_sized_options(Vector2(210.0, 700.0), 0.0, safe, definition)
 	check_true(short.y < 220.0, "short tool opens below the previous fixed 440px height")
 	check_true(long.y > short.y, "long visible option lists open a taller window")
-	check_true(long.y <= 700.0 * Profile3.OPTIONS_MAX_VIEWPORT_RATIO,
-		"long tool options scroll without crossing the Workspace safe bounds")
+	check_true(
+		long.y <= 700.0 * Profile3.OPTIONS_MAX_VIEWPORT_RATIO,
+		"long tool options scroll without crossing the Workspace safe bounds"
+	)
 	check_true(short.x >= 208.0, "options remain wide enough for touch controls")
 	var family := Profile3.content_sized_options(Vector2(180.0, 60.0), 42.0, safe, definition)
 	check_true(family.y > short.y, "selection or shape tool families add their own height")
@@ -28,8 +30,10 @@ func test_content_size_obeys_small_ipad_canvas_without_covering_timeline() -> vo
 	var safe := Rect2(Vector2(8.0, 0.0), Vector2(600.0, 280.0))
 	var result := Profile3.content_sized_options(Vector2(350.0, 900.0), 36.0, safe, definition)
 	check_true(result.x <= safe.size.x, "popup fits within available canvas width")
-	check_true(result.y <= safe.size.y * Profile3.OPTIONS_MAX_VIEWPORT_RATIO,
-		"popup leaves room for Timeline and canvas interactions")
+	check_true(
+		result.y <= safe.size.y * Profile3.OPTIONS_MAX_VIEWPORT_RATIO,
+		"popup leaves room for Timeline and canvas interactions"
+	)
 
 
 func test_click_on_blank_canvas_closes_settings_but_not_inside_popup() -> void:
@@ -61,8 +65,10 @@ func test_click_on_blank_canvas_closes_settings_but_not_inside_popup() -> void:
 		not profile._is_blank_canvas_point(Vector2(550.0, 60.0)),
 		"taps inside Tool Options must never dismiss it",
 	)
-	check_true(profile._is_blank_canvas_point(Vector2(350.0, 300.0)),
-		"empty canvas is a valid dismissal target")
+	check_true(
+		profile._is_blank_canvas_point(Vector2(350.0, 300.0)),
+		"empty canvas is a valid dismissal target"
+	)
 	var outside := InputEventMouseButton.new()
 	outside.button_index = MOUSE_BUTTON_LEFT
 	outside.pressed = true

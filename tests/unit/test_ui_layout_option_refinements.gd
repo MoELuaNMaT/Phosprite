@@ -36,7 +36,8 @@ func test_ui3_keeps_compact_tool_options_after_ui2_removal() -> void:
 	check_has(profile_3, "set_compact_option_layout(true)", "UI3 continues using compact layout")
 
 
-func test_profile_3_popups_dismiss_only_from_blank_canvas_and_selected_tools_are_highlighted() -> void:
+func test_profile_3_popups_dismiss_only_from_blank_canvas_and_selected_tools_are_highlighted(
+) -> void:
 	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 
 	check_has(
