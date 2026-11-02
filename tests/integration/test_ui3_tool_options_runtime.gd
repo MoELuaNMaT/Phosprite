@@ -32,9 +32,9 @@ func test_ui3_options_use_touch_width_and_restore_legacy_narrow_layouts() -> voi
 	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Migration.UI1_TOOLS_FIXED_WIDTH, "UI1 unchanged")
 	check_eq(Builtins.TOOL_SIDEBAR_WIDTH, Profile4.RIGHT_WIDTH, "UI4 unchanged")
 	check_eq(Builtins.TOOL_OPTIONS_COLUMN_WIDTH, Migration.TOOL_OPTIONS_WIDTH, "UI1 remains 56px")
-	check_eq(definition.minimum_size.x, 248.0, "UI3 advanced options have a usable width")
-	check_eq(definition.preferred_size.x, 300.0, "UI3 advanced options default to 300px")
-	check_eq(definition.maximum_size.x, 440.0, "UI3 advanced options can be resized")
+	check_eq(definition.minimum_size.x, 208.0, "UI3 popup has a usable touch width")
+	check_eq(definition.preferred_size.x, 260.0, "UI3 popup starts compact")
+	check_eq(definition.maximum_size.x, 360.0, "UI3 popup stays compact")
 	check_true(not definition.is_horizontal_resize_locked(), "full options resize horizontally")
 
 	# Recreate the previous version's saved 56px module, then upgrade it.
@@ -42,8 +42,8 @@ func test_ui3_options_use_touch_width_and_restore_legacy_narrow_layouts() -> voi
 	definition.preferred_size.x = Builtins.TOOL_OPTIONS_COLUMN_WIDTH
 	var old_rect := Rect2(Vector2(130.0, 60.0), Vector2(56.0, 400.0))
 	check_true(surface.float_module(Builtins.UI3_TOOL_OPTIONS_ID, old_rect), "old layout loads")
-	definition.minimum_size.x = 248.0
-	definition.preferred_size.x = 300.0
+	definition.minimum_size.x = 208.0
+	definition.preferred_size.x = 260.0
 	check_true(profile._ensure_options_module_placement(), "old options are normalized")
 	var module := manager.get_instance(Builtins.UI3_TOOL_OPTIONS_ID)
 	module.apply_visual_theme(WorkspaceVisualTheme.new(), &"floating")
@@ -52,7 +52,7 @@ func test_ui3_options_use_touch_width_and_restore_legacy_narrow_layouts() -> voi
 	check_true(module.get_header_height() > 0.0, "detail window has a touch header")
 	check_eq(
 		surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID).size.x,
-		248.0,
+		208.0,
 		"legacy 56px options expand to the new minimum",
 	)
 	check_eq(
@@ -69,7 +69,7 @@ func test_ui3_options_use_touch_width_and_restore_legacy_narrow_layouts() -> voi
 	)
 	check_eq(
 		surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID).size.x,
-		248.0,
+		208.0,
 		"restored legacy window maintains minimum readable width",
 	)
 	root.queue_free()

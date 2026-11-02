@@ -298,17 +298,17 @@ func test_profile_3_tool_options_are_advanced_and_floating() -> void:
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.minimum_size = Vector2(248.0, 200.0)",
+		"ui3_tool_options.minimum_size = Vector2(208.0, 112.0)",
 		"secondary tool options must be usable on a touch screen",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.preferred_size = Vector2(300.0, 440.0)",
+		"ui3_tool_options.preferred_size = Vector2(260.0, 220.0)",
 		"secondary options are a proper resizable floating window",
 	)
 	check_has(
 		builtins,
-		"ui3_tool_options.maximum_size = Vector2(440.0, 700.0)",
+		"ui3_tool_options.maximum_size = Vector2(360.0, 620.0)",
 		"secondary options have room for larger dynamic tool forms",
 	)
 
@@ -411,7 +411,10 @@ func test_profile_3_slider_writes_to_existing_range_without_duplicate_state() ->
 
 func test_profile_3_tool_options_are_dismissible_without_collapsing_titlebar() -> void:
 	var scene := FileAccess.get_file_as_string("res://src/UI/Workspace/UI3ToolOptionsContent.tscn")
-	check_has(scene, 'name="CloseOptions"', "full tool options include an explicit close action")
+	check_true(
+		not scene.contains('name="CloseOptions"'),
+		"UI3 tool settings have no redundant Done button",
+	)
 	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(
 		source,
@@ -445,4 +448,20 @@ func test_ui3_top_right_tool_icons_own_full_settings() -> void:
 	check_true(
 		not source.contains('current == &"CropTool" and not _advanced_open'),
 		"changing to Crop through another route must not auto-open a floating window",
+	)
+
+
+func test_ui3_tool_options_close_on_blank_canvas_and_content_fit_contract() -> void:
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
+	check_has(
+		source,
+		"func _is_blank_canvas_point(pointer: Vector2) -> bool:",
+		"outside clicks are tested against the canvas, not arbitrary window bounds"
+	)
+	check_has(source, "_hide_advanced_panel()", "outside tap hides the original Workspace module")
+	check_has(source, "_resize_advanced_to_content()", "tool content controls popup height")
+	check_has(
+		source,
+		"current.minimum_size_changed.connect(",
+		"expanded and collapsed tool settings must resize the popup"
 	)
