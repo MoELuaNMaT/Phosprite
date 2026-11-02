@@ -850,7 +850,7 @@ static func content_sized_options(
 	)
 	var size := definition.get_constrained_size(requested)
 	size.x = minf(size.x, bounds.size.x - TOOL_OPTIONS_MARGIN.x * 2.0)
-	size.y = minf(size.y, bounds.size.y * OPTIONS_MAX_VIEWPORT_RATIO)
+	size.y = minf(size.y, floorf(bounds.size.y * OPTIONS_MAX_VIEWPORT_RATIO))
 	return Vector2(maxf(0.0, size.x), maxf(0.0, size.y))
 
 
