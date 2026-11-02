@@ -837,7 +837,6 @@ func _update_quick_value_label(label: Label, value: float, suffix: String) -> vo
 		label.text = "%d%s" % [roundi(value), suffix]
 
 
-
 ## Keep a usable touch width but derive the height from the visible
 ## configuration. Long lists scroll inside the existing ScrollContainer.
 static func content_sized_options(
@@ -847,10 +846,7 @@ static func content_sized_options(
 		return Vector2.ZERO
 	var requested := Vector2(
 		maxf(tool_size.x + OPTIONS_CONTENT_PADDING.x, definition.minimum_size.x),
-		maxf(
-			tool_size.y + family_height + OPTIONS_CONTENT_PADDING.y,
-			definition.minimum_size.y
-		)
+		maxf(tool_size.y + family_height + OPTIONS_CONTENT_PADDING.y, definition.minimum_size.y)
 	)
 	var size := definition.get_constrained_size(requested)
 	size.x = minf(size.x, bounds.size.x - TOOL_OPTIONS_MARGIN.x * 2.0)
@@ -887,7 +883,10 @@ func _on_tool_options_minimum_size_changed() -> void:
 func _resize_advanced_to_content() -> void:
 	if not active or not _advanced_open or _options_resizing or surface == null:
 		return
-	if surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID) != WorkspaceSurface.Placement.FLOATING:
+	if (
+		surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID)
+		!= WorkspaceSurface.Placement.FLOATING
+	):
 		return
 	var definition := surface.manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
 	var tool := _current_tool_options()
@@ -909,9 +908,7 @@ func _resize_advanced_to_content() -> void:
 		return
 	# Preserve the user's right edge when changing tool type. Ignore saved
 	# 440px heights from the old layout.
-	var target := Rect2(
-		Vector2(current.end.x - desired.x, current.position.y), desired
-	)
+	var target := Rect2(Vector2(current.end.x - desired.x, current.position.y), desired)
 	_options_resizing = true
 	surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, target)
 	_options_resizing = false
@@ -963,6 +960,7 @@ func _is_blank_canvas_point(pointer: Vector2) -> bool:
 		if surface.get_floating_rect(module_id).has_point(local):
 			return false
 	return true
+
 
 func _show_advanced_panel() -> bool:
 	if not active:

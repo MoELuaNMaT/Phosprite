@@ -453,9 +453,15 @@ func test_ui3_top_right_tool_icons_own_full_settings() -> void:
 
 func test_ui3_tool_options_close_on_blank_canvas_and_content_fit_contract() -> void:
 	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
-	check_has(source, "func _is_blank_canvas_point(pointer: Vector2) -> bool:",
-		"outside clicks are tested against the canvas, not arbitrary window bounds")
+	check_has(
+		source,
+		"func _is_blank_canvas_point(pointer: Vector2) -> bool:",
+		"outside clicks are tested against the canvas, not arbitrary window bounds"
+	)
 	check_has(source, "_hide_advanced_panel()", "outside tap hides the original Workspace module")
 	check_has(source, "_resize_advanced_to_content()", "tool content controls popup height")
-	check_has(source, "current.minimum_size_changed.connect(",
-		"expanded and collapsed tool settings must resize the popup")
+	check_has(
+		source,
+		"current.minimum_size_changed.connect(",
+		"expanded and collapsed tool settings must resize the popup"
+	)
