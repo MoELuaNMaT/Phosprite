@@ -155,7 +155,10 @@ func _rebuild_panels_menu() -> void:
 	panels_submenu.clear()
 	panels_submenu.hide_on_checkable_item_selection = false
 	for module_id in migration.get_panel_ids():
-		if module_id == Builtins.TILES_ID or module_id == Builtins.OBJECT_TREE_3D_ID:
+		if (
+			module_id
+			in [Builtins.TILES_ID, Builtins.OBJECT_TREE_3D_ID, Builtins.REFERENCE_IMAGES_ID]
+		):
 			continue
 		var item_id := panels_submenu.item_count
 		panels_submenu.add_check_item(migration.get_panel_name(module_id), item_id)
@@ -173,10 +176,10 @@ func _on_panels_submenu_id_pressed(id: int) -> void:
 	var module_id := panels_submenu.get_item_metadata(index) as StringName
 	if module_id == &"":
 		return
-	var was_visible := panels_submenu.is_item_checked(index)
-	var target_visible := not was_visible
-	if migration.set_panel_visible(module_id, target_visible):
-		panels_submenu.set_item_checked(index, target_visible)
+	# Menu state must follow Workspace placement, not the previous checkbox.
+	var target_visible := not migration.is_panel_visible(module_id)
+	migration.set_panel_visible(module_id, target_visible)
+	panels_submenu.set_item_checked(index, migration.is_panel_visible(module_id))
 
 
 func _on_panel_visibility_changed(module_id: StringName, visible: bool) -> void:

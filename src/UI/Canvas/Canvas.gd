@@ -91,6 +91,11 @@ func _input(event: InputEvent) -> void:
 	if _input_adapter.handle_event(self, event):
 		return
 	if (
+		(event is InputEventMouseMotion or event is InputEventMouseButton)
+		and selection.is_selection_menu_point(event.position)
+	):
+		return
+	if (
 		_input_adapter.is_enabled()
 		and (event is InputEventMouseMotion or event is InputEventMouseButton)
 		and event.device != -1

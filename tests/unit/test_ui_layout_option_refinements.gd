@@ -36,7 +36,8 @@ func test_ui3_keeps_compact_tool_options_after_ui2_removal() -> void:
 	check_has(profile_3, "set_compact_option_layout(true)", "UI3 continues using compact layout")
 
 
-func test_profile_3_popups_are_persistent_and_selected_tools_are_highlighted() -> void:
+func test_profile_3_popups_dismiss_only_from_blank_canvas_and_selected_tools_are_highlighted(
+) -> void:
 	var profile_3 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 
 	check_has(
@@ -52,11 +53,12 @@ func test_profile_3_popups_are_persistent_and_selected_tools_are_highlighted() -
 	check_has(
 		profile_3,
 		"set_process_input(false)",
-		"UI 3 must not globally dismiss popups from unrelated pointer input",
+		"UI 3 must stop listening to dismissal input when deactivated",
 	)
-	check_true(
-		not profile_3.contains("func _input(event: InputEvent)"),
-		"UI 3 popup lifetime must no longer be driven by click-outside input",
+	check_has(
+		profile_3,
+		"if not _is_blank_canvas_point(pointer):",
+		"UI3 ignores touches on tools and Workspace windows",
 	)
 	check_has(
 		profile_3,
