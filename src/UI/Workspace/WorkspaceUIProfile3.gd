@@ -45,6 +45,8 @@ const QUICK_CLEARANCE := 8.0
 const QUICK_MIN_VISIBLE_HEIGHT := 104.0
 const QUICK_SLIDER_HEIGHT := 106.0
 const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
+const OPTIONS_CONTENT_PADDING := Vector2(22.0, 72.0)
+const OPTIONS_MAX_VIEWPORT_RATIO := 0.82
 const SELECTED_TOOL_TINT := Color(0.45, 0.78, 1.0, 1.0)
 const UNSELECTED_TOOL_TINT := Color.WHITE
 
@@ -76,6 +78,8 @@ var _family_buttons: Dictionary = {}
 var _options_separator: HSeparator
 var _options_host: MarginContainer
 var _options_last_rect := Rect2()
+var _options_resizing := false
+var _options_size_source: BaseTool
 
 var _palette_popup: PanelContainer
 var _palette_content: Control
@@ -110,6 +114,7 @@ func activate() -> bool:
 	if not _ensure_presentation():
 		return false
 	_taskbar.visible = true
+	set_process_input(true)
 	# The quick bar is made visible by the selected tool only after its
 	# safe placement and size have been calculated.
 	# Keep tool nodes mounted and active while the optional full panel is hidden.
@@ -128,11 +133,13 @@ func activate() -> bool:
 
 func deactivate() -> void:
 	active = false
+	set_process_input(false)
 	if Global.headless_test_mode:
 		return
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
 	_hide_advanced_panel()
+	_disconnect_options_size_source()
 	_advanced_open = false
 	_set_ui3_module_chrome_visible(true)
 	_set_current_options_compact(false)
@@ -352,8 +359,8 @@ func _ensure_options_module() -> bool:
 		_options_module = surface.manager.create_module(Builtins.UI3_TOOL_OPTIONS_ID)
 	if not is_instance_valid(_options_module):
 		return false
-	# The UI3 panel is just the options column, not UI1/UI4's combined Tools width.
-	# Remove Workspace's 6px side gutters so its 56px content stays usable.
+	# This popup uses the existing tool controls, with content-driven size.
+	# Do not inherit the narrow UI1 tool-column padding.
 	_options_module.set_horizontal_content_padding_override(0)
 	var content := _options_module.get_content()
 	if not is_instance_valid(content):
@@ -361,9 +368,6 @@ func _ensure_options_module() -> bool:
 	_family_row = content.get_node_or_null(^"FamilyChooser") as HFlowContainer
 	_options_separator = content.get_node_or_null(^"OptionsSeparator") as HSeparator
 	_options_host = content.get_node_or_null(^"OptionsHost") as MarginContainer
-	var done := content.get_node_or_null(^"CloseOptions") as Button
-	if done != null and not done.pressed.is_connected(_hide_advanced_panel):
-		done.pressed.connect(_hide_advanced_panel)
 	return (
 		is_instance_valid(_family_row)
 		and is_instance_valid(_options_separator)
@@ -539,6 +543,9 @@ func _refresh_config_panel() -> void:
 	left_tool_options.visible = has_options
 	_options_host.visible = has_options
 	_options_separator.visible = _family_row.visible and has_options
+	_bind_options_size_source()
+	if _advanced_open:
+		_resize_advanced_to_content.call_deferred()
 	_refresh_quick_bar(current)
 
 
@@ -830,6 +837,133 @@ func _update_quick_value_label(label: Label, value: float, suffix: String) -> vo
 		label.text = "%d%s" % [roundi(value), suffix]
 
 
+
+## Keep a usable touch width but derive the height from the visible
+## configuration. Long lists scroll inside the existing ScrollContainer.
+static func content_sized_options(
+	tool_size: Vector2, family_height: float, bounds: Rect2, definition: WorkspaceModuleDefinition
+) -> Vector2:
+	if not bounds.has_area() or definition == null:
+		return Vector2.ZERO
+	var requested := Vector2(
+		maxf(tool_size.x + OPTIONS_CONTENT_PADDING.x, definition.minimum_size.x),
+		maxf(
+			tool_size.y + family_height + OPTIONS_CONTENT_PADDING.y,
+			definition.minimum_size.y
+		)
+	)
+	var size := definition.get_constrained_size(requested)
+	size.x = minf(size.x, bounds.size.x - TOOL_OPTIONS_MARGIN.x * 2.0)
+	size.y = minf(size.y, bounds.size.y * OPTIONS_MAX_VIEWPORT_RATIO)
+	return Vector2(maxf(0.0, size.x), maxf(0.0, size.y))
+
+
+func _bind_options_size_source() -> void:
+	var current := _current_tool_options()
+	if current == _options_size_source:
+		return
+	_disconnect_options_size_source()
+	_options_size_source = current
+	if is_instance_valid(current):
+		current.minimum_size_changed.connect(_on_tool_options_minimum_size_changed)
+
+
+func _disconnect_options_size_source() -> void:
+	if is_instance_valid(_options_size_source):
+		if _options_size_source.minimum_size_changed.is_connected(
+			_on_tool_options_minimum_size_changed
+		):
+			_options_size_source.minimum_size_changed.disconnect(
+				_on_tool_options_minimum_size_changed
+			)
+	_options_size_source = null
+
+
+func _on_tool_options_minimum_size_changed() -> void:
+	if active and _advanced_open:
+		_resize_advanced_to_content.call_deferred()
+
+
+func _resize_advanced_to_content() -> void:
+	if not active or not _advanced_open or _options_resizing or surface == null:
+		return
+	if surface.get_module_placement(Builtins.UI3_TOOL_OPTIONS_ID) != WorkspaceSurface.Placement.FLOATING:
+		return
+	var definition := surface.manager.get_definition(Builtins.UI3_TOOL_OPTIONS_ID)
+	var tool := _current_tool_options()
+	if definition == null or not is_instance_valid(tool):
+		return
+	var family_height := (
+		_family_row.get_combined_minimum_size().y + 6.0
+		if is_instance_valid(_family_row) and _family_row.visible
+		else 0.0
+	)
+	var tool_size := tool.get_combined_minimum_size() if _has_left_tool_options() else Vector2.ZERO
+	var desired := content_sized_options(
+		tool_size, family_height, surface.get_floating_bounds(), definition
+	)
+	if desired.x < 1.0 or desired.y < 1.0:
+		return
+	var current := surface.get_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID)
+	if current.size.is_equal_approx(desired):
+		return
+	# Preserve the user's right edge when changing tool type. Ignore saved
+	# 440px heights from the old layout.
+	var target := Rect2(
+		Vector2(current.end.x - desired.x, current.position.y), desired
+	)
+	_options_resizing = true
+	surface.set_floating_rect(Builtins.UI3_TOOL_OPTIONS_ID, target)
+	_options_resizing = false
+
+
+## A tap on empty canvas dismisses this transient popup. Tools, other
+## floating panels, the Timeline and the left sliders keep their own touch.
+func _input(event: InputEvent) -> void:
+	if not active or not _advanced_open or surface == null:
+		return
+	var pointer := Vector2.ZERO
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if not touch.pressed:
+			return
+		pointer = touch.position
+	elif event is InputEventMouseButton:
+		var click := event as InputEventMouseButton
+		if click.button_index != MOUSE_BUTTON_LEFT or not click.pressed:
+			return
+		pointer = click.position
+	else:
+		return
+	if not _is_blank_canvas_point(pointer):
+		return
+	_hide_advanced_panel()
+	# The dismiss tap must not create an accidental brush stroke.
+	get_viewport().set_input_as_handled()
+
+
+func _is_blank_canvas_point(pointer: Vector2) -> bool:
+	if surface == null or surface.dock_host == null or not is_instance_valid(ui_root):
+		return false
+	var host := surface.dock_host
+	var local := host.get_global_transform_with_canvas().affine_inverse() * pointer
+	if not host.get_content_rect().has_point(local):
+		return false
+	if is_instance_valid(_taskbar) and _taskbar.get_global_rect().has_point(pointer):
+		return false
+	if is_instance_valid(_palette_popup) and _palette_popup.visible:
+		if _palette_popup.get_global_rect().has_point(pointer):
+			return false
+	if is_instance_valid(_quick_bar) and _quick_bar.visible:
+		if _quick_bar.get_global_rect().has_point(pointer):
+			return false
+	for module_id in surface.manager.get_registered_ids():
+		if surface.get_module_placement(module_id) != WorkspaceSurface.Placement.FLOATING:
+			continue
+		if surface.get_floating_rect(module_id).has_point(local):
+			return false
+	return true
+
 func _show_advanced_panel() -> bool:
 	if not active:
 		return false
@@ -841,6 +975,8 @@ func _show_advanced_panel() -> bool:
 	if not _ensure_options_module_placement():
 		return false
 	_advanced_open = true
+	_resize_advanced_to_content()
+	_resize_advanced_to_content.call_deferred()
 	_relocate_advanced_if_over_quick_bar()
 	_place_quick_bar()
 	return true
