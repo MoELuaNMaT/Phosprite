@@ -327,6 +327,7 @@ func _on_effects_icon_button_pressed() -> void:
 	popup_position.y += _effects_icon_button.size.y
 	effects_menu.popup_on_parent(Rect2i(Vector2i(popup_position), Vector2i.ONE))
 
+
 func _new_ipad_submenu(parent: PopupMenu, title: String) -> PopupMenu:
 	var submenu := PopupMenu.new()
 	submenu.name = StringName("iPadSettings%d" % parent.get_child_count())

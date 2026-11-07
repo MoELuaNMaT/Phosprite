@@ -85,7 +85,8 @@ func test_workspace_headers_translate_resolved_names_without_mutating_ids() -> v
 	var preview := WorkspaceModule.new()
 	preview.definition = preview_definition
 	check_eq(
-		preview.get_header_display_title(), preview.tr("Preview"),
+		preview.get_header_display_title(),
+		preview.tr("Preview"),
 		"Preview header goes through TranslationServer",
 	)
 	var timeline_definition := WorkspaceModuleDefinition.new()
@@ -93,7 +94,8 @@ func test_workspace_headers_translate_resolved_names_without_mutating_ids() -> v
 	timeline_definition.display_name = "Animation Timeline"
 	preview.definition = timeline_definition
 	check_eq(
-		preview.get_header_display_title(), preview.tr("Animation Timeline"),
+		preview.get_header_display_title(),
+		preview.tr("Animation Timeline"),
 		"Animation Timeline header goes through TranslationServer",
 	)
 	check_eq(

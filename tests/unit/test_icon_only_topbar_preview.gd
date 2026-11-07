@@ -74,14 +74,8 @@ func test_preview_buttons_keep_icon_and_short_label_in_same_control() -> void:
 			VERTICAL_ALIGNMENT_TOP,
 			"%s renders its caption under the icon" % name
 		)
-		check_eq(
-			button.icon_alignment,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			"%s icon is centered" % name
-		)
-		check_eq(
-			button.custom_minimum_size, Vector2(32, 44), "%s target is 32 by 44" % name
-		)
+		check_eq(button.icon_alignment, HORIZONTAL_ALIGNMENT_CENTER, "%s icon is centered" % name)
+		check_eq(button.custom_minimum_size, Vector2(32, 44), "%s target is 32 by 44" % name)
 		check_eq(button.get_theme_font_size("font_size"), 9, "caption uses the small type size")
 		check_true(not button.tooltip_text.is_empty(), "%s preserves its full tooltip" % name)
 		var font := button.get_theme_font("font")
@@ -94,6 +88,7 @@ func test_preview_buttons_keep_icon_and_short_label_in_same_control() -> void:
 				"%s %s caption stays within its 20 px icon" % [locale, name],
 			)
 	preview.free()
+
 
 func test_icon_pack_license_and_files_are_bundled() -> void:
 	check_file_exists(ICON_ROOT + "LICENSE.txt", "Tabler MIT license must ship with app")

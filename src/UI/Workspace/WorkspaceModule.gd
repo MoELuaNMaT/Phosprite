@@ -212,11 +212,6 @@ func get_header_display_title() -> String:
 	return tr(title)
 
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSLATION_CHANGED:
-		queue_redraw()
-
-
 func set_header_accessory(accessory: Control) -> bool:
 	if not is_instance_valid(accessory) or is_instance_valid(_header_accessory):
 		return false
@@ -558,6 +553,8 @@ func _layout_header_accessory() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_layout_header_accessory()
+		queue_redraw()
+	elif what == NOTIFICATION_TRANSLATION_CHANGED:
 		queue_redraw()
 
 
