@@ -102,65 +102,83 @@ theme_override_constants/v_separation = 4
 
 [node name="CenterCanvasButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(32, 44)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Ctr"
 icon = ExtResource("tabler_focus-centered")
 tooltip_text = "Center Canvas"
 
 [node name="MirrorViewButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(32, 44)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Flip"
 icon = ExtResource("tabler_flip-horizontal")
 toggle_mode = true
 tooltip_text = "Mirror View"
 
 [node name="ShowGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(32, 44)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Grid"
 icon = ExtResource("tabler_grid-3x3")
 toggle_mode = true
 tooltip_text = "Show Grid"
 
 [node name="ShowPixelGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(32, 44)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Px"
 icon = ExtResource("tabler_grid-4x4")
 toggle_mode = true
 tooltip_text = "Show Pixel Grid"
 
 [node name="AddReferenceButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(32, 44)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Ref"
 icon = ExtResource("tabler_photo-plus")
 tooltip_text = "Add Reference Image"
 
 [node name="GrayscaleButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(32, 44)
 layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "BW"
 icon = ExtResource("tabler_palette-off")
 toggle_mode = true
 tooltip_text = "Grayscale View"

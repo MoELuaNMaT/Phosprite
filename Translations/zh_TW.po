@@ -383,7 +383,7 @@ msgstr ""
 
 #. Noun, a preview of something
 msgid "Preview"
-msgstr ""
+msgstr "預覽"
 
 msgid "Add"
 msgstr "新增"
@@ -5072,3 +5072,23 @@ msgstr "工作區面板可以隨時移動"
 
 msgid "Current Workspace"
 msgstr "目前工作區"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Ctr"
+msgstr "置中"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Flip"
+msgstr "鏡像"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Px"
+msgstr "像素"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Ref"
+msgstr "參考"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "BW"
+msgstr "灰階"

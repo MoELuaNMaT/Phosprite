@@ -5048,3 +5048,23 @@ msgstr ""
 
 msgid "Current Workspace"
 msgstr ""
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Ctr"
+msgstr ""
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Flip"
+msgstr ""
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Px"
+msgstr ""
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Ref"
+msgstr ""
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "BW"
+msgstr ""

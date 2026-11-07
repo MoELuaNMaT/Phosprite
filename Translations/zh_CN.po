@@ -5147,3 +5147,23 @@ msgstr "工作区面板始终可以移动"
 
 msgid "Current Workspace"
 msgstr "当前工作区"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Ctr"
+msgstr "居中"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Flip"
+msgstr "镜像"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Px"
+msgstr "像素"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "Ref"
+msgstr "参考"
+
+#. Compact Preview button caption. Keep the rendered text within a 20 px icon.
+msgid "BW"
+msgstr "灰度"

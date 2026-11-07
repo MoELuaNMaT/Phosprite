@@ -201,6 +201,22 @@ func clear_header_title_override() -> void:
 	set_header_title_override("")
 
 
+## Module identities stay in English; only rendered titles are localized.
+func get_header_display_title() -> String:
+	var title := _header_title_override
+	if title.is_empty():
+		if definition != null:
+			title = definition.get_resolved_display_name()
+		else:
+			title = String(name)
+	return tr(title)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		queue_redraw()
+
+
 func set_header_accessory(accessory: Control) -> bool:
 	if not is_instance_valid(accessory) or is_instance_valid(_header_accessory):
 		return false
@@ -458,12 +474,7 @@ func _draw() -> void:
 	draw_line(
 		Vector2(0.0, header_height), Vector2(size.x, header_height), _visual_theme.border_color, 1.0
 	)
-	var title := _header_title_override
-	if title.is_empty():
-		if definition != null:
-			title = definition.get_resolved_display_name()
-		else:
-			title = String(name)
+	var title := get_header_display_title()
 	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
 	var header_actions_width := _get_header_actions_width()
 	var header_accessory_width := (
