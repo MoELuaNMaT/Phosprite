@@ -22,4 +22,4 @@ SOFTWARE.
 
 Source: https://github.com/tabler/tabler-icons
 Revision: ed177a085b652fe04ec4f37ced867c94621e7840
-Selected outline icons resized to 20 x 20 SVG viewport for Phosprite.
+Selected icons use 20 x 20 for the topbar and 24 x 24 for Preview.
