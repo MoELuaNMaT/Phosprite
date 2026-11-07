@@ -36,6 +36,7 @@ SCRIPT_FILES = (
 UNTRANSLATED_BY_DESIGN = {
     "Phosprite", "px", "RGBA", "RGBA8", "RGB", "FPS", "UI%d",
     "FFmpeg", "64 × 64 px", "x", "X", "Y", "R", "G", "B", "A",
+    "", "1:1", "4:3", "16:9", "1/1", "…", "+",
 }
 # These new product messages must exist in BOTH Chinese catalogs.
 PHOSPRITE_REQUIRED = (
@@ -49,16 +50,16 @@ PHOSPRITE_REQUIRED = (
     "Shortcut profile:", "New Shortcut Profile",
 )
 SCENE_PROPERTY = re.compile(
-    r'^\\s*(?:text|title|dialog_text|placeholder_text|tooltip_text)'
-    r'\\s*=\\s*("(?:\\\\.|[^"\\\\])*")', re.MULTILINE
+    r'^\s*(?:text|title|dialog_text|placeholder_text|tooltip_text)'
+    r'\s*=\s*("(?:\\.|[^"\\])*")', re.MULTILINE
 )
-TR_CALL = re.compile(r'\\btr\\(\\s*("(?:\\\\.|[^"\\\\])*")')
-PRINTF = re.compile(r'%(?:\\d+\\$)?[sd]|\\{[A-Za-z_][A-Za-z0-9_]*\\}')
+TR_CALL = re.compile(r'\btr\(\s*("(?:\\.|[^"\\])*")')
+PRINTF = re.compile(r'%(?:\d+\$)?[sd]|\{[A-Za-z_][A-Za-z0-9_]*\}')
 
 
 def read_catalog(path: Path) -> dict[str, str]:
     messages: dict[str, str] = {}
-    for block in re.split(r"\\n\\s*\\n", path.read_text(encoding="utf-8")):
+    for block in re.split(r"\n\s*\n", path.read_text(encoding="utf-8")):
         message_id = ""
         translated = ""
         field = ""
