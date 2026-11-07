@@ -1,9 +1,7 @@
 extends "res://tests/test_base.gd"
 
 const TOP_MENU := preload("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
-const PREVIEW_SCENE := preload(
-	"res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn"
-)
+const PREVIEW_SCENE := preload("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn")
 const ICON_ROOT := "res://assets/graphics/ui/tabler/"
 
 
@@ -75,10 +73,13 @@ func test_preview_view_controls_are_consistent_icon_only_buttons() -> void:
 		check_eq(button.text, "", "%s has no visible text" % button_name)
 		check_true(button.icon != null, "%s has an imported vector icon" % button_name)
 		check_eq(
-			button.icon_alignment, HORIZONTAL_ALIGNMENT_CENTER,
+			button.icon_alignment,
+			HORIZONTAL_ALIGNMENT_CENTER,
 			"%s icon is horizontally centered" % button_name
 		)
-		check_eq(button.custom_minimum_size, Vector2(32, 32), "%s target is 32 square" % button_name)
+		check_eq(
+			button.custom_minimum_size, Vector2(32, 32), "%s target is 32 square" % button_name
+		)
 		check_true(not button.tooltip_text.is_empty(), "%s keeps a localized tooltip" % button_name)
 	check_eq(
 		preview.get_node("VBox/Animation/PlayButton").custom_minimum_size,
@@ -91,7 +92,14 @@ func test_preview_view_controls_are_consistent_icon_only_buttons() -> void:
 func test_icon_pack_license_and_files_are_bundled() -> void:
 	check_file_exists(ICON_ROOT + "LICENSE.txt", "Tabler MIT license must ship with app")
 	for name in [
-		"folders", "settings", "wand", "focus-centered", "flip-horizontal",
-		"grid-3x3", "grid-4x4", "photo-plus", "palette-off",
+		"folders",
+		"settings",
+		"wand",
+		"focus-centered",
+		"flip-horizontal",
+		"grid-3x3",
+		"grid-4x4",
+		"photo-plus",
+		"palette-off",
 	]:
 		check_file_exists(ICON_ROOT + name + ".svg", "%s icon is local" % name)
