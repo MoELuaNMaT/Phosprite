@@ -7,6 +7,12 @@
 [ext_resource type="Script" uid="uid://ctqrsfsbx4kwk" path="res://src/UI/Canvas/CanvasCamera.gd" id="5_ge2km"]
 [ext_resource type="Texture2D" uid="uid://c7smxwfa8826j" path="res://assets/graphics/timeline/play.png" id="6"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="8"]
+[ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/focus-centered.svg" id="tabler_focus-centered"]
+[ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/flip-horizontal.svg" id="tabler_flip-horizontal"]
+[ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/grid-3x3.svg" id="tabler_grid-3x3"]
+[ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/grid-4x4.svg" id="tabler_grid-4x4"]
+[ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/photo-plus.svg" id="tabler_photo-plus"]
+[ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/palette-off.svg" id="tabler_palette-off"]
 
 [sub_resource type="ShaderMaterial" id="1"]
 shader = ExtResource("2")
@@ -64,7 +70,7 @@ layout_mode = 2
 
 [node name="PlayButton" type="Button" parent="VBox/Animation" unique_id=1578705779 groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_default_cursor_shape = 2
@@ -76,10 +82,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -3.5
-offset_top = -6.0
-offset_right = 3.5
-offset_bottom = 6.0
+offset_left = -4.0
+offset_top = -7.0
+offset_right = 4.0
+offset_bottom = 7.0
 mouse_default_cursor_shape = 2
 texture = ExtResource("6")
 
@@ -96,61 +102,67 @@ theme_override_constants/v_separation = 4
 
 [node name="CenterCanvasButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 32)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
-text = "Center"
+icon_alignment = 1
+icon = ExtResource("tabler_focus-centered")
 tooltip_text = "Center Canvas"
 
 [node name="MirrorViewButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(66, 32)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
+icon_alignment = 1
+icon = ExtResource("tabler_flip-horizontal")
 toggle_mode = true
-text = "Mirror"
 tooltip_text = "Mirror View"
 
 [node name="ShowGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(52, 32)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
+icon_alignment = 1
+icon = ExtResource("tabler_grid-3x3")
 toggle_mode = true
-text = "Grid"
 tooltip_text = "Show Grid"
 
 [node name="ShowPixelGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(84, 32)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
+icon_alignment = 1
+icon = ExtResource("tabler_grid-4x4")
 toggle_mode = true
-text = "Pixel Grid"
 tooltip_text = "Show Pixel Grid"
 
 [node name="AddReferenceButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 32)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 focus_mode = 0
 mouse_default_cursor_shape = 2
-text = "Add Reference"
+icon_alignment = 1
+icon = ExtResource("tabler_photo-plus")
 tooltip_text = "Add Reference Image"
 
 [node name="GrayscaleButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(88, 32)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
+icon_alignment = 1
+icon = ExtResource("tabler_palette-off")
 toggle_mode = true
-text = "Grayscale"
 tooltip_text = "Grayscale View"
 
 [node name="Options" type="FoldableContainer" parent="VBox/Animation/VBoxContainer" unique_id=968849488]

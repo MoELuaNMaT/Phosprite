@@ -12,6 +12,10 @@ const CHANGELOG_URL := "https://github.com/MoELuaNMaT/Phosprite/releases"
 const EXTERNAL_LINK_ICON := preload("res://assets/graphics/misc/external_link.svg")
 const PIXELORAMA_ICON := preload("res://assets/graphics/icons/icon_16x16.png")
 const HEART_ICON := preload("res://assets/graphics/misc/heart.svg")
+const PROJECTS_TOPBAR_ICON := preload("res://assets/graphics/ui/tabler/folders.svg")
+const SETTINGS_TOPBAR_ICON := preload("res://assets/graphics/ui/tabler/settings.svg")
+const EFFECTS_TOPBAR_ICON := preload("res://assets/graphics/ui/tabler/wand.svg")
+const TOPBAR_ICON_BUTTON_SIZE := Vector2(32, 32)
 
 var recent_projects := []
 var selected_layout := 0
@@ -31,6 +35,7 @@ var effects_blur_submenu := PopupMenu.new()
 var effects_loaded_submenu: PopupMenu
 var ui_layout_button: MenuButton
 var settings_button: MenuButton
+var _effects_icon_overlay: TextureRect
 var ui_menu: PopupMenu
 
 # Dialogs
@@ -238,6 +243,7 @@ func _is_ipad_editor() -> bool:
 func _apply_ipad_topbar_visibility() -> void:
 	var ipad_editor := _is_ipad_editor()
 	_set_effects_menu_vertical_alignment(ipad_editor)
+	_set_ipad_topbar_icons(ipad_editor)
 	if not ipad_editor:
 		return
 	main_menu_button.visible = false
@@ -256,6 +262,65 @@ func _set_effects_menu_vertical_alignment(ipad_editor: bool) -> void:
 	menu_bar.size_flags_vertical = (
 		Control.SIZE_SHRINK_CENTER if ipad_editor else Control.SIZE_FILL
 	)
+
+
+## Keep Effects in its original MenuBar. MenuBar draws text, not icon
+## resources, so a transparent text title keeps the original popup active.
+func _set_ipad_topbar_icons(ipad_editor: bool) -> void:
+	if not is_instance_valid(menu_bar) or not is_instance_valid(return_home_button):
+		return
+	return_home_button.text = "" if ipad_editor else tr("Projects")
+	return_home_button.icon = PROJECTS_TOPBAR_ICON if ipad_editor else null
+	return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return_home_button.flat = ipad_editor
+	return_home_button.custom_minimum_size = (
+		TOPBAR_ICON_BUTTON_SIZE if ipad_editor else Vector2.ZERO
+	)
+	if is_instance_valid(settings_button):
+		settings_button.text = "" if ipad_editor else tr("Settings")
+		settings_button.icon = SETTINGS_TOPBAR_ICON if ipad_editor else null
+		settings_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		settings_button.tooltip_text = tr("Settings") if ipad_editor else ""
+		settings_button.custom_minimum_size = (
+			TOPBAR_ICON_BUTTON_SIZE if ipad_editor else Vector2.ZERO
+		)
+
+	var effects_index := -1
+	for index in menu_bar.get_menu_count():
+		if menu_bar.get_menu_popup(index) == effects_menu:
+			effects_index = index
+			break
+	if effects_index < 0:
+		return
+	menu_bar.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE if ipad_editor else Vector2.ZERO
+	if not ipad_editor:
+		menu_bar.set_menu_title(effects_index, String(effects_menu.name))
+		menu_bar.set_menu_tooltip(effects_index, "")
+		if is_instance_valid(_effects_icon_overlay):
+			_effects_icon_overlay.visible = false
+		return
+
+	# Invisible spaces keep the native MenuBar item clickable without text.
+	menu_bar.set_menu_title(effects_index, "     ")
+	menu_bar.set_menu_tooltip(effects_index, tr("Effects"))
+	if not is_instance_valid(_effects_icon_overlay):
+		_effects_icon_overlay = TextureRect.new()
+		_effects_icon_overlay.name = &"EffectsIconOverlay"
+		_effects_icon_overlay.texture = EFFECTS_TOPBAR_ICON
+		_effects_icon_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_effects_icon_overlay.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_effects_icon_overlay.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		menu_bar.add_child(_effects_icon_overlay)
+		_effects_icon_overlay.anchor_left = 0.5
+		_effects_icon_overlay.anchor_right = 0.5
+		_effects_icon_overlay.anchor_top = 0.5
+		_effects_icon_overlay.anchor_bottom = 0.5
+		_effects_icon_overlay.offset_left = -10
+		_effects_icon_overlay.offset_right = 10
+		_effects_icon_overlay.offset_top = -10
+		_effects_icon_overlay.offset_bottom = 10
+	_effects_icon_overlay.modulate = menu_bar.get_theme_color("font_color", "MenuBar")
+	_effects_icon_overlay.visible = true
 
 
 func _new_ipad_submenu(parent: PopupMenu, title: String) -> PopupMenu:
@@ -450,8 +515,11 @@ func _input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSLATION_CHANGED and Global.current_project != null:
-		_update_file_menu_buttons(Global.current_project)
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		if is_node_ready():
+			_apply_ipad_topbar_visibility()
+		if Global.current_project != null:
+			_update_file_menu_buttons(Global.current_project)
 	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if zen_mode:
 			_toggle_zen_mode()
