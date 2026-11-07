@@ -148,6 +148,8 @@ func _ready() -> void:
 func set_return_home_visible(should_show: bool) -> void:
 	return_home_button.visible = should_show
 	if not should_show:
+		# Restore the normal MenuBar layout when leaving the iPad editor.
+		_apply_ipad_topbar_visibility()
 		if is_instance_valid(ui_layout_button):
 			ui_layout_button.visible = false
 		if is_instance_valid(settings_button):
@@ -234,13 +236,26 @@ func _is_ipad_editor() -> bool:
 
 
 func _apply_ipad_topbar_visibility() -> void:
-	if not _is_ipad_editor():
+	var ipad_editor := _is_ipad_editor()
+	_set_effects_menu_vertical_alignment(ipad_editor)
+	if not ipad_editor:
 		return
 	main_menu_button.visible = false
 	if is_instance_valid(ui_layout_button):
 		ui_layout_button.visible = false
 	for index in menu_bar.get_menu_count():
 		menu_bar.set_menu_hidden(index, menu_bar.get_menu_popup(index) != effects_menu)
+
+
+## MenuBar draws its menu text at the top of its own bounds. Button and
+## MenuButton center theirs. Center the compact Effects MenuBar vertically
+## without replacing the original PopupMenu, shortcuts or action handlers.
+func _set_effects_menu_vertical_alignment(ipad_editor: bool) -> void:
+	if not is_instance_valid(menu_bar):
+		return
+	menu_bar.size_flags_vertical = (
+		Control.SIZE_SHRINK_CENTER if ipad_editor else Control.SIZE_FILL
+	)
 
 
 func _new_ipad_submenu(parent: PopupMenu, title: String) -> PopupMenu:

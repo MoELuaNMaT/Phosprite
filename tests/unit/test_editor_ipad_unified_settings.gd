@@ -3,6 +3,26 @@ extends "res://tests/test_base.gd"
 const TOP_MENU := preload("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 
 
+func test_ipad_effects_menu_matches_project_and_settings_vertical_alignment() -> void:
+	var menu := TOP_MENU.new()
+	var bar := MenuBar.new()
+	menu.set("menu_bar", bar)
+	menu._set_effects_menu_vertical_alignment(true)
+	check_eq(
+		bar.size_flags_vertical,
+		Control.SIZE_SHRINK_CENTER,
+		"iPad Effects menu is centered in the same topbar row as Projects and Settings",
+	)
+	menu._set_effects_menu_vertical_alignment(false)
+	check_eq(
+		bar.size_flags_vertical,
+		Control.SIZE_FILL,
+		"non-iPad layouts preserve the original MenuBar fill behavior",
+	)
+	bar.free()
+	menu.free()
+
+
 func test_ipad_topbar_keeps_only_project_effects_and_settings() -> void:
 	var source := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
 	check_has(source, 'OS.get_name() == "iOS"', "iPad-only layout gate is retained")
