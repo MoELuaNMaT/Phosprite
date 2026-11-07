@@ -5036,3 +5036,15 @@ msgstr ""
 
 msgid "Select multiple layers"
 msgstr ""
+
+msgid "Cel Properties"
+msgstr ""
+
+msgid "More layer types"
+msgstr ""
+
+msgid "Workspace panels are always moveable"
+msgstr ""
+
+msgid "Current Workspace"
+msgstr ""

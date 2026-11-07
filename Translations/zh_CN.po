@@ -5135,3 +5135,15 @@ msgstr "照片"
 
 msgid "UI"
 msgstr "界面"
+
+msgid "Cel Properties"
+msgstr "帧格属性"
+
+msgid "More layer types"
+msgstr "更多图层类型"
+
+msgid "Workspace panels are always moveable"
+msgstr "工作区面板始终可以移动"
+
+msgid "Current Workspace"
+msgstr "当前工作区"

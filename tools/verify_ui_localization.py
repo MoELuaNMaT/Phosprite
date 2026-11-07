@@ -32,6 +32,9 @@ SCRIPT_FILES = (
     "src/UI/Workspace/WorkspaceUIProfile3.gd",
     "src/UI/Workspace/TimelineHeaderControls.gd",
     "src/UI/Timeline/SingleFrameLayerStrip.gd",
+    "src/UI/Timeline/CelButton.gd",
+    "src/UI/Timeline/TimelinePanelTouchManager.gd",
+    "src/UI/Workspace/WorkspaceWindowMenuBridge.gd",
 )
 UNTRANSLATED_BY_DESIGN = {
     "Phosprite", "px", "RGBA", "RGBA8", "RGB", "FPS", "UI%d",
@@ -48,6 +51,7 @@ PHOSPRITE_REQUIRED = (
     "UI Layout", "Canvas Display", "About Phosprite",
     "Palette & Color", "Auto Outline", "Create folder from selection",
     "Shortcut profile:", "New Shortcut Profile",
+    "Cel Properties", "More layer types", "Current Workspace",
 )
 SCENE_PROPERTY = re.compile(
     r'^\s*(?:text|title|dialog_text|placeholder_text|tooltip_text)'
@@ -85,9 +89,9 @@ def source_messages(path: Path) -> set[str]:
     contents = path.read_text(encoding="utf-8")
     pattern = SCENE_PROPERTY if path.suffix == ".tscn" else TR_CALL
     return {
-        json.loads(match.group(1))
+        json.loads(match.group(1), strict=False)
         for match in pattern.finditer(contents)
-        if json.loads(match.group(1)) not in UNTRANSLATED_BY_DESIGN
+        if json.loads(match.group(1), strict=False) not in UNTRANSLATED_BY_DESIGN
     }
 
 

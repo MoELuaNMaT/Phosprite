@@ -5060,3 +5060,15 @@ msgstr ""
 
 msgid "Select multiple layers"
 msgstr ""
+
+msgid "Cel Properties"
+msgstr "圖格屬性"
+
+msgid "More layer types"
+msgstr "更多圖層類型"
+
+msgid "Workspace panels are always moveable"
+msgstr "工作區面板可以隨時移動"
+
+msgid "Current Workspace"
+msgstr "目前工作區"
