@@ -2162,7 +2162,7 @@ msgstr "Alpha"
 
 #. Refers to the size of a value, for example the size of a brush.
 msgid "Size"
-msgstr ""
+msgstr "大小"
 
 #. Found in the Dynamics options menu. Sets the limits of the brush property values, such as the minimum and maximum values of alpha and size.
 msgid "Value limits"
@@ -3974,7 +3974,7 @@ msgstr ""
 
 #. Opacity of the selected reference image on the canvas.
 msgid "Opacity"
-msgstr ""
+msgstr "不透明度"
 
 #. Color clamping of the selected reference image on the canvas.
 msgid "Color Clamping"
@@ -4175,3 +4175,888 @@ msgstr "取代"
 
 msgid "Intersect"
 msgstr "交集"
+
+msgid "Project Operations"
+msgstr "專案操作"
+
+msgid "Canvas Aids"
+msgstr "畫布輔助"
+
+msgid "Workspace"
+msgstr "工作區"
+
+msgid "UI Layout"
+msgstr "介面版面配置"
+
+msgid "Layout Presets"
+msgstr "版面配置預設"
+
+msgid "Edit Actions"
+msgstr "編輯操作"
+
+msgid "More Settings…"
+msgstr "更多設定…"
+
+msgid "Choose or Manage Layout"
+msgstr "選擇或管理版面配置"
+
+msgid "New layout"
+msgstr "新版面配置"
+
+msgid "Canvas & Display"
+msgstr "畫布與顯示"
+
+msgid "Workspace & Panels"
+msgstr "工作區與面板"
+
+msgid "Tools & Input"
+msgstr "工具與輸入"
+
+msgid "Animation & Layers"
+msgstr "動畫與圖層"
+
+msgid "Interface & Appearance"
+msgstr "介面與外觀"
+
+msgid "Files & Backup"
+msgstr "檔案與備份"
+
+msgid "Advanced & System"
+msgstr "進階與系統"
+
+msgid "Help & About"
+msgstr "說明與關於"
+
+msgid "Project Color Mode"
+msgstr "專案色彩模式"
+
+msgid "Canvas Display"
+msgstr "畫布顯示"
+
+msgid "Show Pixel Indices"
+msgstr "顯示像素索引"
+
+msgid "View Welcome Screen"
+msgstr "檢視歡迎畫面"
+
+msgid "Online Documentation"
+msgstr "線上文件"
+
+msgid "Report an Issue"
+msgstr "回報問題"
+
+msgid "About Phosprite"
+msgstr "關於 Phosprite"
+
+msgid "Exit Multi-Select"
+msgstr "結束多選"
+
+msgid "Multi-Select"
+msgstr "多選"
+
+msgid "Duplicate"
+msgstr "建立副本"
+
+msgid "Reveal in Files"
+msgstr "在「檔案」中顯示"
+
+msgid "Project duplicated."
+msgstr "已建立專案副本。"
+
+msgid "%d projects duplicated."
+msgstr "已建立 %d 個專案副本。"
+
+msgid "Project renamed."
+msgstr "已重新命名專案。"
+
+msgid "A project with this name already exists."
+msgstr "同名專案已存在。"
+
+msgid "Project names cannot be empty or contain unsupported characters."
+msgstr "專案名稱不可為空，也不可包含不支援的字元。"
+
+msgid "Could not rename this project. Error code %s (%s)"
+msgstr "無法重新命名專案。錯誤代碼：%s（%s）"
+
+msgid "Permanently delete this project? This cannot be undone."
+msgstr "要永久刪除此專案嗎？此操作無法復原。"
+
+msgid "Permanently delete %d projects? This cannot be undone."
+msgstr "要永久刪除 %d 個專案嗎？此操作無法復原。"
+
+msgid "Project deleted."
+msgstr "已刪除專案。"
+
+msgid "%d projects deleted."
+msgstr "已刪除 %d 個專案。"
+
+msgid "One or more project operations could not be completed."
+msgstr "一項或多項專案操作無法完成。"
+
+msgid "Corrupted"
+msgstr "檔案已損毀"
+
+msgid "Unreadable project"
+msgstr "無法讀取專案"
+
+msgid "Loading preview…"
+msgstr "正在載入預覽…"
+
+msgid "Preview unavailable"
+msgstr "無法預覽"
+
+msgid "Unknown date"
+msgstr "日期不明"
+
+msgid "No projects yet"
+msgstr "尚無專案"
+
+msgid "Create a new project or import artwork to get started."
+msgstr "建立新專案或匯入圖像以開始。"
+
+msgid "Rename Project"
+msgstr "重新命名專案"
+
+msgid "Enter a new project name."
+msgstr "輸入新的專案名稱。"
+
+msgid "Project name"
+msgstr "專案名稱"
+
+msgid "Delete Project"
+msgstr "刪除專案"
+
+msgid "New Project"
+msgstr "新增專案"
+
+msgid "Preset size"
+msgstr "預設尺寸"
+
+msgid "Custom presets are reserved for a future update."
+msgstr "自訂預設將於後續版本提供。"
+
+msgid "Custom size"
+msgstr "自訂尺寸"
+
+msgid "Width"
+msgstr "寬度"
+
+msgid "Height"
+msgstr "高度"
+
+msgid "Canvas is too large."
+msgstr "畫布尺寸過大。"
+
+msgid "Return to Projects"
+msgstr "返回專案"
+
+msgid "Insert name"
+msgstr "輸入名稱"
+
+msgid "Delete Layout"
+msgstr "刪除版面配置"
+
+msgid "Single frame"
+msgstr "單格"
+
+msgid "Switch to animation timeline"
+msgstr "切換到動畫時間軸"
+
+msgid "Switch to single-frame layer view"
+msgstr "切換到單格圖層檢視"
+
+msgid "More timeline controls"
+msgstr "更多時間軸操作"
+
+msgid "No layer"
+msgstr "無圖層"
+
+msgid "Toggle layer visibility"
+msgstr "切換圖層顯示狀態"
+
+msgid "Hide layer"
+msgstr "隱藏圖層"
+
+msgid "Show layer"
+msgstr "顯示圖層"
+
+msgid "Duplicate layer"
+msgstr "建立圖層副本"
+
+msgid "Create folder from selection"
+msgstr "將所選圖層建立為資料夾"
+
+msgid "Merge selected layers"
+msgstr "合併所選圖層"
+
+msgid "Folder"
+msgstr "資料夾"
+
+msgid "Layer blend mode"
+msgstr "圖層混合模式"
+
+msgid "Create a new pixel layer"
+msgstr "新增像素圖層"
+
+msgid "Layer 0"
+msgstr "圖層 0"
+
+msgid "Onion Skinning"
+msgstr "洋蔥皮"
+
+msgid "Frames"
+msgstr "影格"
+
+msgid "Enable/disable automatic linking of new cels when creating new frames\n\nLinked cels share content across multiple frames"
+msgstr "建立新影格時，啟用或停用新圖格的自動連結。\n\n連結圖格可在多個影格之間共用內容。"
+
+msgid "How many frames per second should the animation preview be?\nThe more FPS, the faster the animation plays."
+msgstr "設定動畫預覽的每秒影格數（FPS）。\n數值越大，播放越快。"
+
+msgid "If it's selected, the animation plays only on the frames that have the same tag.\nIf it's not, the animation will play for all frames, ignoring tags."
+msgstr "選取後，只播放具有相同標籤的影格。\n未選取時，播放所有影格並忽略標籤。"
+
+msgid "Ignore in onion skinning:"
+msgstr "在洋蔥皮中忽略："
+
+msgid "Enabling place-only mode is a permanent action. Once activated, you will only be able to place tiles, and you won't be able to modify existing tiles anymore on this layer."
+msgstr "啟用僅放置模式後無法還原。啟用後，此圖層只能放置圖塊，無法修改現有圖塊。"
+
+msgid "Export tileset"
+msgstr "匯出圖塊集"
+
+msgid "Z-Index:"
+msgstr "Z 軸順序："
+
+msgid "New Tileset"
+msgstr "新增圖塊集"
+
+msgid "Duration:"
+msgstr "持續時間："
+
+msgid "sec"
+msgstr "秒"
+
+msgid "Palette & Color"
+msgstr "調色盤與色彩"
+
+msgid "Auto Outline"
+msgstr "自動描邊"
+
+msgid "Outline Color"
+msgstr "描邊顏色"
+
+msgid "Neighbors"
+msgstr "相鄰方向"
+
+msgid "4-way"
+msgstr "四方向"
+
+msgid "8-way"
+msgstr "八方向"
+
+msgid "Create a new project brush from the selected pixels"
+msgstr "將所選像素建立為新的專案筆刷"
+
+msgid "Automatically outline the opaque pixels of the current pixel layer while drawing"
+msgstr "繪製時自動描邊目前像素圖層中的不透明像素"
+
+msgid "Open pressure, velocity and stabilizer settings"
+msgstr "開啟筆壓、速度與穩定器設定"
+
+msgid "Pixel Perfect: remove extra corner pixels while drawing"
+msgstr "像素完美：繪製時移除多餘的轉角像素"
+
+msgid "Alpha lock: draw only on pixels that are already nontransparent"
+msgstr "鎖定透明度：僅在已有不透明像素的位置繪製"
+
+msgid "Pixel Perfect\nMakes lines smooth by removing the extra pixels on the edges"
+msgstr "像素完美\n移除邊緣多餘像素，讓線條更平滑"
+
+msgid "Size max:"
+msgstr "最大尺寸："
+
+msgid "Brush size +"
+msgstr "增加筆刷尺寸"
+
+msgid "Max velocity:"
+msgstr "最大速度："
+
+msgid "Pixels per sec"
+msgstr "像素/秒"
+
+msgid "Locked size\n\nWhen enabled using the tool on the canvas will only move the cropping rectangle.\n\nWhen disabled using the tool on the canvas will draw the rectangle."
+msgstr "鎖定尺寸\n\n啟用後，在畫布上操作時只會移動裁切框。\n\n停用後，在畫布上操作時會繪製新的裁切框。"
+
+msgid "Search"
+msgstr "搜尋"
+
+msgid "Tool button size:"
+msgstr "工具按鈕尺寸："
+
+msgid "Pixelated"
+msgstr "像素化"
+
+msgid "Y Separated"
+msgstr "沿 Y 軸分離"
+
+msgid "Layer lock changes undoable"
+msgstr "圖層鎖定操作可復原"
+
+msgid "Layer visibility changes undoable"
+msgstr "圖層顯示狀態操作可復原"
+
+msgid "Reverse tool swap on shortcut release"
+msgstr "放開快捷鍵時反向切換工具"
+
+msgid "Swap colors when swapping tools"
+msgstr "切換工具時交換色彩"
+
+msgid "Maximum backed sessions:"
+msgstr "最多保留的備份工作階段數："
+
+msgid "Choose from presets"
+msgstr "從預設中選擇"
+
+msgid "Phosprite must be restarted for changes to take effect."
+msgstr "重新啟動 Phosprite 後變更才會生效。"
+
+msgid "Are you sure you want to reset the selected options? There will be no way to undo this."
+msgstr "確定要重設所選設定嗎？此操作無法復原。"
+
+msgid "When this setting is enabled, the native file dialogs of the operating system are being used, instead of Phosprite's custom ones."
+msgstr "啟用後，使用作業系統的檔案對話框，而非 Phosprite 的自訂對話框。"
+
+msgid "When this setting is enabled, Phosprite's subwindows will be embedded in the main window, otherwise each dialog will be its own separate window."
+msgstr "啟用後，Phosprite 的子視窗會嵌入主視窗。否則，各對話框會使用獨立視窗。"
+
+msgid "Disabled: Tiles below start immediately after above tiles.\n\nEnabled: Tiles below start with a vertical offset depending on tile size"
+msgstr "停用：下方圖塊緊接在上方圖塊之後。\n\n啟用：依圖塊尺寸為下方圖塊加入垂直位移。"
+
+msgid "If this is enabled, options will be synced between the left and the right tool.\nFor example, both tools will share the same brush size, and changing it on one tool will instantly change on the other."
+msgstr "啟用後，左右工具的設定會同步。\n例如，兩個工具共用筆刷尺寸，修改其中一個就會同步更新另一個。"
+
+msgid "If this is enabled, global palettes will be readonly and changes to them will be applied on a project wide copy instead."
+msgstr "啟用後，全域調色盤將設為唯讀。編輯會套用至目前專案的副本。"
+
+msgid "Get colors from:"
+msgstr "從下列來源取得色彩："
+
+msgid "Reducing palette size will reset positions of colors.\nColors that don't fit in new palette size will be lost!"
+msgstr "縮小調色盤會重新排列色彩位置。\n無法容納的色彩將會遺失！"
+
+msgid "Delete Palette?"
+msgstr "刪除調色盤？"
+
+msgid "Are you sure you want to exit Phosprite?"
+msgstr "確定要結束 Phosprite 嗎？"
+
+msgid "Phosprite did not close properly last time. Would you like to restore a previous session?"
+msgstr "Phosprite 上次未正常結束。要還原先前的工作階段嗎？"
+
+msgid "Recover Project?"
+msgstr "還原專案？"
+
+msgid "Phosprite found recovery data for this project."
+msgstr "找到此專案的還原資料。"
+
+msgid "Phosprite - Pixel art, reimagined for iPad"
+msgstr "Phosprite — 專為 iPad 打造的像素繪圖工具"
+
+msgid "Built on Pixelorama by Orama Interactive and contributors"
+msgstr "基於 Orama Interactive 與貢獻者開發的 Pixelorama 建立"
+
+msgid "Image Size: 64×64"
+msgstr "影像尺寸：64×64"
+
+msgid "Frame size: 64×64"
+msgstr "影格尺寸：64×64"
+
+msgid "Presets:"
+msgstr "預設："
+
+msgid "Include empty tiles"
+msgstr "包含空白圖塊"
+
+msgid "Brush name:"
+msgstr "筆刷名稱："
+
+msgid "From: "
+msgstr "起始："
+
+msgid "Create new tags"
+msgstr "新增標籤"
+
+msgid "Available tags:"
+msgstr "可用標籤："
+
+msgid "Center relative to content:"
+msgstr "相對於內容置中："
+
+msgid "Transform content"
+msgstr "變形內容"
+
+msgid "Red shift:"
+msgstr "紅色位移："
+
+msgid "Green shift:"
+msgstr "綠色位移："
+
+msgid "Blue shift:"
+msgstr "藍色位移："
+
+msgid "Wrap overflowing values"
+msgstr "循環超出範圍的數值"
+
+msgid "Live Preview"
+msgstr "即時預覽"
+
+msgid "Preview delay:"
+msgstr "預覽延遲："
+
+msgid "Places the pivot at the center of the image, or at the center of the selection, if it is present."
+msgstr "將旋轉中心設在影像中央；若有選取區域，則設在選取區域中央。"
+
+msgid "Origin:"
+msgstr "原點："
+
+msgid "Isometric step:"
+msgstr "等角步距："
+
+msgid "Deadzone:"
+msgstr "死區："
+
+msgid "Repeat times:"
+msgstr "重複次數："
+
+msgid "The number of times the animation is repeated in addition to the original animation."
+msgstr "動畫在首次播放後額外重複的次數。"
+
+msgid "Only export content that is within the bounds of a selected area."
+msgstr "僅匯出選取區域範圍內的內容。"
+
+msgid "Erase area outside selection"
+msgstr "清除選取區域外的部分"
+
+msgid "DirAccess path and file name are not valid!"
+msgstr "目錄路徑或檔案名稱無效！"
+
+msgid "File %s already exists. Overwrite?"
+msgstr "檔案 %s 已存在。要覆寫嗎？"
+
+msgid "Converting to Aseprite"
+msgstr "正在轉換為 Aseprite 格式"
+
+msgid "Please note that this is a best effort conversion\nand may not support all features of Phosprite."
+msgstr "請注意：格式轉換可能無法保留 Phosprite 的全部功能。"
+
+msgid "Export Progress"
+msgstr "匯出進度"
+
+msgid "File name:"
+msgstr "檔案名稱："
+
+msgid "Tilemap layer:"
+msgstr "圖塊地圖圖層："
+
+msgid "Could not prepare the Share Export folder. Error code %s (%s)"
+msgstr "無法準備分享匯出資料夾。錯誤代碼：%s（%s）"
+
+msgid "Share Export expected one finished file, but found %d."
+msgstr "分享匯出需要一個完成的檔案，但找到 %d 個。"
+
+msgid "Phosprite Export"
+msgstr "Phosprite 匯出"
+
+msgid "The iOS Share Sheet is unavailable in this build."
+msgstr "目前版本不支援 iOS 分享選單。"
+
+msgid "Add Reference"
+msgstr "新增參考圖"
+
+msgid "Add Reference Image"
+msgstr "新增參考影像"
+
+msgid "Spritesheet options"
+msgstr "精靈表選項"
+
+msgid "Select an image below to change its properties.\nNote that you cannot draw while a reference image is selected."
+msgstr "選取下方影像以修改屬性。\n選取參考影像時無法繪圖。"
+
+msgid "Capture .png frames"
+msgstr "擷取 PNG 影格"
+
+msgid "Capture Options"
+msgstr "擷取選項"
+
+msgid "Start after delay:"
+msgstr "延遲開始："
+
+msgid "seconds"
+msgstr "秒"
+
+msgid "Interval"
+msgstr "間隔"
+
+msgid "Capture Method:"
+msgstr "擷取方式："
+
+msgid "Capture frame every:"
+msgstr "擷取影格間隔："
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "px displacement"
+msgstr "像素位移"
+
+msgid "Seconds"
+msgstr "秒"
+
+msgid "Export as gif"
+msgstr "匯出為 GIF"
+
+msgid "Clip FPS:"
+msgstr "片段影格率："
+
+msgid "Clip Duration:"
+msgstr "片段長度："
+
+msgid "Start Gif at frame:"
+msgstr "GIF 起始影格："
+
+msgid "End Gif at frame:"
+msgstr "GIF 結束影格："
+
+msgid "Capture Mode"
+msgstr "擷取模式"
+
+msgid "Record type: "
+msgstr "錄製類型："
+
+msgid "Follow Mouse"
+msgstr "跟隨滑鼠"
+
+msgid "Scale Output"
+msgstr "縮放輸出"
+
+msgid "Output Scale:"
+msgstr "輸出縮放："
+
+msgid "Path"
+msgstr "路徑"
+
+msgid "Choose destination"
+msgstr "選擇儲存位置"
+
+msgid "Choose"
+msgstr "選擇"
+
+msgid "Guide to making a repository file"
+msgstr "儲存庫檔案製作指南"
+
+msgid "Fetching data from remote repository.\nPlease wait."
+msgstr "正在從遠端儲存庫取得資料。\n請稍候。"
+
+msgid "Extension Name..."
+msgstr "擴充功能名稱…"
+
+msgid "Description"
+msgstr "說明"
+
+msgid "Downloaded successfully"
+msgstr "下載成功"
+
+msgid "README"
+msgstr "說明文件"
+
+msgid "Rectangular Selection\n\n%s for left mouse button\n%s for right mouse button"
+msgstr "矩形選取\n\n滑鼠左鍵：%s\n滑鼠右鍵：%s"
+
+msgid "How the value changes while moving from initial to final value"
+msgstr "數值從初始值到最終值時的變化方式"
+
+msgid "If this is enabled, the last point gets added at the end of the gradient.\nDisable this if you wish to convert the gradient to have constant interpolation, so that the last color will be taken into account."
+msgstr "啟用後，在漸層末端加入最後一個控制點。\n若要使用常數插值並保留最後一個色彩，請停用此選項。"
+
+msgid "Generate noise"
+msgstr "產生雜訊"
+
+msgid "Invert:"
+msgstr "反轉："
+
+msgid "In 3D space:"
+msgstr "在 3D 空間中："
+
+msgid "Seamless:"
+msgstr "無縫："
+
+msgid "Normal map:"
+msgstr "法線貼圖："
+
+msgid "Normalize:"
+msgstr "正規化："
+
+msgid "Color ramp:"
+msgstr "色彩漸層："
+
+msgid "Noise type:"
+msgstr "雜訊類型："
+
+msgid "Seed:"
+msgstr "隨機種子："
+
+msgid "Frequency:"
+msgstr "頻率："
+
+msgid "Fractal"
+msgstr "碎形"
+
+msgid "Octaves:"
+msgstr "疊加層數："
+
+msgid "Lacunarity:"
+msgstr "空隙度："
+
+msgid "Gain:"
+msgstr "增益："
+
+msgid "Weighted Strength:"
+msgstr "加權強度："
+
+msgid "Domain Warp"
+msgstr "域變形"
+
+msgid "Enabled:"
+msgstr "已啟用："
+
+msgid "Amplitude:"
+msgstr "振幅："
+
+msgid "Fractal type:"
+msgstr "碎形類型："
+
+msgid "Fractal octaves:"
+msgstr "碎形疊加層數："
+
+msgid "Fractal lacunarity:"
+msgstr "碎形空隙度："
+
+msgid "Fractal gain:"
+msgstr "碎形增益："
+
+msgid "Tracker Lines"
+msgstr "追蹤線"
+
+msgid "Length:"
+msgstr "長度："
+
+msgid "Shortcut profile:"
+msgstr "快捷鍵設定檔："
+
+msgid "New Shortcut Profile"
+msgstr "新增快捷鍵設定檔"
+
+msgid "Rename Shortcut Profile"
+msgstr "重新命名快捷鍵設定檔"
+
+msgid "Mouse Button"
+msgstr "滑鼠按鍵"
+
+msgid "Joy Button"
+msgstr "控制器按鍵"
+
+msgid "Joy Axis"
+msgstr "控制器搖桿軸"
+
+msgid "Key"
+msgstr "按鍵"
+
+msgid "Command / Control (auto)"
+msgstr "Command / Control（自動）"
+
+msgid "Files"
+msgstr "檔案"
+
+msgid "Photos"
+msgstr "照片"
+
+msgid "Brush"
+msgstr "筆刷"
+
+msgid "Tool Options"
+msgstr "工具選項"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "UI"
+msgstr "介面"
+
+msgid "Tool Name"
+msgstr ""
+
+msgid "Mode"
+msgstr ""
+
+msgid "Radius"
+msgstr ""
+
+msgid "Tolerance"
+msgstr ""
+
+msgid "Dither"
+msgstr ""
+
+msgid "Dithering"
+msgstr ""
+
+msgid "Pattern:"
+msgstr ""
+
+msgid "Coverage"
+msgstr ""
+
+msgid "Coverage:"
+msgstr ""
+
+msgid "Similar area — fill contiguous region"
+msgstr ""
+
+msgid "Similar colors — fill matching colors"
+msgstr ""
+
+msgid "Whole selection — fill selection"
+msgstr ""
+
+msgid "Intersect selections"
+msgstr ""
+
+msgid "Use an ordered dither pattern to skip pixels while drawing"
+msgstr ""
+
+msgid "Edit gradient"
+msgstr ""
+
+msgid "Makes a chain of multiple bezier curves, similar to Krita's curve tool."
+msgstr ""
+
+msgid "Makes a single bezier curve, similar to Aseprite's curve tool."
+msgstr ""
+
+msgid "From other tool"
+msgstr ""
+
+msgid "Amount"
+msgstr ""
+
+msgid "Select grid boxes"
+msgstr ""
+
+msgid "Top Color — sample visible composite"
+msgstr ""
+
+msgid "Current Layer — sample active layer"
+msgstr ""
+
+msgid "Nearest neighbor"
+msgstr ""
+
+msgid "Brush color from"
+msgstr ""
+
+msgid "Density"
+msgstr ""
+
+msgid "Offset X"
+msgstr ""
+
+msgid "Offset Y"
+msgstr ""
+
+msgid "Fill area"
+msgstr ""
+
+msgid "Fill with"
+msgstr ""
+
+msgid "Shape"
+msgstr ""
+
+msgid "Dithering pattern"
+msgstr ""
+
+msgid "Pick for"
+msgstr ""
+
+msgid "Pick mode"
+msgstr ""
+
+msgid "Aspect Ratio"
+msgstr ""
+
+msgid "Font"
+msgstr ""
+
+msgid "Colors right"
+msgstr ""
+
+msgid "Top"
+msgstr ""
+
+msgid "Bottom"
+msgstr ""
+
+msgid "Brush color"
+msgstr ""
+
+msgid "Selection actions"
+msgstr ""
+
+msgid "Select all"
+msgstr ""
+
+msgid "Clear selection"
+msgstr ""
+
+msgid "Reselect"
+msgstr ""
+
+msgid "Invert selection"
+msgstr ""
+
+msgid "Modify selection"
+msgstr ""
+
+msgid "Expand selection"
+msgstr ""
+
+msgid "Shrink selection"
+msgstr ""
+
+msgid "Selection border"
+msgstr ""
+
+msgid "Center selection"
+msgstr ""
+
+msgid "Transparent Only"
+msgstr ""
+
+msgid "Pressure Settings"
+msgstr ""
+
+msgid "Clipping mask (layer to right)"
+msgstr ""
+
+msgid "Move layer left (up)"
+msgstr ""
+
+msgid "Move layer right (down)"
+msgstr ""
+
+msgid "Merge right (down)"
+msgstr ""
+
+msgid "Select multiple layers"
+msgstr ""

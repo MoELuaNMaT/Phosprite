@@ -4427,3 +4427,711 @@ msgstr "向右合并图层（合并到下层）"
 
 msgid "Select multiple layers"
 msgstr "多选图层"
+
+msgid "Project Operations"
+msgstr "项目操作"
+
+msgid "Canvas Aids"
+msgstr "画布辅助"
+
+msgid "Workspace"
+msgstr "工作区"
+
+msgid "UI Layout"
+msgstr "界面布局"
+
+msgid "Layout Presets"
+msgstr "布局预设"
+
+msgid "Edit Actions"
+msgstr "编辑操作"
+
+msgid "More Settings…"
+msgstr "更多设置…"
+
+msgid "Choose or Manage Layout"
+msgstr "选择或管理布局"
+
+msgid "New layout"
+msgstr "新布局"
+
+msgid "Canvas & Display"
+msgstr "画布与显示"
+
+msgid "Workspace & Panels"
+msgstr "工作区与面板"
+
+msgid "Tools & Input"
+msgstr "工具与输入"
+
+msgid "Animation & Layers"
+msgstr "动画与图层"
+
+msgid "Interface & Appearance"
+msgstr "界面与外观"
+
+msgid "Files & Backup"
+msgstr "文件与备份"
+
+msgid "Advanced & System"
+msgstr "高级与系统"
+
+msgid "Help & About"
+msgstr "帮助与关于"
+
+msgid "Project Color Mode"
+msgstr "项目颜色模式"
+
+msgid "Canvas Display"
+msgstr "画布显示"
+
+msgid "Show Pixel Indices"
+msgstr "显示像素索引"
+
+msgid "View Welcome Screen"
+msgstr "查看欢迎页面"
+
+msgid "Online Documentation"
+msgstr "在线文档"
+
+msgid "Report an Issue"
+msgstr "报告问题"
+
+msgid "About Phosprite"
+msgstr "关于 Phosprite"
+
+msgid "Exit Multi-Select"
+msgstr "退出多选"
+
+msgid "Multi-Select"
+msgstr "多选"
+
+msgid "Duplicate"
+msgstr "复制副本"
+
+msgid "Reveal in Files"
+msgstr "在“文件”中显示"
+
+msgid "Project duplicated."
+msgstr "已复制项目。"
+
+msgid "%d projects duplicated."
+msgstr "已复制 %d 个项目。"
+
+msgid "Project renamed."
+msgstr "已重命名项目。"
+
+msgid "A project with this name already exists."
+msgstr "同名项目已存在。"
+
+msgid "Project names cannot be empty or contain unsupported characters."
+msgstr "项目名称不能为空，也不能包含不支持的字符。"
+
+msgid "Could not rename this project. Error code %s (%s)"
+msgstr "无法重命名项目。错误代码：%s（%s）"
+
+msgid "Permanently delete this project? This cannot be undone."
+msgstr "永久删除这个项目？此操作无法撤销。"
+
+msgid "Permanently delete %d projects? This cannot be undone."
+msgstr "永久删除 %d 个项目？此操作无法撤销。"
+
+msgid "Project deleted."
+msgstr "已删除项目。"
+
+msgid "%d projects deleted."
+msgstr "已删除 %d 个项目。"
+
+msgid "One or more project operations could not be completed."
+msgstr "一项或多项项目操作未能完成。"
+
+msgid "Corrupted"
+msgstr "文件已损坏"
+
+msgid "Unreadable project"
+msgstr "无法读取项目"
+
+msgid "Loading preview…"
+msgstr "正在加载预览…"
+
+msgid "Preview unavailable"
+msgstr "无法预览"
+
+msgid "Unknown date"
+msgstr "日期未知"
+
+msgid "No projects yet"
+msgstr "还没有项目"
+
+msgid "Create a new project or import artwork to get started."
+msgstr "创建新项目或导入图像以开始。"
+
+msgid "Rename Project"
+msgstr "重命名项目"
+
+msgid "Enter a new project name."
+msgstr "输入新的项目名称。"
+
+msgid "Project name"
+msgstr "项目名称"
+
+msgid "Delete Project"
+msgstr "删除项目"
+
+msgid "New Project"
+msgstr "新建项目"
+
+msgid "Preset size"
+msgstr "预设尺寸"
+
+msgid "Custom presets are reserved for a future update."
+msgstr "自定义预设将在后续版本中提供。"
+
+msgid "Custom size"
+msgstr "自定义尺寸"
+
+msgid "Width"
+msgstr "宽度"
+
+msgid "Height"
+msgstr "高度"
+
+msgid "Canvas is too large."
+msgstr "画布尺寸过大。"
+
+msgid "Return to Projects"
+msgstr "返回项目"
+
+msgid "Insert name"
+msgstr "输入名称"
+
+msgid "Delete Layout"
+msgstr "删除布局"
+
+msgid "Single frame"
+msgstr "单帧"
+
+msgid "Switch to animation timeline"
+msgstr "切换到动画时间线"
+
+msgid "Switch to single-frame layer view"
+msgstr "切换到单帧图层视图"
+
+msgid "More timeline controls"
+msgstr "更多时间线操作"
+
+msgid "No layer"
+msgstr "无图层"
+
+msgid "Toggle layer visibility"
+msgstr "切换图层可见性"
+
+msgid "Hide layer"
+msgstr "隐藏图层"
+
+msgid "Show layer"
+msgstr "显示图层"
+
+msgid "Duplicate layer"
+msgstr "复制图层"
+
+msgid "Create folder from selection"
+msgstr "将所选图层建为文件夹"
+
+msgid "Merge selected layers"
+msgstr "合并所选图层"
+
+msgid "Folder"
+msgstr "文件夹"
+
+msgid "Layer blend mode"
+msgstr "图层混合模式"
+
+msgid "Create a new pixel layer"
+msgstr "新建像素图层"
+
+msgid "Layer 0"
+msgstr "图层 0"
+
+msgid "Onion Skinning"
+msgstr "洋葱皮"
+
+msgid "Frames"
+msgstr "帧"
+
+msgid "Enable/disable automatic linking of new cels when creating new frames\n\nLinked cels share content across multiple frames"
+msgstr "创建新帧时启用或禁用自动关联新帧格。\n\n关联的帧格可在多个帧之间共享内容。"
+
+msgid "How many frames per second should the animation preview be?\nThe more FPS, the faster the animation plays."
+msgstr "设置动画预览的每秒帧数（FPS）。\n数值越大，播放越快。"
+
+msgid "If it's selected, the animation plays only on the frames that have the same tag.\nIf it's not, the animation will play for all frames, ignoring tags."
+msgstr "选中后，仅播放具有相同标签的帧。\n未选中时，播放全部帧并忽略标签。"
+
+msgid "Ignore in onion skinning:"
+msgstr "在洋葱皮中忽略："
+
+msgid "Enabling place-only mode is a permanent action. Once activated, you will only be able to place tiles, and you won't be able to modify existing tiles anymore on this layer."
+msgstr "启用仅放置模式后无法恢复。启用后，此图层只能放置图块，不能修改已有图块。"
+
+msgid "Export tileset"
+msgstr "导出图块集"
+
+msgid "Z-Index:"
+msgstr "Z 轴顺序："
+
+msgid "New Tileset"
+msgstr "新建图块集"
+
+msgid "Duration:"
+msgstr "时长："
+
+msgid "sec"
+msgstr "秒"
+
+msgid "Palette & Color"
+msgstr "调色板与颜色"
+
+msgid "Auto Outline"
+msgstr "自动描边"
+
+msgid "Outline Color"
+msgstr "描边颜色"
+
+msgid "Neighbors"
+msgstr "邻接方式"
+
+msgid "4-way"
+msgstr "四邻域"
+
+msgid "8-way"
+msgstr "八邻域"
+
+msgid "Create a new project brush from the selected pixels"
+msgstr "将选中的像素创建为新的项目画笔"
+
+msgid "Automatically outline the opaque pixels of the current pixel layer while drawing"
+msgstr "绘制时自动描边当前像素图层中的不透明像素"
+
+msgid "Open pressure, velocity and stabilizer settings"
+msgstr "打开压感、速度和稳定器设置"
+
+msgid "Pixel Perfect: remove extra corner pixels while drawing"
+msgstr "像素完美：绘制时去除多余的拐角像素"
+
+msgid "Alpha lock: draw only on pixels that are already nontransparent"
+msgstr "锁定透明度：仅在已有不透明像素的位置绘制"
+
+msgid "Pixel Perfect\nMakes lines smooth by removing the extra pixels on the edges"
+msgstr "像素完美\n移除边缘多余像素，使线条更平滑"
+
+msgid "Size max:"
+msgstr "最大尺寸："
+
+msgid "Brush size +"
+msgstr "增加画笔尺寸"
+
+msgid "Max velocity:"
+msgstr "最大速度："
+
+msgid "Pixels per sec"
+msgstr "像素/秒"
+
+msgid "Locked size\n\nWhen enabled using the tool on the canvas will only move the cropping rectangle.\n\nWhen disabled using the tool on the canvas will draw the rectangle."
+msgstr "锁定尺寸\n\n启用后，在画布上操作时只会移动裁剪框。\n\n关闭后，在画布上操作时会绘制新的裁剪框。"
+
+msgid "Search"
+msgstr "搜索"
+
+msgid "Tool button size:"
+msgstr "工具按钮尺寸："
+
+msgid "Pixelated"
+msgstr "像素化"
+
+msgid "Y Separated"
+msgstr "沿 Y 轴分离"
+
+msgid "Layer lock changes undoable"
+msgstr "图层锁定操作可撤销"
+
+msgid "Layer visibility changes undoable"
+msgstr "图层可见性操作可撤销"
+
+msgid "Reverse tool swap on shortcut release"
+msgstr "松开快捷键时反向切换工具"
+
+msgid "Swap colors when swapping tools"
+msgstr "切换工具时交换颜色"
+
+msgid "Maximum backed sessions:"
+msgstr "最多保留的备份会话数："
+
+msgid "Choose from presets"
+msgstr "从预设中选择"
+
+msgid "Phosprite must be restarted for changes to take effect."
+msgstr "重启 Phosprite 后更改才会生效。"
+
+msgid "Are you sure you want to reset the selected options? There will be no way to undo this."
+msgstr "确定重置所选设置？此操作无法撤销。"
+
+msgid "When this setting is enabled, the native file dialogs of the operating system are being used, instead of Phosprite's custom ones."
+msgstr "启用后，使用操作系统的文件对话框，而非 Phosprite 的自定义对话框。"
+
+msgid "When this setting is enabled, Phosprite's subwindows will be embedded in the main window, otherwise each dialog will be its own separate window."
+msgstr "启用后，Phosprite 的子窗口会嵌入主窗口。否则，各对话框使用独立窗口。"
+
+msgid "Disabled: Tiles below start immediately after above tiles.\n\nEnabled: Tiles below start with a vertical offset depending on tile size"
+msgstr "关闭：下方图块紧接在上方图块之后。\n\n开启：根据图块尺寸为下方图块添加垂直偏移。"
+
+msgid "If this is enabled, options will be synced between the left and the right tool.\nFor example, both tools will share the same brush size, and changing it on one tool will instantly change on the other."
+msgstr "启用后，左右工具的设置会同步。\n例如，两个工具共用画笔尺寸，修改其中一个会同步更新另一个。"
+
+msgid "If this is enabled, global palettes will be readonly and changes to them will be applied on a project wide copy instead."
+msgstr "启用后，全局调色板将为只读。编辑会应用到当前项目的副本。"
+
+msgid "Get colors from:"
+msgstr "从以下来源获取颜色："
+
+msgid "Reducing palette size will reset positions of colors.\nColors that don't fit in new palette size will be lost!"
+msgstr "缩小调色板会重新排列颜色位置。\n无法容纳的颜色将丢失！"
+
+msgid "Delete Palette?"
+msgstr "删除调色板？"
+
+msgid "Are you sure you want to exit Phosprite?"
+msgstr "确定退出 Phosprite？"
+
+msgid "Phosprite did not close properly last time. Would you like to restore a previous session?"
+msgstr "Phosprite 上次未正常退出。是否恢复之前的会话？"
+
+msgid "Recover Project?"
+msgstr "恢复项目？"
+
+msgid "Phosprite found recovery data for this project."
+msgstr "找到此项目的恢复数据。"
+
+msgid "Phosprite - Pixel art, reimagined for iPad"
+msgstr "Phosprite — 专为 iPad 打造的像素画工具"
+
+msgid "Built on Pixelorama by Orama Interactive and contributors"
+msgstr "基于 Orama Interactive 及贡献者开发的 Pixelorama 构建"
+
+msgid "Image Size: 64×64"
+msgstr "图像尺寸：64×64"
+
+msgid "Frame size: 64×64"
+msgstr "帧尺寸：64×64"
+
+msgid "Presets:"
+msgstr "预设："
+
+msgid "Include empty tiles"
+msgstr "包含空图块"
+
+msgid "Brush name:"
+msgstr "画笔名称："
+
+msgid "From: "
+msgstr "起始："
+
+msgid "Create new tags"
+msgstr "新建标签"
+
+msgid "Available tags:"
+msgstr "可用标签："
+
+msgid "Center relative to content:"
+msgstr "相对于内容居中："
+
+msgid "Transform content"
+msgstr "变换内容"
+
+msgid "Red shift:"
+msgstr "红色偏移："
+
+msgid "Green shift:"
+msgstr "绿色偏移："
+
+msgid "Blue shift:"
+msgstr "蓝色偏移："
+
+msgid "Wrap overflowing values"
+msgstr "循环超出范围的数值"
+
+msgid "Live Preview"
+msgstr "实时预览"
+
+msgid "Preview delay:"
+msgstr "预览延迟："
+
+msgid "Places the pivot at the center of the image, or at the center of the selection, if it is present."
+msgstr "将旋转中心设置在图像中心；如果存在选区，则设置在选区中心。"
+
+msgid "Origin:"
+msgstr "原点："
+
+msgid "Isometric step:"
+msgstr "等轴步长："
+
+msgid "Deadzone:"
+msgstr "死区："
+
+msgid "Repeat times:"
+msgstr "重复次数："
+
+msgid "The number of times the animation is repeated in addition to the original animation."
+msgstr "动画在首次播放后额外重复的次数。"
+
+msgid "Only export content that is within the bounds of a selected area."
+msgstr "只导出选区边界内的内容。"
+
+msgid "Erase area outside selection"
+msgstr "清除选区外的区域"
+
+msgid "DirAccess path and file name are not valid!"
+msgstr "目录路径或文件名无效！"
+
+msgid "File %s already exists. Overwrite?"
+msgstr "文件 %s 已存在。是否覆盖？"
+
+msgid "Converting to Aseprite"
+msgstr "正在转换为 Aseprite 格式"
+
+msgid "Please note that this is a best effort conversion\nand may not support all features of Phosprite."
+msgstr "请注意：格式转换可能无法保留 Phosprite 的全部功能。"
+
+msgid "Export Progress"
+msgstr "导出进度"
+
+msgid "File name:"
+msgstr "文件名："
+
+msgid "Tilemap layer:"
+msgstr "图块地图图层："
+
+msgid "Could not prepare the Share Export folder. Error code %s (%s)"
+msgstr "无法准备共享导出文件夹。错误代码：%s（%s）"
+
+msgid "Share Export expected one finished file, but found %d."
+msgstr "共享导出需要一个完成的文件，但找到了 %d 个。"
+
+msgid "Phosprite Export"
+msgstr "Phosprite 导出"
+
+msgid "The iOS Share Sheet is unavailable in this build."
+msgstr "当前版本不支持 iOS 共享菜单。"
+
+msgid "Add Reference"
+msgstr "添加参考图"
+
+msgid "Add Reference Image"
+msgstr "添加参考图像"
+
+msgid "Spritesheet options"
+msgstr "精灵表选项"
+
+msgid "Select an image below to change its properties.\nNote that you cannot draw while a reference image is selected."
+msgstr "选择下方图像以修改属性。\n选中参考图像时无法绘画。"
+
+msgid "Capture .png frames"
+msgstr "捕获 PNG 帧"
+
+msgid "Capture Options"
+msgstr "捕获选项"
+
+msgid "Start after delay:"
+msgstr "延迟开始："
+
+msgid "seconds"
+msgstr "秒"
+
+msgid "Interval"
+msgstr "间隔"
+
+msgid "Capture Method:"
+msgstr "捕获方式："
+
+msgid "Capture frame every:"
+msgstr "每隔多久捕获一帧："
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "px displacement"
+msgstr "像素位移"
+
+msgid "Seconds"
+msgstr "秒"
+
+msgid "Export as gif"
+msgstr "导出为 GIF"
+
+msgid "Clip FPS:"
+msgstr "片段帧率："
+
+msgid "Clip Duration:"
+msgstr "片段时长："
+
+msgid "Start Gif at frame:"
+msgstr "GIF 起始帧："
+
+msgid "End Gif at frame:"
+msgstr "GIF 结束帧："
+
+msgid "Capture Mode"
+msgstr "捕获模式"
+
+msgid "Record type: "
+msgstr "录制类型："
+
+msgid "Follow Mouse"
+msgstr "跟随鼠标"
+
+msgid "Scale Output"
+msgstr "缩放输出"
+
+msgid "Output Scale:"
+msgstr "输出缩放："
+
+msgid "Path"
+msgstr "路径"
+
+msgid "Choose destination"
+msgstr "选择保存位置"
+
+msgid "Choose"
+msgstr "选择"
+
+msgid "Guide to making a repository file"
+msgstr "仓库文件制作指南"
+
+msgid "Fetching data from remote repository.\nPlease wait."
+msgstr "正在从远程仓库获取数据。\n请稍候。"
+
+msgid "Extension Name..."
+msgstr "扩展名称…"
+
+msgid "Description"
+msgstr "描述"
+
+msgid "Downloaded successfully"
+msgstr "下载成功"
+
+msgid "README"
+msgstr "自述文件"
+
+msgid "Rectangular Selection\n\n%s for left mouse button\n%s for right mouse button"
+msgstr "矩形选区\n\n左键：%s\n右键：%s"
+
+msgid "How the value changes while moving from initial to final value"
+msgstr "数值从初始值到最终值时的变化方式"
+
+msgid "If this is enabled, the last point gets added at the end of the gradient.\nDisable this if you wish to convert the gradient to have constant interpolation, so that the last color will be taken into account."
+msgstr "启用后，在渐变末尾添加最后一个控制点。\n若要使用常量插值并保留最后一个颜色，请关闭此选项。"
+
+msgid "Generate noise"
+msgstr "生成噪声"
+
+msgid "Invert:"
+msgstr "反转："
+
+msgid "In 3D space:"
+msgstr "在三维空间中："
+
+msgid "Seamless:"
+msgstr "无缝："
+
+msgid "Normal map:"
+msgstr "法线贴图："
+
+msgid "Normalize:"
+msgstr "归一化："
+
+msgid "Color ramp:"
+msgstr "颜色渐变："
+
+msgid "Noise type:"
+msgstr "噪声类型："
+
+msgid "Seed:"
+msgstr "随机种子："
+
+msgid "Frequency:"
+msgstr "频率："
+
+msgid "Fractal"
+msgstr "分形"
+
+msgid "Octaves:"
+msgstr "八度数："
+
+msgid "Lacunarity:"
+msgstr "间隙度："
+
+msgid "Gain:"
+msgstr "增益："
+
+msgid "Weighted Strength:"
+msgstr "加权强度："
+
+msgid "Domain Warp"
+msgstr "域扭曲"
+
+msgid "Enabled:"
+msgstr "已启用："
+
+msgid "Amplitude:"
+msgstr "振幅："
+
+msgid "Fractal type:"
+msgstr "分形类型："
+
+msgid "Fractal octaves:"
+msgstr "分形八度数："
+
+msgid "Fractal lacunarity:"
+msgstr "分形间隙度："
+
+msgid "Fractal gain:"
+msgstr "分形增益："
+
+msgid "Tracker Lines"
+msgstr "跟踪线"
+
+msgid "Length:"
+msgstr "长度："
+
+msgid "Shortcut profile:"
+msgstr "快捷键配置："
+
+msgid "New Shortcut Profile"
+msgstr "新建快捷键配置"
+
+msgid "Rename Shortcut Profile"
+msgstr "重命名快捷键配置"
+
+msgid "Mouse Button"
+msgstr "鼠标按钮"
+
+msgid "Joy Button"
+msgstr "手柄按钮"
+
+msgid "Joy Axis"
+msgstr "手柄摇杆轴"
+
+msgid "Key"
+msgstr "按键"
+
+msgid "Command / Control (auto)"
+msgstr "Command / Control（自动）"
+
+msgid "Files"
+msgstr "文件"
+
+msgid "Photos"
+msgstr "照片"
+
+msgid "UI"
+msgstr "界面"

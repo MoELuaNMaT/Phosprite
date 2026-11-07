@@ -4133,3 +4133,906 @@ msgstr ""
 #: src/UI/TilesPanel.tscn
 msgid "Probability:"
 msgstr ""
+
+msgid "Project Operations"
+msgstr ""
+
+msgid "Canvas Aids"
+msgstr ""
+
+msgid "Workspace"
+msgstr ""
+
+msgid "UI Layout"
+msgstr ""
+
+msgid "Layout Presets"
+msgstr ""
+
+msgid "Edit Actions"
+msgstr ""
+
+msgid "More Settings…"
+msgstr ""
+
+msgid "Choose or Manage Layout"
+msgstr ""
+
+msgid "New layout"
+msgstr ""
+
+msgid "Canvas & Display"
+msgstr ""
+
+msgid "Workspace & Panels"
+msgstr ""
+
+msgid "Tools & Input"
+msgstr ""
+
+msgid "Animation & Layers"
+msgstr ""
+
+msgid "Interface & Appearance"
+msgstr ""
+
+msgid "Files & Backup"
+msgstr ""
+
+msgid "Advanced & System"
+msgstr ""
+
+msgid "Help & About"
+msgstr ""
+
+msgid "Project Color Mode"
+msgstr ""
+
+msgid "Canvas Display"
+msgstr ""
+
+msgid "Show Pixel Indices"
+msgstr ""
+
+msgid "View Welcome Screen"
+msgstr ""
+
+msgid "Online Documentation"
+msgstr ""
+
+msgid "Report an Issue"
+msgstr ""
+
+msgid "About Phosprite"
+msgstr ""
+
+msgid "Exit Multi-Select"
+msgstr ""
+
+msgid "Multi-Select"
+msgstr ""
+
+msgid "Duplicate"
+msgstr ""
+
+msgid "Reveal in Files"
+msgstr ""
+
+msgid "Project duplicated."
+msgstr ""
+
+msgid "%d projects duplicated."
+msgstr ""
+
+msgid "Project renamed."
+msgstr ""
+
+msgid "A project with this name already exists."
+msgstr ""
+
+msgid "Project names cannot be empty or contain unsupported characters."
+msgstr ""
+
+msgid "Could not rename this project. Error code %s (%s)"
+msgstr ""
+
+msgid "Permanently delete this project? This cannot be undone."
+msgstr ""
+
+msgid "Permanently delete %d projects? This cannot be undone."
+msgstr ""
+
+msgid "Project deleted."
+msgstr ""
+
+msgid "%d projects deleted."
+msgstr ""
+
+msgid "One or more project operations could not be completed."
+msgstr ""
+
+msgid "Corrupted"
+msgstr ""
+
+msgid "Unreadable project"
+msgstr ""
+
+msgid "Loading preview…"
+msgstr ""
+
+msgid "Preview unavailable"
+msgstr ""
+
+msgid "Unknown date"
+msgstr ""
+
+msgid "No projects yet"
+msgstr ""
+
+msgid "Create a new project or import artwork to get started."
+msgstr ""
+
+msgid "Rename Project"
+msgstr ""
+
+msgid "Enter a new project name."
+msgstr ""
+
+msgid "Project name"
+msgstr ""
+
+msgid "Delete Project"
+msgstr ""
+
+msgid "New Project"
+msgstr ""
+
+msgid "Preset size"
+msgstr ""
+
+msgid "Custom presets are reserved for a future update."
+msgstr ""
+
+msgid "Custom size"
+msgstr ""
+
+msgid "Width"
+msgstr ""
+
+msgid "Height"
+msgstr ""
+
+msgid "Canvas is too large."
+msgstr ""
+
+msgid "Return to Projects"
+msgstr ""
+
+msgid "Insert name"
+msgstr ""
+
+msgid "Delete Layout"
+msgstr ""
+
+msgid "Single frame"
+msgstr ""
+
+msgid "Switch to animation timeline"
+msgstr ""
+
+msgid "Switch to single-frame layer view"
+msgstr ""
+
+msgid "More timeline controls"
+msgstr ""
+
+msgid "No layer"
+msgstr ""
+
+msgid "Toggle layer visibility"
+msgstr ""
+
+msgid "Hide layer"
+msgstr ""
+
+msgid "Show layer"
+msgstr ""
+
+msgid "Duplicate layer"
+msgstr ""
+
+msgid "Create folder from selection"
+msgstr ""
+
+msgid "Merge selected layers"
+msgstr ""
+
+msgid "Folder"
+msgstr ""
+
+msgid "Layer blend mode"
+msgstr ""
+
+msgid "Create a new pixel layer"
+msgstr ""
+
+msgid "Layer 0"
+msgstr ""
+
+msgid "Onion Skinning"
+msgstr ""
+
+msgid "Frames"
+msgstr ""
+
+msgid "Enable/disable automatic linking of new cels when creating new frames\n\nLinked cels share content across multiple frames"
+msgstr ""
+
+msgid "How many frames per second should the animation preview be?\nThe more FPS, the faster the animation plays."
+msgstr ""
+
+msgid "If it's selected, the animation plays only on the frames that have the same tag.\nIf it's not, the animation will play for all frames, ignoring tags."
+msgstr ""
+
+msgid "Ignore in onion skinning:"
+msgstr ""
+
+msgid "Enabling place-only mode is a permanent action. Once activated, you will only be able to place tiles, and you won't be able to modify existing tiles anymore on this layer."
+msgstr ""
+
+msgid "Export tileset"
+msgstr ""
+
+msgid "Z-Index:"
+msgstr ""
+
+msgid "New Tileset"
+msgstr ""
+
+msgid "Duration:"
+msgstr ""
+
+msgid "sec"
+msgstr ""
+
+msgid "Palette & Color"
+msgstr ""
+
+msgid "Auto Outline"
+msgstr ""
+
+msgid "Outline Color"
+msgstr ""
+
+msgid "Neighbors"
+msgstr ""
+
+msgid "4-way"
+msgstr ""
+
+msgid "8-way"
+msgstr ""
+
+msgid "Create a new project brush from the selected pixels"
+msgstr ""
+
+msgid "Automatically outline the opaque pixels of the current pixel layer while drawing"
+msgstr ""
+
+msgid "Open pressure, velocity and stabilizer settings"
+msgstr ""
+
+msgid "Pixel Perfect: remove extra corner pixels while drawing"
+msgstr ""
+
+msgid "Alpha lock: draw only on pixels that are already nontransparent"
+msgstr ""
+
+msgid "Pixel Perfect\nMakes lines smooth by removing the extra pixels on the edges"
+msgstr ""
+
+msgid "Size max:"
+msgstr ""
+
+msgid "Brush size +"
+msgstr ""
+
+msgid "Max velocity:"
+msgstr ""
+
+msgid "Pixels per sec"
+msgstr ""
+
+msgid "Locked size\n\nWhen enabled using the tool on the canvas will only move the cropping rectangle.\n\nWhen disabled using the tool on the canvas will draw the rectangle."
+msgstr ""
+
+msgid "Search"
+msgstr ""
+
+msgid "Tool button size:"
+msgstr ""
+
+msgid "Pixelated"
+msgstr ""
+
+msgid "Y Separated"
+msgstr ""
+
+msgid "Layer lock changes undoable"
+msgstr ""
+
+msgid "Layer visibility changes undoable"
+msgstr ""
+
+msgid "Reverse tool swap on shortcut release"
+msgstr ""
+
+msgid "Swap colors when swapping tools"
+msgstr ""
+
+msgid "Maximum backed sessions:"
+msgstr ""
+
+msgid "Choose from presets"
+msgstr ""
+
+msgid "Phosprite must be restarted for changes to take effect."
+msgstr ""
+
+msgid "Are you sure you want to reset the selected options? There will be no way to undo this."
+msgstr ""
+
+msgid "When this setting is enabled, the native file dialogs of the operating system are being used, instead of Phosprite's custom ones."
+msgstr ""
+
+msgid "When this setting is enabled, Phosprite's subwindows will be embedded in the main window, otherwise each dialog will be its own separate window."
+msgstr ""
+
+msgid "Disabled: Tiles below start immediately after above tiles.\n\nEnabled: Tiles below start with a vertical offset depending on tile size"
+msgstr ""
+
+msgid "If this is enabled, options will be synced between the left and the right tool.\nFor example, both tools will share the same brush size, and changing it on one tool will instantly change on the other."
+msgstr ""
+
+msgid "If this is enabled, global palettes will be readonly and changes to them will be applied on a project wide copy instead."
+msgstr ""
+
+msgid "Get colors from:"
+msgstr ""
+
+msgid "Reducing palette size will reset positions of colors.\nColors that don't fit in new palette size will be lost!"
+msgstr ""
+
+msgid "Delete Palette?"
+msgstr ""
+
+msgid "Are you sure you want to exit Phosprite?"
+msgstr ""
+
+msgid "Phosprite did not close properly last time. Would you like to restore a previous session?"
+msgstr ""
+
+msgid "Recover Project?"
+msgstr ""
+
+msgid "Phosprite found recovery data for this project."
+msgstr ""
+
+msgid "Phosprite - Pixel art, reimagined for iPad"
+msgstr ""
+
+msgid "Built on Pixelorama by Orama Interactive and contributors"
+msgstr ""
+
+msgid "Image Size: 64×64"
+msgstr ""
+
+msgid "Frame size: 64×64"
+msgstr ""
+
+msgid "Presets:"
+msgstr ""
+
+msgid "Include empty tiles"
+msgstr ""
+
+msgid "Brush name:"
+msgstr ""
+
+msgid "From: "
+msgstr ""
+
+msgid "Create new tags"
+msgstr ""
+
+msgid "Available tags:"
+msgstr ""
+
+msgid "Center relative to content:"
+msgstr ""
+
+msgid "Transform content"
+msgstr ""
+
+msgid "Red shift:"
+msgstr ""
+
+msgid "Green shift:"
+msgstr ""
+
+msgid "Blue shift:"
+msgstr ""
+
+msgid "Wrap overflowing values"
+msgstr ""
+
+msgid "Live Preview"
+msgstr ""
+
+msgid "Preview delay:"
+msgstr ""
+
+msgid "Places the pivot at the center of the image, or at the center of the selection, if it is present."
+msgstr ""
+
+msgid "Origin:"
+msgstr ""
+
+msgid "Isometric step:"
+msgstr ""
+
+msgid "Deadzone:"
+msgstr ""
+
+msgid "Repeat times:"
+msgstr ""
+
+msgid "The number of times the animation is repeated in addition to the original animation."
+msgstr ""
+
+msgid "Only export content that is within the bounds of a selected area."
+msgstr ""
+
+msgid "Erase area outside selection"
+msgstr ""
+
+msgid "DirAccess path and file name are not valid!"
+msgstr ""
+
+msgid "File %s already exists. Overwrite?"
+msgstr ""
+
+msgid "Converting to Aseprite"
+msgstr ""
+
+msgid "Please note that this is a best effort conversion\nand may not support all features of Phosprite."
+msgstr ""
+
+msgid "Export Progress"
+msgstr ""
+
+msgid "File name:"
+msgstr ""
+
+msgid "Tilemap layer:"
+msgstr ""
+
+msgid "Could not prepare the Share Export folder. Error code %s (%s)"
+msgstr ""
+
+msgid "Share Export expected one finished file, but found %d."
+msgstr ""
+
+msgid "Phosprite Export"
+msgstr ""
+
+msgid "The iOS Share Sheet is unavailable in this build."
+msgstr ""
+
+msgid "Add Reference"
+msgstr ""
+
+msgid "Add Reference Image"
+msgstr ""
+
+msgid "Spritesheet options"
+msgstr ""
+
+msgid "Select an image below to change its properties.\nNote that you cannot draw while a reference image is selected."
+msgstr ""
+
+msgid "Capture .png frames"
+msgstr ""
+
+msgid "Capture Options"
+msgstr ""
+
+msgid "Start after delay:"
+msgstr ""
+
+msgid "seconds"
+msgstr ""
+
+msgid "Interval"
+msgstr ""
+
+msgid "Capture Method:"
+msgstr ""
+
+msgid "Capture frame every:"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "px displacement"
+msgstr ""
+
+msgid "Seconds"
+msgstr ""
+
+msgid "Export as gif"
+msgstr ""
+
+msgid "Clip FPS:"
+msgstr ""
+
+msgid "Clip Duration:"
+msgstr ""
+
+msgid "Start Gif at frame:"
+msgstr ""
+
+msgid "End Gif at frame:"
+msgstr ""
+
+msgid "Capture Mode"
+msgstr ""
+
+msgid "Record type: "
+msgstr ""
+
+msgid "Follow Mouse"
+msgstr ""
+
+msgid "Scale Output"
+msgstr ""
+
+msgid "Output Scale:"
+msgstr ""
+
+msgid "Path"
+msgstr ""
+
+msgid "Choose destination"
+msgstr ""
+
+msgid "Choose"
+msgstr ""
+
+msgid "Guide to making a repository file"
+msgstr ""
+
+msgid "Fetching data from remote repository.\nPlease wait."
+msgstr ""
+
+msgid "Extension Name..."
+msgstr ""
+
+msgid "Description"
+msgstr ""
+
+msgid "Downloaded successfully"
+msgstr ""
+
+msgid "README"
+msgstr ""
+
+msgid "Rectangular Selection\n\n%s for left mouse button\n%s for right mouse button"
+msgstr ""
+
+msgid "How the value changes while moving from initial to final value"
+msgstr ""
+
+msgid "If this is enabled, the last point gets added at the end of the gradient.\nDisable this if you wish to convert the gradient to have constant interpolation, so that the last color will be taken into account."
+msgstr ""
+
+msgid "Generate noise"
+msgstr ""
+
+msgid "Invert:"
+msgstr ""
+
+msgid "In 3D space:"
+msgstr ""
+
+msgid "Seamless:"
+msgstr ""
+
+msgid "Normal map:"
+msgstr ""
+
+msgid "Normalize:"
+msgstr ""
+
+msgid "Color ramp:"
+msgstr ""
+
+msgid "Noise type:"
+msgstr ""
+
+msgid "Seed:"
+msgstr ""
+
+msgid "Frequency:"
+msgstr ""
+
+msgid "Fractal"
+msgstr ""
+
+msgid "Octaves:"
+msgstr ""
+
+msgid "Lacunarity:"
+msgstr ""
+
+msgid "Gain:"
+msgstr ""
+
+msgid "Weighted Strength:"
+msgstr ""
+
+msgid "Domain Warp"
+msgstr ""
+
+msgid "Enabled:"
+msgstr ""
+
+msgid "Amplitude:"
+msgstr ""
+
+msgid "Fractal type:"
+msgstr ""
+
+msgid "Fractal octaves:"
+msgstr ""
+
+msgid "Fractal lacunarity:"
+msgstr ""
+
+msgid "Fractal gain:"
+msgstr ""
+
+msgid "Tracker Lines"
+msgstr ""
+
+msgid "Length:"
+msgstr ""
+
+msgid "Shortcut profile:"
+msgstr ""
+
+msgid "New Shortcut Profile"
+msgstr ""
+
+msgid "Rename Shortcut Profile"
+msgstr ""
+
+msgid "Mouse Button"
+msgstr ""
+
+msgid "Joy Button"
+msgstr ""
+
+msgid "Joy Axis"
+msgstr ""
+
+msgid "Key"
+msgstr ""
+
+msgid "Command / Control (auto)"
+msgstr ""
+
+msgid "Files"
+msgstr ""
+
+msgid "Photos"
+msgstr ""
+
+msgid "Brush"
+msgstr ""
+
+msgid "Tool Options"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "UI"
+msgstr ""
+
+msgid "Fetching data from remote repository.\n"
+msgstr ""
+
+msgid "Unable to get info from remote repository.\n\n"
+msgstr ""
+
+msgid "Color Selection"
+msgstr ""
+
+msgid "Across Layers"
+msgstr ""
+
+msgid "Replace"
+msgstr ""
+
+msgid "Intersect"
+msgstr ""
+
+msgid "Tool Name"
+msgstr ""
+
+msgid "Mode"
+msgstr ""
+
+msgid "Radius"
+msgstr ""
+
+msgid "Tolerance"
+msgstr ""
+
+msgid "Dither"
+msgstr ""
+
+msgid "Dithering"
+msgstr ""
+
+msgid "Pattern:"
+msgstr ""
+
+msgid "Coverage"
+msgstr ""
+
+msgid "Coverage:"
+msgstr ""
+
+msgid "Similar area — fill contiguous region"
+msgstr ""
+
+msgid "Similar colors — fill matching colors"
+msgstr ""
+
+msgid "Whole selection — fill selection"
+msgstr ""
+
+msgid "Intersect selections"
+msgstr ""
+
+msgid "Use an ordered dither pattern to skip pixels while drawing"
+msgstr ""
+
+msgid "Edit gradient"
+msgstr ""
+
+msgid "Makes a chain of multiple bezier curves, similar to Krita's curve tool."
+msgstr ""
+
+msgid "Makes a single bezier curve, similar to Aseprite's curve tool."
+msgstr ""
+
+msgid "From other tool"
+msgstr ""
+
+msgid "Amount"
+msgstr ""
+
+msgid "Select grid boxes"
+msgstr ""
+
+msgid "Top Color — sample visible composite"
+msgstr ""
+
+msgid "Current Layer — sample active layer"
+msgstr ""
+
+msgid "Nearest neighbor"
+msgstr ""
+
+msgid "Brush color from"
+msgstr ""
+
+msgid "Density"
+msgstr ""
+
+msgid "Offset X"
+msgstr ""
+
+msgid "Offset Y"
+msgstr ""
+
+msgid "Fill area"
+msgstr ""
+
+msgid "Fill with"
+msgstr ""
+
+msgid "Shape"
+msgstr ""
+
+msgid "Dithering pattern"
+msgstr ""
+
+msgid "Pick for"
+msgstr ""
+
+msgid "Pick mode"
+msgstr ""
+
+msgid "Aspect Ratio"
+msgstr ""
+
+msgid "Font"
+msgstr ""
+
+msgid "Colors right"
+msgstr ""
+
+msgid "Top"
+msgstr ""
+
+msgid "Bottom"
+msgstr ""
+
+msgid "Brush color"
+msgstr ""
+
+msgid "Selection actions"
+msgstr ""
+
+msgid "Select all"
+msgstr ""
+
+msgid "Clear selection"
+msgstr ""
+
+msgid "Reselect"
+msgstr ""
+
+msgid "Invert selection"
+msgstr ""
+
+msgid "Modify selection"
+msgstr ""
+
+msgid "Expand selection"
+msgstr ""
+
+msgid "Shrink selection"
+msgstr ""
+
+msgid "Selection border"
+msgstr ""
+
+msgid "Center selection"
+msgstr ""
+
+msgid "Transparent Only"
+msgstr ""
+
+msgid "Pressure Settings"
+msgstr ""
+
+msgid "Clipping mask (layer to right)"
+msgstr ""
+
+msgid "Move layer left (up)"
+msgstr ""
+
+msgid "Move layer right (down)"
+msgstr ""
+
+msgid "Merge right (down)"
+msgstr ""
+
+msgid "Select multiple layers"
+msgstr ""
