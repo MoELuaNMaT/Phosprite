@@ -9,6 +9,8 @@ on:
       - "addons/**"
       - "src/**"
       - "tests/**"
+      - "Translations/**"
+      - "tools/verify_ui_localization.py"
       - "project.godot"
       - "export_presets.cfg"
       - ".github/workflows/**"
@@ -24,6 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - uses: Scony/godot-gdscript-toolkit@master
+      - name: UI localization coverage
+        run: python3 tools/verify_ui_localization.py
       - name: Formatting checks
         run: gdformat --diff .
       - name: Linting checks

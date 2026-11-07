@@ -67,6 +67,13 @@ var _feedback_generation := 0
 @onready var delete_dialog := %DeleteProjectsDialog as ConfirmationDialog
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		multiselect_button.text = (
+			tr("Exit Multi-Select") if multiselect_mode else tr("Multi-Select")
+		)
+
+
 func _ready() -> void:
 	if library == null:
 		library = ProjectLibraryScript.new(StoragePolicy.PROJECTS_DIRECTORY)

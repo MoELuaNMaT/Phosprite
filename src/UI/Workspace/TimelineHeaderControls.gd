@@ -25,6 +25,12 @@ var _item_widths: Dictionary = {}
 @onready var overflow_content := %OverflowContent as VBoxContainer
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		_sync_mode_switch()
+		_apply_overflow_layout()
+
+
 func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_pressed)
 	redo_button.pressed.connect(_on_redo_pressed)
@@ -205,15 +211,15 @@ func _sync_mode_switch() -> void:
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if not is_instance_valid(timeline):
 		mode_switch_button.set_pressed_no_signal(false)
-		mode_switch_button.text = "Animation"
+		mode_switch_button.text = tr("Animation")
 		return
 	var single_frame: bool = (
 		timeline.get_timeline_mode() == AnimationTimeline.TimelineMode.SINGLE_FRAME
 	)
 	mode_switch_button.set_pressed_no_signal(single_frame)
-	mode_switch_button.text = "Single frame" if single_frame else "Animation"
+	mode_switch_button.text = tr("Single frame") if single_frame else tr("Animation")
 	mode_switch_button.tooltip_text = (
-		"Switch to animation timeline" if single_frame else "Switch to single-frame layer view"
+		tr("Switch to animation timeline") if single_frame else tr("Switch to single-frame layer view")
 	)
 
 

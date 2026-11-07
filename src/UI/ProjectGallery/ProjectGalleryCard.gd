@@ -31,6 +31,19 @@ var _last_touch_position := Vector2.ZERO
 @onready var selection_check := %SelectionCheck as Label
 
 
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_TRANSLATION_CHANGED or not is_node_ready() or entry == null:
+		return
+	if entry.health_state == Entry.HealthState.CORRUPTED:
+		_set_thumbnail_status(tr("Corrupted"), true)
+		size_label.text = tr("Unreadable project")
+	elif not thumbnail_loaded:
+		_set_thumbnail_status(tr("Loading preview…"), false)
+	elif thumbnail_rect.texture == null:
+		_set_thumbnail_status(tr("Preview unavailable"), true)
+	modified_label.text = _format_modified_time(entry.modified_time)
+
+
 func bind(project_entry: ProjectLibraryEntry) -> void:
 	entry = project_entry
 	thumbnail_loaded = false
