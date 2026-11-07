@@ -219,7 +219,9 @@ func _sync_mode_switch() -> void:
 	mode_switch_button.set_pressed_no_signal(single_frame)
 	mode_switch_button.text = tr("Single frame") if single_frame else tr("Animation")
 	mode_switch_button.tooltip_text = (
-		tr("Switch to animation timeline") if single_frame else tr("Switch to single-frame layer view")
+		tr("Switch to animation timeline")
+		if single_frame
+		else tr("Switch to single-frame layer view")
 	)
 
 
