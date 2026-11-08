@@ -2,6 +2,7 @@ class_name BaseTool
 extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
+const SIDEBAR_VALUE_CONTROL_HEIGHT := 48.0
 const MODE_BUTTON_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const MODE_ICON_BUTTON_SIZE := 32.0
 const COMPACT_OPTION_CONTROL_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
@@ -98,19 +99,17 @@ func _apply_stacked_option_layout(root: Node) -> void:
 func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
 	slider.allow_text_input = false
 	slider.prefix = _strip_option_colon(slider.prefix)
-	slider.show_drag_arrows = true
-	slider.show_arrows = false
-	slider.show_progress = false
+	slider.configure_tool_vertical_drag()
 	slider.drag_sensitivity = _tool_drag_sensitivity(slider)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	slider.custom_minimum_size = Vector2(
-		SIDEBAR_CONTROL_WIDTH, maxf(slider.custom_minimum_size.y, 24.0)
+		SIDEBAR_CONTROL_WIDTH, maxf(slider.custom_minimum_size.y, SIDEBAR_VALUE_CONTROL_HEIGHT)
 	)
 
 
 func _configure_sidebar_vector_slider(slider: ValueSliderV2) -> void:
 	slider.grid_columns = 1
-	slider.slider_min_size = Vector2(SIDEBAR_CONTROL_WIDTH, 24.0)
+	slider.slider_min_size = Vector2(SIDEBAR_CONTROL_WIDTH, SIDEBAR_VALUE_CONTROL_HEIGHT)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for component in slider.get_sliders():
 		_configure_sidebar_value_slider(component)

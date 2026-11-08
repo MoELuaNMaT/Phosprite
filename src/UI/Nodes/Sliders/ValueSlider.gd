@@ -18,6 +18,9 @@ const VALUE_ARROW_ICON := preload("uid://ct8wn8m6x4m54")
 const VALUE_ARROW_HOVER_ICON := preload("uid://bq8h66v4ie8xl")
 const VALUE_ARROW_PRESS_ICON := preload("uid://hhxenhteahv6")
 const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
+const TOOL_VERTICAL_ARROW_INSET := 6.0
+const TOOL_VERTICAL_ARROW_HALF_WIDTH := 4.0
+const TOOL_VERTICAL_VALUE_INSET := 12.0
 
 @export var editable := true:
 	set(v):
@@ -51,6 +54,9 @@ const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
 @export var allow_text_input := true
 ## Draws the read-only value as "< value >" to advertise horizontal drag adjustment.
 @export var show_drag_arrows := false
+## The tool-option-only layout: transparent, vertical arrows and vertical dragging.
+## Other ValueSlider uses keep their existing horizontal behavior.
+@export var tool_vertical_drag := false
 ## Multiplier applied to pointer drag distance. Values below 1.0 make drag adjustment slower.
 @export_range(0.05, 2.0, 0.05) var drag_sensitivity := 1.0
 @export var show_arrows := true:
@@ -105,12 +111,67 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED:
 		_reset_display(true)
+		queue_redraw()
+	elif what == NOTIFICATION_RESIZED:
+		if tool_vertical_drag:
+			queue_redraw()
 	elif what == NOTIFICATION_TRANSLATION_CHANGED:
 		_reset_display(false)
 		if is_layout_rtl():
 			fill_mode = FILL_RIGHT_TO_LEFT
 		else:
 			fill_mode = FILL_LEFT_TO_RIGHT
+
+
+## Use this only for numeric controls inside a tool's options panel. It
+## changes presentation and drag direction, not the Range min/max/step or signals.
+func configure_tool_vertical_drag() -> void:
+	tool_vertical_drag = true
+	show_drag_arrows = false
+	show_arrows = false
+	show_progress = false
+	allow_text_input = false
+	_line_edit.offset_top = TOOL_VERTICAL_VALUE_INSET
+	_line_edit.offset_bottom = -TOOL_VERTICAL_VALUE_INSET
+	_reset_display(true)
+	queue_redraw()
+
+
+func _draw() -> void:
+	if not tool_vertical_drag:
+		return
+	var center_x := size.x * 0.5
+	var upper_y := TOOL_VERTICAL_ARROW_INSET + TOOL_VERTICAL_ARROW_HALF_WIDTH
+	var lower_y := size.y - upper_y
+	var ink := get_theme_color(&"font_color", &"LineEdit")
+	draw_line(
+		Vector2(center_x - TOOL_VERTICAL_ARROW_HALF_WIDTH, upper_y),
+		Vector2(center_x, TOOL_VERTICAL_ARROW_INSET),
+		ink,
+		1.5,
+		true
+	)
+	draw_line(
+		Vector2(center_x, TOOL_VERTICAL_ARROW_INSET),
+		Vector2(center_x + TOOL_VERTICAL_ARROW_HALF_WIDTH, upper_y),
+		ink,
+		1.5,
+		true
+	)
+	draw_line(
+		Vector2(center_x - TOOL_VERTICAL_ARROW_HALF_WIDTH, lower_y),
+		Vector2(center_x, size.y - TOOL_VERTICAL_ARROW_INSET),
+		ink,
+		1.5,
+		true
+	)
+	draw_line(
+		Vector2(center_x, size.y - TOOL_VERTICAL_ARROW_INSET),
+		Vector2(center_x + TOOL_VERTICAL_ARROW_HALF_WIDTH, lower_y),
+		ink,
+		1.5,
+		true
+	)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -141,7 +202,9 @@ func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				state = HELD
-				set_meta("mouse_start_position", get_local_mouse_position())
+				set_meta("mouse_start_position", event.position)
+				if tool_vertical_drag:
+					accept_event()
 			elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				drag_started.emit()
 				_start_value = value
@@ -167,13 +230,18 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				state = NORMAL
 				remove_meta("mouse_start_position")
+			if tool_vertical_drag:
+				accept_event()
 		elif event is InputEventMouseMotion:
-			if get_meta("mouse_start_position").distance_to(get_local_mouse_position()) > 2:
+			var start_position: Vector2 = get_meta("mouse_start_position")
+			if start_position.distance_to(event.position) > 2.0:
 				state = SLIDING
 				drag_started.emit()
 				set_meta("shift_pressed", event.shift_pressed)
 				set_meta("start_ratio", ratio)
 				_start_value = value
+			if tool_vertical_drag:
+				accept_event()
 	elif state == SLIDING:
 		if event.is_action_released("left_mouse"):
 			state = NORMAL
@@ -184,23 +252,27 @@ func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseMotion:
 			# When pressing/releasing Shift, reset starting values to prevent slider jumping around
 			if get_meta("shift_pressed") != event.shift_pressed:
-				set_meta("mouse_start_position", get_local_mouse_position())
+				set_meta("mouse_start_position", event.position)
 				set_meta("start_ratio", ratio)
 				_start_value = value
 				set_meta("shift_pressed", event.shift_pressed)
-			var x_delta := 0.0
-			if is_layout_rtl():
-				x_delta = get_meta("mouse_start_position").x - get_local_mouse_position().x
+			var start_position: Vector2 = get_meta("mouse_start_position")
+			var axis_delta := 0.0
+			if tool_vertical_drag:
+				axis_delta = start_position.y - event.position.y
+			elif is_layout_rtl():
+				axis_delta = start_position.x - event.position.x
 			else:
-				x_delta = get_local_mouse_position().x - get_meta("mouse_start_position").x
-			# Slow down to allow for more precision
+				axis_delta = event.position.x - start_position.x
+			# Slow down to allow for more precision.
 			if event.shift_pressed:
-				x_delta *= 0.1
-			var drag_delta := x_delta * drag_sensitivity
+				axis_delta *= 0.1
+			var drag_delta := axis_delta * drag_sensitivity
 			if show_progress:
 				# Keep accumulating drag distance even after the visible ratio reaches its bounds.
 				var start_ratio: float = get_meta("start_ratio")
-				var new_ratio := start_ratio + drag_delta / size.x
+				var axis_length := size.y if tool_vertical_drag else size.x
+				var new_ratio := start_ratio + drag_delta / maxf(axis_length, 1.0)
 				value = _start_value + (max_value - min_value) * (new_ratio - start_ratio)
 			else:
 				value = _start_value + drag_delta * step
@@ -362,6 +434,12 @@ func _reset_display(theme_has_changed := false) -> void:
 			tint_progress = get_theme_color(&"progress_color", &"ValueSlider")
 		else:
 			tint_progress = Color.TRANSPARENT
+	if tool_vertical_drag:
+		# Tool values are drawn over the panel itself, with no black track.
+		texture_under = null
+		texture_progress = null
+		tint_under = Color.TRANSPARENT
+		tint_progress = Color.TRANSPARENT
 	_line_edit.text = _format_float_string()
 
 
