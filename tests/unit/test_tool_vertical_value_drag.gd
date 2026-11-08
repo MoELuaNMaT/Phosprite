@@ -147,7 +147,9 @@ func _count_and_check_vertical_sliders(node: Node) -> int:
 		elif child is ValueSliderV2:
 			for component in child.get_sliders():
 				count += 1
-				check_true(component.tool_vertical_drag, "%s component uses vertical drag" % child.name)
+				check_true(
+					component.tool_vertical_drag, "%s component uses vertical drag" % child.name
+				)
 		elif child is Container:
 			count += _count_and_check_vertical_sliders(child)
 	return count
