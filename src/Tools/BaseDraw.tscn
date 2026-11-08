@@ -98,8 +98,6 @@ global_increment_action = "brush_size_increment"
 global_decrement_action = "brush_size_decrement"
 show_progress = false
 allow_text_input = false
-show_drag_arrows = true
-show_arrows = false
 
 [node name="TransformButtonsContainer" type="VBoxContainer" parent="." index="3" unique_id=811103715]
 unique_name_in_owner = true

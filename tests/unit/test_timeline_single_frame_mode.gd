@@ -696,13 +696,13 @@ func test_drag_only_value_sliders_are_opt_in_at_touch_surfaces() -> void:
 	)
 	check_has(
 		tool_source,
-		"slider.show_drag_arrows = true",
-		"Tool Options must explicitly advertise horizontal drag adjustment",
+		"slider.configure_tool_vertical_drag()",
+		"Tool Options must explicitly use the vertical drag control",
 	)
 	check_has(
-		tool_source,
-		"slider.show_arrows = false",
-		"Tool Options must explicitly hide increment/decrement arrows",
+		slider_source,
+		"tool_vertical_drag = true",
+		"Tool Options must hide the old track and draw vertical arrow indicators",
 	)
 	check_has(
 		FileAccess.get_file_as_string(STRIP_SCENE),

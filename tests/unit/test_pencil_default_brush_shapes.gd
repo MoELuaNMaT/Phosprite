@@ -231,20 +231,14 @@ func test_pencil_numeric_controls_use_drag_only_arrow_value_presentation() -> vo
 			"allow_text_input = false",
 			"numeric Pencil controls must disable text entry"
 		)
-		check_has(
-			scene_source,
-			"show_drag_arrows = true",
-			"numeric Pencil controls must show < value > drag affordance"
-		)
-		check_has(
-			scene_source,
-			"show_arrows = false",
-			"numeric Pencil controls must remove old up/down arrow buttons"
+		check_true(
+			not scene_source.contains("show_drag_arrows = true"),
+			"tool scenes must not request legacy left/right drag arrows"
 		)
 	check_has(
 		slider_source,
-		'return str(tr(prefix), " < ", display_value, " >").strip_edges()',
-		"drag-only values must render in the requested < value > form",
+		"func configure_tool_vertical_drag() -> void:",
+		"tool value controls must support transparent vertical arrow mode",
 	)
 
 
@@ -297,7 +291,7 @@ func test_all_tool_numeric_options_are_drag_only_and_precision_tools_are_slower(
 	generic_tool._apply_stacked_option_layout(generic_tool)
 	check_true(not generic_slider.allow_text_input, "tool numeric controls must disable text input")
 	check_true(
-		generic_slider.show_drag_arrows, "tool numeric controls must advertise drag adjustment"
+		generic_slider.tool_vertical_drag, "tool numeric controls must use vertical drag mode"
 	)
 	check_true(
 		not generic_slider.show_arrows, "tool numeric controls must hide legacy arrow buttons"
@@ -353,7 +347,7 @@ func test_value_slider_drag_math_uses_configurable_sensitivity() -> void:
 	)
 	check_has(
 		slider_source,
-		"var drag_delta := x_delta * drag_sensitivity",
+		"var drag_delta := axis_delta * drag_sensitivity",
 		"pointer delta must be scaled before numeric values are changed",
 	)
 
@@ -372,7 +366,7 @@ func test_sidebar_labels_and_nested_numeric_prefixes_are_centered_without_colons
 	check_eq(title.text, "Mode", "option labels must drop trailing colons")
 	for slider in pair.get_sliders():
 		check_true(not slider.prefix.ends_with(":"), "nested X/Y numeric prefixes must drop colons")
-		check_true(slider.show_drag_arrows, "nested X/Y numeric controls must stay drag-only")
+		check_true(slider.tool_vertical_drag, "nested X/Y controls must use vertical dragging")
 		check_eq(
 			slider.custom_minimum_size.x,
 			BaseTool.SIDEBAR_CONTROL_WIDTH,

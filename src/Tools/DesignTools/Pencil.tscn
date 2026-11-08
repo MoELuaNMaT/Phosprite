@@ -26,8 +26,6 @@ prefix = "Opacity:"
 suffix = "%"
 show_progress = false
 allow_text_input = false
-show_drag_arrows = true
-show_arrows = false
 
 [node name="Dither" type="CheckBox" parent="." index="7" unique_id=1867273411]
 layout_mode = 2
@@ -62,8 +60,6 @@ prefix = "Coverage:"
 suffix = "%"
 show_progress = false
 allow_text_input = false
-show_drag_arrows = true
-show_arrows = false
 
 [node name="AutoOutline" type="CheckBox" parent="." index="9"]
 layout_mode = 2
@@ -102,8 +98,6 @@ prefix = "Width:"
 suffix = "px"
 show_progress = false
 allow_text_input = false
-show_drag_arrows = true
-show_arrows = false
 
 [node name="ShapeRow" type="VBoxContainer" parent="AutoOutlineSettings" index="2"]
 layout_mode = 2
