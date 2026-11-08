@@ -184,7 +184,8 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 			"cancelled": false,
 			"selection_family": is_selection_family,
 			"shape_family": is_shape_family,
-			"menu_was_open": (
+			"menu_was_open":
+			(
 				(is_selection_family and _is_ios_family_menu_open(true))
 				or (is_shape_family and _is_ios_family_menu_open(false))
 			),
@@ -660,15 +661,23 @@ func _show_ios_family_menu(selection_family: bool, anchor: Control) -> void:
 	var rect := anchor.get_global_rect()
 	var viewport_size := get_viewport().get_visible_rect().size
 	var menu_size := menu.get_contents_minimum_size()
-	var width := maxf(menu_size.x, 180.0)
-	var height := maxf(menu_size.y, 1.0)
-	var x := rect.end.x + 4.0
-	if x + width > viewport_size.x:
-		x = rect.position.x - width - 4.0
-	x = clampf(x, 0.0, maxf(0.0, viewport_size.x - width))
-	var y := clampf(rect.position.y, 0.0, maxf(0.0, viewport_size.y - height))
-	menu.position = Vector2i(x, y)
+	menu.position = ios_family_menu_position(rect, menu_size, viewport_size)
 	menu.popup()
+
+
+static func ios_family_menu_position(
+	anchor_rect: Rect2, content_size: Vector2, viewport_size: Vector2
+) -> Vector2i:
+	var width := maxf(content_size.x, 180.0)
+	var height := maxf(content_size.y, 1.0)
+	var x := anchor_rect.end.x + 4.0
+	if x + width > viewport_size.x:
+		x = anchor_rect.position.x - width - 4.0
+	x = clampf(x, 0.0, maxf(0.0, viewport_size.x - width))
+	var y := clampf(
+		anchor_rect.position.y, 0.0, maxf(0.0, viewport_size.y - height)
+	)
+	return Vector2i(x, y)
 
 
 func _on_ios_shape_menu_id_pressed(id: int) -> void:

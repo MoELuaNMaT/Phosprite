@@ -490,6 +490,7 @@ func _on_toolbar_tool_pressed(_proxy: BaseButton, source: BaseButton) -> void:
 		and is_instance_valid(_tool_buttons)
 	):
 		_tool_buttons.call("toggle_ios_family_menu", selection_family, _proxy)
+		_refresh_taskbar.call_deferred()
 		return
 	_select_tool_and_toggle_options(target)
 

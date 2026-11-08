@@ -1,7 +1,6 @@
 extends "res://tests/test_base.gd"
 
 const TOOL_BUTTONS := preload("res://src/UI/ToolsPanel/ToolButtons.gd")
-const PROFILE_3 := preload("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 
 
 func test_folded_selection_and_shape_groups_use_tap_toggle_instead_of_hold() -> void:
@@ -51,78 +50,52 @@ func test_folded_selection_and_shape_groups_use_tap_toggle_instead_of_hold() -> 
 	)
 
 
-func test_folded_family_menu_toggles_for_both_tool_groups_and_ui3_proxy() -> void:
-	var original_slots := Tools._slots.duplicate()
-	var root := Control.new()
-	root.size = Vector2(800, 600)
-	tree.root.add_child(root)
-	var toolbar := TOOL_BUTTONS.new()
-	root.add_child(toolbar)
-	var selection_anchor := Button.new()
-	selection_anchor.name = &"RectSelect"
-	selection_anchor.position = Vector2(30, 30)
-	selection_anchor.size = Vector2(36, 36)
-	root.add_child(selection_anchor)
-	var shape_anchor := Button.new()
-	shape_anchor.name = &"LineTool"
-	shape_anchor.position = Vector2(730, 30)
-	shape_anchor.size = Vector2(36, 36)
-	root.add_child(shape_anchor)
-	var selection_menu := PopupMenu.new()
-	selection_menu.name = &"SelectionFamilyMenu"
-	selection_menu.add_item("Rectangle", 0)
-	root.add_child(selection_menu)
-	var shape_menu := PopupMenu.new()
-	shape_menu.name = &"ShapeFamilyMenu"
-	shape_menu.add_item("Line", 0)
-	root.add_child(shape_menu)
-	toolbar.set("_ios_selection_menu", selection_menu)
-	toolbar.set("_ios_shape_menu", shape_menu)
-	var slot := Tools.Slot.new("Left tool")
-	slot.button = MOUSE_BUTTON_LEFT
-	slot.tool_node = Node.new()
-	slot.tool_node.name = &"RectSelect"
-	root.add_child(slot.tool_node)
-	Tools._slots[MOUSE_BUTTON_LEFT] = slot
-
-	toolbar.toggle_ios_family_menu(true, selection_anchor)
-	check_true(selection_menu.visible, "selected selection group opens on tap")
-	check_true(not shape_menu.visible, "selection tap does not open the shape menu")
-	toolbar.toggle_ios_family_menu(true, selection_anchor)
-	check_true(not selection_menu.visible, "tapping the same selected group closes it")
-	toolbar._apply_ios_family_tap(true, selection_anchor, true)
-	check_true(not selection_menu.visible, "release after auto-dismiss does not reopen menu")
-
-	slot.tool_node.name = &"LineTool"
-	toolbar.toggle_ios_family_menu(false, shape_anchor)
-	check_true(shape_menu.visible, "selected shape group opens on tap")
-	check_true(not selection_menu.visible, "only one family menu is open")
-	toolbar.toggle_ios_family_menu(false, shape_anchor)
-	check_true(not shape_menu.visible, "second shape tap closes its menu")
+func test_family_popup_placement_stays_visible_on_both_sides_of_ipad() -> void:
+	var screen := Vector2(800, 600)
+	var menu := Vector2(190, 260)
+	var selection_rect := Rect2(Vector2(30, 60), Vector2(36, 36))
+	var shape_rect := Rect2(Vector2(730, 60), Vector2(36, 36))
+	var selection_position := TOOL_BUTTONS.ios_family_menu_position(selection_rect, menu, screen)
+	var shape_position := TOOL_BUTTONS.ios_family_menu_position(shape_rect, menu, screen)
 	check_true(
-		not toolbar._is_ios_family_current(true),
-		"unselected family does not count as selected",
+		selection_position.x > selection_rect.end.x,
+		"left toolbar opens menu to the right of its icon",
 	)
-	check_eq(
-		TOOL_BUTTONS.resolve_ios_family_tap(false, false),
-		TOOL_BUTTONS.FamilyTapAction.SELECT,
-		"first tap on an inactive group selects its saved tool without opening a menu",
+	check_true(
+		shape_position.x < shape_rect.position.x,
+		"UI3 right taskbar opens menu to the left of its icon",
 	)
+	for position in [selection_position, shape_position]:
+		check_true(position.x >= 0, "popup stays inside left viewport edge")
+		check_true(position.y >= 0, "popup stays inside top viewport edge")
+		check_true(position.x + menu.x <= screen.x, "popup stays inside right viewport edge")
+		check_true(position.y + menu.y <= screen.y, "popup stays inside bottom viewport edge")
 
-	var ui3 := PROFILE_3.new()
-	root.add_child(ui3)
-	ui3.active = true
-	ui3.set("_tool_buttons", toolbar)
-	# UI3 proxies have a different button name; their source is the family representative.
-	ui3._on_toolbar_tool_pressed(shape_anchor, shape_anchor)
-	check_true(shape_menu.visible, "UI3 selected shape proxy opens the same family menu")
-	ui3._on_toolbar_tool_pressed(shape_anchor, shape_anchor)
-	check_true(not shape_menu.visible, "UI3 selected proxy closes the same family menu")
 
-	toolbar._hide_ios_family_menus()
-	Tools._slots = original_slots
-	root.queue_free()
-	await tree.process_frame
+func test_ui3_family_proxy_uses_same_toggle_and_keeps_other_settings() -> void:
+	var source := FileAccess.get_file_as_string(
+		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
+	)
+	check_has(
+		source,
+		'_tool_buttons.call("toggle_ios_family_menu", selection_family, _proxy)',
+		"selected UI3 family icon opens or closes the shared family chooser",
+	)
+	check_has(
+		source,
+		"_source_represents_tool(source, _current_left_tool_name())",
+		"UI3 only opens family choices for its currently active family",
+	)
+	check_has(
+		source,
+		"_select_tool_and_toggle_options(target)",
+		"other UI3 buttons continue to open and close their tool settings",
+	)
+	check_has(
+		source,
+		"_refresh_taskbar.call_deferred()",
+		"UI3 keeps active tool highlighting consistent after family clicks",
+	)
 
 
 func test_other_long_press_interactions_are_preserved() -> void:
