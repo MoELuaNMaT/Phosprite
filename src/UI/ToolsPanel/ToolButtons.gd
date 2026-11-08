@@ -2,7 +2,6 @@ extends VBoxContainer
 
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
-const IOS_SELECTION_MENU_LONG_PRESS_SECONDS := 0.45
 const IOS_SELECTION_RECENT_SECTION := "preferences"
 const IOS_SELECTION_RECENT_KEY := "ios_recent_selection_tool"
 const IOS_SELECTION_DEFAULT := &"RectSelect"
@@ -16,7 +15,6 @@ const IOS_SELECTION_TOOLS := [
 	&"PolygonSelect",
 	&"RectSelect",
 ]
-const IOS_SHAPE_MENU_LONG_PRESS_SECONDS := 0.45
 const IOS_SHAPE_RECENT_SECTION := "preferences"
 const IOS_SHAPE_RECENT_KEY := "ios_recent_shape_tool"
 const IOS_SHAPE_DEFAULT := &"LineTool"
@@ -186,19 +184,12 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 			"cancelled": false,
 			"selection_family": is_selection_family,
 			"shape_family": is_shape_family,
-			"menu_opened": false,
+			"menu_was_open": (
+				(is_selection_family and _is_ios_family_menu_open(true))
+				or (is_shape_family and _is_ios_family_menu_open(false))
+			),
 			"generation": _ios_selection_touch_generation,
 		}
-		if is_selection_family:
-			var timer := get_tree().create_timer(IOS_SELECTION_MENU_LONG_PRESS_SECONDS)
-			timer.timeout.connect(
-				_try_open_ios_selection_menu.bind(event.index, _ios_selection_touch_generation)
-			)
-		elif is_shape_family:
-			var timer := get_tree().create_timer(IOS_SHAPE_MENU_LONG_PRESS_SECONDS)
-			timer.timeout.connect(
-				_try_open_ios_shape_menu.bind(event.index, _ios_selection_touch_generation)
-			)
 		return true
 
 	if not _touch_tool_candidates.has(event.index):
@@ -208,14 +199,6 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 	_enter_touch_tool_ui()
 	get_viewport().gui_cancel_drag()
 	if bool(candidate.get("cancelled", false)):
-		return true
-	if (
-		(
-			bool(candidate.get("selection_family", false))
-			or bool(candidate.get("shape_family", false))
-		)
-		and bool(candidate.get("menu_opened", false))
-	):
 		return true
 	if Vector2(candidate["origin"]).distance_to(event.position) > TOUCH_TAP_SLOP_PX:
 		return true
@@ -232,7 +215,8 @@ func _handle_tool_touch(event: InputEventScreenTouch) -> bool:
 		StringName(candidate["tool_name"]),
 		bool(candidate.get("selection_family", false)),
 		bool(candidate.get("shape_family", false)),
-		int(candidate.get("generation", -1))
+		int(candidate.get("generation", -1)),
+		bool(candidate.get("menu_was_open", false))
 	)
 	return true
 
@@ -292,20 +276,25 @@ func _get_tools_scroll_container() -> ScrollContainer:
 
 
 func _commit_touch_tool_activation(
-	tool_name: StringName, selection_family: bool, shape_family: bool, generation: int
+	tool_name: StringName,
+	selection_family: bool,
+	shape_family: bool,
+	generation: int,
+	menu_was_open: bool = false
 ) -> void:
 	if generation != _ios_selection_touch_generation:
 		return
 	if selection_family:
 		if not is_instance_valid(_ios_selection_family_button):
 			return
-		_activate_ios_selection_tool(_ios_selection_recent_tool)
+		_apply_ios_family_tap(true, _ios_selection_family_button, menu_was_open)
 		return
 	if shape_family:
 		if not is_instance_valid(_ios_shape_family_button):
 			return
-		_activate_ios_shape_tool(_ios_shape_recent_tool)
+		_apply_ios_family_tap(false, _ios_shape_family_button, menu_was_open)
 		return
+	_hide_ios_family_menus()
 	var key := String(tool_name)
 	if not Tools.tools.has(key):
 		return
@@ -595,23 +584,91 @@ func _is_ios_selection_family_button(button: BaseButton) -> bool:
 	)
 
 
-func _try_open_ios_shape_menu(touch_id: int, generation: int) -> void:
-	if not _touch_tool_candidates.has(touch_id) or not is_instance_valid(_ios_shape_menu):
-		return
-	var candidate: Dictionary = _touch_tool_candidates[touch_id]
-	if (
-		int(candidate.get("generation", -1)) != generation
-		or bool(candidate.get("cancelled", false))
-		or not bool(candidate.get("shape_family", false))
-	):
-		return
-	candidate["menu_opened"] = true
-	_touch_tool_candidates[touch_id] = candidate
-	var family_rect := _ios_shape_family_button.get_global_rect()
-	_ios_shape_menu.position = Vector2i(
-		family_rect.position + Vector2(family_rect.size.x + 4.0, 0.0)
+## Folded family icons use the same tap contract in every iOS toolbar:
+## first tap selects a tool, second tap opens its choices, next tap closes them.
+## Resolve against the *active left slot*, not the last remembered family choice.
+enum FamilyTapAction { SELECT, OPEN, CLOSE }
+
+
+static func resolve_ios_family_tap(is_selected: bool, was_open: bool) -> FamilyTapAction:
+	if not is_selected:
+		return FamilyTapAction.SELECT
+	return FamilyTapAction.CLOSE if was_open else FamilyTapAction.OPEN
+
+
+func _is_ios_family_current(selection_family: bool) -> bool:
+	if not Tools._slots.has(MOUSE_BUTTON_LEFT):
+		return false
+	var slot: Tools.Slot = Tools._slots[MOUSE_BUTTON_LEFT]
+	if slot == null or not is_instance_valid(slot.tool_node):
+		return false
+	var name := StringName(slot.tool_node.name)
+	return is_ios_selection_tool(name) if selection_family else is_ios_shape_tool(name)
+
+
+func _is_ios_family_menu_open(selection_family: bool) -> bool:
+	var menu := _ios_selection_menu if selection_family else _ios_shape_menu
+	return is_instance_valid(menu) and menu.visible
+
+
+func _hide_ios_family_menus() -> void:
+	if is_instance_valid(_ios_selection_menu):
+		_ios_selection_menu.hide()
+	if is_instance_valid(_ios_shape_menu):
+		_ios_shape_menu.hide()
+
+
+func _apply_ios_family_tap(
+	selection_family: bool, anchor: Control, menu_was_open: bool = false
+) -> void:
+	var action := resolve_ios_family_tap(
+		_is_ios_family_current(selection_family),
+		menu_was_open or _is_ios_family_menu_open(selection_family)
 	)
-	_ios_shape_menu.popup()
+	match action:
+		FamilyTapAction.SELECT:
+			_hide_ios_family_menus()
+			if selection_family:
+				_activate_ios_selection_tool(_ios_selection_recent_tool)
+			else:
+				_activate_ios_shape_tool(_ios_shape_recent_tool)
+		FamilyTapAction.OPEN:
+			_show_ios_family_menu(selection_family, anchor)
+		FamilyTapAction.CLOSE:
+			_hide_ios_family_menus()
+
+
+## UI3 taskbar proxies call the same popup toggle with their own icon as anchor.
+func toggle_ios_family_menu(selection_family: bool, anchor: Control) -> void:
+	if not _is_ios_family_current(selection_family):
+		return
+	if _is_ios_family_menu_open(selection_family):
+		_hide_ios_family_menus()
+	else:
+		_show_ios_family_menu(selection_family, anchor)
+
+
+func _show_ios_family_menu(selection_family: bool, anchor: Control) -> void:
+	if not is_instance_valid(anchor):
+		return
+	var menu := _ios_selection_menu if selection_family else _ios_shape_menu
+	if not is_instance_valid(menu):
+		return
+	_hide_ios_family_menus()
+	# Keep the chooser beside its own icon, including UI3's right-aligned taskbar.
+	# Clamp the window inside the viewport instead of letting right-side menus clip.
+	var rect := anchor.get_global_rect()
+	var viewport_size := get_viewport().get_visible_rect().size
+	var menu_size := menu.get_contents_minimum_size()
+	var width := maxf(menu_size.x, 180.0)
+	var height := maxf(menu_size.y, 1.0)
+	var x := rect.end.x + 4.0
+	if x + width > viewport_size.x:
+		x = rect.position.x - width - 4.0
+	x = clampf(x, 0.0, maxf(0.0, viewport_size.x - width))
+	var y := clampf(rect.position.y, 0.0, maxf(0.0, viewport_size.y - height))
+	menu.position = Vector2i(x, y)
+	menu.popup()
 
 
 func _on_ios_shape_menu_id_pressed(id: int) -> void:
@@ -622,6 +679,7 @@ func _on_ios_shape_menu_id_pressed(id: int) -> void:
 
 func _activate_ios_shape_tool(tool_name: StringName) -> void:
 	var normalized := normalize_ios_recent_shape_tool(tool_name)
+	_hide_ios_family_menus()
 	_set_ios_shape_recent_tool(normalized)
 	Tools.assign_tool(String(normalized), MOUSE_BUTTON_LEFT)
 	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
@@ -641,25 +699,6 @@ func _set_ios_shape_recent_tool(tool_name: StringName) -> void:
 		push_warning("Could not save recent Shape tool: %s" % error_string(error))
 
 
-func _try_open_ios_selection_menu(touch_id: int, generation: int) -> void:
-	if not _touch_tool_candidates.has(touch_id) or not is_instance_valid(_ios_selection_menu):
-		return
-	var candidate: Dictionary = _touch_tool_candidates[touch_id]
-	if (
-		int(candidate.get("generation", -1)) != generation
-		or bool(candidate.get("cancelled", false))
-		or not bool(candidate.get("selection_family", false))
-	):
-		return
-	candidate["menu_opened"] = true
-	_touch_tool_candidates[touch_id] = candidate
-	var family_rect := _ios_selection_family_button.get_global_rect()
-	_ios_selection_menu.position = Vector2i(
-		family_rect.position + Vector2(family_rect.size.x + 4.0, 0.0)
-	)
-	_ios_selection_menu.popup()
-
-
 func _on_ios_selection_menu_id_pressed(id: int) -> void:
 	if id < 0 or id >= IOS_SELECTION_TOOLS.size():
 		return
@@ -668,6 +707,7 @@ func _on_ios_selection_menu_id_pressed(id: int) -> void:
 
 func _activate_ios_selection_tool(tool_name: StringName) -> void:
 	var normalized := normalize_ios_recent_selection_tool(tool_name)
+	_hide_ios_family_menus()
 	_set_ios_selection_recent_tool(normalized)
 	Tools.assign_tool(String(normalized), MOUSE_BUTTON_LEFT)
 	Tools.prev_tool_names[MOUSE_BUTTON_LEFT] = ""
@@ -690,6 +730,8 @@ func _set_ios_selection_recent_tool(tool_name: StringName) -> void:
 func _on_ios_tool_changed(tool_name: String, button: int) -> void:
 	if OS.get_name() != "iOS":
 		return
+	if button == MOUSE_BUTTON_LEFT:
+		_hide_ios_family_menus()
 	var selection_name := StringName(tool_name)
 	if button == MOUSE_BUTTON_LEFT and is_ios_selection_tool(selection_name):
 		_set_ios_selection_recent_tool(selection_name)
@@ -818,7 +860,14 @@ func _on_tool_pressed(tool_pressed: BaseButton) -> void:
 	if button in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		var tool_name := String(tool_pressed.name)
 		if OS.get_name() == "iOS" and _is_ios_selection_family_button(tool_pressed):
+			if button == MOUSE_BUTTON_LEFT:
+				_apply_ios_family_tap(true, tool_pressed)
+				return
 			tool_name = String(_ios_selection_recent_tool)
 		elif OS.get_name() == "iOS" and _is_ios_shape_family_button(tool_pressed):
+			if button == MOUSE_BUTTON_LEFT:
+				_apply_ios_family_tap(false, tool_pressed)
+				return
 			tool_name = String(_ios_shape_recent_tool)
+		_hide_ios_family_menus()
 		Tools.assign_tool(tool_name, button)

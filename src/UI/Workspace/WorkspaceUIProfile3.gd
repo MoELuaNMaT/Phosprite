@@ -476,10 +476,21 @@ func _on_toolbar_tool_pressed(_proxy: BaseButton, source: BaseButton) -> void:
 	if not active or not is_instance_valid(source):
 		return
 	var target := StringName(source.name)
-	if _is_selection_family_source(source):
+	var selection_family := _is_selection_family_source(source)
+	var shape_family := _is_shape_family_source(source)
+	if selection_family:
 		target = _family_recent_tool(true)
-	elif _is_shape_family_source(source):
+	elif shape_family:
 		target = _family_recent_tool(false)
+	# Folded icons toggle their actual tool chooser only when already selected.
+	# Other icons keep the existing tool-settings toggle behavior.
+	if (
+		(selection_family or shape_family)
+		and _source_represents_tool(source, _current_left_tool_name())
+		and is_instance_valid(_tool_buttons)
+	):
+		_tool_buttons.call("toggle_ios_family_menu", selection_family, _proxy)
+		return
 	_select_tool_and_toggle_options(target)
 
 
