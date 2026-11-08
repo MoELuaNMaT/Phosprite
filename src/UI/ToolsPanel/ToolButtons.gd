@@ -674,9 +674,7 @@ static func ios_family_menu_position(
 	if x + width > viewport_size.x:
 		x = anchor_rect.position.x - width - 4.0
 	x = clampf(x, 0.0, maxf(0.0, viewport_size.x - width))
-	var y := clampf(
-		anchor_rect.position.y, 0.0, maxf(0.0, viewport_size.y - height)
-	)
+	var y := clampf(anchor_rect.position.y, 0.0, maxf(0.0, viewport_size.y - height))
 	return Vector2i(x, y)
 
 

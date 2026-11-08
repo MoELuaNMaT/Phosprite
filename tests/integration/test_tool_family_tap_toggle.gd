@@ -73,9 +73,7 @@ func test_family_popup_placement_stays_visible_on_both_sides_of_ipad() -> void:
 
 
 func test_ui3_family_proxy_uses_same_toggle_and_keeps_other_settings() -> void:
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceUIProfile3.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile3.gd")
 	check_has(
 		source,
 		'_tool_buttons.call("toggle_ios_family_menu", selection_family, _proxy)',
