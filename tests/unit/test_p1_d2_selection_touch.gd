@@ -50,13 +50,13 @@ func test_selection_family_is_ios_only_and_persists_recent_child() -> void:
 	check_has(src, 'OS.get_name() == "iOS"', "Selection compaction must remain iOS-only")
 	check_has(
 		src,
-		"IOS_SELECTION_MENU_LONG_PRESS_SECONDS",
-		"the compact Selection entry needs an explicit long-press acquisition path"
+		"_apply_ios_family_tap(true, _ios_selection_family_button, menu_was_open)",
+		"Selection uses the selected-icon tap state instead of a long-press timer"
 	)
 	check_has(
 		src,
-		"_try_open_ios_selection_menu",
-		"long press must open the Selection child menu instead of selecting immediately"
+		"_show_ios_family_menu(selection_family, anchor)",
+		"repeated taps open the shared tool chooser"
 	)
 	check_has(
 		src,
@@ -154,14 +154,18 @@ func test_ios_shape_family_contains_exact_five_tools() -> void:
 	)
 
 
-func test_shape_family_uses_long_press_proxy_and_persists_recent_child() -> void:
+func test_shape_family_uses_tap_toggle_proxy_and_persists_recent_child() -> void:
 	var src := FileAccess.get_file_as_string(TOOL_BUTTONS_SOURCE)
 	check_has(
 		src,
-		"IOS_SHAPE_MENU_LONG_PRESS_SECONDS",
-		"Shapes entry needs an explicit long-press acquisition path"
+		"_apply_ios_family_tap(false, _ios_shape_family_button, menu_was_open)",
+		"Shapes entry uses selected-icon tap state instead of a long-press timer"
 	)
-	check_has(src, "_try_open_ios_shape_menu", "long press must open the five-tool Shapes submenu")
+	check_has(
+		src,
+		"_hide_ios_family_menus()",
+		"tapping an already-open family closes its submenu"
+	)
 	check_has(
 		src,
 		"_activate_ios_shape_tool(_ios_shape_recent_tool)",

@@ -45,7 +45,7 @@ func test_folded_selection_and_shape_groups_use_tap_toggle_instead_of_hold() -> 
 	)
 	check_has(
 		source,
-		'"menu_was_open": (',
+		'"menu_was_open":',
 		"touch remembers an already-open menu even if the system auto-dismisses it",
 	)
 
