@@ -16,7 +16,8 @@ enum Dynamics { NONE, PRESSURE, VELOCITY }
 
 const XY_LINE := Vector2(-0.70710677, 0.70710677)
 const X_MINUS_Y_LINE := Vector2(0.70710677, 0.70710677)
-const CURVE_ACTIVATION_DIAGNOSTIC_PATH := "user://curve_activation_phase.txt"
+## Obsolete ad-hoc crash probe: clean the old marker without interpreting it.
+const LEGACY_CURVE_ACTIVATION_TRACE_PATH := "user://curve_activation_phase.txt"
 
 var active_multi_state_tools := 0:
 	set(value):
@@ -397,7 +398,10 @@ func _ready() -> void:
 	# to bind. Skip all UI wiring to keep test output clean of null-instance errors.
 	if Global.headless_test_mode:
 		return
-	_report_previous_curve_activation_crash.call_deferred()
+	# An old marker can describe an in-progress *current* startup, not a crash.
+	# Remove it before restoring saved tools; never display it as a fatal error.
+	if OS.get_name() == "iOS" and FileAccess.file_exists(LEGACY_CURVE_ACTIVATION_TRACE_PATH):
+		DirAccess.remove_absolute(LEGACY_CURVE_ACTIVATION_TRACE_PATH)
 	options_reset.connect(reset_options)
 	Global.cel_switched.connect(_cel_switched)
 	Global.single_tool_mode_changed.connect(_on_single_tool_mode_changed)
@@ -535,11 +539,7 @@ func set_tool(tool_name: String, button: int) -> void:
 		config_changed.disconnect(attempt_config_share)
 	var slot: Slot = _slots[button]
 	var panel: Node = _panels[button]
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:instantiate_begin" % button)
 	var node: Node = tools[tool_name].instantiate_scene()
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:instantiate_done" % button)
 	var config_slot := MOUSE_BUTTON_LEFT if button == MOUSE_BUTTON_RIGHT else MOUSE_BUTTON_RIGHT
 	if button == MOUSE_BUTTON_LEFT:  # As guides are only moved with left mouse
 		if tool_name == "Pan":  # tool you want to give more access at guides
@@ -555,11 +555,7 @@ func set_tool(tool_name: String, button: int) -> void:
 	var tool_options := node as BaseTool
 	if tool_options != null:
 		tool_options.prepare_stacked_option_layout()
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:add_child_begin" % button)
 	panel.add_child(slot.tool_node)
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:add_child_done" % button)
 
 	if _curr_layer_type == Global.LayerTypes.GROUP:
 		return
@@ -570,18 +566,10 @@ func set_tool(tool_name: String, button: int) -> void:
 
 	# Wait for config to get loaded, then re-connect and sync
 	await get_tree().process_frame
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:ready_frame_survived" % button)
 	if not config_changed.is_connected(attempt_config_share):
 		config_changed.connect(attempt_config_share)
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:config_share_begin" % button)
 	attempt_config_share(config_slot)  # Sync it with the other tool
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("slot_%d:config_share_done" % button)
 	tool_changed.emit(tool_name, button)
-	if tool_name == "CurveTool":
-		write_curve_activation_phase("complete")
 
 
 func get_tool(button: int) -> Slot:
@@ -640,36 +628,6 @@ func assign_tool(tool_name: String, button: int, allow_refresh := false) -> void
 	update_tool_buttons()
 	update_tool_cursors()
 	Global.config_cache.set_value(slot.kname, "tool", tool_name)
-
-
-func write_curve_activation_phase(phase: String) -> void:
-	if OS.get_name() != "iOS":
-		return
-	var file := FileAccess.open(CURVE_ACTIVATION_DIAGNOSTIC_PATH, FileAccess.WRITE)
-	if file == null:
-		return
-	file.store_string(phase)
-	file.flush()
-
-
-func _report_previous_curve_activation_crash() -> void:
-	if OS.get_name() != "iOS" or not FileAccess.file_exists(CURVE_ACTIVATION_DIAGNOSTIC_PATH):
-		return
-	var file := FileAccess.open(CURVE_ACTIVATION_DIAGNOSTIC_PATH, FileAccess.READ)
-	if file == null:
-		return
-	var phase := file.get_as_text().strip_edges()
-	if phase.is_empty() or phase == "complete":
-		return
-	write_curve_activation_phase("complete")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if not is_instance_valid(Global.error_dialog):
-		push_warning("Previous CurveTool activation stopped at: %s" % phase)
-		return
-	Global.error_dialog.title = "Curve Tool diagnostic"
-	Global.error_dialog.dialog_text = "Previous Curve Tool activation stopped at:\n%s" % phase
-	Global.error_dialog.popup_centered()
 
 
 func quick_assign_tool(tool_name: String, button: int, allow_refresh := false) -> void:
