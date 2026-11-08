@@ -106,3 +106,48 @@ func test_non_tool_sliders_remain_horizontal_and_keep_track() -> void:
 	check_true(not slider.tool_vertical_drag, "other sliders keep horizontal gesture")
 	check_true(slider.show_progress, "other sliders keep progress presentation")
 	slider.free()
+
+
+func test_every_tool_scene_numeric_option_uses_vertical_mode() -> void:
+	var paths := [
+		"res://src/Tools/BaseDraw.tscn",
+		"res://src/Tools/BaseSelectionTool.tscn",
+		"res://src/Tools/DesignTools/Pencil.tscn",
+		"res://src/Tools/DesignTools/Eraser.tscn",
+		"res://src/Tools/DesignTools/Bucket.tscn",
+		"res://src/Tools/DesignTools/Gradient.tscn",
+		"res://src/Tools/DesignTools/RectangleTool.tscn",
+		"res://src/Tools/DesignTools/IsometricBoxTool.tscn",
+		"res://src/Tools/DesignTools/Shading.tscn",
+		"res://src/Tools/SelectionTools/MagicWand.tscn",
+		"res://src/Tools/UtilityTools/CropTool.tscn",
+	]
+	for path in paths:
+		var scene := load(path) as PackedScene
+		check_true(scene != null, "%s loads as a tool scene" % path)
+		if scene == null:
+			continue
+		var tool := scene.instantiate() as BaseTool
+		check_true(tool != null, "%s extends BaseTool" % path)
+		if tool == null:
+			continue
+		tool.prepare_stacked_option_layout()
+		var count := _count_and_check_vertical_sliders(tool)
+		check_true(count > 0, "%s has numeric controls covered by the shared mode" % path)
+		tool.free()
+
+
+func _count_and_check_vertical_sliders(node: Node) -> int:
+	var count := 0
+	for child in node.get_children():
+		if child is ValueSlider:
+			count += 1
+			check_true(child.tool_vertical_drag, "%s uses vertical drag" % child.name)
+			check_true(child.texture_under == null, "%s has no dark slider track" % child.name)
+		elif child is ValueSliderV2:
+			for component in child.get_sliders():
+				count += 1
+				check_true(component.tool_vertical_drag, "%s component uses vertical drag" % child.name)
+		elif child is Container:
+			count += _count_and_check_vertical_sliders(child)
+	return count
