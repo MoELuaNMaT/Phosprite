@@ -109,7 +109,10 @@ func test_curve_tool_can_initialize_both_saved_tool_slots() -> void:
 	Tools._right_tools_per_layer_type = original_right_tool_types
 	Global.share_options_between_tools = original_share_options
 	Global.move_guides_on_canvas = original_move_guides
-	if not original_config_connection and Tools.config_changed.is_connected(Tools.attempt_config_share):
+	if (
+		not original_config_connection
+		and Tools.config_changed.is_connected(Tools.attempt_config_share)
+	):
 		Tools.config_changed.disconnect(Tools.attempt_config_share)
 	left_panel.queue_free()
 	right_panel.queue_free()
