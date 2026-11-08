@@ -1,5 +1,7 @@
 extends VBoxContainer
 
+enum FamilyTapAction { SELECT, OPEN, CLOSE }
+
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
 const IOS_SELECTION_RECENT_SECTION := "preferences"
@@ -588,9 +590,6 @@ func _is_ios_selection_family_button(button: BaseButton) -> bool:
 ## Folded family icons use the same tap contract in every iOS toolbar:
 ## first tap selects a tool, second tap opens its choices, next tap closes them.
 ## Resolve against the *active left slot*, not the last remembered family choice.
-enum FamilyTapAction { SELECT, OPEN, CLOSE }
-
-
 static func resolve_ios_family_tap(is_selected: bool, was_open: bool) -> FamilyTapAction:
 	if not is_selected:
 		return FamilyTapAction.SELECT
