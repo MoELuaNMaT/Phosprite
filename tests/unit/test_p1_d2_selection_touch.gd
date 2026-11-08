@@ -161,11 +161,7 @@ func test_shape_family_uses_tap_toggle_proxy_and_persists_recent_child() -> void
 		"_apply_ios_family_tap(false, _ios_shape_family_button, menu_was_open)",
 		"Shapes entry uses selected-icon tap state instead of a long-press timer"
 	)
-	check_has(
-		src,
-		"_hide_ios_family_menus()",
-		"tapping an already-open family closes its submenu"
-	)
+	check_has(src, "_hide_ios_family_menus()", "tapping an already-open family closes its submenu")
 	check_has(
 		src,
 		"_activate_ios_shape_tool(_ios_shape_recent_tool)",
