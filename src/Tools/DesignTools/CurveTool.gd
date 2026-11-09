@@ -36,7 +36,8 @@ func _ready() -> void:
 	Tools.write_curve_activation_phase("curve_ready_enter:%d" % tool_slot.button)
 	super._ready()
 	_bezier_mode_picker = MODE_PICKER.new(
-		$BezierOptions/BezierMode, Callable(self, "_get_bezier_mode_index"),
+		$BezierOptions/BezierMode,
+		Callable(self, "_get_bezier_mode_index"),
 		Callable(self, "_on_bezier_mode_item_selected")
 	)
 	Tools.write_curve_activation_phase("curve_ready_done:%d" % tool_slot.button)

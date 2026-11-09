@@ -25,11 +25,13 @@ var _sample_masks: Dictionary[Frame, Image] = {}
 func _ready() -> void:
 	super._ready()
 	_fill_area_picker = MODE_PICKER.new(
-		$FillAreaOptions, Callable(self, "_get_fill_area_index"),
+		$FillAreaOptions,
+		Callable(self, "_get_fill_area_index"),
 		Callable(self, "_on_FillAreaOptions_item_selected")
 	)
 	_fill_with_picker = MODE_PICKER.new(
-		$FillWithOptions, Callable(self, "_get_fill_with_index"),
+		$FillWithOptions,
+		Callable(self, "_get_fill_with_index"),
 		Callable(self, "_on_FillWithOptions_item_selected")
 	)
 	update_config()

@@ -53,7 +53,8 @@ func _ready() -> void:
 	transformation_handles.preview_transform_changed.connect(set_confirm_buttons_visibility)
 	_create_selection_actions()
 	_selection_mode_picker = MODE_PICKER.new(
-		$ModeButtons, Callable(self, "_get_mode_picker_index"),
+		$ModeButtons,
+		Callable(self, "_get_mode_picker_index"),
 		Callable(self, "_on_mode_button_pressed")
 	)
 	if not Global.project_switched.is_connected(_on_selection_actions_project_switched):
@@ -99,23 +100,33 @@ func _create_selection_actions() -> void:
 	quick_actions.add_theme_constant_override(&"v_separation", 4)
 	actions.add_child(quick_actions)
 	_add_selection_action(
-		quick_actions, "Select all", Global.SelectMenu.SELECT_ALL,
+		quick_actions,
+		"Select all",
+		Global.SelectMenu.SELECT_ALL,
 		preload("res://assets/graphics/mode_icons/mdi/select-all.svg")
 	)
 	_add_selection_action(
-		quick_actions, "Clear selection", Global.SelectMenu.CLEAR,
+		quick_actions,
+		"Clear selection",
+		Global.SelectMenu.CLEAR,
 		preload("res://assets/graphics/mode_icons/mdi/selection-off.svg")
 	)
 	_add_selection_action(
-		quick_actions, "Reselect", Global.SelectMenu.RESELECT,
+		quick_actions,
+		"Reselect",
+		Global.SelectMenu.RESELECT,
 		preload("res://assets/graphics/mode_icons/mdi/backup-restore.svg")
 	)
 	_add_selection_action(
-		quick_actions, "Invert selection", Global.SelectMenu.INVERT,
+		quick_actions,
+		"Invert selection",
+		Global.SelectMenu.INVERT,
 		preload("res://assets/graphics/mode_icons/mdi/select-inverse.svg")
 	)
 	_add_selection_action(
-		quick_actions, "Select cel area", Global.SelectMenu.SELECT_CEL_AREA,
+		quick_actions,
+		"Select cel area",
+		Global.SelectMenu.SELECT_CEL_AREA,
 		preload("res://assets/graphics/mode_icons/mdi/grid.svg")
 	)
 

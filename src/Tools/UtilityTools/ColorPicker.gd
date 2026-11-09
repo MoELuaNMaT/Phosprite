@@ -28,7 +28,8 @@ func _ready() -> void:
 		$ColorPicker/Options.selected = 0
 	_sync_extract_mode_buttons()
 	_extract_mode_picker = MODE_PICKER.new(
-		$ColorPicker/ExtractModeButtons, Callable(self, "_get_extract_mode_index"),
+		$ColorPicker/ExtractModeButtons,
+		Callable(self, "_get_extract_mode_index"),
 		Callable(self, "_on_extract_mode_button_pressed")
 	)
 	_apply_canvas_layer_preview()

@@ -81,7 +81,9 @@ func sync() -> void:
 	var source := _source_buttons[index]
 	_trigger.icon = source.icon
 	_trigger.text = source.text if source.icon == null else ""
-	_trigger.tooltip_text = source.tooltip_text if not source.tooltip_text.is_empty() else source.text
+	_trigger.tooltip_text = (
+		source.tooltip_text if not source.tooltip_text.is_empty() else source.text
+	)
 	for choice_index in _choices.size():
 		_choices[choice_index].set_pressed_no_signal(choice_index == index)
 
