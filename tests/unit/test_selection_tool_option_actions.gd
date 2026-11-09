@@ -24,7 +24,9 @@ func test_selection_actions_use_adaptive_icon_flow_for_all_selection_tools() -> 
 				check_true(not button.tooltip_text.is_empty(), "quick actions keep tooltips")
 				check_eq(button.custom_minimum_size, Vector2(36, 36), "touch controls stay square")
 				check_true(button.pressed.get_connections().size() > 0, "original command is wired")
-	check_true(actions.get_node_or_null(^"WrapStrokes") is CheckBox, "wrap toggle remains independent")
+	check_true(
+		actions.get_node_or_null(^"WrapStrokes") is CheckBox, "wrap toggle remains independent"
+	)
 	var modify_toggle := actions.get_node_or_null(^"ModifySelection") as Button
 	check_true(modify_toggle != null, "Modify has an icon entry")
 	var modify := actions.get_node_or_null(^"ModifyActions") as HFlowContainer
@@ -53,8 +55,12 @@ func test_selection_action_states_keep_reselect_available_after_clear() -> void:
 		"Reselect is available only after a prior selection is cleared"
 	)
 	check_has(source, "button.visible = has_selection", "hide irrelevant Clear and Invert buttons")
-	check_has(source, "_selection_modify_toggle.visible = has_selection", "hide Modify without selection")
-	check_has(source, "_selection_modify_group.visible = false", "collapse Modify when no selection")
+	check_has(
+		source, "_selection_modify_toggle.visible = has_selection", "hide Modify without selection"
+	)
+	check_has(
+		source, "_selection_modify_group.visible = false", "collapse Modify when no selection"
+	)
 
 
 func test_selection_actions_use_existing_handlers_and_ios_visibility() -> void:
