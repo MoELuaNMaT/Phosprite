@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://cul5mpy17ebfl"]
 
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/tune-variant.svg" id="mdi_settings"]
 [ext_resource type="PackedScene" uid="uid://ubyatap3sylf" path="res://src/Tools/BaseDraw.tscn" id="1"]
 [ext_resource type="PackedScene" uid="uid://yjhp0ssng2mp" path="res://src/UI/Nodes/Sliders/ValueSlider.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bks78g787tsu8" path="res://src/Tools/DesignTools/Pencil.gd" id="3"]
@@ -62,12 +63,14 @@ text = "Pressure Settings"
 autowrap_mode = 3
 
 [node name="PressureSettings" type="Button" parent="." index="10"]
-custom_minimum_size = Vector2(54, 28)
+custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
 size_flags_horizontal = 4
 tooltip_text = "Open pressure, velocity and stabilizer settings"
 mouse_default_cursor_shape = 2
-text = "…"
+icon = ExtResource("mdi_settings")
+icon_alignment = 1
+expand_icon = true
 
 [node name="PixelPerfect" type="CheckBox" parent="." index="11"]
 layout_mode = 2
