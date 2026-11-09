@@ -18,6 +18,10 @@ Additional icons used by the compact tool-option controls:
 - `image-filter-center-focus.svg` — selection / center
 - `vector-polyline.svg` — curve / chained
 - `vector-bezier.svg` — curve / single
+- `fit-to-screen-outline.svg` — zoom / fit to frame
+- `image-size-select-actual.svg` — zoom / actual pixel size
+- `check.svg` — crop / apply
+- `tune-variant.svg` — pencil / pressure settings
 
 - `selection.svg` — selection / replace
 - `vector-union.svg` — selection / add
