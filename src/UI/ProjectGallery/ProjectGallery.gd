@@ -60,6 +60,7 @@ var _feedback_generation := 0
 @onready var import_button := %Import as Button
 @onready var new_button := %New as Button
 @onready var multiselect_button := %MultiSelect as Button
+@onready var build_identity_label := %BuildIdentity as Label
 @onready var project_action_menu := %ProjectActionMenu as PopupMenu
 @onready var batch_action_menu := %BatchActionMenu as PopupMenu
 @onready var rename_dialog := %RenameProjectDialog as ConfirmationDialog
@@ -75,6 +76,7 @@ func _notification(what: int) -> void:
 
 
 func _ready() -> void:
+	_configure_build_identity()
 	if library == null:
 		library = ProjectLibraryScript.new(StoragePolicy.PROJECTS_DIRECTORY)
 	if not resized.is_connected(_on_gallery_resized):
@@ -104,6 +106,30 @@ func _ready() -> void:
 	if not batch_action_menu.popup_hide.is_connected(_on_popover_hidden):
 		batch_action_menu.popup_hide.connect(_on_popover_hidden)
 	call_deferred("_update_layout")
+
+
+## The gallery displays the identity of the app actually running on the iPad.
+## Build metadata is stamped into project.godot by the iOS CI job before export.
+## Never infer the installed version from a downloaded IPA or a saved session.
+static func ios_build_label(run_number: String, commit: String) -> String:
+	if run_number.is_empty() or commit.is_empty():
+		return ""
+	return "Build %s · %s" % [run_number, commit.substr(0, 7)]
+
+
+func _configure_build_identity() -> void:
+	build_identity_label.visible = false
+	if OS.get_name() != "iOS":
+		return
+	var run_number := str(ProjectSettings.get_setting("application/config/ios_build_number", ""))
+	var commit := str(ProjectSettings.get_setting("application/config/ios_build_commit", ""))
+	var label_text := ios_build_label(run_number, commit)
+	if label_text.is_empty():
+		return
+	build_identity_label.text = label_text
+	build_identity_label.tooltip_text = "iOS build %s / commit %s" % [run_number, commit]
+	build_identity_label.visible = true
+	print("[PHOSPRITE-BUILD] iOS build %s / commit %s" % [run_number, commit])
 
 
 func _process(_delta: float) -> void:

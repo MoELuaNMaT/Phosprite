@@ -3,7 +3,7 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ master, main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2, feat/icon-only-topbar-preview-20261107, fix/workspace-titles-topbar-spacing-preview-captions-20261107, fix/tool-options-vertical-value-drag-20261108, fix/curve-tool-startup-diagnostic-race-20261108, feat/tap-toggle-collapsed-tool-families-20261108 ]
+    branches: [ master, main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2, feat/icon-only-topbar-preview-20261107, fix/workspace-titles-topbar-spacing-preview-captions-20261107, fix/tool-options-vertical-value-drag-20261108, fix/curve-tool-startup-diagnostic-race-20261108, feat/tap-toggle-collapsed-tool-families-20261108, fix/ios-build-identity-and-replacement-verification-20261109 ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -30,6 +30,68 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
+
+      # Every IPA must have a unique, visible identity. Previous builds all used
+      # CFBundleVersion=1.2.0, making device-side replacement hard to verify.
+      - name: Stamp unique iOS build identity
+        shell: bash
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          number = os.environ["BUILD_NUMBER"]
+          commit = os.environ["BUILD_COMMIT"]
+          run_id = os.environ["BUILD_RUN_ID"]
+          if not number.isdigit() or not re.fullmatch(r"[0-9a-f]{40}", commit):
+              raise SystemExit("Invalid GitHub build number or commit")
+          version = "1.2." + number
+
+          project_path = Path("project.godot")
+          project = project_path.read_text(encoding="utf-8")
+          anchor = 'config/version="v1.2-stable"'
+          if project.count(anchor) != 1:
+              raise SystemExit("Godot application version anchor has changed")
+          identity = (
+              f'config/ios_build_number="{number}"\n'
+              f'config/ios_build_commit="{commit}"\n'
+              f'config/ios_build_run_id="{run_id}"'
+          )
+          project = project.replace(anchor, anchor + "\n" + identity, 1)
+          project_path.write_text(project, encoding="utf-8")
+
+          preset_path = Path("export_presets.cfg")
+          presets = preset_path.read_text(encoding="utf-8")
+          start = presets.find("[preset.9.options]")
+          end = presets.find("\n[preset.", start + 1)
+          if start < 0:
+              raise SystemExit("iOS export preset not found")
+          if end < 0:
+              end = len(presets)
+          section = presets[start:end]
+          old_version = 'application/version="1.2.0"'
+          if section.count(old_version) != 1:
+              raise SystemExit("iOS CFBundleVersion anchor has changed")
+          section = section.replace(old_version, f'application/version="{version}"', 1)
+          presets = presets[:start] + section + presets[end:]
+          preset_path.write_text(presets, encoding="utf-8")
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"PHOSPRITE_BUILD_VERSION={version}\n")
+              env_file.write(f"PHOSPRITE_BUILD_SHA={commit}\n")
+          print(f"[PHOSPRITE-BUILD] {version} commit {commit} run {run_id}")
+          PY
+          # The legacy warning code must never enter a release package again.
+          if grep -R -n -E 'Curve Tool diagnostic|curve_ready_done|_report_previous_curve_activation_crash' src --include='*.gd'; then
+            echo 'Obsolete Curve Tool diagnostic found in production scripts'
+            exit 1
+          fi
 
       # P1-B Pointer Identity 只补 Godot 4.7.2 尚未暴露给 GDScript 的 UITouch.type。
       - name: Build pinned Pointer Identity plugin ✏️
@@ -263,6 +325,30 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS=""
+
+      - name: Validate IPA identity after Xcode archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="./build/ios/${EXPORT_NAME}.xcarchive/Products/Applications/${EXPORT_NAME}.app"
+          test -d "${APP_PATH}"
+          test -f "${APP_PATH}/Phosprite.pck"
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${APP_PATH}/Info.plist")
+          IDENTIFIER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${APP_PATH}/Info.plist")
+          test "${VERSION}" = "${PHOSPRITE_BUILD_VERSION}"
+          test "${IDENTIFIER}" = "com.phosprite.app"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          pack = Path("build/ios/Phosprite.xcarchive/Products/Applications/Phosprite.app/Phosprite.pck")
+          data = pack.read_bytes()
+          sha = os.environ["PHOSPRITE_BUILD_SHA"].encode("ascii")
+          if sha not in data:
+              raise SystemExit("Exported Godot pack has no stamped commit identity")
+          print("[PHOSPRITE-BUILD] Verified embedded commit", sha.decode("ascii"))
+          PY
+          echo "[PHOSPRITE-BUILD] Verified IPA version ${VERSION} and bundle ${IDENTIFIER}"
 
       - name: Package unsigned .ipa 📦
         run: |
