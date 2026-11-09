@@ -2,6 +2,8 @@
 
 [ext_resource type="PackedScene" uid="uid://ubyatap3sylf" path="res://src/Tools/BaseDraw.tscn" id="1_rvuea"]
 [ext_resource type="Script" uid="uid://u1adalnj5cfh" path="res://src/Tools/DesignTools/CurveTool.gd" id="2_tjnp6"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/vector-polyline.svg" id="mdi_vector_polyline"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/vector-bezier.svg" id="mdi_vector_bezier"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_bezier_mode"]
 allow_unpress = false
@@ -23,21 +25,29 @@ size_flags_horizontal = 3
 alignment = 1
 
 [node name="Chained" type="Button" parent="BezierOptions/BezierMode"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
-tooltip_text = "Makes a chain of multiple bezier curves, similar to Krita's curve tool."
+size_flags_horizontal = 4
+tooltip_text = "Chained curves"
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_bezier_mode")
-text = "Chained"
+icon = ExtResource("mdi_vector_polyline")
+icon_alignment = 1
+expand_icon = true
 
 [node name="Single" type="Button" parent="BezierOptions/BezierMode"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
-tooltip_text = "Makes a single bezier curve, similar to Aseprite's curve tool."
+size_flags_horizontal = 4
+tooltip_text = "Single curve"
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_bezier_mode")
-text = "Single"
+icon = ExtResource("mdi_vector_bezier")
+icon_alignment = 1
+expand_icon = true
 
 [node name="FillCheckbox" type="CheckBox" parent="." index="7" unique_id=374483038]
 layout_mode = 2

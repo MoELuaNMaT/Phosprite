@@ -3,6 +3,9 @@ extends BaseDrawTool
 enum SingleState { START, END, MIDDLE_A, MIDDLE_B, READY }
 enum Bezier { CHAINED, SINGLE }
 
+const MODE_PICKER := preload("res://src/UI/Nodes/ToolOptionModePicker.gd")
+
+var _bezier_mode_picker
 var _curve := Curve2D.new()  ## The [Curve2D] responsible for the shape of the curve being drawn.
 var _drawing := false  ## Set to true when a curve is being drawn.
 var _fill_inside := false  ## When true, the inside area of the curve gets filled.
@@ -25,6 +28,19 @@ func _init() -> void:
 	Global.project_about_to_switch.connect(_clear)
 	_drawer.color_op = Drawer.ColorOp.new()
 	update_indicator()
+
+
+func _ready() -> void:
+	super._ready()
+	_bezier_mode_picker = MODE_PICKER.new(
+		$BezierOptions/BezierMode,
+		Callable(self, "_get_bezier_mode_index"),
+		Callable(self, "_on_bezier_mode_item_selected")
+	)
+
+
+func _get_bezier_mode_index() -> int:
+	return _bezier_mode
 
 
 func _on_bezier_mode_item_selected(index: int) -> void:
@@ -67,6 +83,8 @@ func update_config() -> void:
 	$FillCheckbox.button_pressed = _fill_inside
 	for index in bezier_mode_buttons.size():
 		bezier_mode_buttons[index].set_pressed_no_signal(index == _bezier_mode)
+	if _bezier_mode_picker != null:
+		_bezier_mode_picker.sync()
 
 
 func _input(event: InputEvent) -> void:

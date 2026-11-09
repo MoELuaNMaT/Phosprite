@@ -1,6 +1,9 @@
 extends "res://tests/test_base.gd"
 
 const ICONS := "res://assets/graphics/mode_icons/mdi/"
+const MODE_PICKER := preload("res://src/UI/Nodes/ToolOptionModePicker.gd")
+
+var _test_mode_index := 0
 
 
 func _check_mode_buttons(scene_path: String, expected: Dictionary) -> void:
@@ -131,3 +134,64 @@ func test_mode_buttons_keep_square_geometry_in_wide_column() -> void:
 		wide_column.queue_free()
 		options.free()
 		await tree.process_frame
+
+
+func test_bucket_fill_source_icon_mapping() -> void:
+	_check_mode_buttons(
+		"res://src/Tools/DesignTools/Bucket.tscn",
+		{
+			"FillWithOptions/SelectedColor": "palette-swatch",
+			"FillWithOptions/Pattern": "checkerboard",
+		}
+	)
+
+
+func test_curve_mode_icon_mapping() -> void:
+	_check_mode_buttons(
+		"res://src/Tools/DesignTools/CurveTool.tscn",
+		{
+			"BezierOptions/BezierMode/Chained": "vector-polyline",
+			"BezierOptions/BezierMode/Single": "vector-bezier",
+		}
+	)
+
+
+func _get_test_mode_index() -> int:
+	return _test_mode_index
+
+
+func _set_test_mode_index(index: int) -> void:
+	_test_mode_index = index
+
+
+func test_compact_mode_picker_tracks_current_mode_and_keeps_original_buttons() -> void:
+	_test_mode_index = 0
+	var host := VBoxContainer.new()
+	var first := Button.new()
+	first.name = "First"
+	first.icon = load(ICONS + "selection.svg")
+	first.tooltip_text = "Replace selection"
+	host.add_child(first)
+	var second := Button.new()
+	second.name = "Second"
+	second.icon = load(ICONS + "vector-union.svg")
+	second.tooltip_text = "Add to selection"
+	host.add_child(second)
+
+	var picker := MODE_PICKER.new(
+		host, Callable(self, "_get_test_mode_index"), Callable(self, "_set_test_mode_index")
+	)
+	var trigger := host.get_node_or_null(^"ModeTrigger") as Button
+	var popup := host.get_node_or_null(^"ModeChoicesPopup") as PopupPanel
+	check_true(trigger != null, "one compact icon trigger replaces the source row")
+	check_true(popup != null, "mode choices are presented in a separate popup")
+	check_true(not first.visible and not second.visible, "original buttons are kept but hidden")
+	if trigger != null:
+		check_eq(trigger.icon, first.icon, "trigger shows the saved current mode")
+		check_eq(trigger.tooltip_text, first.tooltip_text, "tooltip identifies active mode")
+	_test_mode_index = 1
+	picker.sync()
+	if trigger != null:
+		check_eq(trigger.icon, second.icon, "trigger updates when configuration changes")
+		check_eq(trigger.tooltip_text, second.tooltip_text, "tooltip updates with active mode")
+	host.free()

@@ -3,6 +3,8 @@ extends BaseTool
 
 enum Mode { DEFAULT, ADD, SUBTRACT, INTERSECT }
 
+const MODE_PICKER := preload("res://src/UI/Nodes/ToolOptionModePicker.gd")
+
 var undo_data: Dictionary
 var _move := false
 var _start_pos := Vector2i.ZERO
@@ -20,9 +22,11 @@ var _intersect := false  ## Shift + Ctrl + Mouse Click
 ## while draw_move() is being called. For example, pressing Enter while still moving content
 var _transformation_status_changed := false
 var _skip_slider_logic := false
+var _selection_mode_picker
 var _selection_action_buttons: Dictionary = {}
+var _selection_modify_toggle: Button
 var _selection_wrap_checkbox: CheckBox
-var _selection_modify_group: VBoxContainer
+var _selection_modify_group: HFlowContainer
 var _observed_selection_project: Project
 
 @onready var selection_node := Global.canvas.selection
@@ -48,6 +52,11 @@ func _ready() -> void:
 	selection_node.transformation_canceled.connect(func(): _transformation_status_changed = true)
 	transformation_handles.preview_transform_changed.connect(set_confirm_buttons_visibility)
 	_create_selection_actions()
+	_selection_mode_picker = MODE_PICKER.new(
+		$ModeButtons,
+		Callable(self, "_get_mode_picker_index"),
+		Callable(self, "_on_mode_button_pressed")
+	)
 	if not Global.project_switched.is_connected(_on_selection_actions_project_switched):
 		Global.project_switched.connect(_on_selection_actions_project_switched)
 	_on_selection_actions_project_switched()
@@ -83,11 +92,43 @@ func _create_selection_actions() -> void:
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	actions.add_child(heading)
 
-	_add_selection_action(actions, "Select all", Global.SelectMenu.SELECT_ALL)
-	_add_selection_action(actions, "Clear selection", Global.SelectMenu.CLEAR)
-	_add_selection_action(actions, "Reselect", Global.SelectMenu.RESELECT)
-	_add_selection_action(actions, "Invert selection", Global.SelectMenu.INVERT)
-	_add_selection_action(actions, "Select cel area", Global.SelectMenu.SELECT_CEL_AREA)
+	# Flow rather than a fixed column: narrow panels wrap icons automatically.
+	var quick_actions := HFlowContainer.new()
+	quick_actions.name = &"QuickActions"
+	quick_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	quick_actions.add_theme_constant_override(&"h_separation", 4)
+	quick_actions.add_theme_constant_override(&"v_separation", 4)
+	actions.add_child(quick_actions)
+	_add_selection_action(
+		quick_actions,
+		"Select all",
+		Global.SelectMenu.SELECT_ALL,
+		load("res://assets/graphics/mode_icons/mdi/select-all.svg")
+	)
+	_add_selection_action(
+		quick_actions,
+		"Clear selection",
+		Global.SelectMenu.CLEAR,
+		load("res://assets/graphics/mode_icons/mdi/selection-off.svg")
+	)
+	_add_selection_action(
+		quick_actions,
+		"Reselect",
+		Global.SelectMenu.RESELECT,
+		load("res://assets/graphics/mode_icons/mdi/backup-restore.svg")
+	)
+	_add_selection_action(
+		quick_actions,
+		"Invert selection",
+		Global.SelectMenu.INVERT,
+		load("res://assets/graphics/mode_icons/mdi/select-inverse.svg")
+	)
+	_add_selection_action(
+		quick_actions,
+		"Select cel area",
+		Global.SelectMenu.SELECT_CEL_AREA,
+		load("res://assets/graphics/mode_icons/mdi/grid.svg")
+	)
 
 	_selection_wrap_checkbox = CheckBox.new()
 	_selection_wrap_checkbox.name = &"WrapStrokes"
@@ -99,38 +140,50 @@ func _create_selection_actions() -> void:
 	_selection_wrap_checkbox.toggled.connect(_on_selection_wrap_toggled)
 	actions.add_child(_selection_wrap_checkbox)
 
-	var modify_toggle := _make_selection_action_button("Modify selection")
-	modify_toggle.name = &"ModifySelection"
-	modify_toggle.toggle_mode = true
-	modify_toggle.toggled.connect(_on_selection_modify_toggled)
-	actions.add_child(modify_toggle)
+	_selection_modify_toggle = _make_selection_action_button(
+		"Modify selection", load("res://assets/graphics/mode_icons/mdi/border-color.svg")
+	)
+	_selection_modify_toggle.name = &"ModifySelection"
+	_selection_modify_toggle.toggle_mode = true
+	_selection_modify_toggle.toggled.connect(_on_selection_modify_toggled)
+	actions.add_child(_selection_modify_toggle)
 
-	_selection_modify_group = VBoxContainer.new()
+	_selection_modify_group = HFlowContainer.new()
 	_selection_modify_group.name = &"ModifyActions"
 	_selection_modify_group.visible = false
-	_selection_modify_group.add_theme_constant_override(&"separation", 4)
+	_selection_modify_group.add_theme_constant_override(&"h_separation", 4)
+	_selection_modify_group.add_theme_constant_override(&"v_separation", 4)
 	actions.add_child(_selection_modify_group)
 	var labels := ["Expand selection", "Shrink selection", "Selection border", "Center selection"]
+	var icons: Array[Texture2D] = [
+		load("res://assets/graphics/mode_icons/mdi/arrow-expand-all.svg"),
+		load("res://assets/graphics/mode_icons/mdi/arrow-collapse-all.svg"),
+		load("res://assets/graphics/mode_icons/mdi/border-all.svg"),
+		load("res://assets/graphics/mode_icons/mdi/image-filter-center-focus.svg"),
+	]
 	for index in 4:
-		var button := _make_selection_action_button(labels[index])
+		var button := _make_selection_action_button(labels[index], icons[index])
 		button.pressed.connect(_on_selection_modify_pressed.bind(index))
 		_selection_modify_group.add_child(button)
 
 
-func _make_selection_action_button(label: String) -> Button:
+func _make_selection_action_button(label: String, icon: Texture2D) -> Button:
 	var button := Button.new()
-	button.text = tr(label)
+	button.icon = icon
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.expand_icon = true
 	button.tooltip_text = tr(label)
-	button.custom_minimum_size = Vector2(SIDEBAR_CONTROL_WIDTH, 28.0)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.custom_minimum_size = Vector2(36.0, 36.0)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.focus_mode = Control.FOCUS_NONE
 	return button
 
 
-func _add_selection_action(container: VBoxContainer, label: String, id: int) -> void:
-	var button := _make_selection_action_button(label)
+func _add_selection_action(
+	container: HFlowContainer, label: String, id: int, icon: Texture2D
+) -> void:
+	var button := _make_selection_action_button(label, icon)
 	button.pressed.connect(_on_selection_action_pressed.bind(id))
 	container.add_child(button)
 	_selection_action_buttons[id] = button
@@ -179,14 +232,23 @@ func _refresh_selection_action_states() -> void:
 	var project := Global.current_project
 	if not is_instance_valid(project):
 		return
-	var clear_button := _selection_action_buttons.get(Global.SelectMenu.CLEAR) as Button
-	if is_instance_valid(clear_button):
-		clear_button.disabled = not project.has_selection
+	var has_selection := project.has_selection
+	for action_id in [Global.SelectMenu.CLEAR, Global.SelectMenu.INVERT]:
+		var button := _selection_action_buttons.get(action_id) as Button
+		if is_instance_valid(button):
+			button.visible = has_selection
+			button.disabled = not has_selection
 	var reselect_button := _selection_action_buttons.get(Global.SelectMenu.RESELECT) as Button
 	if is_instance_valid(reselect_button):
-		reselect_button.disabled = (
-			project.has_selection or project.prev_selection_map.is_invisible()
-		)
+		var can_reselect := not has_selection and not project.prev_selection_map.is_invisible()
+		reselect_button.visible = can_reselect
+		reselect_button.disabled = not can_reselect
+	if is_instance_valid(_selection_modify_toggle):
+		_selection_modify_toggle.visible = has_selection
+		if not has_selection:
+			_selection_modify_toggle.set_pressed_no_signal(false)
+	if not has_selection and is_instance_valid(_selection_modify_group):
+		_selection_modify_group.visible = false
 
 
 func set_confirm_buttons_visibility() -> void:
@@ -213,11 +275,17 @@ func refresh_options() -> void:
 	_sync_mode_buttons()
 
 
+func _get_mode_picker_index() -> int:
+	return _mode_selected
+
+
 func _sync_mode_buttons() -> void:
-	for index in $ModeButtons.get_child_count():
+	for index in 4:
 		var button := $ModeButtons.get_child(index) as BaseButton
 		if button != null:
 			button.set_pressed_no_signal(index == _mode_selected)
+	if _selection_mode_picker != null:
+		_selection_mode_picker.sync()
 
 
 func get_config() -> Dictionary:

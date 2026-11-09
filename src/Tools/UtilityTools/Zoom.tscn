@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://qyxbkvju2fbb"]
 
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/fit-to-screen-outline.svg" id="mdi_fit_screen"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/image-size-select-actual.svg" id="mdi_actual_size"]
 [ext_resource type="PackedScene" uid="uid://ctfgfelg0sho8" path="res://src/Tools/BaseTool.tscn" id="1"]
 [ext_resource type="Script" uid="uid://gofqkox1cbvw" path="res://src/Tools/UtilityTools/Zoom.gd" id="2"]
 
@@ -27,16 +29,24 @@ mouse_default_cursor_shape = 2
 text = "Options:"
 
 [node name="FitToFrame" type="Button" parent="." index="5" unique_id=1652046134]
-custom_minimum_size = Vector2(92, 0)
+custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-text = "Fit to frame"
+icon = ExtResource("mdi_fit_screen")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Fit to frame"
 
 [node name="100%" type="Button" parent="." index="6" unique_id=746701739]
-custom_minimum_size = Vector2(92, 0)
+custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-text = "100% Zoom"
+icon = ExtResource("mdi_actual_size")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "100% Zoom"
 
 [connection signal="item_selected" from="ModeOptions" to="." method="_on_ModeOptions_item_selected"]
 [connection signal="pressed" from="FitToFrame" to="." method="_on_FitToFrame_pressed"]

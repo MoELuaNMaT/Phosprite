@@ -1,9 +1,28 @@
 # Phosprite mode icons — Material Design Icons (MDI)
 
-These nine SVG files originate from the open-source **Pictogrammers / Material Design Icons** project:
+These SVG files originate from the open-source **Pictogrammers / Material Design Icons** project:
 https://github.com/Templarian/MaterialDesign-SVG
 
 Original artwork (each file is under `svg/` in that repository):
+
+Additional icons used by the compact tool-option controls:
+- `checkerboard.svg` — bucket / pattern fill
+- `backup-restore.svg` — selection / reselect
+- `select-inverse.svg` — selection / inverse
+- `grid.svg` — selection / cel area
+- `selection-off.svg` — selection / clear
+- `border-color.svg` — selection / modify actions
+- `arrow-expand-all.svg` — selection / expand
+- `arrow-collapse-all.svg` — selection / shrink
+- `border-all.svg` — selection / border
+- `image-filter-center-focus.svg` — selection / center
+- `vector-polyline.svg` — curve / chained
+- `vector-bezier.svg` — curve / single
+- `fit-to-screen-outline.svg` — zoom / fit to frame
+- `image-size-select-actual.svg` — zoom / actual pixel size
+- `check.svg` — crop / apply
+- `tune-variant.svg` — pencil / pressure settings
+
 - `selection.svg` — selection / replace
 - `vector-union.svg` — selection / add
 - `selection-remove.svg` — selection / subtract
@@ -33,4 +52,4 @@ Icons: Apache 2.0.
 Some icons are redistributed under the Apache 2.0 license. Other icons are
 redistributed under their respective licenses or the Apache 2.0 license.
 
-No changes to mode behavior were made as part of this icon integration.
+Mode and selection action behavior is implemented in the tool scripts. The icon files are visual assets only.

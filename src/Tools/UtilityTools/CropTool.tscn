@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://c35n21ii7onhe"]
 
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/check.svg" id="mdi_apply_crop"]
 [ext_resource type="PackedScene" uid="uid://ctfgfelg0sho8" path="res://src/Tools/BaseTool.tscn" id="1"]
 [ext_resource type="PackedScene" uid="uid://yjhp0ssng2mp" path="res://src/UI/Nodes/Sliders/ValueSlider.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bvs7k7hwwuuby" path="res://src/Tools/UtilityTools/CropTool.gd" id="3"]
@@ -143,9 +144,14 @@ prefix_x = "Width:"
 prefix_y = "Height:"
 
 [node name="Apply" type="Button" parent="." index="7" unique_id=211966480]
+custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
-text = "Apply"
+icon = ExtResource("mdi_apply_crop")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Apply crop"
 
 [node name="DimensionsLabel" type="Label" parent="." index="8" unique_id=552473952]
 unique_name_in_owner = true

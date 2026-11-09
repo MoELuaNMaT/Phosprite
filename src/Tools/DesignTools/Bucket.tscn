@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/selection-search.svg" id="mdi_selection_search"]
 [ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/palette-swatch.svg" id="mdi_palette_swatch"]
 [ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/select-all.svg" id="mdi_select_all"]
+[ext_resource type="Texture2D" path="res://assets/graphics/mode_icons/mdi/checkerboard.svg" id="mdi_checkerboard"]
 
 [sub_resource type="StyleBoxFlat" id="1"]
 bg_color = Color(1, 1, 1, 1)
@@ -120,19 +121,29 @@ size_flags_horizontal = 3
 alignment = 1
 
 [node name="SelectedColor" type="Button" parent="FillWithOptions"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_fill_with")
-text = "Selected color"
+icon = ExtResource("mdi_palette_swatch")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Selected color"
 
 [node name="Pattern" type="Button" parent="FillWithOptions"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_fill_with")
-text = "Pattern"
+icon = ExtResource("mdi_checkerboard")
+icon_alignment = 1
+expand_icon = true
+tooltip_text = "Pattern"
 
 [node name="FillPattern" type="VBoxContainer" parent="." index="8" unique_id=1597102964]
 visible = false
