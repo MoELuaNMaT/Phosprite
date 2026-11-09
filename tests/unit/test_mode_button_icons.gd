@@ -131,3 +131,23 @@ func test_mode_buttons_keep_square_geometry_in_wide_column() -> void:
 		wide_column.queue_free()
 		options.free()
 		await tree.process_frame
+
+
+func test_bucket_fill_source_icon_mapping() -> void:
+	_check_mode_buttons(
+		"res://src/Tools/DesignTools/Bucket.tscn",
+		{
+			"FillWithOptions/SelectedColor": "palette-swatch",
+			"FillWithOptions/Pattern": "checkerboard",
+		}
+	)
+
+
+func test_curve_mode_icon_mapping() -> void:
+	_check_mode_buttons(
+		"res://src/Tools/DesignTools/CurveTool.tscn",
+		{
+			"BezierOptions/BezierMode/Chained": "vector-polyline",
+			"BezierOptions/BezierMode/Single": "vector-bezier",
+		}
+	)
