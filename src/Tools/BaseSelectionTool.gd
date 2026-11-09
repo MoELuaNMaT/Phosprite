@@ -103,31 +103,31 @@ func _create_selection_actions() -> void:
 		quick_actions,
 		"Select all",
 		Global.SelectMenu.SELECT_ALL,
-		preload("res://assets/graphics/mode_icons/mdi/select-all.svg")
+		load("res://assets/graphics/mode_icons/mdi/select-all.svg")
 	)
 	_add_selection_action(
 		quick_actions,
 		"Clear selection",
 		Global.SelectMenu.CLEAR,
-		preload("res://assets/graphics/mode_icons/mdi/selection-off.svg")
+		load("res://assets/graphics/mode_icons/mdi/selection-off.svg")
 	)
 	_add_selection_action(
 		quick_actions,
 		"Reselect",
 		Global.SelectMenu.RESELECT,
-		preload("res://assets/graphics/mode_icons/mdi/backup-restore.svg")
+		load("res://assets/graphics/mode_icons/mdi/backup-restore.svg")
 	)
 	_add_selection_action(
 		quick_actions,
 		"Invert selection",
 		Global.SelectMenu.INVERT,
-		preload("res://assets/graphics/mode_icons/mdi/select-inverse.svg")
+		load("res://assets/graphics/mode_icons/mdi/select-inverse.svg")
 	)
 	_add_selection_action(
 		quick_actions,
 		"Select cel area",
 		Global.SelectMenu.SELECT_CEL_AREA,
-		preload("res://assets/graphics/mode_icons/mdi/grid.svg")
+		load("res://assets/graphics/mode_icons/mdi/grid.svg")
 	)
 
 	_selection_wrap_checkbox = CheckBox.new()
@@ -141,7 +141,7 @@ func _create_selection_actions() -> void:
 	actions.add_child(_selection_wrap_checkbox)
 
 	_selection_modify_toggle = _make_selection_action_button(
-		"Modify selection", preload("res://assets/graphics/mode_icons/mdi/border-color.svg")
+		"Modify selection", load("res://assets/graphics/mode_icons/mdi/border-color.svg")
 	)
 	_selection_modify_toggle.name = &"ModifySelection"
 	_selection_modify_toggle.toggle_mode = true
@@ -156,10 +156,10 @@ func _create_selection_actions() -> void:
 	actions.add_child(_selection_modify_group)
 	var labels := ["Expand selection", "Shrink selection", "Selection border", "Center selection"]
 	var icons: Array[Texture2D] = [
-		preload("res://assets/graphics/mode_icons/mdi/arrow-expand-all.svg"),
-		preload("res://assets/graphics/mode_icons/mdi/arrow-collapse-all.svg"),
-		preload("res://assets/graphics/mode_icons/mdi/border-all.svg"),
-		preload("res://assets/graphics/mode_icons/mdi/image-filter-center-focus.svg"),
+		load("res://assets/graphics/mode_icons/mdi/arrow-expand-all.svg"),
+		load("res://assets/graphics/mode_icons/mdi/arrow-collapse-all.svg"),
+		load("res://assets/graphics/mode_icons/mdi/border-all.svg"),
+		load("res://assets/graphics/mode_icons/mdi/image-filter-center-focus.svg"),
 	]
 	for index in 4:
 		var button := _make_selection_action_button(labels[index], icons[index])
