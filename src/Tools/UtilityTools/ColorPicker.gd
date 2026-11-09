@@ -3,7 +3,9 @@ extends BaseTool
 enum { TOP_COLOR, CURRENT_LAYER }
 
 const COLOR_SAMPLING := preload("res://src/Tools/UtilityTools/ColorSampling.gd")
+const MODE_PICKER := preload("res://src/UI/Nodes/ToolOptionModePicker.gd")
 
+var _extract_mode_picker
 var _prev_mode := 0
 var _color_slot := 0
 var _mode := 0
@@ -25,6 +27,10 @@ func _ready() -> void:
 		$ColorPicker/Options.hide()
 		$ColorPicker/Options.selected = 0
 	_sync_extract_mode_buttons()
+	_extract_mode_picker = MODE_PICKER.new(
+		$ColorPicker/ExtractModeButtons, Callable(self, "_get_extract_mode_index"),
+		Callable(self, "_on_extract_mode_button_pressed")
+	)
 	_apply_canvas_layer_preview()
 
 
@@ -67,6 +73,10 @@ func _on_extract_mode_button_pressed(index: int) -> void:
 	_set_extract_mode(index)
 
 
+func _get_extract_mode_index() -> int:
+	return _mode
+
+
 func _set_extract_mode(index: int) -> void:
 	_mode = clampi(index, TOP_COLOR, CURRENT_LAYER)
 	update_config()
@@ -91,11 +101,12 @@ func update_config() -> void:
 
 
 func _sync_extract_mode_buttons() -> void:
-	var buttons := $ColorPicker/ExtractModeButtons.get_children()
-	for index in buttons.size():
-		var button := buttons[index] as BaseButton
+	for index in 2:
+		var button := $ColorPicker/ExtractModeButtons.get_child(index) as BaseButton
 		if button != null:
 			button.set_pressed_no_signal(index == _mode)
+	if _extract_mode_picker != null:
+		_extract_mode_picker.sync()
 
 
 func _apply_canvas_layer_preview() -> void:
