@@ -5,7 +5,10 @@ enum FillWith { COLOR, PATTERN }
 
 const COLOR_REPLACE_SHADER := preload("res://src/Shaders/ColorReplace.gdshader")
 const PATTERN_FILL_SHADER := preload("res://src/Shaders/PatternFill.gdshader")
+const MODE_PICKER := preload("res://src/UI/Nodes/ToolOptionModePicker.gd")
 
+var _fill_area_picker
+var _fill_with_picker
 var _undo_data := {}
 var _prev_mode := 0
 var _pattern: Patterns.Pattern
@@ -21,7 +24,24 @@ var _sample_masks: Dictionary[Frame, Image] = {}
 
 func _ready() -> void:
 	super._ready()
+	_fill_area_picker = MODE_PICKER.new(
+		$FillAreaOptions, Callable(self, "_get_fill_area_index"),
+		Callable(self, "_on_FillAreaOptions_item_selected")
+	)
+	_fill_with_picker = MODE_PICKER.new(
+		$FillWithOptions, Callable(self, "_get_fill_with_index"),
+		Callable(self, "_on_FillWithOptions_item_selected")
+	)
+	update_config()
 	update_pattern()
+
+
+func _get_fill_area_index() -> int:
+	return _fill_area
+
+
+func _get_fill_with_index() -> int:
+	return _fill_with
 
 
 func _input(event: InputEvent) -> void:
@@ -51,7 +71,12 @@ func _on_merge_area_options_toggled(toggled_on: bool) -> void:
 
 
 func _select_fill_area_optionbutton() -> void:
-	$FillAreaOptions.selected = _fill_area
+	for index in 3:
+		var option := $FillAreaOptions.get_child(index) as BaseButton
+		if option != null:
+			option.set_pressed_no_signal(index == _fill_area)
+	if _fill_area_picker != null:
+		_fill_area_picker.sync()
 	$MergeAreaOptions.visible = _fill_area == FillArea.AREA
 	$ToleranceSlider.visible = (_fill_area != FillArea.SELECTION)
 
@@ -127,7 +152,12 @@ func set_config(config: Dictionary) -> void:
 
 func update_config() -> void:
 	_select_fill_area_optionbutton()
-	$FillWithOptions.selected = _fill_with
+	for index in 2:
+		var option := $FillWithOptions.get_child(index) as BaseButton
+		if option != null:
+			option.set_pressed_no_signal(index == _fill_with)
+	if _fill_with_picker != null:
+		_fill_with_picker.sync()
 	$ToleranceSlider.value = _tolerance * 255.0
 	$FillPattern.visible = _fill_with == FillWith.PATTERN
 	$FillPattern/OffsetX.value = _offset_x
