@@ -98,6 +98,7 @@ func _create_selection_actions() -> void:
 	quick_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quick_actions.add_theme_constant_override(&"h_separation", 4)
 	quick_actions.add_theme_constant_override(&"v_separation", 4)
+	quick_actions.alignment = FlowContainer.ALIGNMENT_CENTER
 	actions.add_child(quick_actions)
 	_add_selection_action(
 		quick_actions,
@@ -141,7 +142,7 @@ func _create_selection_actions() -> void:
 	actions.add_child(_selection_wrap_checkbox)
 
 	_selection_modify_toggle = _make_selection_action_button(
-		"Modify selection", load("res://assets/graphics/mode_icons/mdi/border-color.svg")
+		"Modify selection", load("res://assets/graphics/mode_icons/mdi/border-color.svg"), "Modify"
 	)
 	_selection_modify_toggle.name = &"ModifySelection"
 	_selection_modify_toggle.toggle_mode = true
@@ -153,8 +154,10 @@ func _create_selection_actions() -> void:
 	_selection_modify_group.visible = false
 	_selection_modify_group.add_theme_constant_override(&"h_separation", 4)
 	_selection_modify_group.add_theme_constant_override(&"v_separation", 4)
+	_selection_modify_group.alignment = FlowContainer.ALIGNMENT_CENTER
 	actions.add_child(_selection_modify_group)
 	var labels := ["Expand selection", "Shrink selection", "Selection border", "Center selection"]
+	var captions := ["Expand", "Shrink", "Border", "Center"]
 	var icons: Array[Texture2D] = [
 		load("res://assets/graphics/mode_icons/mdi/arrow-expand-all.svg"),
 		load("res://assets/graphics/mode_icons/mdi/arrow-collapse-all.svg"),
@@ -162,18 +165,21 @@ func _create_selection_actions() -> void:
 		load("res://assets/graphics/mode_icons/mdi/image-filter-center-focus.svg"),
 	]
 	for index in 4:
-		var button := _make_selection_action_button(labels[index], icons[index])
+		var button := _make_selection_action_button(labels[index], icons[index], captions[index])
 		button.pressed.connect(_on_selection_modify_pressed.bind(index))
 		_selection_modify_group.add_child(button)
 
 
-func _make_selection_action_button(label: String, icon: Texture2D) -> Button:
+func _make_selection_action_button(label: String, icon: Texture2D, caption: String) -> Button:
 	var button := Button.new()
 	button.icon = icon
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.expand_icon = true
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	button.text = tr(caption)
+	button.add_theme_font_size_override(&"font_size", 9)
+	button.clip_text = true
 	button.tooltip_text = tr(label)
-	button.custom_minimum_size = Vector2(36.0, 36.0)
+	button.custom_minimum_size = Vector2(36.0, 48.0)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.focus_mode = Control.FOCUS_NONE
@@ -183,7 +189,14 @@ func _make_selection_action_button(label: String, icon: Texture2D) -> Button:
 func _add_selection_action(
 	container: HFlowContainer, label: String, id: int, icon: Texture2D
 ) -> void:
-	var button := _make_selection_action_button(label, icon)
+	var captions := {
+		Global.SelectMenu.SELECT_ALL: "All",
+		Global.SelectMenu.CLEAR: "Clear",
+		Global.SelectMenu.RESELECT: "Resel",
+		Global.SelectMenu.INVERT: "Invert",
+		Global.SelectMenu.SELECT_CEL_AREA: "Cel",
+	}
+	var button := _make_selection_action_button(label, icon, str(captions.get(id, label)))
 	button.pressed.connect(_on_selection_action_pressed.bind(id))
 	container.add_child(button)
 	_selection_action_buttons[id] = button

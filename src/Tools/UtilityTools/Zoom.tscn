@@ -29,23 +29,29 @@ mouse_default_cursor_shape = 2
 text = "Options:"
 
 [node name="FitToFrame" type="Button" parent="." index="5" unique_id=1652046134]
-custom_minimum_size = Vector2(36, 36)
+custom_minimum_size = Vector2(36, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 icon = ExtResource("mdi_fit_screen")
 icon_alignment = 1
-expand_icon = true
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Fit"
+clip_text = true
 tooltip_text = "Fit to frame"
 
 [node name="100%" type="Button" parent="." index="6" unique_id=746701739]
-custom_minimum_size = Vector2(36, 36)
+custom_minimum_size = Vector2(36, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 icon = ExtResource("mdi_actual_size")
 icon_alignment = 1
-expand_icon = true
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "100%"
+clip_text = true
 tooltip_text = "100% Zoom"
 
 [connection signal="item_selected" from="ModeOptions" to="." method="_on_ModeOptions_item_selected"]
