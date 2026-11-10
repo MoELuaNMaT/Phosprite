@@ -144,13 +144,16 @@ prefix_x = "Width:"
 prefix_y = "Height:"
 
 [node name="Apply" type="Button" parent="." index="7" unique_id=211966480]
-custom_minimum_size = Vector2(36, 36)
+custom_minimum_size = Vector2(36, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
 icon = ExtResource("mdi_apply_crop")
 icon_alignment = 1
-expand_icon = true
+vertical_icon_alignment = 0
+theme_override_font_sizes/font_size = 9
+text = "Apply"
+clip_text = true
 tooltip_text = "Apply crop"
 
 [node name="DimensionsLabel" type="Label" parent="." index="8" unique_id=552473952]

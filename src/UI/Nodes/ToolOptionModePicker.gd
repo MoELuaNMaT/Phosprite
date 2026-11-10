@@ -4,7 +4,26 @@ extends RefCounted
 ## Compact presentation for an existing mutually exclusive Button group.
 ## The original buttons and their signals remain in the scene, so saved
 ## settings, shortcuts, and mode-change callbacks keep their old behavior.
-## Only the presentation is replaced by one icon and a click-open popup.
+## Only the presentation is replaced by one labeled icon and a click-open popup.
+
+const ICON_SIZE := Vector2(32, 48)
+const POPUP_ICON_SIZE := Vector2(48, 54)
+const ICON_CAPTION_FONT_SIZE := 9
+const MODE_CAPTIONS := {
+	"Replace": "Rep",
+	"Add": "Add",
+	"Subtract": "Sub",
+	"Intersect": "Int",
+	"SimilarArea": "Area",
+	"SimilarColors": "Colors",
+	"WholeSelection": "All",
+	"SelectedColor": "Color",
+	"Pattern": "Pattern",
+	"TopColor": "Top",
+	"CurrentLayer": "Layer",
+	"Chained": "Chain",
+	"Single": "Single",
+}
 
 var _host: Control
 var _get_index: Callable
@@ -30,11 +49,13 @@ func _init(host: Control, get_index: Callable, on_select: Callable) -> void:
 
 	_trigger = Button.new()
 	_trigger.name = &"ModeTrigger"
-	_trigger.custom_minimum_size = Vector2(36, 36)
+	_trigger.custom_minimum_size = ICON_SIZE
 	_trigger.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_trigger.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_trigger.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_trigger.expand_icon = true
+	_trigger.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	_trigger.add_theme_font_size_override(&"font_size", ICON_CAPTION_FONT_SIZE)
+	_trigger.clip_text = true
 	_trigger.focus_mode = Control.FOCUS_NONE
 	_host.add_child(_trigger)
 	_trigger.pressed.connect(_toggle_popup)
@@ -57,15 +78,16 @@ func _init(host: Control, get_index: Callable, on_select: Callable) -> void:
 	for index in _source_buttons.size():
 		var original := _source_buttons[index]
 		var choice := Button.new()
-		choice.custom_minimum_size = Vector2(44, 44)
+		choice.custom_minimum_size = POPUP_ICON_SIZE
 		choice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		choice.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		choice.icon = original.icon
 		choice.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		choice.expand_icon = true
+		choice.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		choice.add_theme_font_size_override(&"font_size", ICON_CAPTION_FONT_SIZE)
+		choice.clip_text = true
 		choice.tooltip_text = original.tooltip_text
-		if choice.icon == null:
-			choice.text = original.text
+		choice.text = _mode_caption(original) if choice.icon != null else original.text
 		choice.toggle_mode = true
 		choice.focus_mode = Control.FOCUS_NONE
 		choice.pressed.connect(_select_choice.bind(index))
@@ -80,12 +102,19 @@ func sync() -> void:
 	var index := clampi(int(_get_index.call()), 0, _source_buttons.size() - 1)
 	var source := _source_buttons[index]
 	_trigger.icon = source.icon
-	_trigger.text = source.text if source.icon == null else ""
+	_trigger.text = _mode_caption(source) if source.icon != null else source.text
 	_trigger.tooltip_text = (
 		source.tooltip_text if not source.tooltip_text.is_empty() else source.text
 	)
 	for choice_index in _choices.size():
 		_choices[choice_index].set_pressed_no_signal(choice_index == index)
+
+
+func _mode_caption(source: Button) -> String:
+	var caption := str(MODE_CAPTIONS.get(String(source.name), ""))
+	if caption.is_empty():
+		caption = source.tooltip_text.get_slice(" ", 0)
+	return tr(caption)
 
 
 func _toggle_popup() -> void:
@@ -98,8 +127,8 @@ func _toggle_popup() -> void:
 	var columns_count := mini(4, _choices.size())
 	var rows_count := ceili(float(_choices.size()) / float(columns_count))
 	var desired := Vector2i(
-		columns_count * 44 + (columns_count - 1) * 6 + 16,
-		rows_count * 44 + (rows_count - 1) * 6 + 16
+		columns_count * roundi(POPUP_ICON_SIZE.x) + (columns_count - 1) * 6 + 16,
+		rows_count * roundi(POPUP_ICON_SIZE.y) + (rows_count - 1) * 6 + 16
 	)
 	var viewport_size := _host.get_viewport().get_visible_rect().size
 	var popup_size := Vector2i(
