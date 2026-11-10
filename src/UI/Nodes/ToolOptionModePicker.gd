@@ -25,7 +25,6 @@ const MODE_CAPTIONS := {
 	"Single": "Single",
 }
 
-
 var _host: Control
 var _get_index: Callable
 var _on_select: Callable

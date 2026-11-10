@@ -190,8 +190,16 @@ func test_compact_mode_picker_tracks_current_mode_and_keeps_original_buttons() -
 		check_eq(trigger.icon, first.icon, "trigger shows the saved current mode")
 		check_eq(trigger.text, "Replace", "unmapped modes use a readable tooltip fallback")
 		check_eq(trigger.custom_minimum_size, Vector2(32, 48), "labeled mode triggers stay narrow")
-		check_eq(trigger.vertical_icon_alignment, VERTICAL_ALIGNMENT_TOP, "mode icon is above its caption")
-		check_eq(trigger.size_flags_horizontal, Control.SIZE_SHRINK_CENTER, "trigger stays centered in panel")
+		check_eq(
+			trigger.vertical_icon_alignment,
+			VERTICAL_ALIGNMENT_TOP,
+			"mode icon is above its caption"
+		)
+		check_eq(
+			trigger.size_flags_horizontal,
+			Control.SIZE_SHRINK_CENTER,
+			"trigger stays centered in panel"
+		)
 		check_eq(trigger.tooltip_text, first.tooltip_text, "tooltip identifies active mode")
 	_test_mode_index = 1
 	picker.sync()
@@ -203,6 +211,7 @@ func test_compact_mode_picker_tracks_current_mode_and_keeps_original_buttons() -
 
 
 func test_compact_mode_picker_shows_short_labels_on_popup_choices() -> void:
+	_test_mode_index = 0
 	var host := VBoxContainer.new()
 	for mode_name in ["SimilarArea", "SimilarColors", "WholeSelection"]:
 		var button := Button.new()
@@ -223,7 +232,9 @@ func test_compact_mode_picker_shows_short_labels_on_popup_choices() -> void:
 	for index in 3:
 		var choice := grid.get_child(index) as Button
 		check_eq(choice.text, ["Area", "Colors", "All"][index], "popup labels identify each mode")
-		check_eq(choice.vertical_icon_alignment, VERTICAL_ALIGNMENT_TOP, "popup icon sits above caption")
+		check_eq(
+			choice.vertical_icon_alignment, VERTICAL_ALIGNMENT_TOP, "popup icon sits above caption"
+		)
 		check_true(choice.custom_minimum_size.y >= 54, "popup label has vertical room")
 	_test_mode_index = 2
 	picker.sync()
@@ -243,7 +254,9 @@ func test_zoom_crop_and_pencil_icon_actions_match_preview_caption_layout() -> vo
 		for node_path: String in cases[scene_path]:
 			var button := options.get_node(node_path) as Button
 			check_eq(button.text, cases[scene_path][node_path], "icon action has a visible caption")
-			check_eq(button.vertical_icon_alignment, VERTICAL_ALIGNMENT_TOP, "icon is above caption")
+			check_eq(
+				button.vertical_icon_alignment, VERTICAL_ALIGNMENT_TOP, "icon is above caption"
+			)
 			check_eq(button.get_theme_font_size(&"font_size"), 9, "caption matches Preview font")
 			check_eq(button.custom_minimum_size.y, 48.0, "caption has dedicated height")
 			check_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_CENTER, "button is centered")
