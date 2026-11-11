@@ -168,36 +168,33 @@ func test_zen_mode_removed_without_shifting_fullscreen_command() -> void:
 	)
 	var global_source := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
 	check_true(
-		not top_source.contains('tr("Zen Mode")'),
-		"iPad Workspace submenu does not expose Zen Mode"
+		not top_source.contains('tr("Zen Mode")'), "iPad Workspace submenu does not expose Zen Mode"
 	)
 	check_true(
-		not top_source.contains('"Zen Mode":'),
-		"desktop Window menu does not expose Zen Mode"
+		not top_source.contains('"Zen Mode":'), "desktop Window menu does not expose Zen Mode"
 	)
 	check_true(not top_source.contains("_toggle_zen_mode"), "legacy Zen Mode handler is removed")
 	check_true(
-		not bridge_source.contains("set_zen_mode"),
-		"live Workspace bridge has no Zen Mode action"
+		not bridge_source.contains("set_zen_mode"), "live Workspace bridge has no Zen Mode action"
 	)
 	check_true(
 		not migration_source.contains("func set_zen_mode"),
 		"Workspace no longer hides the dock host through Zen Mode"
 	)
 	check_true(
-		not global_source.contains('&"zen_mode":'),
-		"removed action has no keyboard shortcut"
+		not global_source.contains('&"zen_mode":'), "removed action has no keyboard shortcut"
 	)
 	check_eq(Global.WindowMenu.FULLSCREEN_MODE, 5, "Fullscreen keeps its stable command ID")
 	check_has(
-		top_source, "Global.WindowMenu.FULLSCREEN_MODE: [",
+		top_source,
+		"Global.WindowMenu.FULLSCREEN_MODE: [",
 		"Window menu constructs the fullscreen entry by its explicit ID"
 	)
 	check_has(
-		top_source, "window_menu.get_item_index(Global.WindowMenu.FULLSCREEN_MODE)",
+		top_source,
+		"window_menu.get_item_index(Global.WindowMenu.FULLSCREEN_MODE)",
 		"fullscreen checkmark uses the actual menu index after removing Zen Mode"
 	)
 	check_has(
-		top_source, "_setup_panels_submenu(item)",
-		"normal panel visibility menu remains available"
+		top_source, "_setup_panels_submenu(item)", "normal panel visibility menu remains available"
 	)
