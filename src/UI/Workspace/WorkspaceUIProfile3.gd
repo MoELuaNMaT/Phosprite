@@ -42,6 +42,7 @@ const QUICK_BAR_MIN_Y := 68.0
 const QUICK_BAR_WIDTH := 100.0
 const QUICK_MARGIN := 8.0
 const QUICK_CLEARANCE := 8.0
+const QUICK_EXCLUSION_ID := &"ui3.quick_controls"
 const QUICK_MIN_VISIBLE_HEIGHT := 104.0
 const QUICK_SLIDER_HEIGHT := 106.0
 const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
@@ -146,6 +147,7 @@ func deactivate() -> void:
 	_clear_quick_bindings()
 	if is_instance_valid(_quick_bar):
 		_quick_bar.visible = false
+	_set_quick_reservation(Rect2())
 	_restore_left_tool_options()
 	if surface != null and surface.manager.has_instance(Builtins.UI3_TOOL_OPTIONS_ID):
 		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
@@ -679,58 +681,31 @@ func _quick_safe_bounds() -> Rect2:
 	return Rect2(Vector2.ZERO, parent.size)
 
 
-func _quick_obstacles() -> Array[Rect2]:
-	var obstacles: Array[Rect2] = []
-	if surface == null or surface.manager == null:
-		return obstacles
-	for module_id in surface.manager.get_registered_ids():
-		if surface.get_module_placement(module_id) == WorkspaceSurface.Placement.FLOATING:
-			var rect := surface.get_floating_rect(module_id)
-			if rect.has_area():
-				obstacles.append(rect)
-	return obstacles
-
-
-## Prefer the left edge. If a user drags Preview onto the strip, move the
-## strip to a clear nearby area rather than making either control untouchable.
-static func find_quick_rect(bounds: Rect2, desired_size: Vector2, obstacles: Array[Rect2]) -> Rect2:
+## Always anchor the Pencil/Eraser strip at its own left-side position.
+## Floating Workspace windows must avoid this area; they never move the strip.
+static func find_quick_rect(bounds: Rect2, desired_size: Vector2) -> Rect2:
 	if not bounds.has_area():
 		return Rect2()
-	var maximum := Vector2(
-		maxf(0.0, bounds.size.x - QUICK_MARGIN * 2.0), maxf(0.0, bounds.size.y - QUICK_MARGIN * 2.0)
+	var position := Vector2(
+		maxf(bounds.position.x + QUICK_MARGIN, QUICK_BAR_X),
+		maxf(bounds.position.y + QUICK_MARGIN, QUICK_BAR_MIN_Y)
 	)
-	var size := Vector2(minf(desired_size.x, maximum.x), minf(desired_size.y, maximum.y))
+	var available := bounds.end - position - Vector2.ONE * QUICK_MARGIN
+	var size := Vector2(
+		minf(desired_size.x, maxf(0.0, available.x)), minf(desired_size.y, maxf(0.0, available.y))
+	)
 	if size.x <= 0.0 or size.y <= 0.0:
 		return Rect2()
-	var max_x := bounds.end.x - QUICK_MARGIN - size.x
-	var max_y := bounds.end.y - QUICK_MARGIN - size.y
-	var base_x := bounds.position.x + QUICK_MARGIN
-	var base_y := bounds.position.y + QUICK_MARGIN
-	var xs: Array[float] = [base_x]
-	var ys: Array[float] = [base_y]
-	for obstacle in obstacles:
-		if not obstacle.intersects(bounds):
-			continue
-		var right := obstacle.end.x + QUICK_CLEARANCE
-		var below := obstacle.end.y + QUICK_CLEARANCE
-		if right <= max_x:
-			xs.append(maxf(base_x, right))
-		if below <= max_y:
-			ys.append(maxf(base_y, below))
-	xs.sort()
-	ys.sort()
-	for x in xs:
-		for y in ys:
-			var candidate := Rect2(Vector2(x, y), size)
-			var intersects_other := false
-			for obstacle in obstacles:
-				if candidate.grow(QUICK_CLEARANCE * 0.5).intersects(obstacle):
-					intersects_other = true
-					break
-			if not intersects_other:
-				return candidate
-	# If every free slot is occupied, remain inside the canvas safe area.
-	return Rect2(Vector2(base_x, base_y), size)
+	return Rect2(position, size)
+
+
+func _set_quick_reservation(rect: Rect2) -> void:
+	if surface == null:
+		return
+	# Workspace rectangles use DockHost-local coordinates, as does the bar.
+	surface.set_floating_exclusion_rect(
+		QUICK_EXCLUSION_ID, rect.grow(QUICK_CLEARANCE) if rect.has_area() else Rect2()
+	)
 
 
 func _place_quick_bar() -> void:
@@ -738,10 +713,12 @@ func _place_quick_bar() -> void:
 		return
 	if not active or not _quick_has_controls:
 		_quick_bar.visible = false
+		_set_quick_reservation(Rect2())
 		return
 	var bounds := _quick_safe_bounds()
 	if not bounds.has_area():
 		_quick_bar.visible = false
+		_set_quick_reservation(Rect2())
 		return
 	var natural_height := (
 		_quick_controls.get_combined_minimum_size().y
@@ -749,13 +726,15 @@ func _place_quick_bar() -> void:
 		+ 24.0
 	)
 	var desired := Vector2(QUICK_BAR_WIDTH, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
-	var rect := find_quick_rect(bounds, desired, _quick_obstacles())
+	var rect := find_quick_rect(bounds, desired)
 	if not rect.has_area() or rect.size.y < QUICK_MIN_VISIBLE_HEIGHT:
 		_quick_bar.visible = false
+		_set_quick_reservation(Rect2())
 		return
 	_quick_bar.position = rect.position
 	_quick_bar.size = rect.size
 	_quick_bar.visible = true
+	_set_quick_reservation(rect)
 
 
 func _clear_quick_bindings() -> void:
@@ -778,6 +757,7 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 	_quick_has_controls = false
 	_quick_bar.visible = false
 	if not is_primary_tool(tool_name):
+		_set_quick_reservation(Rect2())
 		return
 	_quick_title.text = _tool_display_name(tool_name)
 	var tool := _current_tool_options()
@@ -1125,34 +1105,11 @@ func _connect_runtime_signals() -> void:
 	if is_instance_valid(ui_root) and not ui_root.resized.is_connected(_on_workspace_resized):
 		ui_root.resized.connect(_on_workspace_resized)
 	if surface != null:
-		if not surface.module_floated.is_connected(_on_quick_floating_changed):
-			surface.module_floated.connect(_on_quick_floating_changed)
-		if not surface.module_cleared.is_connected(_on_quick_module_cleared):
-			surface.module_cleared.connect(_on_quick_module_cleared)
-		if not surface.module_collapsed.is_connected(_on_quick_module_cleared):
-			surface.module_collapsed.connect(_on_quick_module_cleared)
-		if not surface.module_restored.is_connected(_on_quick_module_restored):
-			surface.module_restored.connect(_on_quick_module_restored)
 		if not surface.dock_host.layout_geometry_changed.is_connected(_on_quick_layout_changed):
 			surface.dock_host.layout_geometry_changed.connect(_on_quick_layout_changed)
 
 
 func _on_quick_layout_changed(_content_rect: Rect2) -> void:
-	if active:
-		_place_quick_bar.call_deferred()
-
-
-func _on_quick_floating_changed(_module_id: StringName, _rect: Rect2) -> void:
-	if active:
-		_place_quick_bar.call_deferred()
-
-
-func _on_quick_module_cleared(_module_id: StringName) -> void:
-	if active:
-		_place_quick_bar.call_deferred()
-
-
-func _on_quick_module_restored(_module_id: StringName, _placement: int) -> void:
 	if active:
 		_place_quick_bar.call_deferred()
 

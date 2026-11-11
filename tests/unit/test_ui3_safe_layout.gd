@@ -7,20 +7,22 @@ const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 func test_quick_strip_never_crosses_timeline_safe_boundary() -> void:
 	var content := Rect2(Vector2(8.0, 0.0), Vector2(1184.0, 510.0))
 	var long_selection := Vector2(100.0, 780.0)
-	var rect := Profile3.find_quick_rect(content, long_selection, [])
+	var rect := Profile3.find_quick_rect(content, long_selection)
 	check_true(rect.has_area(), "long selection controls keep a visible strip")
-	check_true(rect.position.y >= content.position.y, "strip stays below project tabs")
+	check_eq(rect.position, Vector2(16.0, 68.0), "left controls have an invariant anchor")
 	check_true(rect.end.y <= content.end.y, "strip does not cover the docked Timeline")
 	check_true(rect.size.y < long_selection.y, "long tool controls require scrolling")
 
 
-func test_quick_strip_avoids_repositioned_preview() -> void:
+func test_quick_strip_remains_fixed_when_preview_moves() -> void:
 	var available := Rect2(Vector2(8.0, 0.0), Vector2(1100.0, 510.0))
-	var preview := Rect2(Vector2(8.0, 8.0), Vector2(328.0, 220.0))
-	var obstacles: Array[Rect2] = [preview]
-	var rect := Profile3.find_quick_rect(available, Vector2(100.0, 400.0), obstacles)
-	check_true(not rect.intersects(preview), "quick strip avoids freely moved Preview")
-	check_true(rect.end.x <= available.end.x, "Preview avoidance stays inside the canvas")
+	var rect := Profile3.find_quick_rect(available, Vector2(100.0, 400.0))
+	check_eq(rect.position, Vector2(16.0, 68.0), "left strip keeps its own anchor")
+	check_eq(
+		Profile3.find_quick_rect(available, Vector2(100.0, 400.0)),
+		rect,
+		"Preview movement cannot relocate the fixed strip"
+	)
 
 
 func test_quick_strip_scroll_and_float_panels_on_top() -> void:
@@ -69,10 +71,14 @@ func test_timeline_layout_changes_trigger_quick_relayout() -> void:
 		"surface.dock_host.layout_geometry_changed.connect(_on_quick_layout_changed)",
 		"Timeline resizing must update quick-strip available area",
 	)
+	check_true(
+		not source.contains("_on_quick_floating_changed"),
+		"floating-window movement must not reposition the quick strip",
+	)
 	check_has(
 		source,
-		"surface.module_floated.connect(_on_quick_floating_changed)",
-		"Preview and floating-window moves must update quick-strip placement",
+		"surface.set_floating_exclusion_rect(",
+		"UI3 declares reserved space to the floating-window constraint system",
 	)
 	check_true(
 		not source.contains("_quick_bar.z_index = 50"),
@@ -119,6 +125,9 @@ func test_live_timeline_height_limits_actual_quick_panel() -> void:
 		profile._quick_controls.add_child(control)
 	await tree.process_frame
 	profile._place_quick_bar()
+	check_eq(
+		profile._quick_bar.position.y, 68.0, "Timeline resizing does not move the fixed anchor"
+	)
 	var content := host.get_content_rect()
 	check_true(
 		profile._quick_bar.get_rect().end.y <= content.end.y,

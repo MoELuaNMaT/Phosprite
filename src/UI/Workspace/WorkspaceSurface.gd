@@ -55,6 +55,7 @@ var _drag_pointer_offset := Vector2.ZERO
 var _floating_snap_policy_enabled := false
 var _fixed_dock_zones: Dictionary = {}
 var _floating_anchors: Dictionary = {}
+var _floating_exclusions: Dictionary = {}
 
 
 func setup(module_manager: WorkspaceModuleManager, existing_dock_host: WorkspaceDockHost) -> bool:
@@ -76,6 +77,36 @@ func configure_floating_snap_policy(fixed_dock_zones: Dictionary) -> void:
 		var zone := int(fixed_dock_zones[raw_id])
 		if dock_host != null and dock_host.layout != null and dock_host.layout.is_valid_zone(zone):
 			_fixed_dock_zones[module_id] = zone
+
+
+## UI profiles may reserve a host-local rectangle for fixed overlay controls.
+## A reservation is transient and never changes saved Workspace layouts.
+func set_floating_exclusion_rect(key: StringName, rect: Rect2) -> void:
+	var previous := _floating_exclusions.get(key, Rect2()) as Rect2
+	if previous == rect:
+		return
+	if rect.has_area():
+		_floating_exclusions[key] = rect
+	else:
+		_floating_exclusions.erase(key)
+	if not rect.has_area() or not _is_ready():
+		return
+	# Repair existing/saved positions on UI3 activation. Other profiles are
+	# unaffected because their reservation is removed on deactivation.
+	for module_id in _floating_rects.keys():
+		if get_module_placement(module_id) != Placement.FLOATING:
+			continue
+		var current := get_floating_rect(module_id)
+		if not current.has_area():
+			continue
+		var resolved := _constrain_floating_rect(module_id, current, false)
+		if resolved == current:
+			continue
+		_apply_floating_rect(module_id, resolved)
+		_floating_rects[module_id] = resolved
+		_last_floating_rects[module_id] = resolved
+		_floating_anchors[module_id] = _detect_snap_edges(resolved)
+		module_floated.emit(module_id, resolved)
 
 
 func is_fixed_dock_module(module_id: StringName) -> bool:
@@ -872,7 +903,110 @@ func _constrain_floating_rect(
 	var rect := Rect2(requested_rect.position, target_size)
 	if allow_snap:
 		rect = _snap_floating_rect(rect, bounds)
-	return _clamp_rect_to_bounds(rect, bounds)
+	var inside := _clamp_rect_to_bounds(rect, bounds)
+	if _floating_exclusions.is_empty():
+		return inside
+	var exclusions: Array[Rect2] = []
+	for block: Rect2 in _floating_exclusions.values():
+		if block.has_area():
+			exclusions.append(block)
+	return avoid_floating_exclusions(inside, bounds, exclusions, definition.minimum_size)
+
+
+## Keep floating modules away from profile-specific fixed overlays. This is
+## shared by drag preview, commit, resize, restore and programmatic positioning.
+static func avoid_floating_exclusions(
+	requested: Rect2, bounds: Rect2, exclusions: Array[Rect2], minimum_size: Vector2
+) -> Rect2:
+	var blocked := false
+	for exclusion in exclusions:
+		if requested.intersects(exclusion):
+			blocked = true
+			break
+	if not blocked:
+		return requested
+
+	# First preserve the window size. Try every nearest border position so
+	# dragging against the left strip stops the floating window beside it.
+	var xs: Array[float] = [
+		requested.position.x, bounds.position.x, bounds.end.x - requested.size.x
+	]
+	var ys: Array[float] = [
+		requested.position.y, bounds.position.y, bounds.end.y - requested.size.y
+	]
+	for exclusion in exclusions:
+		xs.append(exclusion.position.x - requested.size.x)
+		xs.append(exclusion.end.x)
+		ys.append(exclusion.position.y - requested.size.y)
+		ys.append(exclusion.end.y)
+	var best := Rect2()
+	var best_distance := INF
+	for x in xs:
+		for y in ys:
+			var candidate := Rect2(Vector2(x, y), requested.size)
+			if not bounds.encloses(candidate) or _hits_floating_exclusions(candidate, exclusions):
+				continue
+			var distance := candidate.position.distance_squared_to(requested.position)
+			if distance < best_distance:
+				best_distance = distance
+				best = candidate
+	if best.has_area():
+		return best
+
+	# A very wide Preview may have no full-size position beside the strip.
+	# Shrink only when necessary, without crossing the module's minimum size.
+	var best_area := -1.0
+	best_distance = INF
+	for exclusion in exclusions:
+		var regions: Array[Rect2] = [
+			Rect2(
+				bounds.position, Vector2(exclusion.position.x - bounds.position.x, bounds.size.y)
+			),
+			Rect2(
+				Vector2(exclusion.end.x, bounds.position.y),
+				Vector2(bounds.end.x - exclusion.end.x, bounds.size.y)
+			),
+			Rect2(
+				bounds.position, Vector2(bounds.size.x, exclusion.position.y - bounds.position.y)
+			),
+			Rect2(
+				Vector2(bounds.position.x, exclusion.end.y),
+				Vector2(bounds.size.x, bounds.end.y - exclusion.end.y)
+			),
+		]
+		for region in regions:
+			if region.size.x < minimum_size.x or region.size.y < minimum_size.y:
+				continue
+			var size := Vector2(
+				minf(requested.size.x, region.size.x), minf(requested.size.y, region.size.y)
+			)
+			var candidate := Rect2(
+				Vector2(
+					clampf(requested.position.x, region.position.x, region.end.x - size.x),
+					clampf(requested.position.y, region.position.y, region.end.y - size.y)
+				),
+				size
+			)
+			if _hits_floating_exclusions(candidate, exclusions):
+				continue
+			var area := candidate.get_area()
+			var distance := candidate.position.distance_squared_to(requested.position)
+			if area > best_area or (is_equal_approx(area, best_area) and distance < best_distance):
+				best_area = area
+				best_distance = distance
+				best = candidate
+	if best.has_area():
+		return best
+	# If the viewport cannot physically fit both minimum-size controls, do
+	# not force the managed window below its minimum dimensions.
+	return requested
+
+
+static func _hits_floating_exclusions(rect: Rect2, exclusions: Array[Rect2]) -> bool:
+	for exclusion in exclusions:
+		if rect.intersects(exclusion):
+			return true
+	return false
 
 
 func _snap_floating_rect(rect: Rect2, bounds: Rect2) -> Rect2:
