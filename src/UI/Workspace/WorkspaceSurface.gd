@@ -928,8 +928,12 @@ static func avoid_floating_exclusions(
 
 	# First preserve the window size. Try every nearest border position so
 	# dragging against the left strip stops the floating window beside it.
-	var xs: Array[float] = [requested.position.x, bounds.position.x, bounds.end.x - requested.size.x]
-	var ys: Array[float] = [requested.position.y, bounds.position.y, bounds.end.y - requested.size.y]
+	var xs: Array[float] = [
+		requested.position.x, bounds.position.x, bounds.end.x - requested.size.x
+	]
+	var ys: Array[float] = [
+		requested.position.y, bounds.position.y, bounds.end.y - requested.size.y
+	]
 	for exclusion in exclusions:
 		xs.append(exclusion.position.x - requested.size.x)
 		xs.append(exclusion.end.x)
@@ -955,12 +959,16 @@ static func avoid_floating_exclusions(
 	best_distance = INF
 	for exclusion in exclusions:
 		var regions: Array[Rect2] = [
-			Rect2(bounds.position, Vector2(exclusion.position.x - bounds.position.x, bounds.size.y)),
+			Rect2(
+				bounds.position, Vector2(exclusion.position.x - bounds.position.x, bounds.size.y)
+			),
 			Rect2(
 				Vector2(exclusion.end.x, bounds.position.y),
 				Vector2(bounds.end.x - exclusion.end.x, bounds.size.y)
 			),
-			Rect2(bounds.position, Vector2(bounds.size.x, exclusion.position.y - bounds.position.y)),
+			Rect2(
+				bounds.position, Vector2(bounds.size.x, exclusion.position.y - bounds.position.y)
+			),
 			Rect2(
 				Vector2(bounds.position.x, exclusion.end.y),
 				Vector2(bounds.size.x, bounds.end.y - exclusion.end.y)
@@ -970,8 +978,7 @@ static func avoid_floating_exclusions(
 			if region.size.x < minimum_size.x or region.size.y < minimum_size.y:
 				continue
 			var size := Vector2(
-				minf(requested.size.x, region.size.x),
-				minf(requested.size.y, region.size.y)
+				minf(requested.size.x, region.size.x), minf(requested.size.y, region.size.y)
 			)
 			var candidate := Rect2(
 				Vector2(

@@ -86,7 +86,8 @@ func test_ui3_floating_exclusion_prevents_preview_drag_resize_and_restore_overla
 		"normal floating placement remains available outside UI3"
 	)
 	check_eq(
-		surface.get_floating_rect(&"test.preview").position.x, 0.0,
+		surface.get_floating_rect(&"test.preview").position.x,
+		0.0,
 		"UI1/UI4 do not inherit UI3's reserved region"
 	)
 	surface.set_floating_exclusion_rect(&"ui3.quick_controls", fixed.grow(8.0))

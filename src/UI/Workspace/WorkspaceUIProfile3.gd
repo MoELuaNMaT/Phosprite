@@ -692,8 +692,7 @@ static func find_quick_rect(bounds: Rect2, desired_size: Vector2) -> Rect2:
 	)
 	var available := bounds.end - position - Vector2.ONE * QUICK_MARGIN
 	var size := Vector2(
-		minf(desired_size.x, maxf(0.0, available.x)),
-		minf(desired_size.y, maxf(0.0, available.y))
+		minf(desired_size.x, maxf(0.0, available.x)), minf(desired_size.y, maxf(0.0, available.y))
 	)
 	if size.x <= 0.0 or size.y <= 0.0:
 		return Rect2()
@@ -1113,7 +1112,6 @@ func _connect_runtime_signals() -> void:
 func _on_quick_layout_changed(_content_rect: Rect2) -> void:
 	if active:
 		_place_quick_bar.call_deferred()
-
 
 
 func _on_tool_changed(_tool_name: String, button: int) -> void:
