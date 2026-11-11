@@ -79,7 +79,7 @@ enum ViewMenu {
 	DISPLAY_LAYER_EFFECTS,
 	SNAP_TO,
 }
-## Enumeration of items present in the Window Menu.
+## Stable Window command IDs. ID 4 is reserved for old settings; no menu entry uses it.
 enum WindowMenu { WINDOW_OPACITY, PANELS, LAYOUTS, MOVABLE_PANELS, ZEN_MODE, FULLSCREEN_MODE }
 ## Enumeration of items present in the Image Menu.
 enum ProjectMenu {
@@ -1085,7 +1085,6 @@ func _initialize_keychain() -> void:
 		&"show_reference_images": Keychain.InputAction.new("", "View menu", true),
 		&"display_layer_effects": Keychain.InputAction.new("", "View menu", true),
 		&"moveable_panels": Keychain.InputAction.new("", "Window menu", true),
-		&"zen_mode": Keychain.InputAction.new("", "Window menu", true),
 		&"toggle_fullscreen": Keychain.InputAction.new("", "Window menu", true),
 		&"clear_selection": Keychain.InputAction.new("", "Select menu", true),
 		&"reselect": Keychain.InputAction.new("", "Select menu", true),

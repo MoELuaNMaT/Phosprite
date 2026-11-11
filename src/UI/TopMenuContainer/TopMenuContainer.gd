@@ -19,7 +19,6 @@ const TOPBAR_ICON_BUTTON_SIZE := Vector2(32, 32)
 
 var recent_projects := []
 var selected_layout := 0
-var zen_mode := false
 var can_save := true
 var tile_mode_submenu := PopupMenu.new()
 var selection_modify_submenu := PopupMenu.new()
@@ -365,8 +364,6 @@ func _setup_ipad_settings_menu() -> void:
 	_ipad_ui_actions = _new_ipad_submenu(_ipad_workspace_actions, tr("UI Layout"))
 	_ipad_panels_actions = _new_ipad_submenu(_ipad_workspace_actions, tr("Panels"))
 	_ipad_layouts_actions = _new_ipad_submenu(_ipad_workspace_actions, tr("Layout Presets"))
-	_ipad_workspace_actions.add_check_item(tr("Zen Mode"), Global.WindowMenu.ZEN_MODE)
-	_ipad_workspace_actions.id_pressed.connect(_forward_ipad_window)
 	_ipad_ui_actions.id_pressed.connect(_forward_ipad_ui)
 	_ipad_panels_actions.id_pressed.connect(_forward_ipad_panels)
 	# A submenu can remain open after a check action. Refresh its checkmarks
@@ -408,10 +405,6 @@ func _sync_ipad_settings_menu() -> void:
 		project_menu.is_item_disabled(
 			project_menu.get_item_index(Global.ProjectMenu.CROP_TO_SELECTION)
 		)
-	)
-	_ipad_workspace_actions.set_item_checked(
-		_ipad_workspace_actions.get_item_index(Global.WindowMenu.ZEN_MODE),
-		window_menu.is_item_checked(window_menu.get_item_index(Global.WindowMenu.ZEN_MODE))
 	)
 	_copy_ipad_source_menu(ui_menu, _ipad_ui_actions)
 	_copy_ipad_source_menu(panels_submenu, _ipad_panels_actions)
@@ -483,10 +476,6 @@ func _forward_ipad_tile(id: int) -> void:
 	tile_mode_submenu.id_pressed.emit(id)
 
 
-func _forward_ipad_window(id: int) -> void:
-	window_menu.id_pressed.emit(id)
-
-
 func _detach_settings_project_menu() -> void:
 	if not is_instance_valid(settings_button) or not is_instance_valid(project_menu):
 		return
@@ -525,9 +514,6 @@ func _notification(what: int) -> void:
 			_apply_ipad_topbar_visibility()
 		if Global.current_project != null:
 			_update_file_menu_buttons(Global.current_project)
-	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if zen_mode:
-			_toggle_zen_mode()
 
 
 ## Keep the four shared application menus in the header in compact mode.
@@ -929,26 +915,26 @@ func _setup_snap_to_submenu(item: String) -> void:
 
 
 func _setup_window_menu() -> void:
-	# Order as in Global.WindowMenu enum
+	# Keep explicit command IDs. Legacy window-menu ID 4 remains reserved,
+	# so removing its entry must not change the Fullscreen command ID (5).
 	var window_menu_items := {
-		"Window Opacity": "",
-		"Panels": "",
-		"Layouts": "",
-		"Moveable Panels": "moveable_panels",
-		"Zen Mode": "zen_mode",
-		"Fullscreen Mode": "toggle_fullscreen",
+		Global.WindowMenu.WINDOW_OPACITY: ["Window Opacity", ""],
+		Global.WindowMenu.PANELS: ["Panels", ""],
+		Global.WindowMenu.LAYOUTS: ["Layouts", ""],
+		Global.WindowMenu.MOVABLE_PANELS: ["Moveable Panels", "moveable_panels"],
+		Global.WindowMenu.FULLSCREEN_MODE: ["Fullscreen Mode", "toggle_fullscreen"],
 	}
-	var i := 0
-	for item in window_menu_items:
+	for id in window_menu_items:
+		var item := str(window_menu_items[id][0])
+		var shortcut := str(window_menu_items[id][1])
 		if item == "Panels":
 			_setup_panels_submenu(item)
 		elif item == "Layouts":
 			_setup_layouts_submenu(item)
 		elif item == "Window Opacity":
-			window_menu.add_item(item, i)
+			window_menu.add_item(item, id)
 		else:
-			_set_menu_shortcut(window_menu_items[item], window_menu, i, item, true)
-		i += 1
+			_set_menu_shortcut(shortcut, window_menu, id, item, true)
 	window_menu.hide_on_checkable_item_selection = false
 	window_menu.id_pressed.connect(window_menu_id_pressed)
 	# Disable window opacity item if per pixel transparency is not allowed
@@ -1345,8 +1331,6 @@ func window_menu_id_pressed(id: int) -> void:
 		Global.WindowMenu.MOVABLE_PANELS:
 			main_ui.hide_single_tab = not main_ui.hide_single_tab
 			window_menu.set_item_checked(id, not main_ui.hide_single_tab)
-		Global.WindowMenu.ZEN_MODE:
-			_toggle_zen_mode()
 		Global.WindowMenu.FULLSCREEN_MODE:
 			_toggle_fullscreen()
 		_:
@@ -1448,8 +1432,6 @@ func _effects_loaded_submenu_id_pressed(id: int) -> void:
 
 
 func _panels_submenu_id_pressed(id: int) -> void:
-	if zen_mode:
-		return
 	var index := panels_submenu.get_item_index(id)
 	var element_visible := panels_submenu.is_item_checked(index)
 	main_ui.set_control_hidden(ui_elements[id], element_visible)
@@ -1490,11 +1472,6 @@ func set_layout(id: int) -> void:
 		var index := panels_submenu.get_item_index(i)
 		var is_hidden := main_ui.is_control_hidden(ui_elements[i])
 		panels_submenu.set_item_checked(index, !is_hidden)
-
-	if zen_mode:  # Turn zen mode off
-		main.find_child("TabsContainer").visible = true
-		zen_mode = false
-		window_menu.set_item_checked(Global.WindowMenu.ZEN_MODE, false)
 
 
 func _on_add_layout_confirmation_confirmed() -> void:
@@ -1619,20 +1596,6 @@ func _toggle_show_mouse_guides() -> void:
 			Global.canvas.mouse_guide_container.get_child(1).queue_redraw()
 
 
-func _toggle_zen_mode() -> void:
-	for i in ui_elements.size():
-		var index := panels_submenu.get_item_index(i)
-		var panel_name := ui_elements[i].name
-		if panel_name == "Main Canvas" or panel_name == "Tiles":
-			continue
-		if !panels_submenu.is_item_checked(index):
-			continue
-		main_ui.set_control_hidden(ui_elements[i], !zen_mode)
-	main.find_child("TabsContainer").visible = zen_mode
-	zen_mode = !zen_mode
-	window_menu.set_item_checked(Global.WindowMenu.ZEN_MODE, zen_mode)
-
-
 func _toggle_fullscreen() -> void:
 	var is_fullscreen := (
 		(get_window().mode == Window.MODE_EXCLUSIVE_FULLSCREEN)
@@ -1640,7 +1603,9 @@ func _toggle_fullscreen() -> void:
 	)
 	get_window().mode = Window.MODE_EXCLUSIVE_FULLSCREEN if !is_fullscreen else Window.MODE_WINDOWED
 	is_fullscreen = not is_fullscreen
-	window_menu.set_item_checked(Global.WindowMenu.FULLSCREEN_MODE, is_fullscreen)
+	window_menu.set_item_checked(
+		window_menu.get_item_index(Global.WindowMenu.FULLSCREEN_MODE), is_fullscreen
+	)
 	get_tree().current_scene.set_mobile_fullscreen_safe_area()
 
 

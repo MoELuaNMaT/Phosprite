@@ -100,7 +100,6 @@ var _legacy_mouse_filter := Control.MOUSE_FILTER_STOP
 var _legacy_visible := true
 var _legacy_processing := true
 var _previous_autosave_enabled := true
-var _zen_mode := false
 var _single_project_editor := false
 var _timeline_height_restore_generation := 0
 var _active_ui_profile := 1
@@ -313,18 +312,6 @@ func reset_default_layout() -> bool:
 		return false
 	_update_main_canvas_rect()
 	return layout_store.save_current_layout()
-
-
-func set_zen_mode(enabled: bool) -> void:
-	if not live or _zen_mode == enabled:
-		return
-	_zen_mode = enabled
-	dock_host.visible = not enabled
-	_update_main_canvas_rect()
-
-
-func is_zen_mode() -> bool:
-	return _zen_mode
 
 
 func merge_left_tool_options_after_startup() -> bool:

@@ -129,16 +129,6 @@ func _on_window_menu_id_pressed(id: int) -> void:
 	match id:
 		Global.WindowMenu.MOVABLE_PANELS:
 			_set_moveable_panels_indicator()
-		Global.WindowMenu.ZEN_MODE:
-			var enabled := not migration.is_zen_mode()
-			migration.set_zen_mode(enabled)
-			var main_node := top_menu.get("main") as Node
-			var tabs := (
-				main_node.find_child("TabsContainer") as Control if main_node != null else null
-			)
-			if tabs != null:
-				tabs.visible = not enabled
-			window_menu.set_item_checked(Global.WindowMenu.ZEN_MODE, enabled)
 		_:
 			top_menu.call(&"window_menu_id_pressed", id)
 
@@ -168,8 +158,6 @@ func _rebuild_panels_menu() -> void:
 
 
 func _on_panels_submenu_id_pressed(id: int) -> void:
-	if migration.is_zen_mode():
-		return
 	var index := panels_submenu.get_item_index(id)
 	if index < 0:
 		return
