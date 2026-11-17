@@ -154,14 +154,20 @@ func _write_snapshot(path: String, project_uuid: String, payload: String) -> boo
 		"project_uuid": project_uuid,
 		"size_x": 32,
 		"size_y": 24,
-		"layers": [],
-		"frames": [],
+		"layers": [{"type": 0}],
+		"frames": [{"cels": [{}]}],
 	}
 	if not _write_entry(packer, "data.json", JSON.stringify(data).to_utf8_buffer()):
 		packer.close()
 		return false
 	var gallery := Library.build_gallery_metadata(project_uuid, Vector2i(32, 24))
 	if not _write_entry(packer, Library.GALLERY_ENTRY, JSON.stringify(gallery).to_utf8_buffer()):
+		packer.close()
+		return false
+	var pixel_bytes := PackedByteArray()
+	pixel_bytes.resize(32 * 24 * 4)
+	pixel_bytes.fill(0)
+	if not _write_entry(packer, "image_data/frames/1/layer_1", pixel_bytes):
 		packer.close()
 		return false
 	if not _write_entry(packer, "payload.txt", payload.to_utf8_buffer()):
