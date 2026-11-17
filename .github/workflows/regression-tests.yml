@@ -68,5 +68,38 @@ jobs:
             exit 1
           fi
       - name: Run contract suite
-        # The runner exits non-zero on any assertion failure, which fails the job.
-        run: godot --headless --path . --script "${TEST_SCRIPT}" -- "${TEST_FLAG}"
+        # Preserve a small, downloadable failure trace. Large CI logs can be
+        # truncated, hiding the failing test assertion.
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script "${TEST_SCRIPT}" -- "${TEST_FLAG}" 2>&1 | tee /tmp/phosprite-contract-suite.log
+
+      - name: Capture contract failure context
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          lines = Path("/tmp/phosprite-contract-suite.log").read_text(errors="replace").splitlines()
+          matches = [
+              i for i, line in enumerate(lines)
+              if any(token in line.lower() for token in (
+                  "fail", "error", "assert", "timeout", "parse", "expected", "unhandled"
+              ))
+          ]
+          indices = set(range(max(0, len(lines) - 120), len(lines)))
+          for index in matches[-120:]:
+              indices.update(range(max(0, index - 2), min(len(lines), index + 4)))
+          excerpt = "\n".join(f"{i + 1}: {lines[i]}" for i in sorted(indices))
+          Path("contract-failure-excerpt.txt").write_text(excerpt + "\n")
+          print(excerpt[-16000:])
+          PY
+
+      - name: Upload contract failure excerpt
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phosprite-contract-failure-excerpt
+          path: contract-failure-excerpt.txt
+          if-no-files-found: ignore
