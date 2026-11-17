@@ -115,6 +115,15 @@ func test_floating_exclusion_handles_oversized_preview_without_overlap() -> void
 	check_true(bounds.encloses(rect), "constrained Preview remains inside the Workspace")
 
 
+func test_impossible_floating_geometry_is_rejected_instead_of_covering_strip() -> void:
+	var bounds := Rect2(Vector2.ZERO, Vector2(180.0, 150.0))
+	var exclusions: Array[Rect2] = [Rect2(Vector2(65.0, 0.0), Vector2(50.0, 150.0))]
+	var result := Surface.avoid_floating_exclusions(
+		Rect2(Vector2(5.0, 10.0), Vector2(160.0, 110.0)), bounds, exclusions, Vector2(160.0, 110.0)
+	)
+	check_true(not result.has_area(), "no overlap is allowed when there is no legal position")
+
+
 func _preview_definition() -> Definition:
 	var definition := Definition.new()
 	definition.module_id = &"test.preview"

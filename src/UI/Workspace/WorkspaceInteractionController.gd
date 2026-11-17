@@ -14,15 +14,12 @@ const TOUCH_DIRECT_DRAG_DISTANCE := 4.0
 const TIMELINE_HORIZONTAL_CANCEL_DISTANCE := 12.0
 const TIMELINE_DIRECT_RESIZE_DISTANCE := 8.0
 const TIMELINE_VERTICAL_INTENT_RATIO := 1.15
-const TRAY_MARGIN := 8.0
-const TRAY_BUTTON_MIN_HEIGHT := 32.0
 
 var manager: WorkspaceModuleManager
 var surface: WorkspaceSurface
 var dock_host: WorkspaceDockHost
 var editor_migration: WorkspaceEditorMigration
 
-var _tray: HBoxContainer
 var _bound_modules: Dictionary = {}
 
 var _drag_module_id: StringName = &""
@@ -60,22 +57,11 @@ func setup(
 	dock_host = surface.dock_host
 	editor_migration = workspace_migration
 	manager.module_created.connect(_on_module_created)
-	surface.module_collapsed.connect(_on_module_placement_changed)
-	surface.module_restored.connect(_on_module_restored)
-	surface.module_cleared.connect(_on_module_cleared)
-	dock_host.module_docked.connect(_on_module_docked)
-	dock_host.layout_geometry_changed.connect(_on_layout_geometry_changed)
-	_create_tray()
 	for module_id in manager.get_registered_ids():
 		var module := manager.get_instance(module_id)
 		if module != null:
 			_bind_module(module_id, module)
-	_refresh_tray()
 	return true
-
-
-func get_tray() -> HBoxContainer:
-	return _tray
 
 
 func _input(event: InputEvent) -> void:
@@ -495,8 +481,7 @@ func _handle_mouse_button(
 	var pointer := _module_point_to_host(module, event.position)
 	_raise_floating_module(module_id, module)
 	if module.is_collapse_point(event.position):
-		if _toggle_module_collapse(module_id):
-			_refresh_tray()
+		_toggle_module_collapse(module_id)
 		module.accept_event()
 		return
 	if module.is_float_point(event.position):
@@ -525,8 +510,7 @@ func _handle_screen_touch(
 	var pointer := _module_point_to_host(module, event.position)
 	_raise_floating_module(module_id, module)
 	if module.is_collapse_point(event.position):
-		if _toggle_module_collapse(module_id):
-			_refresh_tray()
+		_toggle_module_collapse(module_id)
 		module.accept_event()
 		return
 	if module.is_float_point(event.position):
@@ -675,69 +659,3 @@ func _toggle_module_collapse(module_id: StringName) -> bool:
 	if module_id == Builtins.REFERENCE_IMAGES_ID and is_instance_valid(editor_migration):
 		return editor_migration.set_panel_visible(module_id, false)
 	return surface.collapse_module(module_id)
-
-
-func _create_tray() -> void:
-	_tray = HBoxContainer.new()
-	_tray.name = &"WorkspaceCollapsedTray"
-	_tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dock_host.add_child(_tray)
-	_tray.visible = false
-	_tray.move_to_front()
-
-
-func _refresh_tray() -> void:
-	if _tray == null:
-		return
-	for child in _tray.get_children():
-		child.queue_free()
-	# P2-G collapse is always in-place. The legacy bottom restore tray must stay hidden.
-	_tray.visible = false
-
-
-func _layout_tray() -> void:
-	if _tray == null or not _tray.visible or dock_host == null:
-		return
-	var minimum := _tray.get_combined_minimum_size()
-	_tray.size = minimum
-	_tray.position = Vector2(
-		maxf(TRAY_MARGIN, (dock_host.size.x - minimum.x) * 0.5),
-		maxf(TRAY_MARGIN, dock_host.size.y - minimum.y - TRAY_MARGIN)
-	)
-	_tray.move_to_front()
-
-
-func _on_tray_mouse_entered(module_id: StringName) -> void:
-	surface.peek_module(module_id)
-
-
-func _on_tray_mouse_exited(module_id: StringName) -> void:
-	if surface.is_peeking(module_id):
-		surface.end_peek(module_id)
-
-
-func _on_tray_pressed(module_id: StringName) -> void:
-	if surface.is_peeking(module_id):
-		surface.end_peek(module_id)
-	if surface.restore_module(module_id):
-		_refresh_tray()
-
-
-func _on_module_placement_changed(_module_id: StringName) -> void:
-	_refresh_tray()
-
-
-func _on_module_restored(_module_id: StringName, _placement: int) -> void:
-	_refresh_tray()
-
-
-func _on_module_cleared(_module_id: StringName) -> void:
-	_refresh_tray()
-
-
-func _on_module_docked(_module_id: StringName, _zone: int, _index: int) -> void:
-	_refresh_tray()
-
-
-func _on_layout_geometry_changed(_content_rect: Rect2) -> void:
-	_layout_tray.call_deferred()

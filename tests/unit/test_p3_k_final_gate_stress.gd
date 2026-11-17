@@ -287,8 +287,8 @@ func _write_pxo(
 		"project_uuid": project_uuid,
 		"size_x": canvas_size.x,
 		"size_y": canvas_size.y,
-		"layers": [],
-		"frames": [],
+		"layers": [{"type": 0, "new_cels_linked": false}],
+		"frames": [{"cels": [{"opacity": 1.0}]}],
 	}
 	if not _write_entry(packer, "data.json", JSON.stringify(data).to_utf8_buffer()):
 		packer.close()
@@ -301,6 +301,12 @@ func _write_pxo(
 		if not _write_entry(packer, Library.PREVIEW_ENTRY, preview_bytes):
 			packer.close()
 			return false
+	var pixel_bytes := PackedByteArray()
+	pixel_bytes.resize(canvas_size.x * canvas_size.y * 4)
+	pixel_bytes.fill(0)
+	if not _write_entry(packer, "image_data/frames/1/layer_1", pixel_bytes):
+		packer.close()
+		return false
 	if not _write_entry(packer, "payload.txt", payload.to_utf8_buffer()):
 		packer.close()
 		return false

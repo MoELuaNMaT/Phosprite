@@ -100,6 +100,11 @@ func set_floating_exclusion_rect(key: StringName, rect: Rect2) -> void:
 		if not current.has_area():
 			continue
 		var resolved := _constrain_floating_rect(module_id, current, false)
+		if not resolved.has_area():
+			# A very small viewport cannot hold both minimum-size windows.
+			# Hide the conflicting floating module rather than cover the fixed strip.
+			park_module(module_id)
+			continue
 		if resolved == current:
 			continue
 		_apply_floating_rect(module_id, resolved)
@@ -135,6 +140,9 @@ func refresh_floating_bounds() -> void:
 			continue
 		var anchored := _apply_saved_anchor(module_id, current)
 		var rect := _constrain_floating_rect(module_id, anchored, false)
+		if not rect.has_area():
+			park_module(module_id)
+			continue
 		if rect == current:
 			continue
 		_apply_floating_rect(module_id, rect)
@@ -250,6 +258,9 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 		return dock_module(module_id, fixed_zone, 0, requested_rect.size, context, true)
 	if not _can_float(module_id):
 		return false
+	var safe_rect := _constrain_floating_rect(module_id, requested_rect)
+	if not safe_rect.has_area():
+		return false
 	if get_module_placement(module_id) == Placement.COLLAPSED and is_peeking(module_id):
 		if not end_peek(module_id):
 			return false
@@ -278,7 +289,7 @@ func float_module(module_id: StringName, requested_rect: Rect2, context: Diction
 		if not manager.activate_module(module_id):
 			return false
 
-	var rect := _constrain_floating_rect(module_id, requested_rect)
+	var rect := safe_rect
 	_apply_floating_rect(module_id, rect)
 	_placements[module_id] = Placement.FLOATING
 	_floating_rects[module_id] = rect
@@ -347,6 +358,9 @@ func peek_module(module_id: StringName) -> bool:
 	var definition := manager.get_definition(module_id)
 	var restore: Dictionary = _collapsed_restore.get(module_id, {})
 	var peek_rect := _peek_rect_for_restore(module_id, restore)
+	if not peek_rect.has_area():
+		manager.unmount_module(module_id)
+		return false
 	module.custom_minimum_size = definition.minimum_size
 	module.position = peek_rect.position
 	module.size = peek_rect.size
@@ -402,6 +416,8 @@ func restore_module(module_id: StringName) -> bool:
 		if module.get_parent() != _floating_layer:
 			return false
 		var rect := _constrain_floating_rect(module_id, restore.get("rect", Rect2()) as Rect2)
+		if not rect.has_area():
+			return false
 		module.set_content_collapsed(false)
 		_apply_floating_rect(module_id, rect)
 		_placements[module_id] = Placement.FLOATING
@@ -420,6 +436,8 @@ func set_floating_rect(module_id: StringName, requested_rect: Rect2) -> bool:
 	if get_module_placement(module_id) != Placement.FLOATING:
 		return false
 	var rect := _constrain_floating_rect(module_id, requested_rect)
+	if not rect.has_area():
+		return false
 	_apply_floating_rect(module_id, rect)
 	_floating_rects[module_id] = rect
 	_last_floating_rects[module_id] = rect
@@ -862,6 +880,8 @@ func _floating_candidate_for_pointer(pointer: Vector2) -> Dictionary:
 		return _invalid_candidate()
 	var rect := Rect2(pointer - _drag_pointer_offset, _get_drag_size(_drag_module_id))
 	rect = _constrain_floating_rect(_drag_module_id, rect)
+	if not rect.has_area():
+		return _invalid_candidate()
 	return {
 		"valid": true,
 		"placement": Placement.FLOATING,
@@ -997,9 +1017,9 @@ static func avoid_floating_exclusions(
 				best = candidate
 	if best.has_area():
 		return best
-	# If the viewport cannot physically fit both minimum-size controls, do
-	# not force the managed window below its minimum dimensions.
-	return requested
+	# An impossible geometry is not a valid placement. The caller must refuse
+	# the move or park the window; never return a position over the fixed strip.
+	return Rect2()
 
 
 static func _hits_floating_exclusions(rect: Rect2, exclusions: Array[Rect2]) -> bool:

@@ -286,8 +286,14 @@ jobs:
           chmod +x ./Godot.app/Contents/MacOS/Godot
 
       - name: Import resources once 📦
-        continue-on-error: true
-        run: ./Godot.app/Contents/MacOS/Godot --headless -v --import
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./Godot.app/Contents/MacOS/Godot --headless -v --import 2>&1 | tee godot-import.log
+          if grep -E 'UID duplicate detected|ERROR: (Failed to load|Cannot open|Error importing)' godot-import.log; then
+            echo "Unresolved resource import failures; refusing to package IPA"
+            exit 1
+          fi
 
       - name: Export Xcode project 🔧
         run: |
@@ -347,6 +353,17 @@ jobs:
           if sha not in data:
               raise SystemExit("Exported Godot pack has no stamped commit identity")
           print("[PHOSPRITE-BUILD] Verified embedded commit", sha.decode("ascii"))
+          for required in (
+              b"Translations/zh_CN.po",
+              b"Translations/zh_TW.po",
+              b"Translations/en_US.po",
+              b"Roboto-Regular.ttf",
+          ):
+              if required not in data:
+                  raise SystemExit("Required IPA resource missing: " + required.decode())
+          if b"tests/runner.gdc" in data or b"tests/runner.gd" in data:
+              raise SystemExit("Test runner was exported into release IPA")
+          print("[PHOSPRITE-BUILD] Required fonts and translations are present; tests excluded")
           PY
           echo "[PHOSPRITE-BUILD] Verified IPA version ${VERSION} and bundle ${IDENTIFIER}"
 

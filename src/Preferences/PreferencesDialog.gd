@@ -451,6 +451,12 @@ func _on_Preference_value_changed(value, pref: Preference, button: RestoreDefaul
 	if node is OptionButton:
 		value = node.get_item_id(value)
 	Global.set(prop, value)
+	if prop == "theme_font_index":
+		var available_font_names := Global.get_available_font_names()
+		if value >= 0 and value < available_font_names.size():
+			Global.config_cache.set_value(
+				"preferences", "theme_font_name", available_font_names[value]
+			)
 	if not pref.require_restart:
 		Global.config_cache.set_value("preferences", prop, value)
 	preference_update(pref.require_restart)

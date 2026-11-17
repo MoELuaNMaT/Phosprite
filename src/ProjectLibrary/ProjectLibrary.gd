@@ -135,7 +135,7 @@ func delete_project(path: String, project_uuid := "") -> Error:
 		return error
 	if ProjectIdentityScript.is_valid_uuid(project_uuid):
 		RecoveryStore.remove_staging(project_uuid)
-		RecoveryStore.discard(project_uuid)
+		RecoveryStore.discard(project_uuid, true)
 	return OK
 
 

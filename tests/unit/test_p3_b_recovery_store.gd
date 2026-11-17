@@ -73,6 +73,34 @@ func test_failed_restore_keeps_recovery_until_success_or_discard() -> void:
 	)
 
 
+func test_missing_cel_payload_never_replaces_a_project() -> void:
+	_reset_paths()
+	var staged := RecoveryStore.staging_path(TEST_UUID)
+	check_true(_write_snapshot(staged, TEST_UUID, true), "incomplete ZIP fixture must be writable")
+	check_true(
+		not RecoveryStore.validate_snapshot(staged, TEST_UUID),
+		"missing pixel payload must invalidate a well-formed data.json",
+	)
+	check_eq(
+		RecoveryStore.install_staging(TEST_UUID),
+		ERR_FILE_CORRUPT,
+		"invalid image payload must never become a recovery candidate",
+	)
+
+
+func test_truncated_pixel_payload_fails_strict_validation() -> void:
+	_reset_paths()
+	var staged := RecoveryStore.staging_path(TEST_UUID)
+	check_true(
+		_write_snapshot(staged, TEST_UUID, false, true),
+		"truncated but nonempty pixel payload fixture must be writable",
+	)
+	check_true(
+		not RecoveryStore.validate_snapshot(staged, TEST_UUID),
+		"pixel data smaller than RGBA8 frame size must be rejected",
+	)
+
+
 func test_wrong_uuid_or_corrupt_snapshot_never_installs() -> void:
 	_reset_paths()
 	var staged := RecoveryStore.staging_path(TEST_UUID)
@@ -162,7 +190,9 @@ func test_p3_b_source_contract_keeps_timing_and_stage_boundaries() -> void:
 	)
 
 
-func _write_snapshot(path: String, project_uuid: String) -> bool:
+func _write_snapshot(
+	path: String, project_uuid: String, omit_pixel_data := false, truncate_pixel_data := false
+) -> bool:
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var packer := ZIPPacker.new()
 	if packer.open(path) != OK:
@@ -171,8 +201,8 @@ func _write_snapshot(path: String, project_uuid: String) -> bool:
 		"project_uuid": project_uuid,
 		"size_x": 8,
 		"size_y": 8,
-		"layers": [],
-		"frames": [],
+		"layers": [{"type": 0, "new_cels_linked": false}],
+		"frames": [{"cels": [{"opacity": 1.0}]}],
 	}
 	if packer.start_file("data.json") != OK:
 		packer.close()
@@ -192,6 +222,16 @@ func _write_snapshot(path: String, project_uuid: String) -> bool:
 	if packer.close_file() != OK:
 		packer.close()
 		return false
+	if not omit_pixel_data:
+		var pixel_data := PackedByteArray()
+		pixel_data.resize(8 * 8 if truncate_pixel_data else 8 * 8 * 4)
+		pixel_data.fill(0)
+		if packer.start_file("image_data/frames/1/layer_1") != OK:
+			packer.close()
+			return false
+		if packer.write_file(pixel_data) != OK or packer.close_file() != OK:
+			packer.close()
+			return false
 	return packer.close() == OK
 
 

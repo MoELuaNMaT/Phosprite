@@ -265,18 +265,20 @@ var shrink := 1.0
 var auto_content_scale_factor := 1.0
 var theme_font := loaded_fonts[theme_font_index]:
 	set(value):
-		theme_font = value
+		# Copy the chosen font before attaching iPad fallbacks. The preloaded
+		# resource is shared with the font picker and must not be mutated.
+		theme_font = _with_platform_font_fallback(value)
 		if is_instance_valid(control) and is_instance_valid(control.theme):
 			control.theme.default_font = theme_font
 ## Found in Preferences. The index of the font used by the interface.
 var theme_font_index := 1:
 	set(value):
 		theme_font_index = value
-		if theme_font_index < loaded_fonts.size():
+		if theme_font_index >= 0 and theme_font_index < loaded_fonts.size():
 			theme_font = loaded_fonts[theme_font_index]
 		else:
 			var available_font_names := get_available_font_names()
-			if theme_font_index < available_font_names.size():
+			if theme_font_index >= 0 and theme_font_index < available_font_names.size():
 				var font_name := available_font_names[theme_font_index]
 				theme_font = find_font_from_name(font_name)
 			else:
@@ -921,6 +923,16 @@ func _ready() -> void:
 					update_grids(value)
 			else:
 				set(pref, value)
+	# Font indexes are not stable across OS upgrades or across machines.
+	# Old iPad installs may have a stale index pointing to a symbol-only font.
+	# Prefer the persisted family name; default legacy iPad indexes to Roboto.
+	var font_names := get_available_font_names()
+	var saved_font_name := str(config_cache.get_value("preferences", "theme_font_name", ""))
+	if not saved_font_name.is_empty():
+		var selected_font := font_names.find(saved_font_name)
+		theme_font_index = selected_font if selected_font >= 0 else 1
+	elif OS.get_name() == "iOS":
+		theme_font_index = 1
 	if OS.is_sandboxed() or OS.has_feature("mobile"):
 		Global.use_native_file_dialogs = true
 
@@ -1454,6 +1466,23 @@ func find_nearest_locale(locale: String) -> String:
 			max_similarity_score = compared
 			closest_locale = loaded_locale
 	return closest_locale
+
+
+## iPad must always be able to render Chinese text even when a stored
+## custom/system font has incomplete glyph coverage.
+func _with_platform_font_fallback(value: Font) -> Font:
+	if value == null or OS.get_name() != "iOS":
+		return value
+	var selected := value.duplicate() as Font
+	var chinese_font := SystemFont.new()
+	chinese_font.font_names = PackedStringArray(
+		["PingFang SC", "PingFang TC", "Hiragino Sans GB", "Heiti SC", "Helvetica Neue"]
+	)
+	var fallbacks: Array[Font] = selected.fallbacks.duplicate()
+	fallbacks.append(chinese_font)
+	fallbacks.append(ThemeDB.fallback_font)
+	selected.fallbacks = fallbacks
+	return selected
 
 
 func get_available_font_names() -> PackedStringArray:
