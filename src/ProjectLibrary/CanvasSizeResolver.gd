@@ -32,8 +32,7 @@ static func resolve(source_size: Vector2i) -> Vector2i:
 	var scale_factor := minf(
 		1.0,
 		minf(
-			side_limit / float(maxi(source_size.x, source_size.y)),
-			sqrt(pixel_limit / source_area)
+			side_limit / float(maxi(source_size.x, source_size.y)), sqrt(pixel_limit / source_area)
 		)
 	)
 	return Vector2i(

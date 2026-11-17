@@ -91,9 +91,7 @@ static func _validate_snapshot_contents(reader: ZIPReader, data: Dictionary) -> 
 				return false
 			if int(layer.get("type", -1)) != 0:
 				continue  # Group, tile map, audio and 3D layer payloads differ.
-			var image_path := "image_data/frames/%d/layer_%d" % [
-				frame_index + 1, layer_index + 1
-			]
+			var image_path := "image_data/frames/%d/layer_%d" % [frame_index + 1, layer_index + 1]
 			if not reader.file_exists(image_path):
 				return false
 			if reader.read_file(image_path).size() < width * height:
