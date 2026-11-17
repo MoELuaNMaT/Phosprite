@@ -88,6 +88,19 @@ func test_missing_cel_payload_never_replaces_a_project() -> void:
 	)
 
 
+func test_truncated_pixel_payload_fails_strict_validation() -> void:
+	_reset_paths()
+	var staged := RecoveryStore.staging_path(TEST_UUID)
+	check_true(
+		_write_snapshot(staged, TEST_UUID, false, true),
+		"truncated but nonempty pixel payload fixture must be writable",
+	)
+	check_true(
+		not RecoveryStore.validate_snapshot(staged, TEST_UUID),
+		"pixel data smaller than RGBA8 frame size must be rejected",
+	)
+
+
 func test_wrong_uuid_or_corrupt_snapshot_never_installs() -> void:
 	_reset_paths()
 	var staged := RecoveryStore.staging_path(TEST_UUID)
@@ -177,7 +190,9 @@ func test_p3_b_source_contract_keeps_timing_and_stage_boundaries() -> void:
 	)
 
 
-func _write_snapshot(path: String, project_uuid: String, omit_pixel_data := false) -> bool:
+func _write_snapshot(
+	path: String, project_uuid: String, omit_pixel_data := false, truncate_pixel_data := false
+) -> bool:
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var packer := ZIPPacker.new()
 	if packer.open(path) != OK:
@@ -209,7 +224,7 @@ func _write_snapshot(path: String, project_uuid: String, omit_pixel_data := fals
 		return false
 	if not omit_pixel_data:
 		var pixel_data := PackedByteArray()
-		pixel_data.resize(8 * 8 * 4)
+		pixel_data.resize(8 * 8 if truncate_pixel_data else 8 * 8 * 4)
 		pixel_data.fill(0)
 		if packer.start_file("image_data/frames/1/layer_1") != OK:
 			packer.close()

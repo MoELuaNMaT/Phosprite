@@ -79,6 +79,14 @@ static func _validate_snapshot_contents(reader: ZIPReader, data: Dictionary) -> 
 	# Do not allocate a large array based on untrusted file dimensions.
 	if width > 16384 or height > 16384 or int(width) * int(height) > 4096 * 4096:
 		return false
+	var format_code := int(data.get("color_mode", Image.FORMAT_RGBA8))
+	if format_code == -1:
+		format_code = Image.FORMAT_RGBA8
+	var probe_image := Image.create_empty(1, 1, false, format_code as Image.Format)
+	var bytes_per_pixel := probe_image.get_data_size()
+	if bytes_per_pixel <= 0:
+		return false
+	var expected_bytes := width * height * bytes_per_pixel
 	for frame_index in frames.size():
 		var frame: Variant = frames[frame_index]
 		if not frame is Dictionary or not frame.has("cels") or not frame["cels"] is Array:
@@ -100,8 +108,16 @@ static func _validate_snapshot_contents(reader: ZIPReader, data: Dictionary) -> 
 			var image_path := "image_data/frames/%d/layer_%d" % [frame_index + 1, layer_index + 1]
 			if not reader.file_exists(image_path):
 				return false
-			if reader.read_file(image_path).size() < width * height:
+			if reader.read_file(image_path).size() != expected_bytes:
 				return false
+			if int(data.get("color_mode", Image.FORMAT_RGBA8)) == -1:
+				var index_path := "image_data/frames/%d/indices_layer_%d" % [
+					frame_index + 1, layer_index + 1
+				]
+				if not reader.file_exists(index_path):
+					return false
+				if reader.read_file(index_path).size() != width * height:
+					return false
 	var brushes: Variant = data.get("brushes", [])
 	var references: Variant = data.get("reference_images", [])
 	if not brushes is Array or not references is Array:
