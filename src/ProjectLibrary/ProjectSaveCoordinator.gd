@@ -153,7 +153,7 @@ func forget_project(project: Project, discard_recovery := false) -> void:
 	_states.erase(project.project_uuid)
 	RecoveryStore.remove_staging(project.project_uuid)
 	if discard_recovery:
-		RecoveryStore.discard(project.project_uuid)
+		RecoveryStore.discard(project.project_uuid, true)
 
 
 func flush_all(reason := "forced") -> bool:

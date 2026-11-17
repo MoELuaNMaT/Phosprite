@@ -170,7 +170,7 @@ static func restore_to_project(project_uuid: String, project_path: String) -> Er
 	return commit_to_project(project_uuid, project_path)
 
 
-static func discard(project_uuid: String) -> Error:
+static func discard(project_uuid: String, remove_previous := false) -> Error:
 	var recovery := recovery_path(project_uuid)
 	if recovery.is_empty():
 		return ERR_INVALID_PARAMETER
@@ -178,8 +178,12 @@ static func discard(project_uuid: String) -> Error:
 		var error := DirAccess.remove_absolute(recovery)
 		if error != OK:
 			return error
-	# Do not discard the last verified version when the user dismisses an
-	# interrupted save. It can still be useful for manual recovery.
+	# Dismissing a recovery prompt keeps the last verified version. Explicit
+	# project deletion can remove it using remove_previous.
+	if remove_previous:
+		var saved_previous := previous_path(project_uuid)
+		if FileAccess.file_exists(saved_previous):
+			return DirAccess.remove_absolute(saved_previous)
 	return OK
 
 
