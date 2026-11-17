@@ -83,6 +83,8 @@ static func _validate_snapshot_contents(reader: ZIPReader, data: Dictionary) -> 
 	if format_code == -1:
 		format_code = Image.FORMAT_RGBA8
 	var probe_image := Image.create_empty(1, 1, false, format_code as Image.Format)
+	if not is_instance_valid(probe_image):
+		return false
 	var bytes_per_pixel := probe_image.get_data_size()
 	if bytes_per_pixel <= 0:
 		return false
@@ -111,9 +113,9 @@ static func _validate_snapshot_contents(reader: ZIPReader, data: Dictionary) -> 
 			if reader.read_file(image_path).size() != expected_bytes:
 				return false
 			if int(data.get("color_mode", Image.FORMAT_RGBA8)) == -1:
-				var index_path := "image_data/frames/%d/indices_layer_%d" % [
-					frame_index + 1, layer_index + 1
-				]
+				var index_path := (
+					"image_data/frames/%d/indices_layer_%d" % [frame_index + 1, layer_index + 1]
+				)
 				if not reader.file_exists(index_path):
 					return false
 				if reader.read_file(index_path).size() != width * height:
