@@ -186,8 +186,8 @@ func _write_snapshot(path: String, project_uuid: String, omit_pixel_data := fals
 		"project_uuid": project_uuid,
 		"size_x": 8,
 		"size_y": 8,
-		"layers": [{"type": 0}],
-		"frames": [{"cels": [{}]}],
+		"layers": [{"type": 0, "new_cels_linked": false}],
+		"frames": [{"cels": [{"opacity": 1.0}]}],
 	}
 	if packer.start_file("data.json") != OK:
 		packer.close()

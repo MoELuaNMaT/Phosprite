@@ -87,7 +87,13 @@ static func _validate_snapshot_contents(reader: ZIPReader, data: Dictionary) -> 
 			return false
 		for layer_index in layers.size():
 			var layer: Variant = layers[layer_index]
-			if not layer is Dictionary:
+			var cel: Variant = frame["cels"][layer_index]
+			if not layer is Dictionary or not cel is Dictionary:
+				return false
+			# The PXO deserializer reads these fields without a default.
+			if not cel.has("opacity"):
+				return false
+			if int(layer.get("type", -1)) == 0 and not layer.has("new_cels_linked"):
 				return false
 			if int(layer.get("type", -1)) != 0:
 				continue  # Group, tile map, audio and 3D layer payloads differ.

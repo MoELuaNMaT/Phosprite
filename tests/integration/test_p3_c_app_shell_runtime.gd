@@ -147,8 +147,8 @@ func _write_snapshot(path: String, project_uuid: String) -> bool:
 		"project_uuid": project_uuid,
 		"size_x": 24,
 		"size_y": 18,
-		"layers": [{"type": 0}],
-		"frames": [{"cels": [{}]}],
+		"layers": [{"type": 0, "new_cels_linked": false}],
+		"frames": [{"cels": [{"opacity": 1.0}]}],
 	}
 	if not _write_zip_entry(packer, "data.json", JSON.stringify(data).to_utf8_buffer()):
 		packer.close()
