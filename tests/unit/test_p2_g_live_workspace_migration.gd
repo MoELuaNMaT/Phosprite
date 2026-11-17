@@ -409,7 +409,7 @@ func test_default_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> v
 	)
 	check_true(not preview_content.visible, "collapse should hide panel content")
 	check_true(
-		not interaction.get_tray().visible,
+		surface.dock_host.get_node_or_null(^"WorkspaceCollapsedTray") == null,
 		"floating collapse must not create the legacy bottom text-button tray",
 	)
 
@@ -459,7 +459,7 @@ func test_floating_collapse_stays_in_place_and_out_of_bottom_tray() -> void:
 		"floating collapse should preserve the complete pre-collapse rectangle"
 	)
 	check_true(
-		not interaction.get_tray().visible,
+		surface.dock_host.get_node_or_null(^"WorkspaceCollapsedTray") == null,
 		"floating-origin collapse must not become a bottom tray text button"
 	)
 	check_true(surface.restore_module(Builtins.PREVIEW_ID), "collapsed floating bar should restore")

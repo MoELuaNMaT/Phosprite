@@ -23,8 +23,13 @@ func test_p3_f_canvas_size_resolver_uses_nearest_family_and_preserves_orientatio
 	)
 	check_eq(
 		Resolver.resolve(Vector2i(1000, 1000)),
-		Vector2i(256, 256),
-		"images that exceed every family preset must use the exact 256x256 fallback",
+		Vector2i(1000, 1000),
+		"large images within the safe area must keep their source dimensions",
+	)
+	check_eq(
+		Resolver.resolve(Vector2i(8192, 8192)),
+		Vector2i(4096, 4096),
+		"oversized images must scale to the safe pixel budget, not to 256px",
 	)
 	check_eq(
 		Resolver.resolve(Vector2i.ZERO),

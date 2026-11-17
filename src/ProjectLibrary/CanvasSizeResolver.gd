@@ -21,7 +21,25 @@ static func resolve(source_size: Vector2i) -> Vector2i:
 		var oriented := preset if landscape else Vector2i(preset.y, preset.x)
 		if oriented.x >= source_size.x and oriented.y >= source_size.y:
 			return oriented
-	return FALLBACK_SIZE
+	# Do not silently shrink a large source to a tiny 256 px canvas.
+	# If it exceeds the supported area, fit its aspect ratio within the
+	# project's valid limits while leaving the reference image unchanged.
+	if ProjectFactoryScript.is_canvas_size_supported(source_size):
+		return source_size
+	var side_limit := float(ProjectFactoryScript.MAX_CANVAS_SIDE)
+	var pixel_limit := float(ProjectFactoryScript.MAX_CANVAS_PIXELS)
+	var source_area := float(source_size.x) * float(source_size.y)
+	var scale_factor := minf(
+		1.0,
+		minf(
+			side_limit / float(maxi(source_size.x, source_size.y)),
+			sqrt(pixel_limit / source_area)
+		)
+	)
+	return Vector2i(
+		maxi(1, floori(float(source_size.x) * scale_factor)),
+		maxi(1, floori(float(source_size.y) * scale_factor))
+	)
 
 
 static func fit_layer_size(source_size: Vector2i, canvas_size: Vector2i) -> Vector2i:
