@@ -1,5 +1,8 @@
 extends AcceptDialog
 
+const PixelTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
+
 var pref_theme_base_color := Preference.new(
 	"theme_base_color",
 	"Interface/ThemeOptions/BaseColor",
@@ -265,6 +268,9 @@ var content_list := PackedStringArray([])
 var selected_item := 0
 var _ipad_categories: Array[Dictionary] = []
 var _ipad_filtered_categories := PackedInt32Array()
+var _ipad_pixel_unit_select: OptionButton
+var _ipad_pixel_style_preview: PanelContainer
+var _ipad_pixel_style_preview_label: Label
 var _ipad_profile_select: OptionButton
 var _ipad_color_mode_select: OptionButton
 var _ipad_view_toggles: Dictionary = {}
@@ -484,6 +490,7 @@ func _update_themes(_theme: Theme = null) -> void:
 
 
 func _on_theme_switched() -> void:
+	_ipad_refresh_pixel_ui_controls()
 	if Global.theme_preset_index == Themes.CUSTOM_THEME_INDEX:
 		return
 	var theme_color_preferences: Array[Preference] = [
@@ -612,6 +619,32 @@ func _on_List_item_selected(index: int) -> void:
 ## Their node paths remain stable for settings persistence and reset buttons.
 func _setup_ipad_settings_pages() -> void:
 	size = Vector2i(960, 620)
+	# Keep the visual scale control visible above the legacy Interface page.
+	# Its preview remains usable while the modal settings window covers the Workspace.
+	var pixel_page := _new_ipad_settings_page("iPadPixelUISettings")
+	_ipad_add_heading(pixel_page, tr("Pixel UI Thickness"))
+	_ipad_pixel_unit_select = OptionButton.new()
+	_ipad_pixel_unit_select.name = &"PixelUIUnitOption"
+	for unit in [1, 2, 3]:
+		_ipad_pixel_unit_select.add_item("%dpx" % unit, unit)
+	_ipad_pixel_unit_select.item_selected.connect(_ipad_change_pixel_ui_unit)
+	pixel_page.add_child(_ipad_pixel_unit_select)
+	var pixel_hint := Label.new()
+	pixel_hint.text = tr(
+		"Compare pixel outlines, staircase corners and hard shadows. "
+		+ "Only Phosprite themes change; canvas, text and touch targets stay the same."
+	)
+	pixel_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pixel_page.add_child(pixel_hint)
+	_ipad_pixel_style_preview = PanelContainer.new()
+	_ipad_pixel_style_preview.name = &"PixelUIComparisonPreview"
+	_ipad_pixel_style_preview.custom_minimum_size = Vector2(240, 72)
+	_ipad_pixel_style_preview_label = Label.new()
+	_ipad_pixel_style_preview_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ipad_pixel_style_preview_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_ipad_pixel_style_preview.add_child(_ipad_pixel_style_preview_label)
+	pixel_page.add_child(_ipad_pixel_style_preview)
+	_ipad_refresh_pixel_ui_controls()
 	var project_page := _new_ipad_settings_page("CurrentProjectSettings")
 	_ipad_add_action(project_page, tr("Project Properties"), _ipad_show_project_properties)
 	_ipad_add_heading(project_page, tr("Project Color Mode"))
@@ -662,7 +695,7 @@ func _setup_ipad_settings_pages() -> void:
 	_ipad_add_category("Workspace & Panels", ["WorkspaceSettings"])
 	_ipad_add_category("Tools & Input", ["Tools", "Selection", "Shortcuts"])
 	_ipad_add_category("Animation & Layers", ["Timeline"])
-	_ipad_add_category("Interface & Appearance", ["Interface", "Language"])
+	_ipad_add_category("Interface & Appearance", ["iPadPixelUISettings", "Interface", "Language"])
 	_ipad_add_category("Files & Backup", ["Image", "Backup", "iPadBackupActions"])
 	_ipad_add_category("Advanced & System", ["Performance", "Extensions", "Reset"])
 	_ipad_add_category("Help & About", ["iPadHelp"])
@@ -718,6 +751,39 @@ func _refresh_ipad_canvas_settings() -> void:
 
 func _ipad_open_tile_offsets() -> void:
 	_ipad_invoke_top_menu(&"view_menu_id_pressed", Global.ViewMenu.TILE_MODE_OFFSETS)
+
+
+func _ipad_change_pixel_ui_unit(index: int) -> void:
+	if not is_instance_valid(_ipad_pixel_unit_select):
+		return
+	Global.pixel_ui_unit = _ipad_pixel_unit_select.get_item_id(index)
+	Global.config_cache.set_value("preferences", "pixel_ui_unit", Global.pixel_ui_unit)
+	Global.config_cache.save(Global.CONFIG_PATH)
+	_ipad_refresh_pixel_ui_controls()
+
+
+func _ipad_refresh_pixel_ui_controls() -> void:
+	if not is_instance_valid(_ipad_pixel_unit_select):
+		return
+	var index := _ipad_pixel_unit_select.get_item_index(Global.pixel_ui_unit)
+	if index >= 0:
+		_ipad_pixel_unit_select.select(index)
+	if not is_instance_valid(_ipad_pixel_style_preview):
+		return
+	var mode := PixelTokens.detect_mode(Global.theme_base_color, Global.theme_accent_color)
+	if mode == PixelTokens.LEGACY:
+		mode = PixelTokens.SUNNY
+	var style := PixelStyle.make_style(
+		PixelTokens.TIER_L,
+		PixelTokens.color(mode, &"panel_surface"),
+		PixelTokens.color(mode, &"outline_ink"),
+		PixelTokens.color(mode, &"pixel_shadow"),
+		true,
+		Global.pixel_ui_unit
+	)
+	if style != null:
+		_ipad_pixel_style_preview.add_theme_stylebox_override(&"panel", style)
+	_ipad_pixel_style_preview_label.text = "%dpx  ·  Aa 123 中文" % Global.pixel_ui_unit
 
 
 func _ipad_add_category(title: String, pages: Array[String]) -> void:
