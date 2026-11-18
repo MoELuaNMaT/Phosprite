@@ -631,8 +631,7 @@ func _setup_ipad_settings_pages() -> void:
 	pixel_page.add_child(_ipad_pixel_unit_select)
 	var pixel_hint := Label.new()
 	pixel_hint.text = tr(
-		"Compare pixel outlines, staircase corners and hard shadows. "
-		+ "Only Phosprite themes change; canvas, text and touch targets stay the same."
+		"Pixel outlines, staircase corners and hard shadows. Phosprite themes only."
 	)
 	pixel_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pixel_page.add_child(pixel_hint)
