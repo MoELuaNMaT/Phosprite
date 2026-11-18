@@ -35,8 +35,7 @@ func test_exact_semantic_colors_and_explicit_preset_detection() -> void:
 	for mode in [Tokens.SUNNY, Tokens.TWILIGHT]:
 		check_eq(
 			Tokens.detect_mode(
-				Tokens.color(mode, &"panel_surface"),
-				Tokens.color(mode, &"accent_primary")
+				Tokens.color(mode, &"panel_surface"), Tokens.color(mode, &"accent_primary")
 			),
 			mode,
 			"only a complete matching color pair should select a new preset"
@@ -58,9 +57,7 @@ func test_three_pixel_nine_slice_tiers_use_integer_margins_and_crisp_corners() -
 		var side: int = Tokens.tier_size(tier)
 		var margin: int = Tokens.tier_texture_margin(tier)
 		var content: int = Tokens.tier_content_margin(tier)
-		var style := PixelStyle.make_style(
-			tier, Color("FAF8F3"), Color("282C40"), Color("B6DAFF")
-		)
+		var style := PixelStyle.make_style(tier, Color("FAF8F3"), Color("282C40"), Color("B6DAFF"))
 		check_true(style is StyleBoxTexture, "each tier must produce a nine-slice style")
 		check_eq(style.region_rect.size, Vector2(side, side), "tier image dimensions")
 		check_eq(int(style.texture_margin_left), margin, "nine-slice left margin")
