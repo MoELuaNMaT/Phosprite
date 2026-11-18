@@ -155,16 +155,16 @@ func _rebuild_pixel_styles() -> void:
 		Tokens.TIER_L, elevated_color, accent_color, shadow_color, true, pixel_unit
 	)
 	_pixel_module_styles[&"collapsed"] = PixelStyle.make_style(
-				Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
+		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
 	)
 	_pixel_header_styles[&"floating"] = PixelStyle.make_style(
-				Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
 	)
 	_pixel_header_styles[&"peek"] = PixelStyle.make_style(
-				Tokens.TIER_L, header_color, accent_color, shadow_color, false, pixel_unit
+		Tokens.TIER_L, header_color, accent_color, shadow_color, false, pixel_unit
 	)
 	_pixel_header_styles[&"collapsed"] = PixelStyle.make_style(
-				Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
 	)
 
 
