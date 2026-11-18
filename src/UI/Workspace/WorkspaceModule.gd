@@ -455,8 +455,10 @@ func get_visual_state() -> StringName:
 func _draw() -> void:
 	if _visual_theme == null:
 		return
-	var module_style := _visual_theme.get_module_style(_visual_state)
-	var header_style := _visual_theme.get_header_style(_visual_state)
+	# Pilot pixel chrome is opt-in. The drawing layer changes, not the module's
+	# touch/resize geometry or its existing content.
+	var module_style := _visual_theme.get_render_module_style(_visual_state)
+	var header_style := _visual_theme.get_render_header_style(_visual_state)
 	if module_style != null:
 		draw_style_box(module_style, get_visual_rect())
 	if not _header_chrome_visible:
