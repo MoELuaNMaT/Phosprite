@@ -75,26 +75,28 @@ static func detect_mode(base: Color, accent: Color) -> StringName:
 	return LEGACY
 
 
-static func tier_size(tier: StringName) -> int:
+static func tier_size(tier: StringName, pixel_unit := 1) -> int:
+	var extra := (clampi(pixel_unit, 1, 3) - 1) * 4
 	match tier:
 		TIER_L:
-			return 24
+			return 24 + extra
 		TIER_M:
-			return 20
+			return 20 + extra
 		TIER_S:
-			return 16
+			return 16 + extra
 		_:
 			return 0
 
 
-static func tier_texture_margin(tier: StringName) -> int:
+static func tier_texture_margin(tier: StringName, pixel_unit := 1) -> int:
+	var extra := (clampi(pixel_unit, 1, 3) - 1) * 2
 	match tier:
 		TIER_L:
-			return 10
+			return 10 + extra
 		TIER_M:
-			return 7
+			return 7 + extra
 		TIER_S:
-			return 5
+			return 5 + extra
 		_:
 			return 0
 
@@ -112,15 +114,32 @@ static func tier_content_margin(tier: StringName) -> int:
 
 
 ## Opaque corner cut lengths, counted row by row from the nearest edge.
-## The design spec describes the row widths as R10 3-2-1-1, R6 2-1-1,
-## and R4 2-1. These profiles are symmetrical and consist of whole pixels.
-static func corner_cutoffs(tier: StringName) -> PackedInt32Array:
+## Wider UI pixels use integer-aligned stair steps. Internal texture padding
+## grows with each step, but the UI Control rect and content margins do not.
+## The 3px L-tier uses 14px top and bottom slices: exactly a 28px title bar.
+static func corner_cutoffs(tier: StringName, pixel_unit := 1) -> PackedInt32Array:
+	var unit := clampi(pixel_unit, 1, 3)
 	match tier:
 		TIER_L:
+			match unit:
+				2:
+					return PackedInt32Array([8, 8, 4, 4, 2, 2, 0])
+				3:
+					return PackedInt32Array([6, 6, 6, 3, 3, 3, 0])
 			return PackedInt32Array([7, 4, 2, 1, 1, 0])
 		TIER_M:
+			match unit:
+				2:
+					return PackedInt32Array([4, 4, 2, 2, 0])
+				3:
+					return PackedInt32Array([3, 3, 3, 0])
 			return PackedInt32Array([4, 2, 1, 0])
 		TIER_S:
+			match unit:
+				2:
+					return PackedInt32Array([4, 4, 2, 2, 0])
+				3:
+					return PackedInt32Array([3, 3, 3, 0])
 			return PackedInt32Array([3, 1, 0])
 		_:
 			return PackedInt32Array()

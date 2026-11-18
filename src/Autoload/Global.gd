@@ -26,6 +26,7 @@ signal transform_content_canceled(project: Project)
 signal font_loaded  ## Emitted when a new font has been loaded, or an old one gets unloaded.
 signal collapse_main_menu_changed  ## Emitted when [member collapse_main_menu] changes.
 signal single_tool_mode_changed(mode: bool)  ## Emitted when [member single_tool_mode] changes.
+signal pixel_ui_unit_changed
 signal greyscale_view_changed(enabled: bool)
 signal preview_view_controls_changed
 ## Emitted when [member share_options_between_tools] changes.
@@ -259,6 +260,16 @@ var integer_zoom := false:
 			zoom_slider.snap_step = 1
 			zoom_slider.step = 1
 		zoom_slider.value = zoom_slider.value  # to trigger signal emission
+
+## Pixel-art UI stroke size. This is NOT the iPad display scale or canvas pixel size.
+## Changing it regenerates only the opt-in Phosprite window chrome.
+var pixel_ui_unit := 1:
+	set(value):
+		var valid_unit := clampi(int(value), 1, 3)
+		if pixel_ui_unit == valid_unit:
+			return
+		pixel_ui_unit = valid_unit
+		pixel_ui_unit_changed.emit()
 
 ## Found in Preferences. The scale of the interface.
 var shrink := 1.0

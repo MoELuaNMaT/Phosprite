@@ -32,6 +32,7 @@ var default_font: Font = ThemeDB.fallback_font
 var default_font_size := ThemeDB.fallback_font_size
 
 var pixel_mode: StringName = Tokens.LEGACY
+var pixel_unit := 1
 
 var _module_styles: Dictionary = {}
 var _header_styles: Dictionary = {}
@@ -39,7 +40,9 @@ var _pixel_module_styles: Dictionary = {}
 var _pixel_header_styles: Dictionary = {}
 
 
-func refresh(source_theme: Theme, base: Color, accent: Color, contrast := 0.3) -> bool:
+func refresh(
+	source_theme: Theme, base: Color, accent: Color, contrast := 0.3, ui_pixel_unit := 1
+) -> bool:
 	if source_theme == null:
 		return false
 
@@ -70,6 +73,7 @@ func refresh(source_theme: Theme, base: Color, accent: Color, contrast := 0.3) -
 	# The original app theme remains authoritative for fonts and text shaping.
 	# Only the two opt-in color pairs switch Workspace chrome to the new tokens.
 	pixel_mode = Tokens.detect_mode(base, accent)
+	pixel_unit = clampi(ui_pixel_unit, 1, 3)
 	if pixel_mode != Tokens.LEGACY:
 		surface_color = Tokens.color(pixel_mode, &"panel_surface")
 		elevated_color = surface_color
@@ -145,22 +149,22 @@ func _rebuild_styles() -> void:
 ## Docked and bottom Timeline panels retain their edge-to-edge geometry.
 func _rebuild_pixel_styles() -> void:
 	_pixel_module_styles[&"floating"] = PixelStyle.make_style(
-		Tokens.TIER_L, elevated_color, border_color, shadow_color, true
+		Tokens.TIER_L, elevated_color, border_color, shadow_color, true, pixel_unit
 	)
 	_pixel_module_styles[&"peek"] = PixelStyle.make_style(
-		Tokens.TIER_L, elevated_color, accent_color, shadow_color, true
+		Tokens.TIER_L, elevated_color, accent_color, shadow_color, true, pixel_unit
 	)
 	_pixel_module_styles[&"collapsed"] = PixelStyle.make_style(
-		Tokens.TIER_L, surface_color, border_color, shadow_color
+		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
 	)
 	_pixel_header_styles[&"floating"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, border_color, shadow_color
+		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
 	)
 	_pixel_header_styles[&"peek"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, accent_color, shadow_color
+		Tokens.TIER_L, header_color, accent_color, shadow_color, false, pixel_unit
 	)
 	_pixel_header_styles[&"collapsed"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, border_color, shadow_color
+		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
 	)
 
 
