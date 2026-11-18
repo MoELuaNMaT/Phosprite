@@ -14,11 +14,7 @@ const SHADOW_OFFSET := 2
 
 
 static func make_style(
-	tier: StringName,
-	background: Color,
-	outline: Color,
-	shadow: Color,
-	with_shadow := false
+	tier: StringName, background: Color, outline: Color, shadow: Color, with_shadow := false
 ) -> StyleBoxTexture:
 	var side := Tokens.tier_size(tier)
 	var slice_margin := Tokens.tier_texture_margin(tier)
@@ -81,7 +77,9 @@ static func make_button_theme(mode: StringName) -> Theme:
 	var muted := Tokens.color(mode, &"text_muted")
 	var theme := Theme.new()
 
-	theme.set_stylebox(&"normal", &"Button", make_style(Tokens.TIER_M, surface, outline, shadow, true))
+	theme.set_stylebox(
+		&"normal", &"Button", make_style(Tokens.TIER_M, surface, outline, shadow, true)
+	)
 	theme.set_stylebox(&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true))
 	theme.set_stylebox(&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow))
 	theme.set_stylebox(&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow))
