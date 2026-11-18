@@ -5092,3 +5092,9 @@ msgstr "參考"
 #. Compact Preview button caption. Keep the rendered text within a 20 px icon.
 msgid "BW"
 msgstr "灰階"
+
+msgid "Pixel UI Thickness"
+msgstr "像素 UI 描邊粗細"
+
+msgid "Pixel outlines, staircase corners and hard shadows. Phosprite themes only."
+msgstr "像素描邊、階梯圓角和硬邊陰影。僅對 Phosprite 主題生效。"
