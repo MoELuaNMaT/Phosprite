@@ -27,10 +27,12 @@ func setup(module_manager: WorkspaceModuleManager, workspace_surface: WorkspaceS
 	return true
 
 
-func refresh(source_theme: Theme, base: Color, accent: Color, contrast := 0.3) -> bool:
+func refresh(
+	source_theme: Theme, base: Color, accent: Color, contrast := 0.3, ui_pixel_unit := 1
+) -> bool:
 	if manager == null or surface == null:
 		return false
-	if not visual_theme.refresh(source_theme, base, accent, contrast):
+	if not visual_theme.refresh(source_theme, base, accent, contrast, ui_pixel_unit):
 		return false
 	_sync_preview_colors()
 	for module_id in manager.get_registered_ids():
