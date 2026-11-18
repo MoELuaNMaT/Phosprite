@@ -898,6 +898,13 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	# Apply the same CJK glyph coverage to controls created before the active
+	# application Theme is attached. Otherwise startup dialogs may still use
+	# Godot's Latin-only engine fallback font.
+	if OS.get_name() == "iOS":
+		var default_ui_font := UI_FONT_STACK.prepare_ios_font(ThemeDB.fallback_font)
+		if default_ui_font != null:
+			ThemeDB.fallback_font = default_ui_font
 	print(get_system_info())
 	if DirAccess.dir_exists_absolute(FONTS_DIR_PATH):
 		var fonts_dir := DirAccess.open(FONTS_DIR_PATH)
