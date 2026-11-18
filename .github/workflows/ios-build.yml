@@ -3,7 +3,7 @@ name: iOS build (unsigned)
 # 产出可在真机侧自行签名的未签名 IPA。
 on:
   push:
-    branches: [ master, main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2, feat/icon-only-topbar-preview-20261107, fix/workspace-titles-topbar-spacing-preview-captions-20261107, fix/tool-options-vertical-value-drag-20261108, fix/curve-tool-startup-diagnostic-race-20261108, feat/tap-toggle-collapsed-tool-families-20261108, fix/ios-build-identity-and-replacement-verification-20261109, feature/tool-options-icons-on-active-mainline-20261109 ]
+    branches: [ master, main, phosprite-main, codex/implement-p3-project-gallery, codex/ios-touch-ui-artifacts, integration/phosprite-mainline, integration/upstream-1.2.2, feat/icon-only-topbar-preview-20261107, fix/workspace-titles-topbar-spacing-preview-captions-20261107, fix/tool-options-vertical-value-drag-20261108, fix/curve-tool-startup-diagnostic-race-20261108, feat/tap-toggle-collapsed-tool-families-20261108, fix/ios-build-identity-and-replacement-verification-20261109, feature/tool-options-icons-on-active-mainline-20261109, fix/ios-bundled-cjk-font-20261118 ]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -33,6 +33,13 @@ jobs:
 
       # Every IPA must have a unique, visible identity. Previous builds all used
       # CFBundleVersion=1.2.0, making device-side replacement hard to verify.
+      # The old package shipped only Roboto; system fallback is not a reliable
+      # substitute for real CJK glyphs on iPad. Pin and verify the font before
+      # Godot imports resources, or refuse to export an unusable IPA.
+      - name: Fetch verified CJK UI font
+        shell: bash
+        run: bash tools/fetch_ios_font.sh
+
       - name: Stamp unique iOS build identity
         shell: bash
         env:
@@ -295,6 +302,18 @@ jobs:
             exit 1
           fi
 
+      - name: Check actual imported UI font glyphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./Godot.app/Contents/MacOS/Godot --headless --path . \
+            --script res://tools/verify_ios_font.gd 2>&1 | tee godot-font-verify.log
+          grep -F '[PHOSPRITE-FONT-VERIFY] PASS' godot-font-verify.log
+          if grep -E 'SCRIPT ERROR:|ERROR: Failed to load script' godot-font-verify.log; then
+            echo "::error::Font validation failed at runtime"
+            exit 1
+          fi
+
       - name: Export Xcode project 🔧
         run: |
           mkdir -v -p ./build/ios
@@ -339,6 +358,8 @@ jobs:
           APP_PATH="./build/ios/${EXPORT_NAME}.xcarchive/Products/Applications/${EXPORT_NAME}.app"
           test -d "${APP_PATH}"
           test -f "${APP_PATH}/Phosprite.pck"
+          cp assets/fonts/NotoSansCJKsc-License.txt "${APP_PATH}/NotoSansCJKsc-License.txt"
+          test -s "${APP_PATH}/NotoSansCJKsc-License.txt"
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${APP_PATH}/Info.plist")
           IDENTIFIER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${APP_PATH}/Info.plist")
           test "${VERSION}" = "${PHOSPRITE_BUILD_VERSION}"
@@ -358,6 +379,7 @@ jobs:
               b"Translations/zh_TW.po",
               b"Translations/en_US.po",
               b"Roboto-Regular.ttf",
+              b"NotoSansCJKsc-Regular.otf",
           ):
               if required not in data:
                   raise SystemExit("Required IPA resource missing: " + required.decode())
@@ -365,6 +387,7 @@ jobs:
               raise SystemExit("Test runner was exported into release IPA")
           print("[PHOSPRITE-BUILD] Required fonts and translations are present; tests excluded")
           PY
+          python3 tools/verify_ios_pack_fonts.py "${APP_PATH}/Phosprite.pck"
           echo "[PHOSPRITE-BUILD] Verified IPA version ${VERSION} and bundle ${IDENTIFIER}"
 
       - name: Package unsigned .ipa 📦
