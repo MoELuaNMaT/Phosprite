@@ -468,8 +468,16 @@ func _draw() -> void:
 	var header_rect := Rect2(0.0, 0.0, size.x, header_height)
 	if header_style != null:
 		draw_style_box(header_style, header_rect)
+	var separator_width := (
+		float(_visual_theme.pixel_unit)
+		if _visual_theme.pixel_mode != &"legacy"
+		else 1.0
+	)
 	draw_line(
-		Vector2(0.0, header_height), Vector2(size.x, header_height), _visual_theme.border_color, 1.0
+		Vector2(0.0, header_height),
+		Vector2(size.x, header_height),
+		_visual_theme.border_color,
+		separator_width
 	)
 	var title := get_header_display_title()
 	var baseline := header_height * 0.5 + _visual_theme.default_font_size * 0.35
