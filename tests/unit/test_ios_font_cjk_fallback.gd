@@ -56,6 +56,11 @@ func test_ios_ci_requires_font_download_validation_and_exported_fontdata() -> vo
 	)
 	check_has(
 		workflow,
+		"--script res://tools/verify_ios_font.gd -- --phosprite-test-runner",
+		"font verification must use safe headless initialization, not the normal editor boot path"
+	)
+	check_has(
+		workflow,
 		"python3 tools/verify_ios_pack_fonts.py",
 		"final archived IPA must have real imported fontdata"
 	)
