@@ -75,26 +75,28 @@ static func detect_mode(base: Color, accent: Color) -> StringName:
 	return LEGACY
 
 
-static func tier_size(tier: StringName) -> int:
+static func tier_size(tier: StringName, pixel_unit := 1) -> int:
+	var extra := (clampi(pixel_unit, 1, 3) - 1) * 4
 	match tier:
 		TIER_L:
-			return 24
+			return 24 + extra
 		TIER_M:
-			return 20
+			return 20 + extra
 		TIER_S:
-			return 16
+			return 16 + extra
 		_:
 			return 0
 
 
-static func tier_texture_margin(tier: StringName) -> int:
+static func tier_texture_margin(tier: StringName, pixel_unit := 1) -> int:
+	var extra := (clampi(pixel_unit, 1, 3) - 1) * 2
 	match tier:
 		TIER_L:
-			return 10
+			return 10 + extra
 		TIER_M:
-			return 7
+			return 7 + extra
 		TIER_S:
-			return 5
+			return 5 + extra
 		_:
 			return 0
 
@@ -112,9 +114,9 @@ static func tier_content_margin(tier: StringName) -> int:
 
 
 ## Opaque corner cut lengths, counted row by row from the nearest edge.
-## Wider UI pixels use integer-aligned stair steps INSIDE the existing 9-slice
-## margins. Do not scale the texture or the window: even at 3px the 28px
-## floating title bar must have enough space for both 10px L-tier corners.
+## Wider UI pixels use integer-aligned stair steps. Internal texture padding
+## grows with each step, but the UI Control rect and content margins do not.
+## The 3px L-tier uses 14px top and bottom slices: exactly a 28px title bar.
 static func corner_cutoffs(tier: StringName, pixel_unit := 1) -> PackedInt32Array:
 	var unit := clampi(pixel_unit, 1, 3)
 	match tier:
