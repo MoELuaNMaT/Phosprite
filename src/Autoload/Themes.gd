@@ -24,6 +24,10 @@ var themes: Array[ThemeVariation] = [
 	ThemeVariation.new(MAIN_THEME, "Caramel", Color("b16832"), Color("ffcd86")),
 	ThemeVariation.new(MAIN_THEME, "Purple", Color("433057"), Color("d093dd")),
 	ThemeVariation.new(MAIN_THEME, "Rose", Color("a53753"), Color("f69bb2")),
+	# Phosprite Visual System v1 pilot; appended to preserve saved preset indices.
+	# These remain opt-in until Gallery and editor controls are fully migrated.
+	ThemeVariation.new(MAIN_THEME, "Sunny Cream (Phosprite)", Color("FAF8F3"), Color("4BA3FF")),
+	ThemeVariation.new(MAIN_THEME, "Twilight Berry (Phosprite)", Color("262A40"), Color("58A6FF")),
 ]
 
 
