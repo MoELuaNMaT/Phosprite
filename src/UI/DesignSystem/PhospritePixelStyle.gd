@@ -6,7 +6,8 @@ extends RefCounted
 ## to style its window: the workspace renders these as isolated chrome.
 ##
 ## Each asset is built once when its theme changes, never on every draw frame.
-## The two-pixel hard shadow is painted into the source texture. This avoids
+## The hard shadow follows the selected 1/2/3px unit (2/4/6px offset).
+## The window size and nine-slice geometry stay constant. This avoids
 ## StyleBoxFlat.shadow_size, which applies an unwanted soft shadow.
 
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
@@ -14,7 +15,12 @@ const SHADOW_OFFSET := 2
 
 
 static func make_style(
-	tier: StringName, background: Color, outline: Color, shadow: Color, with_shadow := false
+	tier: StringName,
+	background: Color,
+	outline: Color,
+	shadow: Color,
+	with_shadow := false,
+	pixel_unit := 1
 ) -> StyleBoxTexture:
 	var side := Tokens.tier_size(tier)
 	var slice_margin := Tokens.tier_texture_margin(tier)
@@ -22,27 +28,35 @@ static func make_style(
 		push_error("Invalid Phosprite pixel tier: %s" % tier)
 		return null
 
+	var unit := clampi(pixel_unit, 1, 3)
+	var shadow_offset := SHADOW_OFFSET * unit
 	var image := Image.create_empty(side, side, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
-	var body_side := side - (SHADOW_OFFSET if with_shadow else 0)
-	var corner_steps := Tokens.corner_cutoffs(tier)
+	var body_side := side - (shadow_offset if with_shadow else 0)
+	var corner_steps := Tokens.corner_cutoffs(tier, unit)
 
 	if with_shadow:
 		for y in range(side):
 			for x in range(side):
-				if _inside(x - SHADOW_OFFSET, y - SHADOW_OFFSET, body_side, corner_steps):
+				if _inside(x - shadow_offset, y - shadow_offset, body_side, corner_steps):
 					image.set_pixel(x, y, shadow)
 
 	for y in range(body_side):
 		for x in range(body_side):
 			if not _inside(x, y, body_side, corner_steps):
 				continue
-			var edge := (
-				not _inside(x - 1, y, body_side, corner_steps)
-				or not _inside(x + 1, y, body_side, corner_steps)
-				or not _inside(x, y - 1, body_side, corner_steps)
-				or not _inside(x, y + 1, body_side, corner_steps)
-			)
+			# Erode the silhouette inward by an integer number of pixels.
+			# A wider stroke must not enlarge the nine-slice or touch target.
+			var edge := false
+			for distance in range(1, unit + 1):
+				if (
+					not _inside(x - distance, y, body_side, corner_steps)
+					or not _inside(x + distance, y, body_side, corner_steps)
+					or not _inside(x, y - distance, body_side, corner_steps)
+					or not _inside(x, y + distance, body_side, corner_steps)
+				):
+					edge = true
+					break
 			image.set_pixel(x, y, outline if edge else background)
 
 	var style := StyleBoxTexture.new()
@@ -63,7 +77,7 @@ static func make_style(
 ## Reusable R6 button states. Deliberately no font override: Godot's current
 ## language-aware font fallback remains in charge of all labels and numbers.
 ## Callers may install the returned Theme on a new opt-in button in stage 2.
-static func make_button_theme(mode: StringName) -> Theme:
+static func make_button_theme(mode: StringName, pixel_unit := 1) -> Theme:
 	if not Tokens.get_palette(mode).has("panel_surface"):
 		return null
 
@@ -78,12 +92,12 @@ static func make_button_theme(mode: StringName) -> Theme:
 	var theme := Theme.new()
 
 	theme.set_stylebox(
-		&"normal", &"Button", make_style(Tokens.TIER_M, surface, outline, shadow, true)
+		&"normal", &"Button", make_style(Tokens.TIER_M, surface, outline, shadow, true, pixel_unit)
 	)
-	theme.set_stylebox(&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true))
-	theme.set_stylebox(&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow))
-	theme.set_stylebox(&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow))
-	theme.set_stylebox(&"focus", &"Button", make_style(Tokens.TIER_M, soft, active, shadow))
+	theme.set_stylebox(&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true, pixel_unit))
+	theme.set_stylebox(&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow, false, pixel_unit))
+	theme.set_stylebox(&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow, false, pixel_unit))
+	theme.set_stylebox(&"focus", &"Button", make_style(Tokens.TIER_M, soft, active, shadow, false, pixel_unit))
 	theme.set_color(&"font_color", &"Button", foreground)
 	theme.set_color(&"font_hover_color", &"Button", foreground)
 	theme.set_color(&"font_pressed_color", &"Button", foreground)
