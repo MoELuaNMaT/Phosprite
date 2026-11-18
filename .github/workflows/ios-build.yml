@@ -307,7 +307,7 @@ jobs:
         run: |
           set -euo pipefail
           ./Godot.app/Contents/MacOS/Godot --headless --path . \
-            --script res://tools/verify_ios_font.gd 2>&1 | tee godot-font-verify.log
+            --script res://tools/verify_ios_font.gd -- --phosprite-test-runner 2>&1 | tee godot-font-verify.log
           grep -F '[PHOSPRITE-FONT-VERIFY] PASS' godot-font-verify.log
           if grep -E 'SCRIPT ERROR:|ERROR: Failed to load script' godot-font-verify.log; then
             echo "::error::Font validation failed at runtime"
