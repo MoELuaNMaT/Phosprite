@@ -150,6 +150,7 @@ const CONFIG_SUBDIR_NAME := "pixelorama_data"
 const LAYOUT_DIR := "user://layouts"
 ## The path of the ditectory where users can load custom fonts.
 const FONTS_DIR_PATH := "user://fonts"
+const UI_FONT_STACK := preload("res://src/UI/DesignSystem/PhospriteUIFont.gd")
 
 ## It is path to the executable's base drectory.
 var root_directory := "."
@@ -263,7 +264,9 @@ var integer_zoom := false:
 var shrink := 1.0
 ## The default value of the scale of the interface.
 var auto_content_scale_factor := 1.0
-var theme_font := loaded_fonts[theme_font_index]:
+# Use the real Roboto resource before the persisted index is applied. Do not
+# rely on theme_font_index's later property initialization order.
+var theme_font := loaded_fonts[1]:
 	set(value):
 		# Copy the chosen font before attaching iPad fallbacks. The preloaded
 		# resource is shared with the font picker and must not be mutated.
@@ -1468,21 +1471,13 @@ func find_nearest_locale(locale: String) -> String:
 	return closest_locale
 
 
-## iPad must always be able to render Chinese text even when a stored
-## custom/system font has incomplete glyph coverage.
+## iPad builds carry a real CJK font inside the .pck, so font coverage does
+## not depend on the operating system's localized font names.
 func _with_platform_font_fallback(value: Font) -> Font:
-	if value == null or OS.get_name() != "iOS":
+	if OS.get_name() != "iOS":
 		return value
-	var selected := value.duplicate() as Font
-	var chinese_font := SystemFont.new()
-	chinese_font.font_names = PackedStringArray(
-		["PingFang SC", "PingFang TC", "Hiragino Sans GB", "Heiti SC", "Helvetica Neue"]
-	)
-	var fallbacks: Array[Font] = selected.fallbacks.duplicate()
-	fallbacks.append(chinese_font)
-	fallbacks.append(ThemeDB.fallback_font)
-	selected.fallbacks = fallbacks
-	return selected
+	var selected := value if value != null else loaded_fonts[1]
+	return UI_FONT_STACK.prepare_ios_font(selected)
 
 
 func get_available_font_names() -> PackedStringArray:
