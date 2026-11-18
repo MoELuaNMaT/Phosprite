@@ -112,6 +112,8 @@ func _setup_workspace_foundation() -> void:
 		return
 	if not Themes.theme_switched.is_connected(_refresh_workspace_theme):
 		Themes.theme_switched.connect(_refresh_workspace_theme)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_workspace_theme):
+		Global.pixel_ui_unit_changed.connect(_refresh_workspace_theme)
 	_refresh_workspace_theme()
 
 	workspace_layout_store = WORKSPACE_LAYOUT_STORE_SCRIPT.new()
@@ -203,7 +205,8 @@ func _refresh_workspace_theme() -> void:
 		source_theme,
 		Global.theme_base_color,
 		Global.theme_accent_color,
-		Global.theme_color_contrast
+		Global.theme_color_contrast,
+		Global.pixel_ui_unit
 	)
 
 
