@@ -1,9 +1,6 @@
 class_name WorkspaceVisualTheme
 extends RefCounted
 
-const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
-const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
-
 ## Semantic visual palette and style resources for Workspace chrome.
 ##
 ## The palette is derived from Pixelorama's active Theme plus the current
@@ -11,6 +8,9 @@ const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 ## instead of hard-coded application colors.
 
 signal changed
+
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 
 const HEADER_HEIGHT := 28.0
 const CONTENT_PADDING := 6.0
@@ -31,9 +31,10 @@ var shadow_color := Color(0.0, 0.0, 0.0, 0.28)
 var default_font: Font = ThemeDB.fallback_font
 var default_font_size := ThemeDB.fallback_font_size
 
+var pixel_mode: StringName = Tokens.LEGACY
+
 var _module_styles: Dictionary = {}
 var _header_styles: Dictionary = {}
-var pixel_mode: StringName = Tokens.LEGACY
 var _pixel_module_styles: Dictionary = {}
 var _pixel_header_styles: Dictionary = {}
 
