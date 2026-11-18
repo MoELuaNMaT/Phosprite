@@ -469,9 +469,7 @@ func _draw() -> void:
 	if header_style != null:
 		draw_style_box(header_style, header_rect)
 	var separator_width := (
-		float(_visual_theme.pixel_unit)
-		if _visual_theme.pixel_mode != &"legacy"
-		else 1.0
+		float(_visual_theme.pixel_unit) if _visual_theme.pixel_mode != &"legacy" else 1.0
 	)
 	draw_line(
 		Vector2(0.0, header_height),
