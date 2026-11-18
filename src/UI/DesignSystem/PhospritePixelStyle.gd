@@ -22,13 +22,12 @@ static func make_style(
 	with_shadow := false,
 	pixel_unit := 1
 ) -> StyleBoxTexture:
-	var side := Tokens.tier_size(tier)
-	var slice_margin := Tokens.tier_texture_margin(tier)
+	var unit := clampi(pixel_unit, 1, 3)
+	var side := Tokens.tier_size(tier, unit)
+	var slice_margin := Tokens.tier_texture_margin(tier, unit)
 	if side <= 0 or slice_margin <= 0:
 		push_error("Invalid Phosprite pixel tier: %s" % tier)
 		return null
-
-	var unit := clampi(pixel_unit, 1, 3)
 	var shadow_offset := SHADOW_OFFSET * unit
 	var image := Image.create_empty(side, side, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
