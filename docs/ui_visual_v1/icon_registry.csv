@@ -1,7 +1,3 @@
-# Source manifest: Phosprite Q Icon Manifest.md (Drive ID 1pslp5NqcfWLgea-mvuWWKbzUqXfBrQCQ)
-# GitHub implementation baseline: 11c86c04471ff1094122b4a83fca5f59890271b4
-# Candidate file existence verified against pinned tree; only live_reference_verified means callsite observed
-# Count: 78 entries; P0=42; P1=27; P2=9
 id,phase,function_from_spec,target_path,existing_asset_candidates,mapping_status,live_evidence,notes
 "A01","P0","矩形选区（Rectangular Selection）","assets/graphics/q_icons/tools/rect_select.png","assets/graphics/tools/rectselect.png","filename_candidate_only","",""
 "A02","P1","椭圆选区（Elliptical Selection）","assets/graphics/q_icons/tools/ellipse_select.png","assets/graphics/tools/ellipseselect.png","filename_candidate_only","",""
