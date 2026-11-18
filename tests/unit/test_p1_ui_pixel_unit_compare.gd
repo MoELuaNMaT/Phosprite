@@ -32,7 +32,8 @@ func test_three_options_are_real_nine_slice_strokes_without_edge_gaps() -> void:
 			check_eq(int(style.texture_margin_top), margin, "top slice matches source")
 			check_eq(int(style.texture_margin_bottom), margin, "bottom slice matches source")
 			check_eq(
-				int(style.content_margin_left), Tokens.tier_content_margin(tier),
+				int(style.content_margin_left),
+				Tokens.tier_content_margin(tier),
 				"content padding must not grow with stroke width"
 			)
 			check_true(margin * 2 < side, "nine-slice center must not collapse")
@@ -44,10 +45,7 @@ func test_three_options_are_real_nine_slice_strokes_without_edge_gaps() -> void:
 			for y in range(margin, side - margin):
 				check_eq(image.get_pixel(0, y), INK, "left center has no missing pixels")
 				check_eq(image.get_pixel(side - 1, y), SHADOW, "right shadow stays solid")
-			check_eq(
-				image.get_pixel(side / 2, side - 1), SHADOW,
-				"bottom shadow must be preserved"
-			)
+			check_eq(image.get_pixel(side / 2, side - 1), SHADOW, "bottom shadow must be preserved")
 
 
 func test_one_two_three_pixel_strokes_have_expected_real_thickness() -> void:
@@ -65,15 +63,14 @@ func test_one_two_three_pixel_strokes_have_expected_real_thickness() -> void:
 				Tokens.corner_cutoffs(Tokens.TIER_L, unit)[1],
 				"larger visual pixel steps create visible staircase blocks"
 			)
-		var with_shadow := PixelStyle.make_style(
-			Tokens.TIER_L, PAPER, INK, SHADOW, true, unit
-		)
+		var with_shadow := PixelStyle.make_style(Tokens.TIER_L, PAPER, INK, SHADOW, true, unit)
 		var shadow_img := with_shadow.texture.get_image()
 		var shadow_y := int(shadow_img.get_height() / 2)
 		var shadow_start := shadow_img.get_width() - 2 * unit
 		for x_shadow in range(shadow_start, shadow_img.get_width()):
 			check_eq(
-				shadow_img.get_pixel(x_shadow, shadow_y), SHADOW,
+				shadow_img.get_pixel(x_shadow, shadow_y),
+				SHADOW,
 				"right-side shadow spans exactly 2x pixel unit"
 			)
 
@@ -91,11 +88,14 @@ func test_workspace_refresh_updates_thickness_but_not_theme_or_geometry() -> voi
 		var box := theme.get_render_module_style(&"floating") as StyleBoxTexture
 		check_true(box != null, "floating module remains pixel styled")
 		check_eq(
-			int(box.texture_margin_top), Tokens.tier_texture_margin(Tokens.TIER_L, unit),
+			int(box.texture_margin_top),
+			Tokens.tier_texture_margin(Tokens.TIER_L, unit),
 			"every switch must generate new corner geometry"
 		)
-		check_true(theme.get_render_module_style(&"bottom_bar") is StyleBoxFlat,
-			"Timeline remains docked and unchanged")
+		check_true(
+			theme.get_render_module_style(&"bottom_bar") is StyleBoxFlat,
+			"Timeline remains docked and unchanged"
+		)
 	check_true(
 		theme.refresh(source, Color("30343c"), Color("8aa0df"), 0.3, 3),
 		"legacy theme must still refresh"
@@ -107,18 +107,19 @@ func test_workspace_refresh_updates_thickness_but_not_theme_or_geometry() -> voi
 
 
 func test_settings_store_pixel_unit_and_wire_live_workspace_refresh() -> void:
-	var preferences := FileAccess.get_file_as_string(
-		"res://src/Preferences/PreferencesDialog.gd"
-	)
+	var preferences := FileAccess.get_file_as_string("res://src/Preferences/PreferencesDialog.gd")
 	var workspace := FileAccess.get_file_as_string("res://src/UI/UI.gd")
 	var global := FileAccess.get_file_as_string("res://src/Autoload/Global.gd")
 	for expected in [
 		'["iPadPixelUISettings", "Interface", "Language"]',
 		'"%dpx" % unit, unit',
-		"Global.config_cache.set_value(\"preferences\", \"pixel_ui_unit\", Global.pixel_ui_unit)",
+		'Global.config_cache.set_value("preferences", "pixel_ui_unit", Global.pixel_ui_unit)',
 		"Global.config_cache.save(Global.CONFIG_PATH)",
 	]:
 		check_has(preferences, expected, "iPad options are visible and persisted")
-	check_has(workspace, "Global.pixel_ui_unit_changed.connect(_refresh_workspace_theme)",
-		"changing setting must refresh the existing live Workspace")
+	check_has(
+		workspace,
+		"Global.pixel_ui_unit_changed.connect(_refresh_workspace_theme)",
+		"changing setting must refresh the existing live Workspace"
+	)
 	check_has(global, "clampi(int(value), 1, 3)", "invalid saved pixel scale is clamped")
