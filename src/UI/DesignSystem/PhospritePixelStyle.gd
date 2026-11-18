@@ -93,10 +93,18 @@ static func make_button_theme(mode: StringName, pixel_unit := 1) -> Theme:
 	theme.set_stylebox(
 		&"normal", &"Button", make_style(Tokens.TIER_M, surface, outline, shadow, true, pixel_unit)
 	)
-	theme.set_stylebox(&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true, pixel_unit))
-	theme.set_stylebox(&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow, false, pixel_unit))
-	theme.set_stylebox(&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow, false, pixel_unit))
-	theme.set_stylebox(&"focus", &"Button", make_style(Tokens.TIER_M, soft, active, shadow, false, pixel_unit))
+	theme.set_stylebox(
+		&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true, pixel_unit)
+	)
+	theme.set_stylebox(
+		&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow, false, pixel_unit)
+	)
+	theme.set_stylebox(
+		&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow, false, pixel_unit)
+	)
+	theme.set_stylebox(
+		&"focus", &"Button", make_style(Tokens.TIER_M, soft, active, shadow, false, pixel_unit)
+	)
 	theme.set_color(&"font_color", &"Button", foreground)
 	theme.set_color(&"font_hover_color", &"Button", foreground)
 	theme.set_color(&"font_pressed_color", &"Button", foreground)
