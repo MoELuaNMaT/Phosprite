@@ -87,8 +87,11 @@ func _ready() -> void:
 	DisplayServer.set_system_theme_change_callback(_on_set_system_theme_changed)
 	system_theme_index = themes.find(system_theme)
 	var theme_id: int = Global.config_cache.get_value("preferences", "theme_preset_index", 0)
-	## Wait so that extensions are loaded
+	## Wait until extensions register their themes. Existing saved numeric
+	## theme IDs must keep pointing at those extensions after this upgrade.
 	await Global.pixelorama_opened
+	add_theme(MAIN_THEME, "Sunny Cream (Phosprite)", Color("FAF8F3"), Color("4BA3FF"))
+	add_theme(MAIN_THEME, "Twilight Berry (Phosprite)", Color("262A40"), Color("58A6FF"))
 	if theme_id >= themes.size():
 		theme_id = 0
 	Global.theme_preset_index = theme_id

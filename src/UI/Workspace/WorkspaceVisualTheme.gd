@@ -9,6 +9,9 @@ extends RefCounted
 
 signal changed
 
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
+
 const HEADER_HEIGHT := 28.0
 const CONTENT_PADDING := 6.0
 const BORDER_WIDTH := 1
@@ -28,8 +31,12 @@ var shadow_color := Color(0.0, 0.0, 0.0, 0.28)
 var default_font: Font = ThemeDB.fallback_font
 var default_font_size := ThemeDB.fallback_font_size
 
+var pixel_mode: StringName = Tokens.LEGACY
+
 var _module_styles: Dictionary = {}
 var _header_styles: Dictionary = {}
+var _pixel_module_styles: Dictionary = {}
+var _pixel_header_styles: Dictionary = {}
 
 
 func refresh(source_theme: Theme, base: Color, accent: Color, contrast := 0.3) -> bool:
@@ -60,6 +67,20 @@ func refresh(source_theme: Theme, base: Color, accent: Color, contrast := 0.3) -
 		else ThemeDB.fallback_font_size
 	)
 
+	# The original app theme remains authoritative for fonts and text shaping.
+	# Only the two opt-in color pairs switch Workspace chrome to the new tokens.
+	pixel_mode = Tokens.detect_mode(base, accent)
+	if pixel_mode != Tokens.LEGACY:
+		surface_color = Tokens.color(pixel_mode, &"panel_surface")
+		elevated_color = surface_color
+		header_color = Tokens.color(pixel_mode, &"accent_soft")
+		border_color = Tokens.color(pixel_mode, &"outline_ink")
+		accent_color = Tokens.color(pixel_mode, &"accent_primary")
+		text_color = Tokens.color(pixel_mode, &"text_primary")
+		muted_text_color = Tokens.color(pixel_mode, &"text_muted")
+		preview_color = Color(accent_color, 0.22)
+		shadow_color = Tokens.color(pixel_mode, &"pixel_shadow")
+
 	_rebuild_styles()
 	changed.emit()
 	return true
@@ -79,9 +100,25 @@ func get_header_style(state: StringName) -> StyleBoxFlat:
 	return style
 
 
+## Legacy callers and tests still receive StyleBoxFlat resources. WorkspaceModule
+## opts into StyleBoxTexture only where the pixel chrome is already supported.
+func get_render_module_style(state: StringName) -> StyleBox:
+	if _pixel_module_styles.has(state):
+		return _pixel_module_styles[state] as StyleBox
+	return get_module_style(state)
+
+
+func get_render_header_style(state: StringName) -> StyleBox:
+	if _pixel_header_styles.has(state):
+		return _pixel_header_styles[state] as StyleBox
+	return get_header_style(state)
+
+
 func _rebuild_styles() -> void:
 	_module_styles.clear()
 	_header_styles.clear()
+	_pixel_module_styles.clear()
+	_pixel_header_styles.clear()
 
 	_module_styles[&"none"] = _make_module_style(surface_color, border_color, BORDER_WIDTH)
 	_module_styles[&"docked"] = _make_module_style(surface_color, border_color, BORDER_WIDTH)
@@ -100,6 +137,31 @@ func _rebuild_styles() -> void:
 	_header_styles[&"floating"] = _make_header_style(header_color.lerp(accent_color, 0.12))
 	_header_styles[&"peek"] = _make_header_style(header_color.lerp(accent_color, 0.2))
 	_header_styles[&"collapsed"] = _make_header_style(header_color)
+	if pixel_mode != Tokens.LEGACY:
+		_rebuild_pixel_styles()
+
+
+## Pilot scope: floating/peeking/collapsed WorkspaceModule chrome only.
+## Docked and bottom Timeline panels retain their edge-to-edge geometry.
+func _rebuild_pixel_styles() -> void:
+	_pixel_module_styles[&"floating"] = PixelStyle.make_style(
+		Tokens.TIER_L, elevated_color, border_color, shadow_color, true
+	)
+	_pixel_module_styles[&"peek"] = PixelStyle.make_style(
+		Tokens.TIER_L, elevated_color, accent_color, shadow_color, true
+	)
+	_pixel_module_styles[&"collapsed"] = PixelStyle.make_style(
+		Tokens.TIER_L, surface_color, border_color, shadow_color
+	)
+	_pixel_header_styles[&"floating"] = PixelStyle.make_style(
+		Tokens.TIER_L, header_color, border_color, shadow_color
+	)
+	_pixel_header_styles[&"peek"] = PixelStyle.make_style(
+		Tokens.TIER_L, header_color, accent_color, shadow_color
+	)
+	_pixel_header_styles[&"collapsed"] = PixelStyle.make_style(
+		Tokens.TIER_L, header_color, border_color, shadow_color
+	)
 
 
 func _make_module_style(background: Color, border: Color, width: int) -> StyleBoxFlat:
@@ -115,7 +177,7 @@ func _make_module_style(background: Color, border: Color, width: int) -> StyleBo
 	style.corner_radius_bottom_left = CORNER_RADIUS
 	style.corner_radius_bottom_right = CORNER_RADIUS
 	style.shadow_color = shadow_color
-	style.shadow_size = 3 if width == FLOATING_BORDER_WIDTH else 0
+	style.shadow_size = 3 if width == FLOATING_BORDER_WIDTH and pixel_mode == Tokens.LEGACY else 0
 	return style
 
 
