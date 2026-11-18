@@ -64,6 +64,36 @@ static func make_style(
 	return style
 
 
+## Reusable R6 button states. Deliberately no font override: Godot's current
+## language-aware font fallback remains in charge of all labels and numbers.
+## Callers may install the returned Theme on a new opt-in button in stage 2.
+static func make_button_theme(mode: StringName) -> Theme:
+	if not Tokens.get_palette(mode).has("panel_surface"):
+		return null
+
+	var outline := Tokens.color(mode, &"outline_ink")
+	var shadow := Tokens.color(mode, &"pixel_shadow")
+	var surface := Tokens.color(mode, &"panel_surface")
+	var soft := Tokens.color(mode, &"accent_soft")
+	var active := Tokens.color(mode, &"accent_primary")
+	var well := Tokens.color(mode, &"well_surface")
+	var foreground := Tokens.color(mode, &"text_primary")
+	var muted := Tokens.color(mode, &"text_muted")
+	var theme := Theme.new()
+
+	theme.set_stylebox(&"normal", &"Button", make_style(Tokens.TIER_M, surface, outline, shadow, true))
+	theme.set_stylebox(&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true))
+	theme.set_stylebox(&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow))
+	theme.set_stylebox(&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow))
+	theme.set_stylebox(&"focus", &"Button", make_style(Tokens.TIER_M, soft, active, shadow))
+	theme.set_color(&"font_color", &"Button", foreground)
+	theme.set_color(&"font_hover_color", &"Button", foreground)
+	theme.set_color(&"font_pressed_color", &"Button", foreground)
+	theme.set_color(&"font_disabled_color", &"Button", muted)
+	theme.set_color(&"font_focus_color", &"Button", foreground)
+	return theme
+
+
 static func _inside(x: int, y: int, side: int, corner_steps: PackedInt32Array) -> bool:
 	if x < 0 or y < 0 or x >= side or y >= side:
 		return false
