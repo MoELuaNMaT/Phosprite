@@ -1,5 +1,5 @@
 class_name PaletteSwatch
-extends ColorRect
+extends Control
 
 signal pressed(mouse_button: int)
 signal double_clicked(mouse_button: int, position: Vector2)
@@ -10,6 +10,13 @@ const DEFAULT_COLOR := Color(0.0, 0.0, 0.0, 0.0)
 const DRAG_OUTLINE_INSET_PX := 4
 const DRAG_OUTLINE_DASH_PX := 3
 const DRAG_OUTLINE_GAP_PX := 2
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PixelDraw := preload("res://src/UI/DesignSystem/PhospriteDraw.gd")
+
+var color := DEFAULT_COLOR:
+	set(value):
+		color = value
+		queue_redraw()
 
 var index := -1
 var color_index := -1
@@ -49,12 +56,17 @@ func _ready() -> void:
 	transparent_checker.show_behind_parent = true
 	transparent_checker.visible = not is_equal_approx(color.a, 1.0)
 	add_child(transparent_checker)
+	_sync_transparency_checker()
+	Themes.theme_switched.connect(_refresh_stage4_skin)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_skin)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED:
 		if empty:
 			empty = true
+		_sync_transparency_checker()
+		queue_redraw()
 	elif what == NOTIFICATION_DRAG_END and _drag_active:
 		var palette_grid := get_parent() as Control
 		var pointer_position := get_viewport().get_mouse_position()
@@ -68,8 +80,7 @@ func _notification(what: int) -> void:
 
 func set_swatch_color(new_color: Color) -> void:
 	color = new_color
-	if get_child_count() > 0:
-		get_child(0).visible = not is_equal_approx(color.a, 1.0)
+	_sync_transparency_checker()
 
 
 func set_swatch_size(swatch_size: Vector2) -> void:
@@ -78,6 +89,25 @@ func set_swatch_size(swatch_size: Vector2) -> void:
 
 
 func _draw() -> void:
+	var mode := Stage4.active_mode()
+	if mode != PhospriteTokens.LEGACY:
+		PixelDraw.draw_pixel_swatch_r4(
+			self, size, color, mode, empty, show_left_highlight, show_right_highlight
+		)
+	else:
+		draw_rect(Rect2(Vector2.ZERO, size), color)
+		_draw_legacy_selection()
+
+	if _show_pending_empty_highlight:
+		_draw_dragging_outline()
+	if show_dragging_outline and not empty:
+		_draw_dragging_outline()
+
+	if Global.show_pixel_indices:
+		_draw_color_index()
+
+
+func _draw_legacy_selection() -> void:
 	if not empty:
 		# Black border around swatches with a color
 		draw_rect(Rect2(Vector2.ONE, size), Color.BLACK, false, 1)
@@ -95,11 +125,8 @@ func _draw() -> void:
 			Rect2(margin - Vector2.ONE, size - margin * 2 + Vector2(2, 2)), Color.WHITE, false, 1
 		)
 
-	if _show_pending_empty_highlight:
-		_draw_dragging_outline()
-	if show_dragging_outline and not empty:
-		_draw_dragging_outline()
 
+func _draw_color_index() -> void:
 	if Global.show_pixel_indices:
 		var text := str(color_index + 1)
 		var font := Themes.get_font()
@@ -116,6 +143,21 @@ func _draw() -> void:
 			text_color.inverted()
 		)
 		draw_string(font, str_pos, text, HORIZONTAL_ALIGNMENT_RIGHT, -1, size.x / 2, text_color)
+
+
+
+func _refresh_stage4_skin() -> void:
+	_sync_transparency_checker()
+	queue_redraw()
+
+
+func _sync_transparency_checker() -> void:
+	if get_child_count() == 0:
+		return
+	get_child(0).visible = (
+		Stage4.active_mode() == PhospriteTokens.LEGACY
+		and not is_equal_approx(color.a, 1.0)
+	)
 
 
 func _draw_dragging_outline() -> void:
