@@ -5098,3 +5098,15 @@ msgstr "像素 UI 描邊粗細"
 
 msgid "Pixel outlines, staircase corners and hard shadows. Phosprite themes only."
 msgstr "像素描邊、階梯圓角和硬邊陰影。僅對 Phosprite 主題生效。"
+
+msgid "Untitled"
+msgstr "未命名"
+
+msgid "Classic Two-Column"
+msgstr "經典雙欄"
+
+msgid "Immersive Capsule"
+msgstr "沉浸膠囊"
+
+msgid "Animation Workspace"
+msgstr "動畫工作台"
