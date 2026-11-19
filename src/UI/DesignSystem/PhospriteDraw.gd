@@ -104,9 +104,14 @@ static func _draw_checker(item: CanvasItem, rect: Rect2i, unit: int, mode: Strin
 		var cut := _cutoff(y, rect.size.y, cutoffs)
 		var left := rect.position.x + cut
 		var right := rect.end.x - cut
-		for x in range(left, right):
-			var color := light if ((x / 4 + y / 4) % 2 == 0) else dark
-			item.draw_rect(Rect2i(x, rect.position.y + y, 1, 1), color)
+		var x := left
+		while x < right:
+			var end_x := mini(right, (x / 4 + 1) * 4)
+			var tile_color := light if ((x / 4 + y / 4) % 2 == 0) else dark
+			item.draw_rect(
+				Rect2i(x, rect.position.y + y, end_x - x, 1), tile_color
+			)
+			x = end_x
 
 
 static func _cutoff(y: int, height: int, steps: PackedInt32Array) -> int:
