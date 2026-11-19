@@ -323,7 +323,7 @@ func _create_taskbar() -> bool:
 	_taskbar_scroller.name = &"UI3TopRightScroller"
 	_taskbar_scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_taskbar_scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_taskbar_scroller.custom_minimum_size.y = TASK_BUTTON_SIZE.y
+	_taskbar_scroller.custom_minimum_size = Vector2(120.0, TASK_BUTTON_SIZE.y)
 	_taskbar_scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_taskbar_scroller.mouse_filter = Control.MOUSE_FILTER_PASS
 	_taskbar_island.add_child(_taskbar_scroller)
@@ -861,6 +861,7 @@ func _create_quick_bar() -> bool:
 	_quick_hud = PanelContainer.new()
 	_quick_hud.name = &"UI3BrushPixelHUD"
 	_quick_hud.visible = false
+	_quick_hud.z_index = 10
 	_quick_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_quick_hud.custom_minimum_size = Vector2(124.0, 112.0)
 	parent.add_child(_quick_hud)
@@ -1679,6 +1680,9 @@ func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
 			_taskbar.reparent(_taskbar_scroller)
 		_taskbar_island.visible = true
 		_taskbar.add_theme_constant_override(&"separation", 4)
+		for child in _taskbar.get_children():
+			if child is Button:
+				(child as Button).custom_minimum_size = Vector2(40.0, 40.0)
 		_taskbar_island.add_theme_stylebox_override(
 			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
 		)
@@ -1688,6 +1692,9 @@ func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
 			_taskbar.reparent(row)
 			row.move_child(_taskbar, row.get_child_count() - 1)
 		_taskbar.add_theme_constant_override(&"separation", 3)
+		for child in _taskbar.get_children():
+			if child is Button:
+				(child as Button).custom_minimum_size = TASK_BUTTON_SIZE
 		_taskbar_island.visible = false
 		_taskbar_island.remove_theme_stylebox_override(&"panel")
 	if active:
