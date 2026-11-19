@@ -173,7 +173,6 @@ func _notification(what: int) -> void:
 		_refresh_stage4_visuals.call_deferred()
 
 
-
 func _refresh_stage4_visuals() -> void:
 	if not is_node_ready():
 		return
