@@ -26,8 +26,9 @@ var _item_widths: Dictionary = {}
 
 func _notification(what: int) -> void:
 	if (
-		what == NOTIFICATION_TRANSLATION_CHANGED or what == NOTIFICATION_THEME_CHANGED
-	) and is_node_ready():
+		(what == NOTIFICATION_TRANSLATION_CHANGED or what == NOTIFICATION_THEME_CHANGED)
+		and is_node_ready()
+	):
 		_sync_mode_switch()
 		_refresh_item_widths()
 		_apply_overflow_layout()
