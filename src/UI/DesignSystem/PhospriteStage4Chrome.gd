@@ -33,7 +33,7 @@ static func button_style(mode: StringName, state: StringName) -> StyleBoxTexture
 		return _styles[cache_key] as StyleBoxTexture
 	var surface := &"panel_surface"
 	var border := Tokens.color(mode, &"outline_ink")
-	var with_shadow := false
+	var with_shadow := state in [&"normal", &"hover", &"guide"]
 	match state:
 		&"hover", &"guide":
 			surface = &"accent_soft"
