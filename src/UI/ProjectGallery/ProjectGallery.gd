@@ -391,6 +391,9 @@ func request_open(path: String) -> void:
 
 func set_multiselect_mode(enabled: bool) -> void:
 	multiselect_mode = enabled
+	# Preserve the explicit accessibility label before Stage-2 icon treatment.
+	# Legacy UI keeps the visible caption; pixel UI keeps it as a tooltip.
+	multiselect_button.text = tr("Exit Multi-Select") if enabled else tr("Multi-Select")
 	_sync_multiselect_button_presentation()
 	_gesture_resolver.reset()
 	_hide_popovers()
