@@ -26,6 +26,7 @@ var _pixel_mode: StringName = Tokens.LEGACY
 var _display_title := ""
 var _legacy_styles: Dictionary = {}
 var _legacy_colors: Dictionary = {}
+var _legacy_thumbnail_filter := CanvasItem.TEXTURE_FILTER_INHERIT
 
 @onready var visual_root := %VisualRoot as Control
 @onready var thumbnail_frame := %ThumbnailFrame as Control
@@ -40,6 +41,7 @@ var _legacy_colors: Dictionary = {}
 
 
 func _ready() -> void:
+	_legacy_thumbnail_filter = thumbnail_rect.texture_filter
 	_legacy_styles = {
 		"card": get_theme_stylebox(&"panel"),
 		"thumbnail": thumbnail_frame.get_theme_stylebox(&"panel"),
@@ -66,6 +68,7 @@ func apply_stage2_theme(mode: StringName) -> void:
 	_pixel_mode = mode
 	title_strip.visible = mode != Tokens.LEGACY
 	if mode == Tokens.LEGACY:
+		thumbnail_rect.texture_filter = _legacy_thumbnail_filter
 		add_theme_stylebox_override(&"panel", _legacy_styles["card"])
 		thumbnail_frame.add_theme_stylebox_override(&"panel", _legacy_styles["thumbnail"])
 		selection_outline.add_theme_stylebox_override(&"panel", _legacy_styles["selection"])
@@ -75,6 +78,8 @@ func apply_stage2_theme(mode: StringName) -> void:
 		title_strip.remove_theme_stylebox_override(&"panel")
 		title_label.remove_theme_color_override(&"font_color")
 	else:
+		# Only the thumbnail image is pixel-filtered. UI text remains antialiased.
+		thumbnail_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_theme_stylebox_override(
 			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface", true)
 		)
