@@ -64,6 +64,7 @@ var _stage2_left_buttons: HBoxContainer
 @onready var top_bar := $Shell/TopBar as PanelContainer
 @onready var top_bar_row := $Shell/TopBar/Margin/Row as HBoxContainer
 @onready var top_bar_spacer := $Shell/TopBar/Margin/Row/Spacer as Control
+@onready var brand_icon := $Shell/TopBar/Margin/Row/Brand/Icon as TextureRect
 @onready var brand_wordmark := $Shell/TopBar/Margin/Row/Brand/Wordmark as Label
 @onready var empty_title := $Shell/ProjectScroll/ContentMargin/Content/EmptyState/Title as Label
 @onready var empty_hint := $Shell/ProjectScroll/ContentMargin/Content/EmptyState/Hint as Label
@@ -133,6 +134,8 @@ func _ready() -> void:
 func _capture_stage2_legacy() -> void:
 	_stage2_legacy = {
 		"ground": background.color,
+		"brand_icon_filter": brand_icon.texture_filter,
+		"brand_icon_size": brand_icon.custom_minimum_size,
 		"topbar": top_bar.get_theme_stylebox(&"panel"),
 		"wordmark": brand_wordmark.get_theme_color(&"font_color"),
 		"build": build_identity_label.get_theme_color(&"font_color"),
@@ -198,6 +201,8 @@ func _refresh_stage2_theme() -> void:
 	_set_stage2_gallery_group(themed)
 	if not themed:
 		background.color = _stage2_legacy["ground"]
+		brand_icon.texture_filter = int(_stage2_legacy["brand_icon_filter"])
+		brand_icon.custom_minimum_size = _stage2_legacy["brand_icon_size"]
 		top_bar.add_theme_stylebox_override(&"panel", _stage2_legacy["topbar"])
 		brand_wordmark.add_theme_color_override(&"font_color", _stage2_legacy["wordmark"])
 		build_identity_label.add_theme_color_override(&"font_color", _stage2_legacy["build"])
@@ -215,6 +220,9 @@ func _refresh_stage2_theme() -> void:
 		new_button.custom_minimum_size = _stage2_legacy["new_min"]
 		multiselect_button.custom_minimum_size = _stage2_legacy["select_min"]
 	else:
+		brand_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		# Source brand art is 16px: render at an exact 2x rather than 28/16.
+		brand_icon.custom_minimum_size = Vector2(32.0, 32.0)
 		background.color = Tokens.color(mode, &"gallery_ground")
 		top_bar.add_theme_stylebox_override(
 			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface")
