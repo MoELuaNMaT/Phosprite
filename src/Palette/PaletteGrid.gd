@@ -16,6 +16,7 @@ const IOS_TOUCH_REORDER_HOLD_MSEC := 450
 const IOS_TOUCH_TARGET_SIZE := 44.0
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_palette_touch_mouse_filter"
 const IOS_TOUCH_TOOLTIP_META := &"phosprite_palette_touch_tooltip"
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 
 var swatches: Array[PaletteSwatch] = []
 var current_palette: Palette = null
@@ -47,8 +48,38 @@ func _ready() -> void:
 	Palettes.palette_selected.connect(select_palette)
 	Tools.color_changed.connect(find_and_select_color)
 	resized.connect(_on_resized)
+	Themes.theme_switched.connect(_apply_stage4_swatch_spacing)
+	Global.pixel_ui_unit_changed.connect(_apply_stage4_swatch_spacing)
+	_apply_stage4_swatch_spacing()
 	if OS.get_name() == "iOS":
 		call_deferred("_install_ios_palette_touch_targets")
+
+
+
+func _apply_stage4_swatch_spacing() -> void:
+	# The 32px iPad cell contains a 28px R4 swatch with a 2px inset.
+	# A zero grid gap makes exactly 4px between painted swatches without
+	# reducing touch hit areas or overwriting the saved swatch-size setting.
+	var pixel_mode := Stage4.active_mode() != PhospriteTokens.LEGACY
+	if pixel_mode:
+		if not has_meta(&"stage4_swatch_grid_separation"):
+			set_meta(
+				&"stage4_swatch_grid_separation",
+				{
+					"h": get_theme_constant(&"h_separation"),
+					"v": get_theme_constant(&"v_separation"),
+				}
+			)
+		add_theme_constant_override(&"h_separation", 0)
+		add_theme_constant_override(&"v_separation", 0)
+	elif has_meta(&"stage4_swatch_grid_separation"):
+		var original: Dictionary = get_meta(&"stage4_swatch_grid_separation")
+		add_theme_constant_override(&"h_separation", int(original.h))
+		add_theme_constant_override(&"v_separation", int(original.v))
+		remove_meta(&"stage4_swatch_grid_separation")
+	for swatch in swatches:
+		if is_instance_valid(swatch):
+			swatch.queue_redraw()
 
 
 func _input(event: InputEvent) -> void:
