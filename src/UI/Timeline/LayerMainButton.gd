@@ -150,7 +150,6 @@ func _apply_layer_drop(
 		):
 			return
 	var project := source_project
-	var project := Global.current_project
 	var curr_layer := project.layers[layer_index]
 	var layers := project.layers  # This shouldn't be modified directly
 	var drop_from_indices: PackedInt32Array = []
