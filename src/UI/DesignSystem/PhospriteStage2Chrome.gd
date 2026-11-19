@@ -50,6 +50,12 @@ static func style_button(button: Button, mode: StringName, cta := false) -> void
 	if mode == Tokens.LEGACY:
 		clear_button(button)
 		return
+	# Preserve the caller's original texture sampling for legacy-theme restore.
+	# Q icons are already 2x rasterized, but iPad display scaling can add another
+	# sampling step unless their controls explicitly request nearest filtering.
+	if not button.has_meta(&"stage2_legacy_texture_filter"):
+		button.set_meta(&"stage2_legacy_texture_filter", button.texture_filter)
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var normal_surface := &"accent_cta_coral" if cta else &"panel_surface"
 	var color := Tokens.color(mode, &"text_primary")
 	var outline := Tokens.color(mode, &"outline_ink")
@@ -104,3 +110,6 @@ static func clear_button(button: Button) -> void:
 		button.remove_theme_stylebox_override(key)
 	for key in BUTTON_COLORS:
 		button.remove_theme_color_override(key)
+	if button.has_meta(&"stage2_legacy_texture_filter"):
+		button.texture_filter = int(button.get_meta(&"stage2_legacy_texture_filter"))
+		button.remove_meta(&"stage2_legacy_texture_filter")
