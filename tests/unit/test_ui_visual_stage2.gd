@@ -93,7 +93,8 @@ func test_gallery_card_legacy_is_unchanged_and_phosprite_title_is_opt_in() -> vo
 	card.apply_stage2_theme(Tokens.SUNNY)
 	check_true(card.title_strip.visible, "Sunny Cream shows the 28px title strip")
 	check_eq(
-		card.thumbnail_rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+		card.thumbnail_rect.texture_filter,
+		CanvasItem.TEXTURE_FILTER_NEAREST,
 		"project thumbnails use nearest scaling in pixel themes"
 	)
 	check_eq(card.title_label.text, "Example Sprite", "title is not rewritten by theme")
