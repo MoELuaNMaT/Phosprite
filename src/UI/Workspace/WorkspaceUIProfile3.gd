@@ -812,7 +812,7 @@ func _create_quick_bar() -> bool:
 	_quick_hud.name = &"UI3BrushPixelHUD"
 	_quick_hud.visible = false
 	_quick_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_quick_hud.custom_minimum_size = Vector2(124.0, 94.0)
+	_quick_hud.custom_minimum_size = Vector2(124.0, 112.0)
 	parent.add_child(_quick_hud)
 	if surface != null and parent == surface.dock_host:
 		var overlay := surface.get_floating_layer()
@@ -1151,9 +1151,9 @@ func _position_quick_hud() -> void:
 	if parent == null:
 		return
 	var x := _quick_bar.position.x + _quick_bar.size.x + Stage3.HUD_GAP
-	var y := _quick_bar.position.y + (_quick_bar.size.y - 94.0) * 0.5
+	var y := _quick_bar.position.y + (_quick_bar.size.y - 112.0) * 0.5
 	_quick_hud.position = Stage3.popup_position(
-		Vector2(x, y), Vector2.ZERO, Vector2(124, 94), parent.size
+		Vector2(x, y), Vector2.ZERO, Vector2(124, 112), parent.size
 	)
 
 
@@ -1302,7 +1302,14 @@ func _resize_advanced_to_content() -> void:
 ## A tap on empty canvas dismisses this transient popup. Tools, other
 ## floating panels, the Timeline and the left sliders keep their own touch.
 func _input(event: InputEvent) -> void:
-	if not active or not _advanced_open or surface == null:
+	if not active or surface == null:
+		return
+	var dismiss_palette := (
+		is_instance_valid(_palette_popup)
+		and _palette_popup.visible
+		and not _palette_pinned
+	)
+	if not _advanced_open and not dismiss_palette:
 		return
 	var pointer := Vector2.ZERO
 	if event is InputEventScreenTouch:
@@ -1319,8 +1326,11 @@ func _input(event: InputEvent) -> void:
 		return
 	if not _is_blank_canvas_point(pointer):
 		return
-	_hide_advanced_panel()
-	# The dismiss tap must not create an accidental brush stroke.
+	if dismiss_palette:
+		_palette_popup.visible = false
+	if _advanced_open:
+		_hide_advanced_panel()
+	# A dismissal tap must not create an accidental Pencil stroke.
 	get_viewport().set_input_as_handled()
 
 
@@ -1491,6 +1501,10 @@ func _connect_runtime_signals() -> void:
 		Tools.tool_changed.connect(_on_tool_changed)
 	if not Tools.color_changed.is_connected(_on_color_changed):
 		Tools.color_changed.connect(_on_color_changed)
+	if not Themes.theme_switched.is_connected(_on_stage3_theme_changed):
+		Themes.theme_switched.connect(_on_stage3_theme_changed)
+	if not Global.pixel_ui_unit_changed.is_connected(_on_stage3_theme_changed):
+		Global.pixel_ui_unit_changed.connect(_on_stage3_theme_changed)
 	if not Global.cel_switched.is_connected(_on_context_changed):
 		Global.cel_switched.connect(_on_context_changed)
 	if not Global.single_tool_mode_changed.is_connected(_on_single_tool_mode_changed):
@@ -1516,8 +1530,13 @@ func _on_tool_changed(_tool_name: String, button: int) -> void:
 
 
 func _on_color_changed(_color_info: Dictionary, button: int) -> void:
-	if active and button == MOUSE_BUTTON_LEFT and is_instance_valid(_color_indicator):
+	if not active:
+		return
+	if button == MOUSE_BUTTON_LEFT and is_instance_valid(_color_indicator):
 		_color_indicator.queue_redraw()
+	_update_stage3_swatches()
+	if is_instance_valid(_quick_hud_preview) and _quick_hud.visible:
+		_quick_hud_preview.queue_redraw()
 
 
 func _on_context_changed() -> void:
@@ -1530,6 +1549,60 @@ func _on_single_tool_mode_changed(_enabled: bool) -> void:
 	if active:
 		_refresh_taskbar.call_deferred()
 		_refresh_config_panel.call_deferred()
+
+
+func _on_stage3_theme_changed() -> void:
+	if not active or not is_instance_valid(_quick_bar):
+		return
+	var updated := Chrome.active_mode()
+	if updated != _quick_pixel_mode:
+		_refresh_config_panel()
+	_refresh_stage3_visuals()
+
+
+## All stage-3 styling is restricted to the original UI3 presentation,
+## not a second tool model. Legacy themes get their original 100px controls.
+func _refresh_stage3_visuals() -> void:
+	if not is_instance_valid(_quick_bar) or not is_instance_valid(_palette_popup):
+		return
+	var mode := Chrome.active_mode()
+	_quick_pixel_mode = mode
+	var pixel := mode != Tokens.LEGACY
+	var margin := _quick_bar.get_child(0) as MarginContainer
+	if margin != null:
+		for side in [&"left", &"top", &"right", &"bottom"]:
+			margin.add_theme_constant_override(
+				StringName("margin_" + String(side)), 4 if pixel else 6
+			)
+	_quick_bar.custom_minimum_size.x = Stage3.CAPSULE_WIDTH if pixel else QUICK_BAR_WIDTH
+	_quick_bar.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST if pixel else CanvasItem.TEXTURE_FILTER_PARENT_NODE
+	)
+	if pixel:
+		_quick_bar.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+		_palette_popup.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+		_palette_header.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_M, &"accent_soft")
+		)
+		_quick_hud.add_theme_stylebox_override(
+			&"panel", Chrome.make_panel(mode, Tokens.TIER_M, &"panel_surface", true)
+		)
+		Chrome.style_button(_palette_close_button, mode)
+	else:
+		_quick_bar.remove_theme_stylebox_override(&"panel")
+		_palette_popup.remove_theme_stylebox_override(&"panel")
+		_palette_header.remove_theme_stylebox_override(&"panel")
+		_quick_hud.remove_theme_stylebox_override(&"panel")
+		Chrome.clear_button(_palette_close_button)
+		_hide_quick_hud()
+	_update_palette_pin_visual()
+	_update_stage3_swatches()
+	if active:
+		_place_quick_bar.call_deferred()
 
 
 func _on_workspace_resized() -> void:
