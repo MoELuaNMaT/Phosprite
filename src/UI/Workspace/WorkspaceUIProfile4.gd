@@ -4,6 +4,8 @@ extends Node
 ## Aseprite-like U-shaped workspace. Reuses all live editor widgets; only their
 ## Workspace placements, resize rules and presentation change in UI4.
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const LEFT_WIDTH := 176.0
 const RIGHT_WIDTH := Builtins.TOOL_SIDEBAR_WIDTH
 const TIMELINE_HEIGHT := 224.0
@@ -298,7 +300,11 @@ func _ensure_split_handle() -> void:
 	_split_handle.mouse_filter = Control.MOUSE_FILTER_STOP
 	_split_handle.mouse_default_cursor_shape = Control.CURSOR_VSIZE
 	surface.dock_host.add_child(_split_handle)
-	_split_handle.gui_input.connect(_on_split_handle_input)
+	_split_handle.gui_input.connect(_on_split_handle_input)	_split_handle.draw.connect(_draw_stage4_split_handle)
+	if not Themes.theme_switched.is_connected(_refresh_stage4_split_handle):
+		Themes.theme_switched.connect(_refresh_stage4_split_handle)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_stage4_split_handle):
+		Global.pixel_ui_unit_changed.connect(_refresh_stage4_split_handle)
 	if not _palette_content.resized.is_connected(_update_split_handle):
 		_palette_content.resized.connect(_update_split_handle)
 	if not _palette_root.resized.is_connected(_update_split_handle):
@@ -306,6 +312,27 @@ func _ensure_split_handle() -> void:
 	if not surface.dock_host.resized.is_connected(_update_split_handle):
 		surface.dock_host.resized.connect(_update_split_handle)
 	_update_split_handle.call_deferred()
+
+
+func _refresh_stage4_split_handle() -> void:
+	if is_instance_valid(_split_handle):
+		_split_handle.queue_redraw()
+
+
+func _draw_stage4_split_handle() -> void:
+	if not is_instance_valid(_split_handle):
+		return
+	var mode := Stage4.active_mode()
+	if mode == Tokens.LEGACY:
+		return
+	var origin := Vector2i((_split_handle.size * 0.5).round())
+	var color := Tokens.color(mode, &"outline_ink")
+	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	for dot_index in range(-1, 2):
+		var top_left := origin + Vector2i(-2 * unit, dot_index * 5 * unit - unit)
+		_split_handle.draw_rect(
+			Rect2i(top_left, Vector2i(4 * unit, 3 * unit)), color
+	)
 
 
 func _update_split_handle() -> void:
