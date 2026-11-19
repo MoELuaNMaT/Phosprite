@@ -21,6 +21,7 @@ const LAYER_CARD_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerCard.ts
 const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGroupBracket.tscn")
 const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const CONTEXT_HOLD_MSEC := 650
 
 const VISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_visible.png")
@@ -60,6 +61,20 @@ func _ready() -> void:
 	set_process(true)
 	set_project(Global.current_project)
 	_sync_layer_settings()
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+	_refresh_stage4_visuals()
+
+
+func _refresh_stage4_visuals() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	Stage4.style_panel(self, mode)
+	Stage4.style_panel(layer_settings_panel, mode)
+	Stage4.style_option(layer_style_button, mode)
+	Stage4.style_button(layer_visibility_button, mode)
+	Stage4.style_button(add_layer_button, mode)
 
 
 func _process(_delta: float) -> void:
