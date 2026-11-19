@@ -9,8 +9,11 @@ const Stage2 := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
 
 const STYLE_KEYS := [&"normal", &"hover", &"pressed", &"disabled", &"focus"]
 const COLOR_KEYS := [
-	&"font_color", &"font_hover_color", &"font_pressed_color",
-	&"font_disabled_color", &"font_focus_color",
+	&"font_color",
+	&"font_hover_color",
+	&"font_pressed_color",
+	&"font_disabled_color",
+	&"font_focus_color",
 ]
 const ORIGINAL_BUTTON_META := &"phosprite_stage4_original_button"
 const ORIGINAL_PANEL_META := &"phosprite_stage4_original_panel"
@@ -65,8 +68,10 @@ static func style_button(button: Button, mode: StringName, guide := false) -> vo
 		return
 	if not button.has_meta(ORIGINAL_BUTTON_META):
 		var original := {
-			"styles": {}, "colors": {},
-			"filter": button.texture_filter, "flat": button.flat,
+			"styles": {},
+			"colors": {},
+			"filter": button.texture_filter,
+			"flat": button.flat,
 		}
 		for key in STYLE_KEYS:
 			if button.has_theme_stylebox_override(key):
@@ -85,7 +90,7 @@ static func style_button(button: Button, mode: StringName, guide := false) -> vo
 	for key in COLOR_KEYS:
 		button.add_theme_color_override(
 			key, Tokens.color(mode, &"text_muted") if key == &"font_disabled_color" else foreground
-	)
+		)
 
 
 static func restore_button(button: Button) -> void:
@@ -121,11 +126,15 @@ static func style_panel(panel: Control, mode: StringName, tier := Tokens.TIER_L)
 			panel.remove_meta(key)
 		return
 	if not panel.has_meta(key):
-		panel.set_meta(
-			key, {
-				"had": panel.has_theme_stylebox_override(&"panel"),
-				"style": panel.get_theme_stylebox(&"panel"),
-			}
+		(
+			panel
+			. set_meta(
+				key,
+				{
+					"had": panel.has_theme_stylebox_override(&"panel"),
+					"style": panel.get_theme_stylebox(&"panel"),
+				}
+			)
 		)
 	var style := Stage2.make_shell(mode, tier, &"panel_surface")
 	panel.add_theme_stylebox_override(&"panel", style)
