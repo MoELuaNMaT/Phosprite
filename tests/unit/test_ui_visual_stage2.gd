@@ -50,6 +50,11 @@ func test_stage2_styles_opt_in_and_clear_without_touching_font_or_selection() ->
 		button.custom_minimum_size = original_minimum
 		var style := Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface", true)
 		check_true(style is StyleBoxTexture, "Stage 2 uses pixel nine-slice")
+		var shell := Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		check_eq(int(shell.content_margin_left), 0, "Gallery shell does not duplicate inner padding")
+		check_eq(int(shell.content_margin_top), 0, "Gallery header height stays compact")
+		check_eq(int(shell.texture_margin_left), int(style.texture_margin_left),
+			"shell retains identical pixel corner artwork")
 		Chrome.style_button(button, mode)
 		check_true(button.has_theme_stylebox_override(&"normal"), "opted-in button has style")
 		check_true(button.has_theme_stylebox_override(&"pressed"), "pressed style present")
