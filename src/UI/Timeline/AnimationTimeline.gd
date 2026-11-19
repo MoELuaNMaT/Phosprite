@@ -21,7 +21,7 @@ const ANIMATION_TAG_TSCN := preload("res://src/UI/Timeline/AnimationTagUI.tscn")
 const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSettings.tscn"
 const PROJECT_STATE := preload("res://src/UI/Timeline/TimelineProjectState.gd")
 const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
-const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const Stage4Timeline := preload("res://src/UI/DesignSystem/PhospriteStage4Timeline.gd")
 ## Do not let [member min_cel_size] go below 22, as this is the size of the layer icons.
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
@@ -174,21 +174,7 @@ func _notification(what: int) -> void:
 
 
 func _refresh_stage4_visuals() -> void:
-	if not is_node_ready():
-		return
-	var mode := Stage4.active_mode()
-	Stage4.style_panel(self, mode)
-	for panel_name in ["LayerTools", "AnimationTools"]:
-		var panel := find_child(panel_name, true, false) as Control
-		Stage4.style_panel(panel, mode)
-	for group_name in ["LayerButtons", "AnimationButtons"]:
-		var group := find_child(group_name, true, false)
-		if group == null:
-			continue
-		for child in group.find_children("*", "Button", true, false):
-			Stage4.style_button(child as Button, mode)
-	Stage4.style_option(blend_modes_button, mode)
-
+	Stage4Timeline.apply(self)
 
 func clear_highlight() -> void:
 	if not drag_highlight.visible:
