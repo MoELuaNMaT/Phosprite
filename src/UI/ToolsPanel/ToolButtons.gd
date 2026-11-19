@@ -92,7 +92,6 @@ func _ready() -> void:
 		call_deferred("_install_ios_toolbar_removals")
 
 
-
 func _refresh_stage4_tool_buttons() -> void:
 	if not is_node_ready():
 		return
