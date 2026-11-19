@@ -131,8 +131,12 @@ func test_workspace_chrome_opt_in_and_legacy_round_trip() -> void:
 		"floating header should use the same pixel tier"
 	)
 	check_true(
-		theme.get_render_module_style(&"bottom_bar") is StyleBoxFlat,
-		"bottom Timeline must preserve its attached, rectangular geometry"
+		theme.get_render_module_style(&"bottom_bar") is StyleBoxTexture,
+		"Stage 4 pixel Timeline surface must use the same opt-in nine-slice skin"
+	)
+	check_true(
+		theme.get_render_module_style(&"docked") is StyleBoxTexture,
+		"Stage 4 docked UI1/UI4 panels use opt-in pixel chrome"
 	)
 	check_eq(theme.get_module_style(&"floating").shadow_size, 0, "no soft floating shadow")
 	check_eq(theme.default_font_size, 17, "source font size must stay unchanged")
@@ -154,4 +158,8 @@ func test_workspace_chrome_opt_in_and_legacy_round_trip() -> void:
 		"legacy floating style should be restored, not retained from the pilot"
 	)
 	check_eq(theme.get_module_style(&"floating").shadow_size, 3, "legacy shadow unchanged")
+	check_true(
+		theme.get_render_module_style(&"bottom_bar") is StyleBoxFlat,
+		"legacy Timeline must regain its original attached panel material"
+	)
 	check_eq(theme.default_font_size, 17, "font size survives round trip")
