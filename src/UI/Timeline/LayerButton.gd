@@ -6,6 +6,7 @@ enum MenuOptions {
 }
 
 const HIERARCHY_DEPTH_PIXEL_SHIFT := 24
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const ARRAY_TEXTURE_TYPES: Array[Texture2D] = [
 	preload("res://assets/graphics/layers/type_icons/layer_pixel.png"),
 	preload("res://assets/graphics/layers/type_icons/layer_group.png"),
@@ -98,6 +99,16 @@ func _ready() -> void:
 	# Visualize how deep into the hierarchy the layer is
 	hierarchy_spacer.layer_index = layer_index
 	update_buttons()
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+	_refresh_stage4_visuals()
+
+
+func _refresh_stage4_visuals() -> void:
+	var mode := Stage4.active_mode()
+	Stage4.style_button(main_button, mode)
+	for side_button in [visibility_button, lock_button, linked_button, expand_button]:
+		Stage4.style_button(side_button, mode)
 
 
 func _on_cel_switched() -> void:

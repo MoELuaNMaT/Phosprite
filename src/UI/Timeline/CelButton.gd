@@ -3,6 +3,7 @@ extends Button
 enum MenuOptions { PROPERTIES, PLAY_AUDIO, SELECT_PIXELS, DELETE, LINK, UNLINK, CLONE_CEL }
 
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 
 var frame := 0
 var layer := 0
@@ -24,6 +25,7 @@ func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_PASS
 	Global.cel_switched.connect(cel_switched)
 	Themes.theme_switched.connect(cel_switched.bind(true))
+	Global.pixel_ui_unit_changed.connect(cel_switched.bind(true))
 	cel = Global.current_project.frames[frame].cels[layer]
 	button_setup()
 	_dim_checker()
@@ -111,6 +113,11 @@ func cel_switched(force_stylebox_change := false) -> void:
 		if selected[1] == layer or selected[0] == frame:
 			is_guide = true
 			break
+	var pixel_mode := Stage4.active_mode()
+	if pixel_mode != PhospriteTokens.LEGACY:
+		Stage4.style_button(self, pixel_mode, is_guide)
+		return
+	Stage4.restore_button(self)
 	if is_guide:
 		if not _is_guide_stylebox or force_stylebox_change:
 			var guide_stylebox := current_theme.get_stylebox("guide", "CelButton")

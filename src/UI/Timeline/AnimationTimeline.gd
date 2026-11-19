@@ -21,6 +21,7 @@ const ANIMATION_TAG_TSCN := preload("res://src/UI/Timeline/AnimationTagUI.tscn")
 const LAYER_FX_SCENE_PATH := "res://src/UI/Timeline/LayerEffects/LayerEffectsSettings.tscn"
 const PROJECT_STATE := preload("res://src/UI/Timeline/TimelineProjectState.gd")
 const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
+const Stage4Timeline := preload("res://src/UI/DesignSystem/PhospriteStage4Timeline.gd")
 ## Do not let [member min_cel_size] go below 22, as this is the size of the layer icons.
 const CEL_MIN_SIZE_HARD_LIMIT := 22
 const CEL_MIN_SIZE_OFFSET := 15
@@ -155,6 +156,9 @@ func _ready() -> void:
 	single_frame_layer_strip.set_project(Global.current_project)
 	set_timeline_mode(get_project_timeline_mode(Global.current_project), false)
 	_sync_tag_row_visibility()
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+	_refresh_stage4_visuals.call_deferred()
 
 
 func _notification(what: int) -> void:
@@ -166,6 +170,11 @@ func _notification(what: int) -> void:
 		if is_instance_valid(layer_settings_container):
 			layer_container.custom_minimum_size.x = layer_settings_container.size.x + 12
 			layer_header_container.custom_minimum_size.x = layer_container.custom_minimum_size.x
+		_refresh_stage4_visuals.call_deferred()
+
+
+func _refresh_stage4_visuals() -> void:
+	Stage4Timeline.apply(self)
 
 
 func clear_highlight() -> void:

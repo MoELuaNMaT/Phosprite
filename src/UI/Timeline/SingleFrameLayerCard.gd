@@ -7,6 +7,8 @@ signal pointer_cancel(layer_index: int)
 signal context_requested(layer_index: int, position: Vector2)
 signal swipe_selection(layer_index: int)
 
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PixelDraw := preload("res://src/UI/DesignSystem/PhospriteDraw.gd")
 const DRAG_CANCEL_DISTANCE := 24.0
 const SWIPE_DOWN_DISTANCE := 28.0
 const SWIPE_DOWN_DIRECTION_RATIO := 1.35
@@ -36,6 +38,9 @@ func _ready() -> void:
 	gui_input.connect(_on_gui_input)
 	if not Global.cel_switched.is_connected(_sync_selected):
 		Global.cel_switched.connect(_sync_selected)
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+	_refresh_stage4_visuals()
 
 
 func _exit_tree() -> void:
@@ -81,14 +86,22 @@ func _disconnect_bound_data() -> void:
 func _draw() -> void:
 	if not _selection_outline_visible:
 		return
-	# Independent from Button's momentary pressed/hover state. The selection
-	# frame must remain in place from pointer-down through a 650 ms hold.
+	# Independent from Button's momentary pressed/hover state.
+	var pixel_mode := Stage4.active_mode()
+	if pixel_mode != PhospriteTokens.LEGACY:
+		PixelDraw.draw_pixel_selection_outline(self, size, pixel_mode)
+		return
 	draw_rect(
 		Rect2(Vector2(1.5, 1.5), size - Vector2(3.0, 3.0)),
 		SELECTED_OUTLINE_COLOR,
 		false,
 		3.0,
 	)
+
+
+func _refresh_stage4_visuals() -> void:
+	Stage4.style_button(self, Stage4.active_mode())
+	queue_redraw()
 
 
 func _on_gui_input(event: InputEvent) -> void:
