@@ -5,7 +5,6 @@ const ITEM_SEPARATION := 4.0
 const OVERFLOW_POPUP_MIN_WIDTH := 160.0
 const OVERFLOW_POPUP_MAX_WIDTH := 320.0
 
-var text_server := TextServerManager.get_primary_interface()
 var _available_width := INF
 var _applying_overflow := false
 var _managed_items: Array[Control] = []
@@ -26,8 +25,12 @@ var _item_widths: Dictionary = {}
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+	if (
+		(what == NOTIFICATION_TRANSLATION_CHANGED or what == NOTIFICATION_THEME_CHANGED)
+		and is_node_ready()
+	):
 		_sync_mode_switch()
+		_refresh_item_widths()
 		_apply_overflow_layout()
 
 
@@ -46,8 +49,7 @@ func _ready() -> void:
 	_managed_items = [
 		global_tool_options, undo_button, redo_button, undo_history_button, frame_group
 	]
-	for item in _managed_items:
-		_item_widths[item] = item.get_combined_minimum_size().x
+	_refresh_item_widths()
 	if not Global.project_switched.is_connected(_on_project_switched):
 		Global.project_switched.connect(_on_project_switched)
 	if not Global.cel_switched.is_connected(_update_frame_mark):
@@ -129,6 +131,13 @@ func _apply_overflow_layout() -> void:
 	queue_sort()
 	update_minimum_size()
 	_applying_overflow = false
+
+
+## Font changes alter translated label widths. Never keep stale Latin-only
+## measurements after the parent Workspace theme is replaced.
+func _refresh_item_widths() -> void:
+	for item in _managed_items:
+		_item_widths[item] = item.get_combined_minimum_size().x
 
 
 func _inline_width(items: Array[Control]) -> float:
@@ -247,6 +256,8 @@ func _update_frame_mark() -> void:
 	if project == null:
 		frame_mark.text = "-/-"
 		return
-	var current_frame := text_server.format_number(str(project.current_frame + 1))
-	var frame_count := text_server.format_number(str(project.frames.size()))
+	# Frame indices are machine-style identifiers, not localized quantities.
+	# Keep their digits predictable even if the active locale uses other numerals.
+	var current_frame := str(project.current_frame + 1)
+	var frame_count := str(project.frames.size())
 	frame_mark.text = "%s/%s" % [current_frame, frame_count]
