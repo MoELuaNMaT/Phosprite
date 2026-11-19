@@ -145,7 +145,6 @@ func _draw_color_index() -> void:
 		draw_string(font, str_pos, text, HORIZONTAL_ALIGNMENT_RIGHT, -1, size.x / 2, text_color)
 
 
-
 func _refresh_stage4_skin() -> void:
 	_sync_transparency_checker()
 	queue_redraw()
@@ -155,8 +154,7 @@ func _sync_transparency_checker() -> void:
 	if get_child_count() == 0:
 		return
 	get_child(0).visible = (
-		Stage4.active_mode() == PhospriteTokens.LEGACY
-		and not is_equal_approx(color.a, 1.0)
+		Stage4.active_mode() == PhospriteTokens.LEGACY and not is_equal_approx(color.a, 1.0)
 	)
 
 
