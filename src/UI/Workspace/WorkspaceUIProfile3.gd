@@ -238,9 +238,7 @@ func apply_initial_workspace() -> bool:
 			size = current.size
 	var bounds := surface.get_floating_bounds()
 	var margin := (
-		Vector2(72.0, PREVIEW_MARGIN.y)
-		if Chrome.active_mode() != Tokens.LEGACY
-		else PREVIEW_MARGIN
+		Vector2(72.0, PREVIEW_MARGIN.y) if Chrome.active_mode() != Tokens.LEGACY else PREVIEW_MARGIN
 	)
 	var target := Rect2(bounds.position + margin, size)
 	if placement == WorkspaceSurface.Placement.FLOATING:
@@ -849,10 +847,12 @@ func _create_quick_bar() -> bool:
 	_quick_hud.add_child(hud_column)
 	_quick_hud_label = Label.new()
 	_quick_hud_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_quick_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_quick_hud_label.add_theme_font_size_override(&"font_size", 20)
 	hud_column.add_child(_quick_hud_label)
 	_quick_hud_preview = Control.new()
 	_quick_hud_preview.custom_minimum_size = Vector2(76, 64)
+	_quick_hud_preview.clip_contents = true
 	_quick_hud_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_quick_hud_preview.draw.connect(_draw_quick_hud_preview)
 	hud_column.add_child(_quick_hud_preview)
@@ -1197,7 +1197,9 @@ func _draw_quick_hud_preview() -> void:
 		return
 	var outline := Tokens.color(mode, &"outline_ink")
 	var fill := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
-	var square := roundi(clampf(_quick_hud_value, 1.0, 54.0)) if _quick_hud_size_mode else 12
+	# Keep actual pixel size; larger brushes are clipped by the preview
+	# viewport, not falsely represented as a different brush size.
+	var square := roundi(maxf(_quick_hud_value, 1.0)) if _quick_hud_size_mode else 12
 	var rect := Rect2(
 		Vector2(roundi(center.x - square * 0.5), roundi(center.y - square * 0.5)),
 		Vector2(square, square)
@@ -1723,8 +1725,7 @@ func _apply_tool_button_highlight(button: BaseButton, selected: bool) -> void:
 		Chrome.style_button(pixel_button, _quick_pixel_mode)
 		if selected:
 			pixel_button.add_theme_stylebox_override(
-				&"normal",
-				Chrome.make_panel(_quick_pixel_mode, Tokens.TIER_M, &"accent_primary")
+				&"normal", Chrome.make_panel(_quick_pixel_mode, Tokens.TIER_M, &"accent_primary")
 			)
 		button.modulate = Color.WHITE
 	else:
