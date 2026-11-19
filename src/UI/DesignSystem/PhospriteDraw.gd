@@ -34,9 +34,7 @@ static func draw_pixel_swatch_r4(
 	var outline := Tokens.color(mode, &"outline_ink")
 	var primary := Tokens.color(mode, &"accent_primary")
 	if left_selected:
-		_draw_silhouette(
-			item, Rect2i(Vector2i.ZERO, Vector2i(control_size.round())), primary, unit
-		)
+		_draw_silhouette(item, Rect2i(Vector2i.ZERO, Vector2i(control_size.round())), primary, unit)
 	_draw_silhouette(item, rect, outline, unit)
 	var inner := rect.grow(-unit)
 	if inner.size.x < 2 or inner.size.y < 2:
@@ -57,14 +55,10 @@ static func draw_pixel_swatch_r4(
 			Vector2i(dot_size, dot_size)
 		)
 		_draw_silhouette(item, dot, outline, 1)
-		_draw_silhouette(
-			item, dot.grow(-1), Tokens.color(mode, &"accent_soft"), 1
-		)
+		_draw_silhouette(item, dot.grow(-1), Tokens.color(mode, &"accent_soft"), 1)
 
 
-static func draw_pixel_selection_outline(
-	item: CanvasItem, size: Vector2, mode: StringName
-) -> void:
+static func draw_pixel_selection_outline(item: CanvasItem, size: Vector2, mode: StringName) -> void:
 	var bounds := Rect2i(Vector2i.ZERO, Vector2i(size.round()))
 	if bounds.size.x < 8 or bounds.size.y < 8:
 		return
@@ -83,9 +77,7 @@ static func draw_pixel_selection_outline(
 				item.draw_rect(Rect2i(x, y, 1, 1), accent)
 
 
-static func _draw_silhouette(
-	item: CanvasItem, rect: Rect2i, fill: Color, unit: int
-) -> void:
+static func _draw_silhouette(item: CanvasItem, rect: Rect2i, fill: Color, unit: int) -> void:
 	if rect.size.x <= 0 or rect.size.y <= 0:
 		return
 	var cutoffs := Tokens.corner_cutoffs(Tokens.TIER_S, unit)
@@ -108,9 +100,7 @@ static func _draw_checker(item: CanvasItem, rect: Rect2i, unit: int, mode: Strin
 		while x < right:
 			var end_x := mini(right, (x / 4 + 1) * 4)
 			var tile_color := light if ((x / 4 + y / 4) % 2 == 0) else dark
-			item.draw_rect(
-				Rect2i(x, rect.position.y + y, end_x - x, 1), tile_color
-			)
+			item.draw_rect(Rect2i(x, rect.position.y + y, end_x - x, 1), tile_color)
 			x = end_x
 
 
