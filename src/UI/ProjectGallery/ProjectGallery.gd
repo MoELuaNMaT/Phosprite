@@ -225,7 +225,7 @@ func _refresh_stage2_theme() -> void:
 		brand_icon.custom_minimum_size = Vector2(32.0, 32.0)
 		background.color = Tokens.color(mode, &"gallery_ground")
 		top_bar.add_theme_stylebox_override(
-			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface")
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface")
 		)
 		var foreground := Tokens.color(mode, &"text_primary")
 		var muted := Tokens.color(mode, &"text_muted")
@@ -235,7 +235,7 @@ func _refresh_stage2_theme() -> void:
 		empty_hint.add_theme_color_override(&"font_color", muted)
 		feedback_banner.add_theme_color_override(&"font_color", muted)
 		_stage2_left_island.add_theme_stylebox_override(
-			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface", true)
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
 		)
 		for button in [import_button, new_button, multiselect_button]:
 			Chrome.style_button(button, mode, button == new_button)
