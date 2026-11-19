@@ -42,18 +42,23 @@ static func position_from_size(value: float, minimum: float, maximum: float) -> 
 	var split_value := clampf(FINE_UPPER_SIZE, minimum, maximum)
 	if current <= split_value:
 		return FINE_FRACTION * (current - minimum) / (split_value - minimum)
-	return FINE_FRACTION + (1.0 - FINE_FRACTION) * sqrt(
-		(current - split_value) / (maximum - split_value)
+	return (
+		FINE_FRACTION
+		+ (1.0 - FINE_FRACTION) * sqrt((current - split_value) / (maximum - split_value))
 	)
 
 
 ## Do not apply pixel-size mapping to percentage-based/image brushes, or to
 ## Tools that permit sub-pixel values. Those retain their native Range mapping.
-static func supports_pixel_size_mapping(minimum: float, maximum: float, step: float, suffix: String) -> bool:
+static func supports_pixel_size_mapping(
+	minimum: float, maximum: float, step: float, suffix: String
+) -> bool:
 	return suffix == "px" and minimum <= 1.0 and maximum >= 16.0 and step >= 1.0
 
 
-static func popup_position(origin: Vector2, delta: Vector2, popup_size: Vector2, screen: Vector2) -> Vector2:
+static func popup_position(
+	origin: Vector2, delta: Vector2, popup_size: Vector2, screen: Vector2
+) -> Vector2:
 	var available := Vector2(maxf(0.0, screen.x - popup_size.x), maxf(0.0, screen.y - popup_size.y))
 	var target := origin + delta
 	return Vector2(clampf(target.x, 0.0, available.x), clampf(target.y, 0.0, available.y))
