@@ -55,8 +55,18 @@ func test_stage2_styles_opt_in_and_clear_without_touching_font_or_selection() ->
 		check_true(button.has_theme_stylebox_override(&"pressed"), "pressed style present")
 		check_eq(button.custom_minimum_size, original_minimum, "chrome does not resize touches")
 		check_eq(button.text, "新建", "styles do not replace translated strings")
+		check_eq(
+			button.texture_filter,
+			CanvasItem.TEXTURE_FILTER_NEAREST,
+			"colored chibi pixels use nearest sampling"
+		)
 		check_true(not button.has_theme_font_override(&"font"), "preserves global CJK fallback")
 		Chrome.clear_button(button)
+		check_eq(
+			button.texture_filter,
+			CanvasItem.TEXTURE_FILTER_INHERIT,
+			"returning to legacy theme restores its original sampling"
+		)
 		check_true(
 			not button.has_theme_stylebox_override(&"normal"),
 			"switch back to a legacy theme clears pixel styling"
@@ -73,10 +83,19 @@ func test_gallery_card_legacy_is_unchanged_and_phosprite_title_is_opt_in() -> vo
 	card.set_display_title("Example Sprite")
 	card.apply_stage2_theme(Tokens.LEGACY)
 	check_true(not card.title_strip.visible, "old themes keep existing no-title gallery")
+	check_eq(
+		card.thumbnail_rect.texture_filter,
+		CanvasItem.TEXTURE_FILTER_INHERIT,
+		"legacy thumbnails retain their previous interpolation"
+	)
 	card.set_selected(true)
 	check_true(card.selection_outline.visible, "legacy multiselect remains visible")
 	card.apply_stage2_theme(Tokens.SUNNY)
 	check_true(card.title_strip.visible, "Sunny Cream shows the 28px title strip")
+	check_eq(
+		card.thumbnail_rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+		"project thumbnails use nearest scaling in pixel themes"
+	)
 	check_eq(card.title_label.text, "Example Sprite", "title is not rewritten by theme")
 	check_true(card.get_theme_stylebox(&"panel") is StyleBoxTexture, "new pixel card shell")
 	check_true(card.selection_outline.visible, "multiselect survives theme change")
