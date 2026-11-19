@@ -14,6 +14,7 @@ const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 const Stage3 := preload("res://src/UI/DesignSystem/PhospriteStage3Controls.gd")
+const CLOSE_Q_ICON := preload("res://assets/graphics/q_icons/chrome/window_close.png")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
@@ -519,7 +520,10 @@ func _create_palette_popup() -> bool:
 	heading_row.add_child(_palette_header_label)
 	_palette_close_button = Button.new()
 	_palette_close_button.name = &"ClosePinnedPalette"
-	_palette_close_button.text = "×"
+	var close_image := CLOSE_Q_ICON.get_image().get_region(Rect2i(2, 2, 12, 12))
+	close_image.resize(24, 24, Image.INTERPOLATE_NEAREST)
+	_palette_close_button.icon = ImageTexture.create_from_image(close_image)
+	_palette_close_button.expand_icon = false
 	_palette_close_button.tooltip_text = tr("Close")
 	_palette_close_button.custom_minimum_size = Vector2(36.0, 36.0)
 	_palette_close_button.pressed.connect(_close_palette_popup)
