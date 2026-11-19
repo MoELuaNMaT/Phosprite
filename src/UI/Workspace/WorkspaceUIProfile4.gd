@@ -331,9 +331,7 @@ func _draw_stage4_split_handle() -> void:
 	var unit := clampi(Global.pixel_ui_unit, 1, 3)
 	for dot_index in range(-1, 2):
 		var top_left := origin + Vector2i(-2 * unit, dot_index * 5 * unit - unit)
-		_split_handle.draw_rect(
-			Rect2i(top_left, Vector2i(4 * unit, 3 * unit)), color
-	)
+		_split_handle.draw_rect(Rect2i(top_left, Vector2i(4 * unit, 3 * unit)), color)
 
 
 func _update_split_handle() -> void:
