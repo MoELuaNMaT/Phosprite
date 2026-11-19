@@ -43,9 +43,7 @@ func test_header_overlay_retains_layout_but_inherits_active_ui_theme() -> void:
 
 
 func test_header_controller_uses_ascii_indices_and_remeasures_on_theme_change() -> void:
-	var script := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/TimelineHeaderControls.gd"
-	)
+	var script := FileAccess.get_file_as_string("res://src/UI/Workspace/TimelineHeaderControls.gd")
 	check_has(script, "str(project.current_frame + 1)", "frame index uses ASCII digits")
 	check_has(script, "str(project.frames.size())", "frame count uses ASCII digits")
 	check_true(
