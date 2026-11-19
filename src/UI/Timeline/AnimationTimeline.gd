@@ -176,6 +176,7 @@ func _notification(what: int) -> void:
 func _refresh_stage4_visuals() -> void:
 	Stage4Timeline.apply(self)
 
+
 func clear_highlight() -> void:
 	if not drag_highlight.visible:
 		for connection: Dictionary in drag_highlight.draw.get_connections():
