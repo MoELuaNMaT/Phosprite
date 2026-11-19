@@ -128,8 +128,6 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 	thumbnail_loaded = false
 	thumbnail_rect.texture = null
 	set_selected(false)
-	if _display_title.is_empty():
-		set_display_title(project_entry.path.get_file().get_basename())
 	if entry.health_state == Entry.HealthState.CORRUPTED:
 		_set_thumbnail_status(tr("Corrupted"), true)
 		size_label.text = tr("Unreadable project")
