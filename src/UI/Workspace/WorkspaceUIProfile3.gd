@@ -932,14 +932,24 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 	if not is_primary_tool(tool_name):
 		_set_quick_reservation(Rect2())
 		return
+	_quick_pixel_mode = Chrome.active_mode()
+	var pixel_theme := _quick_pixel_mode != Tokens.LEGACY
 	_quick_title.text = _tool_display_name(tool_name)
+	_quick_title.visible = not pixel_theme
 	var tool := _current_tool_options()
 	if tool == null:
 		return
-	_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
-	_add_quick_slider(
-		tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
-	)
+	if pixel_theme:
+		_add_stage3_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
+		_add_stage3_color_swatches()
+		_add_stage3_quick_slider(
+			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
+		)
+	else:
+		_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
+		_add_quick_slider(
+			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
+		)
 	_quick_has_controls = _quick_controls.get_child_count() > 0
 	_place_quick_bar()
 	# Tool option controls can finish sizing on the next layout frame.
@@ -977,6 +987,216 @@ func _add_quick_slider(tool: BaseTool, path: NodePath, title: String, size_value
 	var callback := _on_quick_source_value_changed.bind(slider, value_label, suffix)
 	source.value_changed.connect(callback)
 	_quick_bindings.append({"source": source, "callback": callback})
+
+
+## Only the opt-in Phosprite themes use the two-zone touch response.
+## The user-visible slider is a proxy; the existing ValueSlider still owns
+## configuration, persistence, redraw and tool-specific unit conversions.
+func _add_stage3_quick_slider(
+	tool: BaseTool, path: NodePath, title: String, is_size: bool
+) -> void:
+	var source := tool.get_node_or_null(path) as Range
+	if source == null:
+		return
+	var group := VBoxContainer.new()
+	group.add_theme_constant_override(&"separation", 2)
+	_quick_controls.add_child(group)
+	var caption := Label.new()
+	caption.text = title
+	caption.tooltip_text = title
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.add_theme_font_size_override(&"font_size", 12)
+	group.add_child(caption)
+	var slider := VSlider.new()
+	slider.name = StringName("CapsuleSize" if is_size else "CapsuleOpacity")
+	slider.custom_minimum_size = Vector2(Stage3.TRACK_WIDTH, Stage3.TRACK_HEIGHT)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	group.add_child(slider)
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override(&"font_size", 12)
+	group.add_child(label)
+	var suffix := "px" if is_size else "%"
+	if is_size and source is ValueSlider:
+		suffix = str((source as ValueSlider).suffix)
+	var curve := is_size and Stage3.supports_pixel_size_mapping(
+		source.min_value, source.max_value, source.step, suffix
+	)
+	if curve:
+		slider.min_value = 0.0
+		slider.max_value = 1.0
+		slider.step = 0.001
+		slider.set_value_no_signal(
+			Stage3.position_from_size(source.value, source.min_value, source.max_value)
+		)
+	else:
+		slider.min_value = source.min_value
+		slider.max_value = source.max_value
+		slider.step = maxf(source.step, 0.001)
+		slider.set_value_no_signal(source.value)
+	_update_quick_value_label(label, source.value, suffix)
+	slider.value_changed.connect(
+		_on_stage3_slider_changed.bind(source, curve, is_size, suffix)
+	)
+	slider.drag_started.connect(_on_stage3_slider_drag_started.bind(source, is_size, suffix))
+	slider.drag_ended.connect(_on_stage3_slider_drag_ended)
+	var callback := _on_stage3_source_value_changed.bind(
+		slider, label, suffix, curve, source, is_size
+	)
+	source.value_changed.connect(callback)
+	_quick_bindings.append({"source": source, "callback": callback})
+
+
+func _on_stage3_slider_changed(
+	value: float, source: Range, curve: bool, is_size: bool, suffix: String
+) -> void:
+	if not is_instance_valid(source):
+		return
+	source.value = (
+		Stage3.size_from_position(value, source.min_value, source.max_value) if curve else value
+	)
+	if _quick_slider_dragging:
+		_show_quick_hud(source.value, is_size, suffix)
+
+
+func _on_stage3_source_value_changed(
+	value: float, slider: VSlider, label: Label, suffix: String, curve: bool,
+	source: Range, is_size: bool
+) -> void:
+	if not is_instance_valid(slider) or not is_instance_valid(label):
+		return
+	if curve and is_instance_valid(source):
+		slider.set_value_no_signal(
+			Stage3.position_from_size(value, source.min_value, source.max_value)
+		)
+	else:
+		slider.set_value_no_signal(value)
+	_update_quick_value_label(label, value, suffix)
+	if _quick_slider_dragging:
+		_show_quick_hud(value, is_size, suffix)
+
+
+func _add_stage3_color_swatches() -> void:
+	var overlap := Control.new()
+	overlap.name = &"UI3ColorOverlap"
+	overlap.custom_minimum_size = Vector2(36.0, 28.0)
+	overlap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_quick_controls.add_child(overlap)
+	_quick_swatch_right = Button.new()
+	_quick_swatch_right.name = &"SecondaryColor"
+	_quick_swatch_right.position = Vector2(12, 0)
+	_quick_swatch_right.custom_minimum_size = Vector2(22, 22)
+	_quick_swatch_right.tooltip_text = tr("Swap Colors")
+	_quick_swatch_right.pressed.connect(_on_stage3_swap_colors)
+	overlap.add_child(_quick_swatch_right)
+	_quick_swatch_left = Button.new()
+	_quick_swatch_left.name = &"PrimaryColor"
+	_quick_swatch_left.position = Vector2(0, 6)
+	_quick_swatch_left.custom_minimum_size = Vector2(22, 22)
+	_quick_swatch_left.tooltip_text = tr("Swap Colors")
+	_quick_swatch_left.pressed.connect(_on_stage3_swap_colors)
+	overlap.add_child(_quick_swatch_left)
+	_update_stage3_swatches()
+
+
+func _on_stage3_swap_colors() -> void:
+	Tools.swap_color()
+	_update_stage3_swatches()
+
+
+func _update_stage3_swatches() -> void:
+	if _quick_pixel_mode == Tokens.LEGACY:
+		return
+	for pair in [
+		{"button": _quick_swatch_left, "side": MOUSE_BUTTON_LEFT},
+		{"button": _quick_swatch_right, "side": MOUSE_BUTTON_RIGHT},
+	]:
+		var button := pair["button"] as Button
+		if not is_instance_valid(button):
+			continue
+		var outline := (
+			Tokens.color(_quick_pixel_mode, &"accent_primary")
+			if pair["side"] == MOUSE_BUTTON_LEFT
+			else Tokens.color(_quick_pixel_mode, &"outline_ink")
+		)
+		var style := PixelStyle.make_style(
+			Tokens.TIER_S,
+			Tools.get_assigned_color(pair["side"]),
+			outline,
+			Tokens.color(_quick_pixel_mode, &"pixel_shadow"),
+			false,
+			Global.pixel_ui_unit
+		)
+		for state in [&"normal", &"hover", &"pressed", &"focus"]:
+			button.add_theme_stylebox_override(state, style)
+
+
+func _show_quick_hud(value: float, is_size: bool, suffix: String) -> void:
+	if not active or _quick_pixel_mode == Tokens.LEGACY or not is_instance_valid(_quick_hud):
+		return
+	_quick_hud_generation += 1
+	_quick_hud_value = value
+	_quick_hud_size_mode = is_size and suffix == "px"
+	_quick_hud_label.text = "%d%s" % [roundi(value), suffix]
+	_quick_hud.visible = true
+	_quick_hud_preview.queue_redraw()
+	_position_quick_hud()
+
+
+func _position_quick_hud() -> void:
+	if not is_instance_valid(_quick_hud) or not is_instance_valid(_quick_bar):
+		return
+	var parent := _quick_hud.get_parent() as Control
+	if parent == null:
+		return
+	var x := _quick_bar.position.x + _quick_bar.size.x + Stage3.HUD_GAP
+	var y := _quick_bar.position.y + (_quick_bar.size.y - 94.0) * 0.5
+	_quick_hud.position = Stage3.popup_position(
+		Vector2(x, y), Vector2.ZERO, Vector2(124, 94), parent.size
+	)
+
+
+func _draw_quick_hud_preview() -> void:
+	if not is_instance_valid(_quick_hud_preview):
+		return
+	var center := _quick_hud_preview.size * 0.5
+	var mode := _quick_pixel_mode
+	if mode == Tokens.LEGACY:
+		return
+	var outline := Tokens.color(mode, &"outline_ink")
+	var fill := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
+	var square := roundi(clampf(_quick_hud_value, 1.0, 54.0)) if _quick_hud_size_mode else 12
+	var rect := Rect2(Vector2(roundi(center.x - square * 0.5), roundi(center.y - square * 0.5)),
+		Vector2(square, square))
+	_quick_hud_preview.draw_rect(rect.grow(1.0), outline)
+	_quick_hud_preview.draw_rect(rect, fill)
+
+
+func _hide_quick_hud() -> void:
+	_quick_hud_generation += 1
+	_quick_slider_dragging = false
+	if is_instance_valid(_quick_hud):
+		_quick_hud.visible = false
+
+
+func _on_stage3_slider_drag_started(source: Range, is_size: bool, suffix: String) -> void:
+	_quick_slider_dragging = true
+	if is_instance_valid(source):
+		_show_quick_hud(source.value, is_size, suffix)
+
+
+func _on_stage3_slider_drag_ended(_value_changed: bool) -> void:
+	_quick_slider_dragging = false
+	_quick_hud_generation += 1
+	var generation := _quick_hud_generation
+	_hide_quick_hud_after_delay(generation)
+
+
+func _hide_quick_hud_after_delay(generation: int) -> void:
+	await get_tree().create_timer(Stage3.HUD_DISMISS_SECONDS).timeout
+	if generation == _quick_hud_generation and is_instance_valid(_quick_hud):
+		_quick_hud.visible = false
 
 
 func _on_quick_slider_changed(value: float, source: Range) -> void:
