@@ -94,13 +94,17 @@ func test_stage2_gallery_keeps_all_original_action_handlers() -> void:
 		"_on_import_pressed",
 		"_on_new_project_pressed",
 		"_on_multiselect_pressed",
-		"multiselect_button.text = tr(\"Exit Multi-Select\") if enabled else tr(\"Multi-Select\")",
+		'multiselect_button.text = tr("Exit Multi-Select") if enabled else tr("Multi-Select")',
 		"const LANDSCAPE_COLUMNS := 6",
 		"const PORTRAIT_COLUMNS := 4",
 	]:
 		check_has(source, key, "Gallery preserves preexisting action and orientation")
 	var menu := FileAccess.get_file_as_string("res://src/UI/TopMenuContainer/TopMenuContainer.gd")
-	check_has(menu, "_forward_ipad_ui(id - STAGE2_PROFILE_ID_BASE)", "UI profile uses same transaction")
+	check_has(
+		menu, "_forward_ipad_ui(id - STAGE2_PROFILE_ID_BASE)", "UI profile uses same transaction"
+	)
 	check_has(menu, "edit_menu_id_pressed(id)", "Settings still forwards old command IDs")
 	var preferences := FileAccess.get_file_as_string("res://src/Preferences/PreferencesDialog.gd")
-	check_has(preferences, "_ipad_change_ui_profile_id", "visual profile buttons use existing UI menu")
+	check_has(
+		preferences, "_ipad_change_ui_profile_id", "visual profile buttons use existing UI menu"
+	)
