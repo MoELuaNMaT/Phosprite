@@ -114,7 +114,42 @@ func _can_drop_data(pos: Vector2, data) -> bool:
 
 
 func _drop_data(pos: Vector2, data) -> void:
+	if typeof(data) != TYPE_ARRAY or data.size() < 2 or data[0] != "Layer":
+		return
+	var project := Global.current_project
+	if not is_instance_valid(project):
+		return
+	# A layer move frees the source LayerButton and its touch adapter immediately.
+	# During a touch release or native drag event, that would free a node still
+	# on the input call stack. Let the event finish before changing the UI tree.
+	# Copy the payload because LayerTouchAdapter clears it on release.
+	_apply_layer_drop.call_deferred(pos, (data as Array).duplicate(true), project, layer_index)
+
+
+func _apply_layer_drop(
+	pos: Vector2, data: Array, source_project: Project, target_layer_index: int
+) -> void:
+	# A project switch or an intervening layer change invalidates the pending drop.
+	if (
+		not is_instance_valid(source_project)
+		or Global.current_project != source_project
+		or layer_index != target_layer_index
+		or target_layer_index < 0
+		or target_layer_index >= source_project.layers.size()
+		or typeof(data[1]) != TYPE_PACKED_INT32_ARRAY
+	):
+		return
 	var initial_drop_layers: PackedInt32Array = data[1]
+	if initial_drop_layers.is_empty():
+		return
+	for dragged_index in initial_drop_layers:
+		if (
+			dragged_index < 0
+			or dragged_index >= source_project.layers.size()
+			or dragged_index == target_layer_index
+		):
+			return
+	var project := source_project
 	var project := Global.current_project
 	var curr_layer := project.layers[layer_index]
 	var layers := project.layers  # This shouldn't be modified directly
