@@ -509,6 +509,7 @@ func _create_palette_popup() -> bool:
 	_palette_header.gui_input.connect(_on_palette_header_input)
 	stack.add_child(_palette_header)
 	var heading_row := HBoxContainer.new()
+	heading_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_palette_header.add_child(heading_row)
 	_palette_header_label = Label.new()
 	_palette_header_label.text = tr("Palette & Color")
@@ -537,6 +538,28 @@ func _create_palette_popup() -> bool:
 	margin.add_child(_palette_content)
 	_palette_header.visible = false
 	return true
+
+
+## Tear-off windows obey the same fixed-capsule exclusion as Preview.
+## Moving the color card must never move the left capsule out of position.
+func _constrain_stage3_palette_position(position: Vector2) -> Vector2:
+	if not is_instance_valid(_palette_popup) or not is_instance_valid(_quick_bar):
+		return position
+	if not _quick_bar.visible or not _quick_bar.get_rect().has_area():
+		return position
+	var target := Rect2(position, _palette_popup.size)
+	var exclusion := _quick_bar.get_global_rect().grow(QUICK_CLEARANCE)
+	var parent_transform := ui_root.get_global_transform_with_canvas().affine_inverse()
+	var bounds := Rect2(
+		parent_transform * exclusion.position,
+		exclusion.size
+	)
+	if not target.intersects(bounds):
+		return position
+	var clear_x := bounds.end.x
+	if clear_x + target.size.x <= ui_root.size.x:
+		return Vector2(clear_x, position.y)
+	return position
 
 
 func _source_icon(source: BaseButton) -> Texture2D:
@@ -695,8 +718,8 @@ func _move_palette_drag(pointer: Vector2) -> void:
 	if not _palette_pinned:
 		_palette_pinned = true
 		_update_palette_pin_visual()
-	_palette_popup.position = Stage3.popup_position(
-		_palette_drag_origin, delta, _palette_popup.size, ui_root.size
+	_palette_popup.position = _constrain_stage3_palette_position(
+		Stage3.popup_position(_palette_drag_origin, delta, _palette_popup.size, ui_root.size)
 	)
 	_palette_popup.move_to_front()
 
@@ -1670,8 +1693,10 @@ func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
 func _on_workspace_resized() -> void:
 	if active and is_instance_valid(_palette_popup) and _palette_popup.visible:
 		if _palette_pinned:
-			_palette_popup.position = Stage3.popup_position(
-				_palette_popup.position, Vector2.ZERO, _palette_popup.size, ui_root.size
+			_palette_popup.position = _constrain_stage3_palette_position(
+				Stage3.popup_position(
+					_palette_popup.position, Vector2.ZERO, _palette_popup.size, ui_root.size
+				)
 			)
 		else:
 			_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
