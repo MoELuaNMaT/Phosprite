@@ -16,6 +16,8 @@ const StoragePolicy := preload("res://src/PlatformServices/StoragePolicy.gd")
 const ProjectLibraryScript := preload("res://src/ProjectLibrary/ProjectLibrary.gd")
 const GestureResolverScript := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
 const CARD_SCENE := preload("res://src/UI/ProjectGallery/ProjectGalleryCard.tscn")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
 
 const LANDSCAPE_COLUMNS := 6
 const PORTRAIT_COLUMNS := 4
@@ -52,7 +54,18 @@ var _popover_anchor_path := ""
 var _popover_anchor_fraction := Vector2(0.5, 0.5)
 var _popover_menu: PopupMenu
 var _feedback_generation := 0
+var _stage2_mode: StringName = Tokens.LEGACY
+var _stage2_legacy: Dictionary = {}
+var _stage2_left_island: PanelContainer
+var _stage2_left_buttons: HBoxContainer
 
+@onready var background := $Background as ColorRect
+@onready var top_bar := $Shell/TopBar as PanelContainer
+@onready var top_bar_row := $Shell/TopBar/Margin/Row as HBoxContainer
+@onready var top_bar_spacer := $Shell/TopBar/Margin/Row/Spacer as Control
+@onready var brand_wordmark := $Shell/TopBar/Margin/Row/Brand/Wordmark as Label
+@onready var empty_title := $Shell/ProjectScroll/ContentMargin/Content/EmptyState/Title as Label
+@onready var empty_hint := $Shell/ProjectScroll/ContentMargin/Content/EmptyState/Hint as Label
 @onready var scroll_container := %ProjectScroll as ScrollContainer
 @onready var grid := %ProjectGrid as GridContainer
 @onready var empty_state := %EmptyState as Control
@@ -76,6 +89,12 @@ func _notification(what: int) -> void:
 
 
 func _ready() -> void:
+	_capture_stage2_legacy()
+	if not Themes.theme_switched.is_connected(_refresh_stage2_theme):
+		Themes.theme_switched.connect(_refresh_stage2_theme)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_stage2_theme):
+		Global.pixel_ui_unit_changed.connect(_refresh_stage2_theme)
+	_refresh_stage2_theme()
 	_configure_build_identity()
 	if library == null:
 		library = ProjectLibraryScript.new(StoragePolicy.PROJECTS_DIRECTORY)
@@ -105,6 +124,98 @@ func _ready() -> void:
 		project_action_menu.popup_hide.connect(_on_popover_hidden)
 	if not batch_action_menu.popup_hide.is_connected(_on_popover_hidden):
 		batch_action_menu.popup_hide.connect(_on_popover_hidden)
+	call_deferred("_update_layout")
+
+
+## Preserve old gallery appearance byte-for-byte when a legacy/custom preset
+## is selected. Stage 2 never modifies the global Theme or project records.
+func _capture_stage2_legacy() -> void:
+	_stage2_legacy = {
+		"ground": background.color,
+		"topbar": top_bar.get_theme_stylebox(&"panel"),
+		"wordmark": brand_wordmark.get_theme_color(&"font_color"),
+		"build": build_identity_label.get_theme_color(&"font_color"),
+		"empty_title": empty_title.get_theme_color(&"font_color"),
+		"empty_hint": empty_hint.get_theme_color(&"font_color"),
+		"feedback": feedback_banner.get_theme_color(&"font_color"),
+		"import_min": import_button.custom_minimum_size,
+		"new_min": new_button.custom_minimum_size,
+		"select_min": multiselect_button.custom_minimum_size,
+	}
+
+
+func _ensure_stage2_left_island() -> void:
+	if is_instance_valid(_stage2_left_island):
+		return
+	_stage2_left_island = PanelContainer.new()
+	_stage2_left_island.name = &"GalleryActionsIsland"
+	_stage2_left_island.mouse_filter = Control.MOUSE_FILTER_PASS
+	_stage2_left_buttons = HBoxContainer.new()
+	_stage2_left_buttons.add_theme_constant_override(&"separation", 4)
+	_stage2_left_island.add_child(_stage2_left_buttons)
+	top_bar_row.add_child(_stage2_left_island)
+	top_bar_row.move_child(_stage2_left_island, top_bar_spacer.get_index())
+
+
+func _set_stage2_gallery_group(enabled: bool) -> void:
+	if enabled:
+		_ensure_stage2_left_island()
+		for button in [import_button, multiselect_button]:
+			if button.get_parent() != _stage2_left_buttons:
+				button.reparent(_stage2_left_buttons)
+		return
+	if is_instance_valid(_stage2_left_island):
+		for button in [import_button, multiselect_button]:
+			if button.get_parent() == _stage2_left_buttons:
+				button.reparent(top_bar_row)
+		_stage2_left_island.queue_free()
+		_stage2_left_island = null
+		_stage2_left_buttons = null
+		top_bar_row.move_child(import_button, top_bar_spacer.get_index() + 1)
+		top_bar_row.move_child(new_button, import_button.get_index() + 1)
+		top_bar_row.move_child(multiselect_button, new_button.get_index() + 1)
+
+
+func _refresh_stage2_theme() -> void:
+	if not is_node_ready() or _stage2_legacy.is_empty():
+		return
+	var mode := Chrome.active_mode()
+	_stage2_mode = mode
+	var themed := mode != Tokens.LEGACY
+	_set_stage2_gallery_group(themed)
+	if not themed:
+		background.color = _stage2_legacy["ground"]
+		top_bar.add_theme_stylebox_override(&"panel", _stage2_legacy["topbar"])
+		brand_wordmark.add_theme_color_override(&"font_color", _stage2_legacy["wordmark"])
+		build_identity_label.add_theme_color_override(&"font_color", _stage2_legacy["build"])
+		empty_title.add_theme_color_override(&"font_color", _stage2_legacy["empty_title"])
+		empty_hint.add_theme_color_override(&"font_color", _stage2_legacy["empty_hint"])
+		feedback_banner.add_theme_color_override(&"font_color", _stage2_legacy["feedback"])
+		for button in [import_button, new_button, multiselect_button]:
+			Chrome.clear_button(button)
+		import_button.custom_minimum_size = _stage2_legacy["import_min"]
+		new_button.custom_minimum_size = _stage2_legacy["new_min"]
+		multiselect_button.custom_minimum_size = _stage2_legacy["select_min"]
+	else:
+		background.color = Tokens.color(mode, &"gallery_ground")
+		top_bar.add_theme_stylebox_override(
+			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface")
+		)
+		var foreground := Tokens.color(mode, &"text_primary")
+		var muted := Tokens.color(mode, &"text_muted")
+		brand_wordmark.add_theme_color_override(&"font_color", foreground)
+		build_identity_label.add_theme_color_override(&"font_color", muted)
+		empty_title.add_theme_color_override(&"font_color", foreground)
+		empty_hint.add_theme_color_override(&"font_color", muted)
+		feedback_banner.add_theme_color_override(&"font_color", muted)
+		_stage2_left_island.add_theme_stylebox_override(
+			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+		for button in [import_button, new_button, multiselect_button]:
+			Chrome.style_button(button, mode, button == new_button)
+			button.custom_minimum_size.y = 40.0
+	for card: ProjectGalleryCard in _cards:
+		card.apply_stage2_theme(mode)
 	call_deferred("_update_layout")
 
 
@@ -320,12 +431,19 @@ func _rebuild_cards() -> void:
 		child.queue_free()
 	_cards.clear()
 
+	var untitled_number := 0
 	for entry: ProjectLibraryEntry in entries:
 		var card := CARD_SCENE.instantiate() as ProjectGalleryCard
 		if card == null:
 			continue
 		grid.add_child(card)
 		card.bind(entry)
+		var display_name := entry.path.get_file().get_basename()
+		if display_name.to_lower().begins_with("untitled_"):
+			untitled_number += 1
+			display_name = "%s %d" % [tr("Untitled"), untitled_number]
+		card.set_display_title(display_name)
+		card.apply_stage2_theme(_stage2_mode)
 		card.set_selected(_selected_paths.has(_normalized_path(entry.path)))
 		card.pointer_down.connect(_on_card_pointer_down)
 		card.pointer_up.connect(_on_card_pointer_up)
