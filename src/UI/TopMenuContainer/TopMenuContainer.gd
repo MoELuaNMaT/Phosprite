@@ -344,9 +344,7 @@ func _refresh_stage2_topbar() -> void:
 				_effects_icon_button.flat = true
 				_effects_icon_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
 		return
-	add_theme_stylebox_override(
-		&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface")
-	)
+	add_theme_stylebox_override(&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface"))
 	for button in [return_home_button, settings_button, _effects_icon_button]:
 		if not is_instance_valid(button):
 			continue
@@ -404,9 +402,7 @@ func _setup_ipad_settings_menu() -> void:
 	for profile_id in [1, 3, 4]:
 		var label := _stage2_profile_title(profile_id)
 		popup.add_radio_check_item(label, STAGE2_PROFILE_ID_BASE + profile_id)
-		popup.set_item_icon(
-			popup.item_count - 1, Icons.icon(StringName("ui%d" % profile_id))
-		)
+		popup.set_item_icon(popup.item_count - 1, Icons.icon(StringName("ui%d" % profile_id)))
 	popup.add_separator()
 	_ipad_project_actions = _new_ipad_submenu(popup, tr("Project Operations"))
 	for entry in [
@@ -485,9 +481,7 @@ func _sync_ipad_settings_menu() -> void:
 		popup.set_item_hidden(profile_index, not pixel_active)
 		popup.set_item_text(profile_index, _stage2_profile_title(profile_id))
 		var ui_index := ui_menu.get_item_index(profile_id) if ui_menu != null else -1
-		popup.set_item_checked(
-			profile_index, ui_index >= 0 and ui_menu.is_item_checked(ui_index)
-		)
+		popup.set_item_checked(profile_index, ui_index >= 0 and ui_menu.is_item_checked(ui_index))
 	for item_id in [Global.ViewMenu.SHOW_RULERS, Global.ViewMenu.SHOW_GUIDES]:
 		var index := _ipad_canvas_actions.get_item_index(item_id)
 		_ipad_canvas_actions.set_item_checked(
