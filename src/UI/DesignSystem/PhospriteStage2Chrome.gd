@@ -10,10 +10,16 @@ const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 
 const BUTTON_STYLES := [&"normal", &"hover", &"pressed", &"disabled", &"focus"]
 const BUTTON_COLORS := [
-	&"font_color", &"font_hover_color", &"font_pressed_color",
-	&"font_disabled_color", &"font_focus_color",
-	&"icon_normal_color", &"icon_hover_color", &"icon_pressed_color",
-	&"icon_disabled_color", &"icon_focus_color"
+	&"font_color",
+	&"font_hover_color",
+	&"font_pressed_color",
+	&"font_disabled_color",
+	&"font_focus_color",
+	&"icon_normal_color",
+	&"icon_hover_color",
+	&"icon_pressed_color",
+	&"icon_disabled_color",
+	&"icon_focus_color"
 ]
 
 
@@ -56,8 +62,12 @@ static func style_button(button: Button, mode: StringName, cta := false) -> void
 	var pressed := make_panel(mode, Tokens.TIER_M, &"accent_primary")
 	var disabled := make_panel(mode, Tokens.TIER_M, &"well_surface")
 	var focused := PixelStyle.make_style(
-		Tokens.TIER_M, Tokens.color(mode, normal_surface),
-		Tokens.color(mode, &"accent_primary"), shadow, false, Global.pixel_ui_unit
+		Tokens.TIER_M,
+		Tokens.color(mode, normal_surface),
+		Tokens.color(mode, &"accent_primary"),
+		shadow,
+		false,
+		Global.pixel_ui_unit
 	)
 	for key in BUTTON_STYLES:
 		match key:
@@ -76,8 +86,11 @@ static func style_button(button: Button, mode: StringName, cta := false) -> void
 	button.add_theme_color_override(&"font_disabled_color", muted)
 	# Q icons are colored PNGs, not monochrome SVG masks. Keep their actual pixels.
 	for key in [
-		&"icon_normal_color", &"icon_hover_color", &"icon_pressed_color",
-		&"icon_disabled_color", &"icon_focus_color"
+		&"icon_normal_color",
+		&"icon_hover_color",
+		&"icon_pressed_color",
+		&"icon_disabled_color",
+		&"icon_focus_color"
 	]:
 		button.add_theme_color_override(key, Color.WHITE)
 	button.remove_theme_color_override(&"icon_disabled_color")
