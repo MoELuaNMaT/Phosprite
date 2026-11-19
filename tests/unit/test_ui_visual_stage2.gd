@@ -64,7 +64,7 @@ func test_stage2_styles_opt_in_and_clear_without_touching_font_or_selection() ->
 		Chrome.clear_button(button)
 		check_eq(
 			button.texture_filter,
-			CanvasItem.TEXTURE_FILTER_INHERIT,
+			CanvasItem.TEXTURE_FILTER_PARENT_NODE,
 			"returning to legacy theme restores its original sampling"
 		)
 		check_true(
@@ -85,7 +85,7 @@ func test_gallery_card_legacy_is_unchanged_and_phosprite_title_is_opt_in() -> vo
 	check_true(not card.title_strip.visible, "old themes keep existing no-title gallery")
 	check_eq(
 		card.thumbnail_rect.texture_filter,
-		CanvasItem.TEXTURE_FILTER_INHERIT,
+		CanvasItem.TEXTURE_FILTER_PARENT_NODE,
 		"legacy thumbnails retain their previous interpolation"
 	)
 	card.set_selected(true)
