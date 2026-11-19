@@ -474,16 +474,45 @@ func _create_palette_popup() -> bool:
 	_palette_popup.custom_minimum_size = PALETTE_POPUP_SIZE
 	ui_root.add_child(_palette_popup)
 
+	# The actual Palette & Color scene is reused. Only its presentation gains
+	# an optional 36px drag header in the two Phosprite themes.
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override(&"separation", 0)
+	_palette_popup.add_child(stack)
+	_palette_header = PanelContainer.new()
+	_palette_header.name = &"UI3PaletteTearOffHeader"
+	_palette_header.custom_minimum_size.y = PALETTE_HEADER_HEIGHT
+	_palette_header.mouse_filter = Control.MOUSE_FILTER_STOP
+	_palette_header.gui_input.connect(_on_palette_header_input)
+	stack.add_child(_palette_header)
+	var heading_row := HBoxContainer.new()
+	_palette_header.add_child(heading_row)
+	_palette_header_label = Label.new()
+	_palette_header_label.text = tr("Palette & Color")
+	_palette_header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_palette_header_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_palette_header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	heading_row.add_child(_palette_header_label)
+	_palette_close_button = Button.new()
+	_palette_close_button.name = &"ClosePinnedPalette"
+	_palette_close_button.text = "×"
+	_palette_close_button.tooltip_text = tr("Close")
+	_palette_close_button.custom_minimum_size = Vector2(36.0, 36.0)
+	_palette_close_button.pressed.connect(_close_palette_popup)
+	heading_row.add_child(_palette_close_button)
+
 	var margin := MarginContainer.new()
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override(&"margin_left", 8)
 	margin.add_theme_constant_override(&"margin_top", 8)
 	margin.add_theme_constant_override(&"margin_right", 8)
 	margin.add_theme_constant_override(&"margin_bottom", 8)
-	_palette_popup.add_child(margin)
+	stack.add_child(margin)
 	_palette_content = content as Control
 	_palette_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_palette_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(_palette_content)
+	_palette_header.visible = false
 	return true
 
 
@@ -557,12 +586,96 @@ func _on_family_tool_pressed(tool_name: StringName) -> void:
 
 
 func _on_color_button_pressed() -> void:
-	if not active:
+	if not active or not is_instance_valid(_palette_popup):
 		return
-	if is_instance_valid(_palette_popup) and _palette_popup.visible:
-		_palette_popup.visible = false
+	if _palette_popup.visible:
+		if _palette_pinned:
+			_palette_popup.move_to_front()
+		else:
+			_palette_popup.visible = false
 		return
+	_palette_pinned = false
+	_update_palette_pin_visual()
 	_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
+
+
+func _close_palette_popup() -> void:
+	_palette_pinned = false
+	_palette_dragging = false
+	if is_instance_valid(_palette_popup):
+		_palette_popup.visible = false
+	_update_palette_pin_visual()
+
+
+func _update_palette_pin_visual() -> void:
+	if not is_instance_valid(_palette_header):
+		return
+	var pixel := _quick_pixel_mode != Tokens.LEGACY
+	_palette_header.visible = pixel
+	_palette_close_button.visible = pixel and _palette_pinned
+	_palette_header_label.text = tr("Palette & Color")
+
+
+## The header is a grip, not a second color editor. Holding and dragging
+## >=24px converts a temporary popup to an independent movable window.
+## Source color values and palette selections remain on the original scene.
+func _on_palette_header_input(event: InputEvent) -> void:
+	if not active or _quick_pixel_mode == Tokens.LEGACY:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		_palette_last_touch_msec = Time.get_ticks_msec()
+		if touch.pressed and not _palette_dragging:
+			_begin_palette_drag(_palette_header.get_global_transform_with_canvas() * touch.position)
+			_palette_drag_touch_index = touch.index
+		elif not touch.pressed and _palette_drag_touch_index == touch.index:
+			_palette_dragging = false
+			_palette_drag_touch_index = -1
+		_palette_header.accept_event()
+	elif event is InputEventScreenDrag and _palette_dragging:
+		var drag := event as InputEventScreenDrag
+		if drag.index != _palette_drag_touch_index:
+			return
+		_move_palette_drag(_palette_header.get_global_transform_with_canvas() * drag.position)
+		_palette_header.accept_event()
+	elif event is InputEventMouseButton:
+		if Time.get_ticks_msec() - _palette_last_touch_msec < 500:
+			return
+		var mouse := event as InputEventMouseButton
+		if mouse.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse.pressed:
+			_begin_palette_drag(_palette_header.get_global_transform_with_canvas() * mouse.position)
+		else:
+			_palette_dragging = false
+		_palette_header.accept_event()
+	elif event is InputEventMouseMotion and _palette_dragging and _palette_drag_touch_index < 0:
+		var motion := event as InputEventMouseMotion
+		_move_palette_drag(_palette_header.get_global_transform_with_canvas() * motion.position)
+		_palette_header.accept_event()
+
+
+func _begin_palette_drag(pointer: Vector2) -> void:
+	if not is_instance_valid(_palette_popup):
+		return
+	_palette_dragging = true
+	_palette_drag_origin = _palette_popup.position
+	_palette_drag_start = pointer
+
+
+func _move_palette_drag(pointer: Vector2) -> void:
+	if not _palette_dragging or not is_instance_valid(_palette_popup):
+		return
+	var delta := pointer - _palette_drag_start
+	if not _palette_pinned and not Stage3.should_pin_popup(delta):
+		return
+	if not _palette_pinned:
+		_palette_pinned = true
+		_update_palette_pin_visual()
+	_palette_popup.position = Stage3.popup_position(
+		_palette_drag_origin, delta, _palette_popup.size, ui_root.size
+	)
+	_palette_popup.move_to_front()
 
 
 func _refresh_config_panel() -> void:
@@ -1169,7 +1282,12 @@ func _on_single_tool_mode_changed(_enabled: bool) -> void:
 
 func _on_workspace_resized() -> void:
 	if active and is_instance_valid(_palette_popup) and _palette_popup.visible:
-		_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
+		if _palette_pinned:
+			_palette_popup.position = Stage3.popup_position(
+				_palette_popup.position, Vector2.ZERO, _palette_popup.size, ui_root.size
+			)
+		else:
+			_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
 	_place_quick_bar.call_deferred()
 
 
