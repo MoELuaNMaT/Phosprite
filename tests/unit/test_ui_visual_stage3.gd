@@ -9,17 +9,15 @@ func test_ui3_size_curve_is_continuous_and_preserves_both_endpoints() -> void:
 	check_eq(Stage3.CAPSULE_WIDTH, 48.0, "new capsule has exact width")
 	check_eq(Stage3.TRACK_WIDTH, 14.0, "vertical rail remains narrow")
 	check_eq(Stage3.size_from_position(0.0, 1.0, 128.0), 1.0, "minimum size is one pixel")
-	check_eq(
-		Stage3.size_from_position(0.55, 1.0, 128.0), 16.0,
-		"first 55% reaches 16 pixels"
-	)
+	check_eq(Stage3.size_from_position(0.55, 1.0, 128.0), 16.0, "first 55% reaches 16 pixels")
 	check_eq(Stage3.size_from_position(1.0, 1.0, 128.0), 128.0, "128px endpoint preserved")
 	for size_value in [1.0, 2.0, 8.0, 16.0, 17.0, 32.0, 64.0, 128.0]:
 		var position := Stage3.position_from_size(size_value, 1.0, 128.0)
 		var actual := Stage3.size_from_position(position, 1.0, 128.0)
 		check_almost_eq(actual, size_value, 0.51, "curve maps source pixel size reversibly")
 	check_eq(
-		Stage3.size_from_position(1.0, 1.0, 256.0), 256.0,
+		Stage3.size_from_position(1.0, 1.0, 256.0),
+		256.0,
 		"larger existing brush configurations must not be truncated"
 	)
 	check_true(
@@ -36,8 +34,10 @@ func test_color_tearoff_has_real_threshold_and_clamps_to_editor_bounds() -> void
 	check_true(Stage3.should_pin_popup(Vector2(24.0, 0.0)), "24px drag pins popup")
 	check_eq(
 		Stage3.popup_position(
-			Vector2(40.0, 30.0), Vector2(-100.0, 600.0),
-			Vector2(320.0, 460.0), Vector2(700.0, 800.0)
+			Vector2(40.0, 30.0),
+			Vector2(-100.0, 600.0),
+			Vector2(320.0, 460.0),
+			Vector2(700.0, 800.0)
 		),
 		Vector2(0.0, 340.0),
 		"tear-off remains fully visible in the viewport"
@@ -65,8 +65,11 @@ func test_ui3_hud_does_not_replace_real_slider_or_workspace_exclusion() -> void:
 	check_true(profile.setup(root, left, surface), "profile has original tool source")
 	check_true(profile._create_quick_bar(), "existing quick strip creates")
 	check_true(is_instance_valid(profile._quick_hud), "separate 180ms preview HUD exists")
-	check_eq(profile._quick_hud.mouse_filter, Control.MOUSE_FILTER_IGNORE,
-		"HUD never captures drawing input")
+	check_eq(
+		profile._quick_hud.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"HUD never captures drawing input"
+	)
 	check_true(
 		profile._quick_bar.get_index() < surface.get_floating_layer().get_index(),
 		"fixed quick bar remains below real floating-window layer"
