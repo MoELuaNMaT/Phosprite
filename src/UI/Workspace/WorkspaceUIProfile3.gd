@@ -917,7 +917,9 @@ func _place_quick_bar() -> void:
 		+ _quick_title.get_combined_minimum_size().y
 		+ 24.0
 	)
-	var requested_width := Stage3.CAPSULE_WIDTH if _quick_pixel_mode != Tokens.LEGACY else QUICK_BAR_WIDTH
+	var requested_width := (
+		Stage3.CAPSULE_WIDTH if _quick_pixel_mode != Tokens.LEGACY else QUICK_BAR_WIDTH
+	)
 	var desired := Vector2(requested_width, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
 	var rect := find_quick_rect(bounds, desired)
 	if not rect.has_area() or rect.size.y < QUICK_MIN_VISIBLE_HEIGHT:
@@ -1017,9 +1019,7 @@ func _add_quick_slider(tool: BaseTool, path: NodePath, title: String, size_value
 ## Only the opt-in Phosprite themes use the two-zone touch response.
 ## The user-visible slider is a proxy; the existing ValueSlider still owns
 ## configuration, persistence, redraw and tool-specific unit conversions.
-func _add_stage3_quick_slider(
-	tool: BaseTool, path: NodePath, title: String, is_size: bool
-) -> void:
+func _add_stage3_quick_slider(tool: BaseTool, path: NodePath, title: String, is_size: bool) -> void:
 	var source := tool.get_node_or_null(path) as Range
 	if source == null:
 		return
@@ -1045,8 +1045,11 @@ func _add_stage3_quick_slider(
 	var suffix := "px" if is_size else "%"
 	if is_size and source is ValueSlider:
 		suffix = str((source as ValueSlider).suffix)
-	var curve := is_size and Stage3.supports_pixel_size_mapping(
-		source.min_value, source.max_value, source.step, suffix
+	var curve := (
+		is_size
+		and Stage3.supports_pixel_size_mapping(
+			source.min_value, source.max_value, source.step, suffix
+		)
 	)
 	if curve:
 		slider.min_value = 0.0
@@ -1061,9 +1064,7 @@ func _add_stage3_quick_slider(
 		slider.step = maxf(source.step, 0.001)
 		slider.set_value_no_signal(source.value)
 	_update_quick_value_label(label, source.value, suffix)
-	slider.value_changed.connect(
-		_on_stage3_slider_changed.bind(source, curve, is_size, suffix)
-	)
+	slider.value_changed.connect(_on_stage3_slider_changed.bind(source, curve, is_size, suffix))
 	slider.drag_started.connect(_on_stage3_slider_drag_started.bind(source, is_size, suffix))
 	slider.drag_ended.connect(_on_stage3_slider_drag_ended)
 	var callback := _on_stage3_source_value_changed.bind(
@@ -1086,8 +1087,13 @@ func _on_stage3_slider_changed(
 
 
 func _on_stage3_source_value_changed(
-	value: float, slider: VSlider, label: Label, suffix: String, curve: bool,
-	source: Range, is_size: bool
+	value: float,
+	slider: VSlider,
+	label: Label,
+	suffix: String,
+	curve: bool,
+	source: Range,
+	is_size: bool
 ) -> void:
 	if not is_instance_valid(slider) or not is_instance_valid(label):
 		return
@@ -1192,8 +1198,10 @@ func _draw_quick_hud_preview() -> void:
 	var outline := Tokens.color(mode, &"outline_ink")
 	var fill := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
 	var square := roundi(clampf(_quick_hud_value, 1.0, 54.0)) if _quick_hud_size_mode else 12
-	var rect := Rect2(Vector2(roundi(center.x - square * 0.5), roundi(center.y - square * 0.5)),
-		Vector2(square, square))
+	var rect := Rect2(
+		Vector2(roundi(center.x - square * 0.5), roundi(center.y - square * 0.5)),
+		Vector2(square, square)
+	)
 	_quick_hud_preview.draw_rect(rect.grow(1.0), outline)
 	_quick_hud_preview.draw_rect(rect, fill)
 
@@ -1330,9 +1338,7 @@ func _input(event: InputEvent) -> void:
 	if not active or surface == null:
 		return
 	var dismiss_palette := (
-		is_instance_valid(_palette_popup)
-		and _palette_popup.visible
-		and not _palette_pinned
+		is_instance_valid(_palette_popup) and _palette_popup.visible and not _palette_pinned
 	)
 	if not _advanced_open and not dismiss_palette:
 		return
