@@ -44,6 +44,22 @@ static func make_panel(
 	)
 
 
+## Gallery panels already have child MarginContainers and card content insets.
+## Do not add the nine-slice's default 8px content padding a second time:
+## that would inflate the 64px Gallery topbar and crop card thumbnails.
+## This changes only Control layout margins, not the pixel border artwork.
+static func make_shell(
+	mode: StringName, tier: StringName, surface: StringName, with_shadow := false
+) -> StyleBoxTexture:
+	var style := make_panel(mode, tier, surface, with_shadow)
+	if style != null:
+		style.content_margin_left = 0.0
+		style.content_margin_top = 0.0
+		style.content_margin_right = 0.0
+		style.content_margin_bottom = 0.0
+	return style
+
+
 static func style_button(button: Button, mode: StringName, cta := false) -> void:
 	if not is_instance_valid(button):
 		return
