@@ -55,7 +55,6 @@ func _ready() -> void:
 		call_deferred("_install_ios_palette_touch_targets")
 
 
-
 func _apply_stage4_swatch_spacing() -> void:
 	# The 32px iPad cell contains a 28px R4 swatch with a 2px inset.
 	# A zero grid gap makes exactly 4px between painted swatches without
