@@ -330,8 +330,8 @@ func _draw_stage4_split_handle() -> void:
 	var color := Tokens.color(mode, &"outline_ink")
 	var unit := clampi(Global.pixel_ui_unit, 1, 3)
 	for dot_index in range(-1, 2):
-		var top_left := origin + Vector2i(-2 * unit, dot_index * 5 * unit - unit)
-		_split_handle.draw_rect(Rect2i(top_left, Vector2i(4 * unit, 3 * unit)), color)
+		var top_left := origin + Vector2i(-unit, dot_index * (unit + 2) - unit / 2)
+		_split_handle.draw_rect(Rect2i(top_left, Vector2i(2 * unit, unit)), color)
 
 
 func _update_split_handle() -> void:
