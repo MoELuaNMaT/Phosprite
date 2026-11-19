@@ -40,9 +40,7 @@ func test_stage4_button_chrome_is_opt_in_and_reversible() -> void:
 
 
 func test_stage4_pixel_styling_does_not_override_fonts() -> void:
-	var src := FileAccess.get_file_as_string(
-		"res://src/UI/DesignSystem/PhospriteStage4Chrome.gd"
-	)
+	var src := FileAccess.get_file_as_string("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 	check_true(not ("default_font" in src), "font fallback must stay owned by global Theme")
 	check_true(not ("add_theme_font_override" in src), "CJK font must not be replaced")
 
@@ -59,27 +57,31 @@ func test_stage4_palette_uses_actual_swatch_color_not_selected_index() -> void:
 
 func test_stage4_retains_two_layer_drag_release_fix() -> void:
 	var source := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerMainButton.gd")
-	check_has(source, "_apply_layer_drop.call_deferred(", "layer move stays deferred until input end")
+	check_has(
+		source, "_apply_layer_drop.call_deferred(", "layer move stays deferred until input end"
+	)
 
 
 func test_stage4_ui1_vertical_scrub_and_ui4_split_touch_are_unchanged() -> void:
-	var slider := FileAccess.get_file_as_string(
-		"res://src/UI/Nodes/Sliders/ValueSlider.gd"
-	)
-	var ui4 := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/WorkspaceUIProfile4.gd"
-	)
+	var slider := FileAccess.get_file_as_string("res://src/UI/Nodes/Sliders/ValueSlider.gd")
+	var ui4 := FileAccess.get_file_as_string("res://src/UI/Workspace/WorkspaceUIProfile4.gd")
 	check_has(slider, "func configure_tool_vertical_drag()", "existing vertical scrub is retained")
 	check_has(slider, "tool_vertical_drag = true", "existing vertical drag setting stays true")
 	check_has(slider, "Stage4.draw_scrubby_pill", "only vertical value visuals change")
-	check_has(ui4, "_split_handle.gui_input.connect(_on_split_handle_input)", "UI4 splitter gestures stay native")
-	check_has(ui4, "_split_handle.draw.connect(_draw_stage4_split_handle)", "UI4 adds visual grip only")
+	check_has(
+		ui4,
+		"_split_handle.gui_input.connect(_on_split_handle_input)",
+		"UI4 splitter gestures stay native"
+	)
+	check_has(
+		ui4, "_split_handle.draw.connect(_draw_stage4_split_handle)", "UI4 adds visual grip only"
+	)
 
 
 func test_stage4_preserves_36px_existing_timeline_cells() -> void:
 	var scene := FileAccess.get_file_as_string("res://src/UI/Timeline/CelButton.tscn")
 	check_has(scene, "custom_minimum_size = Vector2(36, 36)", "frame cells stay 36 by 36")
-	var layer_touch := FileAccess.get_file_as_string(
-		"res://src/UI/Timeline/LayerTouchAdapter.gd"
+	var layer_touch := FileAccess.get_file_as_string("res://src/UI/Timeline/LayerTouchAdapter.gd")
+	check_has(
+		layer_touch, "IOS_TOUCH_REORDER_HOLD_MSEC := 450", "layer reorder gesture stays 450ms"
 	)
-	check_has(layer_touch, "IOS_TOUCH_REORDER_HOLD_MSEC := 450", "layer reorder gesture stays 450ms")
