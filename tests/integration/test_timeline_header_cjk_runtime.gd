@@ -23,15 +23,25 @@ func test_live_timeline_header_uses_main_theme_in_both_modes() -> void:
 	var frame_label := accessory.find_child("FrameLabel", true, false) as Label
 	var mark := accessory.find_child("CurrentFrameMark", true, false) as Label
 	var mode_button := accessory.find_child("ModeSwitch", true, false) as Button
-	check_true(frame_label != null and mark != null and mode_button != null,
-		"mode switch and current frame display must remain present")
+	check_true(
+		frame_label != null and mark != null and mode_button != null,
+		"mode switch and current frame display must remain present"
+	)
 	if frame_label == null or mark == null or mode_button == null:
 		return
 	var editor_theme := Global.control.theme
 	check_eq(accessory.theme, editor_theme, "Node2D overlay must use editor Theme")
-	check_eq(frame_label.get_theme_default_font(), editor_theme.default_font, "label uses CJK-capable app font")
-	check_eq(mark.get_theme_default_font(), editor_theme.default_font, "frame counter uses app font")
-	check_eq(mode_button.get_theme_default_font(), editor_theme.default_font, "view switch uses app font")
+	check_eq(
+		frame_label.get_theme_default_font(),
+		editor_theme.default_font,
+		"label uses CJK-capable app font"
+	)
+	check_eq(
+		mark.get_theme_default_font(), editor_theme.default_font, "frame counter uses app font"
+	)
+	check_eq(
+		mode_button.get_theme_default_font(), editor_theme.default_font, "view switch uses app font"
+	)
 
 	var timeline := Global.animation_timeline as AnimationTimeline
 	var saved_mode := timeline.get_timeline_mode()
@@ -45,8 +55,10 @@ func test_live_timeline_header_uses_main_theme_in_both_modes() -> void:
 		check_true(mode_button.text.length() > 0, "mode switch must show its mode label")
 		check_eq(
 			mark.text,
-			"%d/%d" % [Global.current_project.current_frame + 1,
-			Global.current_project.frames.size()],
+			(
+				"%d/%d"
+				% [Global.current_project.current_frame + 1, Global.current_project.frames.size()]
+			),
 			"frame display must use plain decimal indices"
 		)
 	timeline.set_timeline_mode(saved_mode, false)
