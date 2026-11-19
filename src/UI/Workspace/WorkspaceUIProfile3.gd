@@ -554,10 +554,7 @@ func _constrain_stage3_palette_position(position: Vector2) -> Vector2:
 	var target := Rect2(position, _palette_popup.size)
 	var exclusion := _quick_bar.get_global_rect().grow(QUICK_CLEARANCE)
 	var parent_transform := ui_root.get_global_transform_with_canvas().affine_inverse()
-	var bounds := Rect2(
-		parent_transform * exclusion.position,
-		exclusion.size
-	)
+	var bounds := Rect2(parent_transform * exclusion.position, exclusion.size)
 	if not target.intersects(bounds):
 		return position
 	var clear_x := bounds.end.x
