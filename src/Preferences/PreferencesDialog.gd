@@ -2,6 +2,8 @@ extends AcceptDialog
 
 const PixelTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
+const Stage2Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
+const Stage2Icons := preload("res://src/UI/DesignSystem/PhospriteStage2Icons.gd")
 
 var pref_theme_base_color := Preference.new(
 	"theme_base_color",
@@ -272,6 +274,8 @@ var _ipad_pixel_unit_select: OptionButton
 var _ipad_pixel_style_preview: PanelContainer
 var _ipad_pixel_style_preview_label: Label
 var _ipad_profile_select: OptionButton
+var _ipad_profile_segment: HBoxContainer
+var _ipad_profile_buttons: Dictionary = {}
 var _ipad_color_mode_select: OptionButton
 var _ipad_view_toggles: Dictionary = {}
 var _ipad_workspace_panels: VBoxContainer
@@ -666,11 +670,32 @@ func _setup_ipad_settings_pages() -> void:
 
 	var workspace_page := _new_ipad_settings_page("WorkspaceSettings")
 	_ipad_add_heading(workspace_page, tr("UI Layout"))
+	_ipad_profile_segment = HBoxContainer.new()
+	_ipad_profile_segment.name = &"iPadProfileSegment"
+	_ipad_profile_segment.add_theme_constant_override(&"separation", 4)
+	workspace_page.add_child(_ipad_profile_segment)
+	for id in [1, 3, 4]:
+		var button := Button.new()
+		button.name = StringName("ProfileUI%d" % id)
+		button.toggle_mode = true
+		button.custom_minimum_size.y = 40.0
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.text = _ipad_profile_title(id)
+		button.icon = Stage2Icons.icon(StringName("ui%d" % id))
+		button.expand_icon = false
+		button.pressed.connect(_ipad_change_ui_profile_id.bind(id))
+		_ipad_profile_buttons[id] = button
+		_ipad_profile_segment.add_child(button)
 	_ipad_profile_select = OptionButton.new()
 	for id in [1, 3, 4]:
 		_ipad_profile_select.add_item("UI%d" % id, id)
 	_ipad_profile_select.item_selected.connect(_ipad_change_ui_profile)
 	workspace_page.add_child(_ipad_profile_select)
+	if not Themes.theme_switched.is_connected(_refresh_ipad_profile_segment):
+		Themes.theme_switched.connect(_refresh_ipad_profile_segment)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_ipad_profile_segment):
+		Global.pixel_ui_unit_changed.connect(_refresh_ipad_profile_segment)
+	_refresh_ipad_profile_segment()
 	_ipad_add_heading(workspace_page, tr("Layout Presets"))
 	_ipad_workspace_layouts = MenuButton.new()
 	_ipad_workspace_layouts.text = tr("Choose or Manage Layout")
@@ -862,13 +887,70 @@ func _refresh_ipad_project_settings() -> void:
 		_ipad_color_mode_select.select(1 if Global.current_project.is_indexed() else 0)
 
 
-func _ipad_change_ui_profile(index: int) -> void:
+func _ipad_profile_title(id: int) -> String:
+	match id:
+		1:
+			return tr("Classic Two-Column")
+		3:
+			return tr("Immersive Capsule")
+		4:
+			return tr("Animation Workspace")
+		_:
+			return "UI%d" % id
+
+
+func _refresh_ipad_profile_segment() -> void:
+	if not is_instance_valid(_ipad_profile_segment) or not is_instance_valid(_ipad_profile_select):
+		return
+	var mode := Stage2Chrome.active_mode()
+	var is_pixel := mode != PixelTokens.LEGACY
+	_ipad_profile_segment.visible = is_pixel
+	_ipad_profile_select.visible = not is_pixel
+	for id in _ipad_profile_buttons:
+		var button := _ipad_profile_buttons[id] as Button
+		if is_pixel:
+			Stage2Chrome.style_button(button, mode)
+			button.text = _ipad_profile_title(id)
+		else:
+			Stage2Chrome.clear_button(button)
+	_refresh_ipad_profile_selected_state()
+
+
+func _refresh_ipad_profile_selected_state() -> void:
+	if not is_instance_valid(_ipad_profile_select):
+		return
+	var top := _ipad_top_menu()
+	if not is_instance_valid(top):
+		return
+	var ui: Node = top.get("main_ui")
+	if ui == null:
+		return
+	var controller := ui.get_parent().get("workspace_ui_profile_controller")
+	if controller == null:
+		return
+	var layout_store := controller.get("store") as WorkspaceLayoutStore
+	if layout_store == null:
+		return
+	var active_id := layout_store.get_active_layout_slot()
+	var index := _ipad_profile_select.get_item_index(active_id)
+	if index >= 0:
+		_ipad_profile_select.select(index)
+	for id in _ipad_profile_buttons:
+		(_ipad_profile_buttons[id] as Button).set_pressed_no_signal(id == active_id)
+
+
+func _ipad_change_ui_profile_id(id: int) -> void:
 	var top := _ipad_top_menu()
 	if not is_instance_valid(top):
 		return
 	var menu := top.get("ui_menu") as PopupMenu
 	if menu != null:
-		menu.id_pressed.emit(_ipad_profile_select.get_item_id(index))
+		menu.id_pressed.emit(id)
+	_refresh_ipad_profile_selected_state()
+
+
+func _ipad_change_ui_profile(index: int) -> void:
+	_ipad_change_ui_profile_id(_ipad_profile_select.get_item_id(index))
 
 
 func _ipad_select_layout_preset(id: int) -> void:
@@ -921,11 +1003,7 @@ func _refresh_ipad_workspace_settings() -> void:
 		return
 	var profile_controller: Node = ui.get_parent().get("workspace_ui_profile_controller")
 	if profile_controller != null:
-		var layout_store := profile_controller.get("store") as WorkspaceLayoutStore
-		var active_id := layout_store.get_active_layout_slot() if layout_store != null else 1
-		var index := _ipad_profile_select.get_item_index(active_id)
-		if index >= 0:
-			_ipad_profile_select.select(index)
+		_refresh_ipad_profile_selected_state()
 	var layouts := top.get("layouts_submenu") as PopupMenu
 	var layout_target := _ipad_workspace_layouts.get_popup()
 	if layouts != null:

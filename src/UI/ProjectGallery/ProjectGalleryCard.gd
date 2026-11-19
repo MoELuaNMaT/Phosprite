@@ -6,6 +6,8 @@ signal pointer_up(path: String, position: Vector2, timestamp_msec: int)
 signal pointer_cancel(path: String)
 
 const Entry := preload("res://src/ProjectLibrary/ProjectLibraryEntry.gd")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
 const DRAG_CANCEL_DISTANCE := 24.0
 const SYNTHETIC_MOUSE_SUPPRESSION_MSEC := 500
 const SYNTHETIC_MOUSE_SUPPRESSION_DISTANCE := 32.0
@@ -20,15 +22,95 @@ var _pointer_active := false
 var _pointer_origin := Vector2.ZERO
 var _last_touch_msec := -1
 var _last_touch_position := Vector2.ZERO
+var _pixel_mode: StringName = Tokens.LEGACY
+var _display_title := ""
+var _legacy_styles: Dictionary = {}
+var _legacy_colors: Dictionary = {}
+var _legacy_thumbnail_filter := CanvasItem.TEXTURE_FILTER_PARENT_NODE
 
 @onready var visual_root := %VisualRoot as Control
 @onready var thumbnail_frame := %ThumbnailFrame as Control
+@onready var title_strip := %ProjectTitleStrip as PanelContainer
+@onready var title_label := %ProjectTitle as Label
 @onready var thumbnail_rect := %Thumbnail as TextureRect
 @onready var thumbnail_status := %ThumbnailStatus as Label
 @onready var size_label := %CanvasSize as Label
 @onready var modified_label := %ModifiedTime as Label
 @onready var selection_outline := %SelectionOutline as Panel
 @onready var selection_check := %SelectionCheck as Label
+
+
+func _ready() -> void:
+	_legacy_thumbnail_filter = thumbnail_rect.texture_filter
+	_legacy_styles = {
+		"card": get_theme_stylebox(&"panel"),
+		"thumbnail": thumbnail_frame.get_theme_stylebox(&"panel"),
+		"selection": selection_outline.get_theme_stylebox(&"panel"),
+	}
+	_legacy_colors = {
+		"size": size_label.get_theme_color(&"font_color"),
+		"modified": modified_label.get_theme_color(&"font_color"),
+		"title_check": selection_check.get_theme_color(&"font_color"),
+	}
+
+
+func set_display_title(value: String) -> void:
+	_display_title = value
+	if is_instance_valid(title_label):
+		title_label.text = value
+
+
+## Set by the Gallery, never by project serialization. Legacy palettes keep
+## their preexisting scene resources. The image itself remains untouched.
+func apply_stage2_theme(mode: StringName) -> void:
+	if not is_node_ready():
+		return
+	_pixel_mode = mode
+	title_strip.visible = mode != Tokens.LEGACY
+	if mode == Tokens.LEGACY:
+		thumbnail_rect.texture_filter = _legacy_thumbnail_filter
+		add_theme_stylebox_override(&"panel", _legacy_styles["card"])
+		thumbnail_frame.add_theme_stylebox_override(&"panel", _legacy_styles["thumbnail"])
+		selection_outline.add_theme_stylebox_override(&"panel", _legacy_styles["selection"])
+		size_label.add_theme_color_override(&"font_color", _legacy_colors["size"])
+		modified_label.add_theme_color_override(&"font_color", _legacy_colors["modified"])
+		selection_check.add_theme_color_override(&"font_color", _legacy_colors["title_check"])
+		title_strip.remove_theme_stylebox_override(&"panel")
+		title_label.remove_theme_color_override(&"font_color")
+	else:
+		# Only the thumbnail image is pixel-filtered. UI text remains antialiased.
+		thumbnail_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+		thumbnail_frame.add_theme_stylebox_override(
+			&"panel", Chrome.make_panel(mode, Tokens.TIER_M, &"well_surface")
+		)
+		size_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
+		modified_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_muted"))
+		selection_check.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
+		title_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
+	_sync_stage2_selection()
+
+
+func _sync_stage2_selection() -> void:
+	if _pixel_mode == Tokens.LEGACY:
+		return
+	var surface := &"accent_primary" if selected else &"accent_soft"
+	title_strip.add_theme_stylebox_override(
+		&"panel", Chrome.make_panel(_pixel_mode, Tokens.TIER_M, surface)
+	)
+	selection_outline.add_theme_stylebox_override(
+		&"panel",
+		PhospritePixelStyle.make_style(
+			Tokens.TIER_L,
+			Color.TRANSPARENT,
+			Tokens.color(_pixel_mode, &"accent_primary"),
+			Tokens.color(_pixel_mode, &"pixel_shadow"),
+			false,
+			Global.pixel_ui_unit
+		)
+	)
 
 
 func _notification(what: int) -> void:
@@ -63,7 +145,7 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 func set_card_width(card_width: float) -> void:
 	var width := maxf(card_width, 1.0)
 	var thumbnail_width := maxf(width - 16.0, 1.0)
-	custom_minimum_size = Vector2(width, width + 54.0)
+	custom_minimum_size = Vector2(width, width + (84.0 if _pixel_mode != Tokens.LEGACY else 54.0))
 	thumbnail_frame.custom_minimum_size = Vector2(thumbnail_width, thumbnail_width)
 
 
@@ -134,6 +216,7 @@ func set_selected(value: bool) -> void:
 		selection_outline.visible = value
 	if is_instance_valid(selection_check):
 		selection_check.visible = value
+	_sync_stage2_selection()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -205,7 +288,16 @@ func _set_thumbnail_status(message: String, is_error: bool) -> void:
 	thumbnail_status.text = message
 	thumbnail_status.visible = true
 	thumbnail_status.add_theme_color_override(
-		"font_color", STATUS_ERROR_COLOR if is_error else STATUS_NORMAL_COLOR
+		"font_color",
+		(
+			STATUS_ERROR_COLOR
+			if is_error
+			else (
+				Tokens.color(_pixel_mode, &"text_muted")
+				if _pixel_mode != Tokens.LEGACY
+				else STATUS_NORMAL_COLOR
+			)
+		)
 	)
 
 

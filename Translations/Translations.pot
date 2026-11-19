@@ -5074,3 +5074,15 @@ msgstr ""
 
 msgid "Pixel outlines, staircase corners and hard shadows. Phosprite themes only."
 msgstr ""
+
+msgid "Untitled"
+msgstr ""
+
+msgid "Classic Two-Column"
+msgstr ""
+
+msgid "Immersive Capsule"
+msgstr ""
+
+msgid "Animation Workspace"
+msgstr ""

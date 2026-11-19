@@ -15,7 +15,11 @@ const HEART_ICON := preload("res://assets/graphics/misc/heart.svg")
 const PROJECTS_TOPBAR_ICON := preload("res://assets/graphics/ui/tabler/folders.svg")
 const SETTINGS_TOPBAR_ICON := preload("res://assets/graphics/ui/tabler/settings.svg")
 const EFFECTS_TOPBAR_ICON := preload("res://assets/graphics/ui/tabler/wand.svg")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
+const Icons := preload("res://src/UI/DesignSystem/PhospriteStage2Icons.gd")
 const TOPBAR_ICON_BUTTON_SIZE := Vector2(32, 32)
+const STAGE2_PROFILE_ID_BASE := 10000
 
 var recent_projects := []
 var selected_layout := 0
@@ -129,6 +133,10 @@ class Dialog:
 
 
 func _ready() -> void:
+	if not Themes.theme_switched.is_connected(_refresh_stage2_topbar):
+		Themes.theme_switched.connect(_refresh_stage2_topbar)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_stage2_topbar):
+		Global.pixel_ui_unit_changed.connect(_refresh_stage2_topbar)
 	ui_menu = desktop_ui_menu
 	handle_main_menu_collapse()
 	main.save_file_dialog_opened.connect(func(opened: bool): can_save = not opened)
@@ -179,6 +187,7 @@ func set_return_home_visible(should_show: bool) -> void:
 		return
 	_apply_ipad_topbar_visibility()
 	_arrange_topbar_menu_buttons()
+	_refresh_stage2_topbar()
 
 
 func _ensure_ui_layout_button() -> void:
@@ -212,7 +221,17 @@ func _ensure_settings_button() -> void:
 	settings_button.text = tr("Settings")
 	row.add_child(settings_button)
 	var popup := settings_button.get_popup()
-	popup.id_pressed.connect(edit_menu_id_pressed)
+	popup.id_pressed.connect(_on_settings_root_item_pressed)
+
+
+func _on_settings_root_item_pressed(id: int) -> void:
+	if id in [STAGE2_PROFILE_ID_BASE + 1, STAGE2_PROFILE_ID_BASE + 3, STAGE2_PROFILE_ID_BASE + 4]:
+		# Reuse the one WorkspaceUIProfileController transaction, including
+		# persistence, rollback, independent layouts and UI2 exclusion.
+		_forward_ipad_ui(id - STAGE2_PROFILE_ID_BASE)
+		_sync_ipad_settings_menu()
+	else:
+		edit_menu_id_pressed(id)
 
 
 func _attach_settings_project_menu() -> void:
@@ -298,6 +317,46 @@ func _set_ipad_topbar_icons(ipad_editor: bool) -> void:
 	if is_instance_valid(_effects_icon_button):
 		_effects_icon_button.visible = ipad_editor
 		_effects_icon_button.tooltip_text = tr("Effects")
+	_refresh_stage2_topbar()
+
+
+## Header-only Stage 2 adaptation. The original menu commands and PopupMenus
+## remain intact, including project, shortcut, Effects and Settings handlers.
+func _refresh_stage2_topbar() -> void:
+	if not is_node_ready() or not is_instance_valid(return_home_button):
+		return
+	var ipad_editor := _is_ipad_editor()
+	var mode := Chrome.active_mode() if ipad_editor else Tokens.LEGACY
+	if mode == Tokens.LEGACY:
+		remove_theme_stylebox_override(&"panel")
+		for button in [return_home_button, settings_button, _effects_icon_button]:
+			Chrome.clear_button(button)
+		if ipad_editor:
+			return_home_button.icon = PROJECTS_TOPBAR_ICON
+			return_home_button.flat = true
+			return_home_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
+			if is_instance_valid(settings_button):
+				settings_button.icon = SETTINGS_TOPBAR_ICON
+				settings_button.flat = true
+				settings_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
+			if is_instance_valid(_effects_icon_button):
+				_effects_icon_button.icon = EFFECTS_TOPBAR_ICON
+				_effects_icon_button.flat = true
+				_effects_icon_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
+		return
+	add_theme_stylebox_override(&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface"))
+	for button in [return_home_button, settings_button, _effects_icon_button]:
+		if not is_instance_valid(button):
+			continue
+		Chrome.style_button(button, mode)
+		button.flat = false
+		button.custom_minimum_size = Vector2(40, 40)
+		button.expand_icon = false
+	return_home_button.icon = Icons.icon(&"gallery")
+	if is_instance_valid(settings_button):
+		settings_button.icon = Icons.icon(&"settings")
+	if is_instance_valid(_effects_icon_button):
+		_effects_icon_button.icon = Icons.icon(&"effects")
 
 
 func _ensure_effects_icon_button() -> void:
@@ -340,6 +399,11 @@ func _setup_ipad_settings_menu() -> void:
 	if _ipad_settings_populated:
 		return
 	var popup := settings_button.get_popup()
+	for profile_id in [1, 3, 4]:
+		var label := _stage2_profile_title(profile_id)
+		popup.add_radio_check_item(label, STAGE2_PROFILE_ID_BASE + profile_id)
+		popup.set_item_icon(popup.item_count - 1, Icons.icon(StringName("ui%d" % profile_id)))
+	popup.add_separator()
 	_ipad_project_actions = _new_ipad_submenu(popup, tr("Project Operations"))
 	for entry in [
 		[Global.ProjectMenu.PROJECT_PROPERTIES, "Project Properties"],
@@ -391,9 +455,33 @@ func _setup_ipad_settings_menu() -> void:
 	_sync_ipad_settings_menu()
 
 
+func _stage2_profile_title(profile_id: int) -> String:
+	match profile_id:
+		1:
+			return tr("Classic Two-Column")
+		3:
+			return tr("Immersive Capsule")
+		4:
+			return tr("Animation Workspace")
+		_:
+			return "UI%d" % profile_id
+
+
 func _sync_ipad_settings_menu() -> void:
 	if not _ipad_settings_populated:
 		return
+	var pixel_active := Chrome.active_mode() != Tokens.LEGACY
+	for profile_id in [1, 3, 4]:
+		var profile_index := settings_button.get_popup().get_item_index(
+			STAGE2_PROFILE_ID_BASE + profile_id
+		)
+		if profile_index < 0:
+			continue
+		var popup := settings_button.get_popup()
+		popup.set_item_hidden(profile_index, not pixel_active)
+		popup.set_item_text(profile_index, _stage2_profile_title(profile_id))
+		var ui_index := ui_menu.get_item_index(profile_id) if ui_menu != null else -1
+		popup.set_item_checked(profile_index, ui_index >= 0 and ui_menu.is_item_checked(ui_index))
 	for item_id in [Global.ViewMenu.SHOW_RULERS, Global.ViewMenu.SHOW_GUIDES]:
 		var index := _ipad_canvas_actions.get_item_index(item_id)
 		_ipad_canvas_actions.set_item_checked(
