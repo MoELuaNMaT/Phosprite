@@ -81,7 +81,7 @@ func apply_stage2_theme(mode: StringName) -> void:
 		# Only the thumbnail image is pixel-filtered. UI text remains antialiased.
 		thumbnail_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_theme_stylebox_override(
-			&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface", true)
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
 		)
 		thumbnail_frame.add_theme_stylebox_override(
 			&"panel", Chrome.make_panel(mode, Tokens.TIER_M, &"well_surface")
