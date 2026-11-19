@@ -300,7 +300,8 @@ func _ensure_split_handle() -> void:
 	_split_handle.mouse_filter = Control.MOUSE_FILTER_STOP
 	_split_handle.mouse_default_cursor_shape = Control.CURSOR_VSIZE
 	surface.dock_host.add_child(_split_handle)
-	_split_handle.gui_input.connect(_on_split_handle_input)	_split_handle.draw.connect(_draw_stage4_split_handle)
+	_split_handle.gui_input.connect(_on_split_handle_input)
+	_split_handle.draw.connect(_draw_stage4_split_handle)
 	if not Themes.theme_switched.is_connected(_refresh_stage4_split_handle):
 		Themes.theme_switched.connect(_refresh_stage4_split_handle)
 	if not Global.pixel_ui_unit_changed.is_connected(_refresh_stage4_split_handle):
