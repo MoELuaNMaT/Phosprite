@@ -18,6 +18,7 @@ const GestureResolverScript := preload("res://src/UI/ProjectGallery/ProjectCardG
 const CARD_SCENE := preload("res://src/UI/ProjectGallery/ProjectGalleryCard.tscn")
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
+const Icons := preload("res://src/UI/DesignSystem/PhospriteStage2Icons.gd")
 
 const LANDSCAPE_COLUMNS := 6
 const PORTRAIT_COLUMNS := 4
@@ -83,9 +84,9 @@ var _stage2_left_buttons: HBoxContainer
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
-		multiselect_button.text = (
-			tr("Exit Multi-Select") if multiselect_mode else tr("Multi-Select")
-		)
+		_sync_multiselect_button_presentation()
+		if _stage2_mode != Tokens.LEGACY:
+			new_button.text = tr("New")
 
 
 func _ready() -> void:
@@ -144,6 +145,18 @@ func _capture_stage2_legacy() -> void:
 	}
 
 
+func _sync_multiselect_button_presentation() -> void:
+	if not is_instance_valid(multiselect_button):
+		return
+	var title := tr("Exit Multi-Select") if multiselect_mode else tr("Multi-Select")
+	if _stage2_mode != Tokens.LEGACY:
+		multiselect_button.text = ""
+		multiselect_button.tooltip_text = title
+	else:
+		multiselect_button.text = title
+		multiselect_button.tooltip_text = ""
+
+
 func _ensure_stage2_left_island() -> void:
 	if is_instance_valid(_stage2_left_island):
 		return
@@ -193,6 +206,11 @@ func _refresh_stage2_theme() -> void:
 		feedback_banner.add_theme_color_override(&"font_color", _stage2_legacy["feedback"])
 		for button in [import_button, new_button, multiselect_button]:
 			Chrome.clear_button(button)
+		import_button.icon = null
+		new_button.icon = null
+		multiselect_button.icon = null
+		import_button.text = tr("Import")
+		new_button.text = tr("New")
 		import_button.custom_minimum_size = _stage2_legacy["import_min"]
 		new_button.custom_minimum_size = _stage2_legacy["new_min"]
 		multiselect_button.custom_minimum_size = _stage2_legacy["select_min"]
@@ -214,6 +232,14 @@ func _refresh_stage2_theme() -> void:
 		for button in [import_button, new_button, multiselect_button]:
 			Chrome.style_button(button, mode, button == new_button)
 			button.custom_minimum_size.y = 40.0
+			button.expand_icon = false
+		import_button.icon = Icons.icon(&"import")
+		multiselect_button.icon = Icons.icon(&"multi_select")
+		new_button.icon = Icons.icon(&"new")
+		import_button.text = ""
+		import_button.tooltip_text = tr("Import")
+		new_button.text = tr("New")
+	_sync_multiselect_button_presentation()
 	for card: ProjectGalleryCard in _cards:
 		card.apply_stage2_theme(mode)
 	call_deferred("_update_layout")
@@ -365,7 +391,7 @@ func request_open(path: String) -> void:
 
 func set_multiselect_mode(enabled: bool) -> void:
 	multiselect_mode = enabled
-	multiselect_button.text = tr("Exit Multi-Select") if enabled else tr("Multi-Select")
+	_sync_multiselect_button_presentation()
 	_gesture_resolver.reset()
 	_hide_popovers()
 	if not enabled:
