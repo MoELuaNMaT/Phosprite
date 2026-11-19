@@ -35,7 +35,7 @@ func test_two_layer_bottom_to_top_reorder_survives_touch_release() -> void:
 		return
 	var bottom_cel := project.frames[0].cels[0]
 	var top_cel := project.frames[0].cels[1]
-	
+
 	# Reproduce the exact touch release path. The adapter clears the payload
 	# immediately after committing, and its parent is freed during the move.
 	source_touch.set("_drop_target", target_row.main_button)
@@ -44,7 +44,9 @@ func test_two_layer_bottom_to_top_reorder_survives_touch_release() -> void:
 	source_touch.call("_commit_reorder_if_valid")
 	source_touch.call("_finish_reorder")
 
-	check_eq(project.layers[0], bottom_layer, "release must not mutate the stack in the input callback")
+	check_eq(
+		project.layers[0], bottom_layer, "release must not mutate the stack in the input callback"
+	)
 	check_eq(project.layers[1], top_layer, "drop must be pending until the input call completes")
 
 	await tree.process_frame
@@ -52,7 +54,9 @@ func test_two_layer_bottom_to_top_reorder_survives_touch_release() -> void:
 	check_eq(project.layers[1], bottom_layer, "moved layer must retain its identity")
 	check_eq(project.frames[0].cels[0], top_cel, "upper cel must move with its layer")
 	check_eq(project.frames[0].cels[1], bottom_cel, "bottom cel must move with its layer")
-	check_true(not is_instance_valid(source_row), "old source UI must be released after input completion")
+	check_true(
+		not is_instance_valid(source_row), "old source UI must be released after input completion"
+	)
 
 	project.undo_redo.undo()
 	check_eq(project.layers[0], bottom_layer, "Undo must restore the original bottom layer")
