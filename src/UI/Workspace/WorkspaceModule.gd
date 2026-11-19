@@ -222,10 +222,34 @@ func set_header_accessory(accessory: Control) -> bool:
 	add_child(_header_accessory_layer)
 	_header_accessory_layer.add_child(accessory)
 	_header_accessory = accessory
+	# Node2D keeps this header overlay outside MarginContainer's layout,
+	# but it also interrupts Control-to-Control theme inheritance. Reattach
+	# the closest owning UI Theme so labels use the same iPad CJK fallback.
+	_sync_header_accessory_theme()
+	if not Themes.theme_switched.is_connected(_sync_header_accessory_theme):
+		Themes.theme_switched.connect(_sync_header_accessory_theme)
 	_layout_header_accessory()
 	update_minimum_size()
 	queue_redraw()
 	return true
+
+
+## Bridge the intentional Node2D overlay to its nearest themed Control.
+## Copy the Theme reference, not the font, so buttons, labels and popups keep
+## the same typography and visual resources as the rest of the editor.
+func _sync_header_accessory_theme() -> void:
+	if not is_instance_valid(_header_accessory):
+		return
+	var ancestor: Node = self
+	while ancestor != null:
+		if ancestor is Control:
+			var inherited_theme := (ancestor as Control).theme
+			if inherited_theme != null:
+				if _header_accessory.theme != inherited_theme:
+					_header_accessory.theme = inherited_theme
+					_layout_header_accessory()
+				return
+		ancestor = ancestor.get_parent()
 
 
 func get_header_accessory() -> Control:
@@ -562,7 +586,11 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_layout_header_accessory()
 		queue_redraw()
+	elif what == NOTIFICATION_THEME_CHANGED:
+		# Changes to the root Theme do not cross HeaderAccessoryLayer (Node2D).
+		_sync_header_accessory_theme()
 	elif what == NOTIFICATION_TRANSLATION_CHANGED:
+		_layout_header_accessory()
 		queue_redraw()
 
 
