@@ -1658,6 +1658,12 @@ func _refresh_stage3_visuals() -> void:
 		)
 		Chrome.style_button(_palette_close_button, mode)
 	else:
+		# The legacy popup has no tear-off header or close control.
+		# Clear the pinned state before hiding that control to avoid a
+		# permanently open palette when switching theme presets.
+		_palette_pinned = false
+		_palette_dragging = false
+		_palette_popup.visible = false
 		_quick_bar.remove_theme_stylebox_override(&"panel")
 		_palette_popup.remove_theme_stylebox_override(&"panel")
 		_palette_header.remove_theme_stylebox_override(&"panel")
