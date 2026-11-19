@@ -83,9 +83,7 @@ func apply_stage2_theme(mode: StringName) -> void:
 		)
 		size_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
 		modified_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_muted"))
-		selection_check.add_theme_color_override(
-			&"font_color", Tokens.color(mode, &"text_primary")
-		)
+		selection_check.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
 		title_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
 	_sync_stage2_selection()
 
@@ -142,9 +140,7 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 func set_card_width(card_width: float) -> void:
 	var width := maxf(card_width, 1.0)
 	var thumbnail_width := maxf(width - 16.0, 1.0)
-	custom_minimum_size = Vector2(
-		width, width + (84.0 if _pixel_mode != Tokens.LEGACY else 54.0)
-	)
+	custom_minimum_size = Vector2(width, width + (84.0 if _pixel_mode != Tokens.LEGACY else 54.0))
 	thumbnail_frame.custom_minimum_size = Vector2(thumbnail_width, thumbnail_width)
 
 
