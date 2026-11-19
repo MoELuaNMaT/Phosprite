@@ -10,6 +10,10 @@ extends Node
 ## tapping any top-right tool opens its complete Workspace tool options.
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
+const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
+const Stage3 := preload("res://src/UI/DesignSystem/PhospriteStage3Controls.gd")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
@@ -45,6 +49,7 @@ const QUICK_CLEARANCE := 8.0
 const QUICK_EXCLUSION_ID := &"ui3.quick_controls"
 const QUICK_MIN_VISIBLE_HEIGHT := 104.0
 const QUICK_SLIDER_HEIGHT := 106.0
+const PALETTE_HEADER_HEIGHT := 36.0
 const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
 const OPTIONS_CONTENT_PADDING := Vector2(22.0, 72.0)
 const OPTIONS_MAX_VIEWPORT_RATIO := 0.82
@@ -71,6 +76,16 @@ var _quick_scroll: ScrollContainer
 var _quick_controls: VBoxContainer
 var _quick_bindings: Array[Dictionary] = []
 var _quick_has_controls := false
+var _quick_pixel_mode: StringName = Tokens.LEGACY
+var _quick_swatch_left: Button
+var _quick_swatch_right: Button
+var _quick_hud: PanelContainer
+var _quick_hud_label: Label
+var _quick_hud_preview: Control
+var _quick_hud_value := 1.0
+var _quick_hud_size_mode := false
+var _quick_hud_generation := 0
+var _quick_slider_dragging := false
 var _advanced_open := false
 
 var _options_module: WorkspaceModule
@@ -84,6 +99,15 @@ var _options_size_source: BaseTool
 
 var _palette_popup: PanelContainer
 var _palette_content: Control
+var _palette_header: PanelContainer
+var _palette_header_label: Label
+var _palette_close_button: Button
+var _palette_pinned := false
+var _palette_dragging := false
+var _palette_drag_origin := Vector2.ZERO
+var _palette_drag_start := Vector2.ZERO
+var _palette_drag_touch_index := -1
+var _palette_last_touch_msec := -1000
 
 var _original_left_options_state: Dictionary = {}
 var _compacted_tool: BaseTool
@@ -129,6 +153,7 @@ func activate() -> bool:
 	_last_active_tool = _current_left_tool_name()
 	_refresh_taskbar()
 	_refresh_config_panel()
+	_refresh_stage3_visuals()
 	return true
 
 
@@ -139,6 +164,9 @@ func deactivate() -> void:
 		return
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
+	_palette_pinned = false
+	_palette_dragging = false
+	_hide_quick_hud()
 	_hide_advanced_panel()
 	_disconnect_options_size_source()
 	_advanced_open = false
