@@ -26,7 +26,7 @@ var _pixel_mode: StringName = Tokens.LEGACY
 var _display_title := ""
 var _legacy_styles: Dictionary = {}
 var _legacy_colors: Dictionary = {}
-var _legacy_thumbnail_filter := CanvasItem.TEXTURE_FILTER_INHERIT
+var _legacy_thumbnail_filter := CanvasItem.TEXTURE_FILTER_PARENT_NODE
 
 @onready var visual_root := %VisualRoot as Control
 @onready var thumbnail_frame := %ThumbnailFrame as Control
