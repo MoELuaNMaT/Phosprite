@@ -64,6 +64,8 @@ var active := false
 
 var _tool_buttons: Node
 var _taskbar: HBoxContainer
+var _taskbar_island: PanelContainer
+var _taskbar_scroller: ScrollContainer
 var _brush_button: Button
 var _eraser_button: Button
 var _color_button: Button
@@ -181,6 +183,8 @@ func deactivate() -> void:
 		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
 	if is_instance_valid(_taskbar):
 		_taskbar.visible = false
+	if is_instance_valid(_taskbar_island):
+		_taskbar_island.visible = false
 
 
 func refresh_after_tools_ready() -> bool:
@@ -233,7 +237,12 @@ func apply_initial_workspace() -> bool:
 		if current.has_area():
 			size = current.size
 	var bounds := surface.get_floating_bounds()
-	var target := Rect2(bounds.position + PREVIEW_MARGIN, size)
+	var margin := (
+		Vector2(72.0, PREVIEW_MARGIN.y)
+		if Chrome.active_mode() != Tokens.LEGACY
+		else PREVIEW_MARGIN
+	)
+	var target := Rect2(bounds.position + margin, size)
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		return surface.set_floating_rect(Builtins.PREVIEW_ID, target)
 	return surface.float_module(Builtins.PREVIEW_ID, target)
@@ -303,6 +312,22 @@ func _create_taskbar() -> bool:
 	_taskbar.add_theme_constant_override(&"separation", 3)
 	row.add_child(_taskbar)
 	row.move_child(_taskbar, row.get_child_count() - 1)
+
+	# Only pixel-themed UI3 shows the right panel island. The scroll host
+	# protects the 590pt split viewport without dropping source tool actions.
+	_taskbar_island = PanelContainer.new()
+	_taskbar_island.name = &"UI3TopRightIsland"
+	_taskbar_island.visible = false
+	_taskbar_island.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_taskbar_island)
+	_taskbar_scroller = ScrollContainer.new()
+	_taskbar_scroller.name = &"UI3TopRightScroller"
+	_taskbar_scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_taskbar_scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_taskbar_scroller.custom_minimum_size.y = TASK_BUTTON_SIZE.y
+	_taskbar_scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_taskbar_scroller.mouse_filter = Control.MOUSE_FILTER_PASS
+	_taskbar_island.add_child(_taskbar_scroller)
 	return true
 
 
@@ -1343,6 +1368,9 @@ func _is_blank_canvas_point(pointer: Vector2) -> bool:
 		return false
 	if is_instance_valid(_taskbar) and _taskbar.get_global_rect().has_point(pointer):
 		return false
+	if is_instance_valid(_taskbar_island) and _taskbar_island.visible:
+		if _taskbar_island.get_global_rect().has_point(pointer):
+			return false
 	if is_instance_valid(_palette_popup) and _palette_popup.visible:
 		if _palette_popup.get_global_rect().has_point(pointer):
 			return false
@@ -1568,6 +1596,7 @@ func _refresh_stage3_visuals() -> void:
 	var mode := Chrome.active_mode()
 	_quick_pixel_mode = mode
 	var pixel := mode != Tokens.LEGACY
+	_sync_stage3_taskbar_island(pixel, mode)
 	var margin := _quick_bar.get_child(0) as MarginContainer
 	if margin != null:
 		for side in [&"left", &"top", &"right", &"bottom"]:
@@ -1603,6 +1632,31 @@ func _refresh_stage3_visuals() -> void:
 	_update_stage3_swatches()
 	if active:
 		_place_quick_bar.call_deferred()
+
+
+## Reparent only the presentation node. The existing proxy buttons and
+## their original tool bindings stay mounted and stateful across profiles.
+func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
+	if not is_instance_valid(_taskbar_island) or not is_instance_valid(_taskbar):
+		return
+	if pixel and active:
+		if _taskbar.get_parent() != _taskbar_scroller:
+			_taskbar.reparent(_taskbar_scroller)
+		_taskbar_island.visible = true
+		_taskbar.add_theme_constant_override(&"separation", 4)
+		_taskbar_island.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+	else:
+		var row := _taskbar_island.get_parent() as HBoxContainer
+		if row != null and _taskbar.get_parent() != row:
+			_taskbar.reparent(row)
+			row.move_child(_taskbar, row.get_child_count() - 1)
+		_taskbar.add_theme_constant_override(&"separation", 3)
+		_taskbar_island.visible = false
+		_taskbar_island.remove_theme_stylebox_override(&"panel")
+	if active:
+		_refresh_taskbar()
 
 
 func _on_workspace_resized() -> void:
@@ -1658,7 +1712,19 @@ func _source_button(tool_name: StringName) -> BaseButton:
 func _apply_tool_button_highlight(button: BaseButton, selected: bool) -> void:
 	if not is_instance_valid(button):
 		return
-	button.modulate = SELECTED_TOOL_TINT if selected else UNSELECTED_TOOL_TINT
+	if _quick_pixel_mode != Tokens.LEGACY and button is Button:
+		var pixel_button := button as Button
+		Chrome.style_button(pixel_button, _quick_pixel_mode)
+		if selected:
+			pixel_button.add_theme_stylebox_override(
+				&"normal",
+				Chrome.make_panel(_quick_pixel_mode, Tokens.TIER_M, &"accent_primary")
+			)
+		button.modulate = Color.WHITE
+	else:
+		if button is Button:
+			Chrome.clear_button(button as Button)
+		button.modulate = SELECTED_TOOL_TINT if selected else UNSELECTED_TOOL_TINT
 
 
 func _source_represents_tool(source: BaseButton, active_tool: StringName) -> bool:
