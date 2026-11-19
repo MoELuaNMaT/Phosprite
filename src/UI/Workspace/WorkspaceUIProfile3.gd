@@ -805,6 +805,32 @@ func _create_quick_bar() -> bool:
 	_quick_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_quick_controls.add_theme_constant_override(&"separation", 8)
 	_quick_scroll.add_child(_quick_controls)
+
+	# HUD is not a floating Workspace window. It is a noninteractive paint
+	# overlay beside the fixed capsule and never takes over a pointer gesture.
+	_quick_hud = PanelContainer.new()
+	_quick_hud.name = &"UI3BrushPixelHUD"
+	_quick_hud.visible = false
+	_quick_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_quick_hud.custom_minimum_size = Vector2(124.0, 94.0)
+	parent.add_child(_quick_hud)
+	if surface != null and parent == surface.dock_host:
+		var overlay := surface.get_floating_layer()
+		if is_instance_valid(overlay):
+			parent.move_child(_quick_hud, overlay.get_index())
+	var hud_column := VBoxContainer.new()
+	hud_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_column.add_theme_constant_override(&"separation", 2)
+	_quick_hud.add_child(hud_column)
+	_quick_hud_label = Label.new()
+	_quick_hud_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_quick_hud_label.add_theme_font_size_override(&"font_size", 20)
+	hud_column.add_child(_quick_hud_label)
+	_quick_hud_preview = Control.new()
+	_quick_hud_preview.custom_minimum_size = Vector2(76, 64)
+	_quick_hud_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_quick_hud_preview.draw.connect(_draw_quick_hud_preview)
+	hud_column.add_child(_quick_hud_preview)
 	return true
 
 
@@ -866,7 +892,8 @@ func _place_quick_bar() -> void:
 		+ _quick_title.get_combined_minimum_size().y
 		+ 24.0
 	)
-	var desired := Vector2(QUICK_BAR_WIDTH, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
+	var requested_width := Stage3.CAPSULE_WIDTH if _quick_pixel_mode != Tokens.LEGACY else QUICK_BAR_WIDTH
+	var desired := Vector2(requested_width, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
 	var rect := find_quick_rect(bounds, desired)
 	if not rect.has_area() or rect.size.y < QUICK_MIN_VISIBLE_HEIGHT:
 		_quick_bar.visible = false
@@ -875,6 +902,8 @@ func _place_quick_bar() -> void:
 	_quick_bar.position = rect.position
 	_quick_bar.size = rect.size
 	_quick_bar.visible = true
+	if is_instance_valid(_quick_hud) and _quick_hud.visible:
+		_position_quick_hud()
 	_set_quick_reservation(rect)
 
 
@@ -885,6 +914,9 @@ func _clear_quick_bindings() -> void:
 		if is_instance_valid(source) and source.value_changed.is_connected(callback):
 			source.value_changed.disconnect(callback)
 	_quick_bindings.clear()
+	_quick_swatch_left = null
+	_quick_swatch_right = null
+	_hide_quick_hud()
 	if is_instance_valid(_quick_controls):
 		for child in _quick_controls.get_children():
 			_quick_controls.remove_child(child)
