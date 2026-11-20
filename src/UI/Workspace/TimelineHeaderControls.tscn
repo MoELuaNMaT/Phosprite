@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/UI/Workspace/TimelineHeaderControls.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/UI/GlobalToolOptions/GlobalToolOptions.tscn" id="2_options"]
 [ext_resource type="Texture2D" path="res://assets/graphics/quick_access_panel/undo.svg" id="3_undo"]
 [ext_resource type="Texture2D" path="res://assets/graphics/quick_access_panel/redo.svg" id="4_redo"]
 [ext_resource type="Texture2D" path="res://assets/graphics/quick_access_panel/undo_history.svg" id="5_history"]
+[ext_resource type="Texture2D" path="res://assets/graphics/quick_access_panel/share_export.svg" id="6_share_export"]
 
 [node name="TimelineHeaderControls" type="HBoxContainer"]
 custom_minimum_size = Vector2(0, 36)
@@ -84,6 +85,17 @@ tooltip_text = "More timeline controls"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 text = "…"
+
+[node name="ShareExport" type="Button" parent="." groups=["UIButtons"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Share / Export"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+icon = ExtResource("6_share_export")
+expand_icon = true
 
 [node name="ModeSwitch" type="Button" parent="." groups=["UIButtons"]]
 unique_name_in_owner = true
