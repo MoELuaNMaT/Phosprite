@@ -8,7 +8,10 @@ static func capture(timeline: AnimationTimeline, project: Project) -> Dictionary
 	if not is_instance_valid(timeline) or not is_instance_valid(project):
 		return {}
 	var count := project.layers.size()
-	if timeline.layer_vbox.get_child_count() != count or timeline.cel_vbox.get_child_count() != count:
+	if (
+		timeline.layer_vbox.get_child_count() != count
+		or timeline.cel_vbox.get_child_count() != count
+	):
 		push_error("Cannot capture layer order: Timeline rows do not match the project")
 		return {}
 	var rows := {}
@@ -37,11 +40,7 @@ static func restore(timeline: AnimationTimeline, project: Project, rows: Diction
 			push_error("Cannot restore layer order: layer identity changed")
 			return
 		var pair: Array = rows[layer]
-		if (
-			pair.size() != 2
-			or not is_instance_valid(pair[0])
-			or not is_instance_valid(pair[1])
-		):
+		if pair.size() != 2 or not is_instance_valid(pair[0]) or not is_instance_valid(pair[1]):
 			push_error("Cannot restore layer order: Timeline row was released")
 			return
 
