@@ -115,8 +115,9 @@ func _refresh_stage4_visuals() -> void:
 ## Reuse this row on reorder, but rebind only those ancestor dependencies.
 func refresh_ancestor_color_sources() -> void:
 	for ancestor in _bound_color_ancestors:
-		if is_instance_valid(ancestor) and ancestor.ui_color_changed.is_connected(
-			_on_ancestor_ui_color_changed
+		if (
+			is_instance_valid(ancestor)
+			and ancestor.ui_color_changed.is_connected(_on_ancestor_ui_color_changed)
 		):
 			ancestor.ui_color_changed.disconnect(_on_ancestor_ui_color_changed)
 	_bound_color_ancestors.clear()
