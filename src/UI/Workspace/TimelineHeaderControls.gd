@@ -19,6 +19,7 @@ var _item_widths: Dictionary = {}
 @onready var frame_group := %FrameGroup as HBoxContainer
 @onready var frame_mark := %CurrentFrameMark as Label
 @onready var overflow_button := %OverflowButton as Button
+@onready var share_export_button := %ShareExport as Button
 @onready var mode_switch_button := %ModeSwitch as Button
 @onready var overflow_panel := %OverflowPanel as PopupPanel
 @onready var overflow_content := %OverflowContent as VBoxContainer
@@ -39,7 +40,10 @@ func _ready() -> void:
 	redo_button.pressed.connect(_on_redo_pressed)
 	undo_history_button.pressed.connect(_on_undo_history_pressed)
 	overflow_button.pressed.connect(_on_overflow_pressed)
+	share_export_button.pressed.connect(_on_share_export_pressed)
 	mode_switch_button.toggled.connect(_on_mode_switch_toggled)
+	if OS.get_name() == "iOS":
+		share_export_button.custom_minimum_size = Vector2(44.0, 44.0)
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if (
 		is_instance_valid(timeline)
@@ -97,7 +101,12 @@ func _apply_overflow_layout() -> void:
 	all_items.assign(_managed_items)
 	var all_width := _inline_width(all_items)
 	var keep_inline: Array[Control] = []
-	var fixed_right_width := mode_switch_button.get_combined_minimum_size().x + ITEM_SEPARATION
+	# Export must remain reachable even when every other command overflows.
+	var fixed_right_width := (
+		mode_switch_button.get_combined_minimum_size().x
+		+ share_export_button.get_combined_minimum_size().x
+		+ ITEM_SEPARATION * 2.0
+	)
 	var content_width := maxf(0.0, _available_width - fixed_right_width)
 	var needs_overflow := all_width > content_width
 
@@ -232,6 +241,14 @@ func _sync_mode_switch() -> void:
 		if single_frame
 		else tr("Switch to single-frame layer view")
 	)
+
+
+## The editor File menu owns export setup; on iPad ExportDialog then opens
+## the native Share Sheet after encoding, so keep one export implementation.
+func _on_share_export_pressed() -> void:
+	if Global.current_project == null or not is_instance_valid(Global.top_menu_container):
+		return
+	Global.top_menu_container.file_menu_id_pressed(Global.FileMenu.EXPORT_AS)
 
 
 func _on_undo_pressed() -> void:

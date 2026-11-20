@@ -5113,3 +5113,6 @@ msgstr "動畫工作台"
 
 msgid "Swap Colors"
 msgstr "交換顏色"
+
+msgid "Share / Export"
+msgstr "分享／匯出"
