@@ -238,8 +238,13 @@ func test_mode_switch_is_fixed_on_timeline_header_right_side() -> void:
 	check_has(scene, 'text = "Animation"', "Animation must be the default visible mode label")
 	check_has(
 		source,
-		"fixed_right_width := mode_switch_button.get_combined_minimum_size().x",
-		"responsive overflow must reserve width for the mode switch instead of hiding it",
+		"mode_switch_button.get_combined_minimum_size().x",
+		"responsive overflow must reserve width for the mode switch",
+	)
+	check_has(
+		source,
+		"share_export_button.get_combined_minimum_size().x",
+		"responsive overflow must reserve width for the Share / Export button",
 	)
 	check_has(
 		source,
