@@ -6,6 +6,7 @@ enum MenuOptions {
 }
 
 const HIERARCHY_DEPTH_PIXEL_SHIFT := 24
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const ARRAY_TEXTURE_TYPES: Array[Texture2D] = [
 	preload("res://assets/graphics/layers/type_icons/layer_pixel.png"),
 	preload("res://assets/graphics/layers/type_icons/layer_group.png"),
@@ -32,6 +33,7 @@ var audio_playing_at_frame := 0
 var audio_player: AudioStreamPlayer
 
 var _old_camera_auto_release_gui_focus: bool
+var _bound_color_ancestors: Array[BaseLayer] = []
 @onready var properties: AcceptDialog = Global.control.find_child("LayerProperties")
 @onready var main_button := %LayerMainButton as Button
 @onready var expand_button := %ExpandButton as BaseButton
@@ -65,8 +67,7 @@ func _ready() -> void:
 	layer.visibility_changed.connect(_on_layer_visibility_changed)
 	layer.locked_changed.connect(update_buttons)
 	layer.ui_color_changed.connect(func(): layer_ui_color.color = layer.get_ui_color())
-	for ancestor in layer.get_ancestors():
-		ancestor.ui_color_changed.connect(func(): layer_ui_color.color = layer.get_ui_color())
+	refresh_ancestor_color_sources()
 	if layer is PixelLayer:
 		linked_button.visible = true
 	elif layer is GroupLayer:
@@ -98,6 +99,38 @@ func _ready() -> void:
 	# Visualize how deep into the hierarchy the layer is
 	hierarchy_spacer.layer_index = layer_index
 	update_buttons()
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+	_refresh_stage4_visuals()
+
+
+func _refresh_stage4_visuals() -> void:
+	var mode := Stage4.active_mode()
+	Stage4.style_button(main_button, mode)
+	for side_button in [visibility_button, lock_button, linked_button, expand_button]:
+		Stage4.style_button(side_button, mode)
+
+
+## Reparenting a layer changes the ancestors that affect its inherited UI color.
+## Reuse this row on reorder, but rebind only those ancestor dependencies.
+func refresh_ancestor_color_sources() -> void:
+	for ancestor in _bound_color_ancestors:
+		if (
+			is_instance_valid(ancestor)
+			and ancestor.ui_color_changed.is_connected(_on_ancestor_ui_color_changed)
+		):
+			ancestor.ui_color_changed.disconnect(_on_ancestor_ui_color_changed)
+	_bound_color_ancestors.clear()
+	var layer := Global.current_project.layers[layer_index]
+	for ancestor in layer.get_ancestors():
+		if not ancestor.ui_color_changed.is_connected(_on_ancestor_ui_color_changed):
+			ancestor.ui_color_changed.connect(_on_ancestor_ui_color_changed)
+		_bound_color_ancestors.append(ancestor)
+	_on_ancestor_ui_color_changed()
+
+
+func _on_ancestor_ui_color_changed() -> void:
+	layer_ui_color.color = Global.current_project.layers[layer_index].get_ui_color()
 
 
 func _on_cel_switched() -> void:

@@ -10,6 +10,11 @@ extends Node
 ## tapping any top-right tool opens its complete Workspace tool options.
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
+const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
+const Stage3 := preload("res://src/UI/DesignSystem/PhospriteStage3Controls.gd")
+const CLOSE_Q_ICON := preload("res://assets/graphics/q_icons/chrome/window_close.png")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
@@ -45,6 +50,7 @@ const QUICK_CLEARANCE := 8.0
 const QUICK_EXCLUSION_ID := &"ui3.quick_controls"
 const QUICK_MIN_VISIBLE_HEIGHT := 104.0
 const QUICK_SLIDER_HEIGHT := 106.0
+const PALETTE_HEADER_HEIGHT := 36.0
 const TOOL_OPTIONS_MARGIN := Vector2(8.0, 8.0)
 const OPTIONS_CONTENT_PADDING := Vector2(22.0, 72.0)
 const OPTIONS_MAX_VIEWPORT_RATIO := 0.82
@@ -59,6 +65,8 @@ var active := false
 
 var _tool_buttons: Node
 var _taskbar: HBoxContainer
+var _taskbar_island: PanelContainer
+var _taskbar_scroller: ScrollContainer
 var _brush_button: Button
 var _eraser_button: Button
 var _color_button: Button
@@ -71,6 +79,16 @@ var _quick_scroll: ScrollContainer
 var _quick_controls: VBoxContainer
 var _quick_bindings: Array[Dictionary] = []
 var _quick_has_controls := false
+var _quick_pixel_mode: StringName = Tokens.LEGACY
+var _quick_swatch_left: Button
+var _quick_swatch_right: Button
+var _quick_hud: PanelContainer
+var _quick_hud_label: Label
+var _quick_hud_preview: Control
+var _quick_hud_value := 1.0
+var _quick_hud_size_mode := false
+var _quick_hud_generation := 0
+var _quick_slider_dragging := false
 var _advanced_open := false
 
 var _options_module: WorkspaceModule
@@ -84,6 +102,15 @@ var _options_size_source: BaseTool
 
 var _palette_popup: PanelContainer
 var _palette_content: Control
+var _palette_header: PanelContainer
+var _palette_header_label: Label
+var _palette_close_button: Button
+var _palette_pinned := false
+var _palette_dragging := false
+var _palette_drag_origin := Vector2.ZERO
+var _palette_drag_start := Vector2.ZERO
+var _palette_drag_touch_index := -1
+var _palette_last_touch_msec := -1000
 
 var _original_left_options_state: Dictionary = {}
 var _compacted_tool: BaseTool
@@ -129,6 +156,7 @@ func activate() -> bool:
 	_last_active_tool = _current_left_tool_name()
 	_refresh_taskbar()
 	_refresh_config_panel()
+	_refresh_stage3_visuals()
 	return true
 
 
@@ -139,6 +167,9 @@ func deactivate() -> void:
 		return
 	if is_instance_valid(_palette_popup):
 		_palette_popup.visible = false
+	_palette_pinned = false
+	_palette_dragging = false
+	_hide_quick_hud()
 	_hide_advanced_panel()
 	_disconnect_options_size_source()
 	_advanced_open = false
@@ -153,6 +184,8 @@ func deactivate() -> void:
 		surface.park_module(Builtins.UI3_TOOL_OPTIONS_ID)
 	if is_instance_valid(_taskbar):
 		_taskbar.visible = false
+	if is_instance_valid(_taskbar_island):
+		_taskbar_island.visible = false
 
 
 func refresh_after_tools_ready() -> bool:
@@ -205,7 +238,10 @@ func apply_initial_workspace() -> bool:
 		if current.has_area():
 			size = current.size
 	var bounds := surface.get_floating_bounds()
-	var target := Rect2(bounds.position + PREVIEW_MARGIN, size)
+	var margin := (
+		Vector2(72.0, PREVIEW_MARGIN.y) if Chrome.active_mode() != Tokens.LEGACY else PREVIEW_MARGIN
+	)
+	var target := Rect2(bounds.position + margin, size)
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		return surface.set_floating_rect(Builtins.PREVIEW_ID, target)
 	return surface.float_module(Builtins.PREVIEW_ID, target)
@@ -275,6 +311,22 @@ func _create_taskbar() -> bool:
 	_taskbar.add_theme_constant_override(&"separation", 3)
 	row.add_child(_taskbar)
 	row.move_child(_taskbar, row.get_child_count() - 1)
+
+	# Only pixel-themed UI3 shows the right panel island. The scroll host
+	# protects the 590pt split viewport without dropping source tool actions.
+	_taskbar_island = PanelContainer.new()
+	_taskbar_island.name = &"UI3TopRightIsland"
+	_taskbar_island.visible = false
+	_taskbar_island.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_taskbar_island)
+	_taskbar_scroller = ScrollContainer.new()
+	_taskbar_scroller.name = &"UI3TopRightScroller"
+	_taskbar_scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_taskbar_scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_taskbar_scroller.custom_minimum_size = Vector2(120.0, TASK_BUTTON_SIZE.y)
+	_taskbar_scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_taskbar_scroller.mouse_filter = Control.MOUSE_FILTER_PASS
+	_taskbar_island.add_child(_taskbar_scroller)
 	return true
 
 
@@ -446,17 +498,69 @@ func _create_palette_popup() -> bool:
 	_palette_popup.custom_minimum_size = PALETTE_POPUP_SIZE
 	ui_root.add_child(_palette_popup)
 
+	# The actual Palette & Color scene is reused. Only its presentation gains
+	# an optional 36px drag header in the two Phosprite themes.
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override(&"separation", 0)
+	_palette_popup.add_child(stack)
+	_palette_header = PanelContainer.new()
+	_palette_header.name = &"UI3PaletteTearOffHeader"
+	_palette_header.custom_minimum_size.y = PALETTE_HEADER_HEIGHT
+	_palette_header.mouse_filter = Control.MOUSE_FILTER_STOP
+	_palette_header.gui_input.connect(_on_palette_header_input)
+	stack.add_child(_palette_header)
+	var heading_row := HBoxContainer.new()
+	heading_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_palette_header.add_child(heading_row)
+	_palette_header_label = Label.new()
+	_palette_header_label.text = tr("Palette & Color")
+	_palette_header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_palette_header_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_palette_header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	heading_row.add_child(_palette_header_label)
+	_palette_close_button = Button.new()
+	_palette_close_button.name = &"ClosePinnedPalette"
+	var close_image := CLOSE_Q_ICON.get_image().get_region(Rect2i(2, 2, 12, 12))
+	close_image.resize(24, 24, Image.INTERPOLATE_NEAREST)
+	_palette_close_button.icon = ImageTexture.create_from_image(close_image)
+	_palette_close_button.expand_icon = false
+	_palette_close_button.tooltip_text = tr("Close")
+	_palette_close_button.custom_minimum_size = Vector2(36.0, 36.0)
+	_palette_close_button.pressed.connect(_close_palette_popup)
+	heading_row.add_child(_palette_close_button)
+
 	var margin := MarginContainer.new()
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override(&"margin_left", 8)
 	margin.add_theme_constant_override(&"margin_top", 8)
 	margin.add_theme_constant_override(&"margin_right", 8)
 	margin.add_theme_constant_override(&"margin_bottom", 8)
-	_palette_popup.add_child(margin)
+	stack.add_child(margin)
 	_palette_content = content as Control
 	_palette_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_palette_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(_palette_content)
+	_palette_header.visible = false
 	return true
+
+
+## Tear-off windows obey the same fixed-capsule exclusion as Preview.
+## Moving the color card must never move the left capsule out of position.
+func _constrain_stage3_palette_position(position: Vector2) -> Vector2:
+	if not is_instance_valid(_palette_popup) or not is_instance_valid(_quick_bar):
+		return position
+	if not _quick_bar.visible or not _quick_bar.get_rect().has_area():
+		return position
+	var target := Rect2(position, _palette_popup.size)
+	var exclusion := _quick_bar.get_global_rect().grow(QUICK_CLEARANCE)
+	var parent_transform := ui_root.get_global_transform_with_canvas().affine_inverse()
+	var bounds := Rect2(parent_transform * exclusion.position, exclusion.size)
+	if not target.intersects(bounds):
+		return position
+	var clear_x := bounds.end.x
+	if clear_x + target.size.x <= ui_root.size.x:
+		return Vector2(clear_x, position.y)
+	return position
 
 
 func _source_icon(source: BaseButton) -> Texture2D:
@@ -529,12 +633,96 @@ func _on_family_tool_pressed(tool_name: StringName) -> void:
 
 
 func _on_color_button_pressed() -> void:
-	if not active:
+	if not active or not is_instance_valid(_palette_popup):
 		return
-	if is_instance_valid(_palette_popup) and _palette_popup.visible:
-		_palette_popup.visible = false
+	if _palette_popup.visible:
+		if _palette_pinned:
+			_palette_popup.move_to_front()
+		else:
+			_palette_popup.visible = false
 		return
+	_palette_pinned = false
+	_update_palette_pin_visual()
 	_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
+
+
+func _close_palette_popup() -> void:
+	_palette_pinned = false
+	_palette_dragging = false
+	if is_instance_valid(_palette_popup):
+		_palette_popup.visible = false
+	_update_palette_pin_visual()
+
+
+func _update_palette_pin_visual() -> void:
+	if not is_instance_valid(_palette_header):
+		return
+	var pixel := _quick_pixel_mode != Tokens.LEGACY
+	_palette_header.visible = pixel
+	_palette_close_button.visible = pixel and _palette_pinned
+	_palette_header_label.text = tr("Palette & Color")
+
+
+## The header is a grip, not a second color editor. Holding and dragging
+## >=24px converts a temporary popup to an independent movable window.
+## Source color values and palette selections remain on the original scene.
+func _on_palette_header_input(event: InputEvent) -> void:
+	if not active or _quick_pixel_mode == Tokens.LEGACY:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		_palette_last_touch_msec = Time.get_ticks_msec()
+		if touch.pressed and not _palette_dragging:
+			_begin_palette_drag(_palette_header.get_global_transform_with_canvas() * touch.position)
+			_palette_drag_touch_index = touch.index
+		elif not touch.pressed and _palette_drag_touch_index == touch.index:
+			_palette_dragging = false
+			_palette_drag_touch_index = -1
+		_palette_header.accept_event()
+	elif event is InputEventScreenDrag and _palette_dragging:
+		var drag := event as InputEventScreenDrag
+		if drag.index != _palette_drag_touch_index:
+			return
+		_move_palette_drag(_palette_header.get_global_transform_with_canvas() * drag.position)
+		_palette_header.accept_event()
+	elif event is InputEventMouseButton:
+		if Time.get_ticks_msec() - _palette_last_touch_msec < 500:
+			return
+		var mouse := event as InputEventMouseButton
+		if mouse.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse.pressed:
+			_begin_palette_drag(_palette_header.get_global_transform_with_canvas() * mouse.position)
+		else:
+			_palette_dragging = false
+		_palette_header.accept_event()
+	elif event is InputEventMouseMotion and _palette_dragging and _palette_drag_touch_index < 0:
+		var motion := event as InputEventMouseMotion
+		_move_palette_drag(_palette_header.get_global_transform_with_canvas() * motion.position)
+		_palette_header.accept_event()
+
+
+func _begin_palette_drag(pointer: Vector2) -> void:
+	if not is_instance_valid(_palette_popup):
+		return
+	_palette_dragging = true
+	_palette_drag_origin = _palette_popup.position
+	_palette_drag_start = pointer
+
+
+func _move_palette_drag(pointer: Vector2) -> void:
+	if not _palette_dragging or not is_instance_valid(_palette_popup):
+		return
+	var delta := pointer - _palette_drag_start
+	if not _palette_pinned and not Stage3.should_pin_popup(delta):
+		return
+	if not _palette_pinned:
+		_palette_pinned = true
+		_update_palette_pin_visual()
+	_palette_popup.position = _constrain_stage3_palette_position(
+		Stage3.popup_position(_palette_drag_origin, delta, _palette_popup.size, ui_root.size)
+	)
+	_palette_popup.move_to_front()
 
 
 func _refresh_config_panel() -> void:
@@ -664,6 +852,35 @@ func _create_quick_bar() -> bool:
 	_quick_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_quick_controls.add_theme_constant_override(&"separation", 8)
 	_quick_scroll.add_child(_quick_controls)
+
+	# HUD is not a floating Workspace window. It is a noninteractive paint
+	# overlay beside the fixed capsule and never takes over a pointer gesture.
+	_quick_hud = PanelContainer.new()
+	_quick_hud.name = &"UI3BrushPixelHUD"
+	_quick_hud.visible = false
+	_quick_hud.z_index = 10
+	_quick_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_quick_hud.custom_minimum_size = Vector2(124.0, 112.0)
+	parent.add_child(_quick_hud)
+	if surface != null and parent == surface.dock_host:
+		var overlay := surface.get_floating_layer()
+		if is_instance_valid(overlay):
+			parent.move_child(_quick_hud, overlay.get_index())
+	var hud_column := VBoxContainer.new()
+	hud_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_column.add_theme_constant_override(&"separation", 2)
+	_quick_hud.add_child(hud_column)
+	_quick_hud_label = Label.new()
+	_quick_hud_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_quick_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_quick_hud_label.add_theme_font_size_override(&"font_size", 20)
+	hud_column.add_child(_quick_hud_label)
+	_quick_hud_preview = Control.new()
+	_quick_hud_preview.custom_minimum_size = Vector2(76, 64)
+	_quick_hud_preview.clip_contents = true
+	_quick_hud_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_quick_hud_preview.draw.connect(_draw_quick_hud_preview)
+	hud_column.add_child(_quick_hud_preview)
 	return true
 
 
@@ -725,7 +942,10 @@ func _place_quick_bar() -> void:
 		+ _quick_title.get_combined_minimum_size().y
 		+ 24.0
 	)
-	var desired := Vector2(QUICK_BAR_WIDTH, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
+	var requested_width := (
+		Stage3.CAPSULE_WIDTH if _quick_pixel_mode != Tokens.LEGACY else QUICK_BAR_WIDTH
+	)
+	var desired := Vector2(requested_width, maxf(QUICK_MIN_VISIBLE_HEIGHT, natural_height))
 	var rect := find_quick_rect(bounds, desired)
 	if not rect.has_area() or rect.size.y < QUICK_MIN_VISIBLE_HEIGHT:
 		_quick_bar.visible = false
@@ -734,6 +954,8 @@ func _place_quick_bar() -> void:
 	_quick_bar.position = rect.position
 	_quick_bar.size = rect.size
 	_quick_bar.visible = true
+	if is_instance_valid(_quick_hud) and _quick_hud.visible:
+		_position_quick_hud()
 	_set_quick_reservation(rect)
 
 
@@ -744,6 +966,9 @@ func _clear_quick_bindings() -> void:
 		if is_instance_valid(source) and source.value_changed.is_connected(callback):
 			source.value_changed.disconnect(callback)
 	_quick_bindings.clear()
+	_quick_swatch_left = null
+	_quick_swatch_right = null
+	_hide_quick_hud()
 	if is_instance_valid(_quick_controls):
 		for child in _quick_controls.get_children():
 			_quick_controls.remove_child(child)
@@ -759,14 +984,24 @@ func _refresh_quick_bar(tool_name: StringName) -> void:
 	if not is_primary_tool(tool_name):
 		_set_quick_reservation(Rect2())
 		return
+	_quick_pixel_mode = Chrome.active_mode()
+	var pixel_theme := _quick_pixel_mode != Tokens.LEGACY
 	_quick_title.text = _tool_display_name(tool_name)
+	_quick_title.visible = not pixel_theme
 	var tool := _current_tool_options()
 	if tool == null:
 		return
-	_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
-	_add_quick_slider(
-		tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
-	)
+	if pixel_theme:
+		_add_stage3_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
+		_add_stage3_color_swatches()
+		_add_stage3_quick_slider(
+			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
+		)
+	else:
+		_add_quick_slider(tool, ^"Brush/BrushSize", tr("Size"), true)
+		_add_quick_slider(
+			tool, ^"Opacity" if tool_name == BRUSH_TOOL else ^"OpacitySlider", tr("Opacity"), false
+		)
 	_quick_has_controls = _quick_controls.get_child_count() > 0
 	_place_quick_bar()
 	# Tool option controls can finish sizing on the next layout frame.
@@ -804,6 +1039,224 @@ func _add_quick_slider(tool: BaseTool, path: NodePath, title: String, size_value
 	var callback := _on_quick_source_value_changed.bind(slider, value_label, suffix)
 	source.value_changed.connect(callback)
 	_quick_bindings.append({"source": source, "callback": callback})
+
+
+## Only the opt-in Phosprite themes use the two-zone touch response.
+## The user-visible slider is a proxy; the existing ValueSlider still owns
+## configuration, persistence, redraw and tool-specific unit conversions.
+func _add_stage3_quick_slider(tool: BaseTool, path: NodePath, title: String, is_size: bool) -> void:
+	var source := tool.get_node_or_null(path) as Range
+	if source == null:
+		return
+	var group := VBoxContainer.new()
+	group.add_theme_constant_override(&"separation", 2)
+	_quick_controls.add_child(group)
+	var caption := Label.new()
+	caption.text = title
+	caption.tooltip_text = title
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.add_theme_font_size_override(&"font_size", 12)
+	group.add_child(caption)
+	var slider := VSlider.new()
+	slider.name = StringName("CapsuleSize" if is_size else "CapsuleOpacity")
+	slider.custom_minimum_size = Vector2(Stage3.TRACK_WIDTH, Stage3.TRACK_HEIGHT)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	group.add_child(slider)
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override(&"font_size", 12)
+	group.add_child(label)
+	var suffix := "px" if is_size else "%"
+	if is_size and source is ValueSlider:
+		suffix = str((source as ValueSlider).suffix)
+	var curve := (
+		is_size
+		and Stage3.supports_pixel_size_mapping(
+			source.min_value, source.max_value, source.step, suffix
+		)
+	)
+	if curve:
+		slider.min_value = 0.0
+		slider.max_value = 1.0
+		slider.step = 0.001
+		slider.set_value_no_signal(
+			Stage3.position_from_size(source.value, source.min_value, source.max_value)
+		)
+	else:
+		slider.min_value = source.min_value
+		slider.max_value = source.max_value
+		slider.step = maxf(source.step, 0.001)
+		slider.set_value_no_signal(source.value)
+	_update_quick_value_label(label, source.value, suffix)
+	slider.value_changed.connect(_on_stage3_slider_changed.bind(source, curve, is_size, suffix))
+	slider.drag_started.connect(_on_stage3_slider_drag_started.bind(source, is_size, suffix))
+	slider.drag_ended.connect(_on_stage3_slider_drag_ended)
+	var callback := _on_stage3_source_value_changed.bind(
+		slider, label, suffix, curve, source, is_size
+	)
+	source.value_changed.connect(callback)
+	_quick_bindings.append({"source": source, "callback": callback})
+
+
+func _on_stage3_slider_changed(
+	value: float, source: Range, curve: bool, is_size: bool, suffix: String
+) -> void:
+	if not is_instance_valid(source):
+		return
+	source.value = (
+		Stage3.size_from_position(value, source.min_value, source.max_value) if curve else value
+	)
+	if _quick_slider_dragging:
+		_show_quick_hud(source.value, is_size, suffix)
+
+
+func _on_stage3_source_value_changed(
+	value: float,
+	slider: VSlider,
+	label: Label,
+	suffix: String,
+	curve: bool,
+	source: Range,
+	is_size: bool
+) -> void:
+	if not is_instance_valid(slider) or not is_instance_valid(label):
+		return
+	if curve and is_instance_valid(source):
+		slider.set_value_no_signal(
+			Stage3.position_from_size(value, source.min_value, source.max_value)
+		)
+	else:
+		slider.set_value_no_signal(value)
+	_update_quick_value_label(label, value, suffix)
+	if _quick_slider_dragging:
+		_show_quick_hud(value, is_size, suffix)
+
+
+func _add_stage3_color_swatches() -> void:
+	var overlap := Control.new()
+	overlap.name = &"UI3ColorOverlap"
+	overlap.custom_minimum_size = Vector2(36.0, 28.0)
+	overlap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_quick_controls.add_child(overlap)
+	_quick_swatch_right = Button.new()
+	_quick_swatch_right.name = &"SecondaryColor"
+	_quick_swatch_right.position = Vector2(12, 0)
+	_quick_swatch_right.custom_minimum_size = Vector2(22, 22)
+	_quick_swatch_right.tooltip_text = tr("Swap Colors")
+	_quick_swatch_right.pressed.connect(_on_stage3_swap_colors)
+	overlap.add_child(_quick_swatch_right)
+	_quick_swatch_left = Button.new()
+	_quick_swatch_left.name = &"PrimaryColor"
+	_quick_swatch_left.position = Vector2(0, 6)
+	_quick_swatch_left.custom_minimum_size = Vector2(22, 22)
+	_quick_swatch_left.tooltip_text = tr("Swap Colors")
+	_quick_swatch_left.pressed.connect(_on_stage3_swap_colors)
+	overlap.add_child(_quick_swatch_left)
+	_update_stage3_swatches()
+
+
+func _on_stage3_swap_colors() -> void:
+	Tools.swap_color()
+	_update_stage3_swatches()
+
+
+func _update_stage3_swatches() -> void:
+	if _quick_pixel_mode == Tokens.LEGACY:
+		return
+	for pair in [
+		{"button": _quick_swatch_left, "side": MOUSE_BUTTON_LEFT},
+		{"button": _quick_swatch_right, "side": MOUSE_BUTTON_RIGHT},
+	]:
+		var button := pair["button"] as Button
+		if not is_instance_valid(button):
+			continue
+		var outline := (
+			Tokens.color(_quick_pixel_mode, &"accent_primary")
+			if pair["side"] == MOUSE_BUTTON_LEFT
+			else Tokens.color(_quick_pixel_mode, &"outline_ink")
+		)
+		var style := PixelStyle.make_style(
+			Tokens.TIER_S,
+			Tools.get_assigned_color(pair["side"]),
+			outline,
+			Tokens.color(_quick_pixel_mode, &"pixel_shadow"),
+			false,
+			Global.pixel_ui_unit
+		)
+		for state in [&"normal", &"hover", &"pressed", &"focus"]:
+			button.add_theme_stylebox_override(state, style)
+
+
+func _show_quick_hud(value: float, is_size: bool, suffix: String) -> void:
+	if not active or _quick_pixel_mode == Tokens.LEGACY or not is_instance_valid(_quick_hud):
+		return
+	_quick_hud_generation += 1
+	_quick_hud_value = value
+	_quick_hud_size_mode = is_size and suffix == "px"
+	_quick_hud_label.text = "%d%s" % [roundi(value), suffix]
+	_quick_hud.visible = true
+	_quick_hud_preview.queue_redraw()
+	_position_quick_hud()
+
+
+func _position_quick_hud() -> void:
+	if not is_instance_valid(_quick_hud) or not is_instance_valid(_quick_bar):
+		return
+	var parent := _quick_hud.get_parent() as Control
+	if parent == null:
+		return
+	var x := _quick_bar.position.x + _quick_bar.size.x + Stage3.HUD_GAP
+	var y := _quick_bar.position.y + (_quick_bar.size.y - 112.0) * 0.5
+	_quick_hud.position = Stage3.popup_position(
+		Vector2(x, y), Vector2.ZERO, Vector2(124, 112), parent.size
+	)
+
+
+func _draw_quick_hud_preview() -> void:
+	if not is_instance_valid(_quick_hud_preview):
+		return
+	var center := _quick_hud_preview.size * 0.5
+	var mode := _quick_pixel_mode
+	if mode == Tokens.LEGACY:
+		return
+	var outline := Tokens.color(mode, &"outline_ink")
+	var fill := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
+	# Keep actual pixel size; larger brushes are clipped by the preview
+	# viewport, not falsely represented as a different brush size.
+	var square := roundi(maxf(_quick_hud_value, 1.0)) if _quick_hud_size_mode else 12
+	var rect := Rect2(
+		Vector2(roundi(center.x - square * 0.5), roundi(center.y - square * 0.5)),
+		Vector2(square, square)
+	)
+	_quick_hud_preview.draw_rect(rect.grow(1.0), outline)
+	_quick_hud_preview.draw_rect(rect, fill)
+
+
+func _hide_quick_hud() -> void:
+	_quick_hud_generation += 1
+	_quick_slider_dragging = false
+	if is_instance_valid(_quick_hud):
+		_quick_hud.visible = false
+
+
+func _on_stage3_slider_drag_started(source: Range, is_size: bool, suffix: String) -> void:
+	_quick_slider_dragging = true
+	if is_instance_valid(source):
+		_show_quick_hud(source.value, is_size, suffix)
+
+
+func _on_stage3_slider_drag_ended(_value_changed: bool) -> void:
+	_quick_slider_dragging = false
+	_quick_hud_generation += 1
+	var generation := _quick_hud_generation
+	_hide_quick_hud_after_delay(generation)
+
+
+func _hide_quick_hud_after_delay(generation: int) -> void:
+	await get_tree().create_timer(Stage3.HUD_DISMISS_SECONDS).timeout
+	if generation == _quick_hud_generation and is_instance_valid(_quick_hud):
+		_quick_hud.visible = false
 
 
 func _on_quick_slider_changed(value: float, source: Range) -> void:
@@ -909,7 +1362,12 @@ func _resize_advanced_to_content() -> void:
 ## A tap on empty canvas dismisses this transient popup. Tools, other
 ## floating panels, the Timeline and the left sliders keep their own touch.
 func _input(event: InputEvent) -> void:
-	if not active or not _advanced_open or surface == null:
+	if not active or surface == null:
+		return
+	var dismiss_palette := (
+		is_instance_valid(_palette_popup) and _palette_popup.visible and not _palette_pinned
+	)
+	if not _advanced_open and not dismiss_palette:
 		return
 	var pointer := Vector2.ZERO
 	if event is InputEventScreenTouch:
@@ -926,8 +1384,11 @@ func _input(event: InputEvent) -> void:
 		return
 	if not _is_blank_canvas_point(pointer):
 		return
-	_hide_advanced_panel()
-	# The dismiss tap must not create an accidental brush stroke.
+	if dismiss_palette:
+		_palette_popup.visible = false
+	if _advanced_open:
+		_hide_advanced_panel()
+	# A dismissal tap must not create an accidental Pencil stroke.
 	get_viewport().set_input_as_handled()
 
 
@@ -940,6 +1401,9 @@ func _is_blank_canvas_point(pointer: Vector2) -> bool:
 		return false
 	if is_instance_valid(_taskbar) and _taskbar.get_global_rect().has_point(pointer):
 		return false
+	if is_instance_valid(_taskbar_island) and _taskbar_island.visible:
+		if _taskbar_island.get_global_rect().has_point(pointer):
+			return false
 	if is_instance_valid(_palette_popup) and _palette_popup.visible:
 		if _palette_popup.get_global_rect().has_point(pointer):
 			return false
@@ -1098,6 +1562,10 @@ func _connect_runtime_signals() -> void:
 		Tools.tool_changed.connect(_on_tool_changed)
 	if not Tools.color_changed.is_connected(_on_color_changed):
 		Tools.color_changed.connect(_on_color_changed)
+	if not Themes.theme_switched.is_connected(_on_stage3_theme_changed):
+		Themes.theme_switched.connect(_on_stage3_theme_changed)
+	if not Global.pixel_ui_unit_changed.is_connected(_on_stage3_theme_changed):
+		Global.pixel_ui_unit_changed.connect(_on_stage3_theme_changed)
 	if not Global.cel_switched.is_connected(_on_context_changed):
 		Global.cel_switched.connect(_on_context_changed)
 	if not Global.single_tool_mode_changed.is_connected(_on_single_tool_mode_changed):
@@ -1123,8 +1591,13 @@ func _on_tool_changed(_tool_name: String, button: int) -> void:
 
 
 func _on_color_changed(_color_info: Dictionary, button: int) -> void:
-	if active and button == MOUSE_BUTTON_LEFT and is_instance_valid(_color_indicator):
+	if not active:
+		return
+	if button == MOUSE_BUTTON_LEFT and is_instance_valid(_color_indicator):
 		_color_indicator.queue_redraw()
+	_update_stage3_swatches()
+	if is_instance_valid(_quick_hud_preview) and _quick_hud.visible:
+		_quick_hud_preview.queue_redraw()
 
 
 func _on_context_changed() -> void:
@@ -1139,9 +1612,108 @@ func _on_single_tool_mode_changed(_enabled: bool) -> void:
 		_refresh_config_panel.call_deferred()
 
 
+func _on_stage3_theme_changed() -> void:
+	if not active or not is_instance_valid(_quick_bar):
+		return
+	var updated := Chrome.active_mode()
+	if updated != _quick_pixel_mode:
+		_refresh_config_panel()
+	_refresh_stage3_visuals()
+
+
+## All stage-3 styling is restricted to the original UI3 presentation,
+## not a second tool model. Legacy themes get their original 100px controls.
+func _refresh_stage3_visuals() -> void:
+	if not is_instance_valid(_quick_bar) or not is_instance_valid(_palette_popup):
+		return
+	var mode := Chrome.active_mode()
+	_quick_pixel_mode = mode
+	var pixel := mode != Tokens.LEGACY
+	_sync_stage3_taskbar_island(pixel, mode)
+	var margin := _quick_bar.get_child(0) as MarginContainer
+	if margin != null:
+		for side in [&"left", &"top", &"right", &"bottom"]:
+			margin.add_theme_constant_override(
+				StringName("margin_" + String(side)), 4 if pixel else 6
+			)
+	_quick_bar.custom_minimum_size.x = Stage3.CAPSULE_WIDTH if pixel else QUICK_BAR_WIDTH
+	_quick_bar.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST if pixel else CanvasItem.TEXTURE_FILTER_PARENT_NODE
+	)
+	if pixel:
+		_quick_bar.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+		_palette_popup.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+		_palette_header.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_M, &"accent_soft")
+		)
+		_quick_hud.add_theme_stylebox_override(
+			&"panel", Chrome.make_panel(mode, Tokens.TIER_M, &"panel_surface", true)
+		)
+		Chrome.style_button(_palette_close_button, mode)
+	else:
+		# The legacy popup has no tear-off header or close control.
+		# Clear the pinned state before hiding that control to avoid a
+		# permanently open palette when switching theme presets.
+		_palette_pinned = false
+		_palette_dragging = false
+		_palette_popup.visible = false
+		_quick_bar.remove_theme_stylebox_override(&"panel")
+		_palette_popup.remove_theme_stylebox_override(&"panel")
+		_palette_header.remove_theme_stylebox_override(&"panel")
+		_quick_hud.remove_theme_stylebox_override(&"panel")
+		Chrome.clear_button(_palette_close_button)
+		_hide_quick_hud()
+	_update_palette_pin_visual()
+	_update_stage3_swatches()
+	if active:
+		_place_quick_bar.call_deferred()
+
+
+## Reparent only the presentation node. The existing proxy buttons and
+## their original tool bindings stay mounted and stateful across profiles.
+func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
+	if not is_instance_valid(_taskbar_island) or not is_instance_valid(_taskbar):
+		return
+	if pixel and active:
+		if _taskbar.get_parent() != _taskbar_scroller:
+			_taskbar.reparent(_taskbar_scroller)
+		_taskbar_island.visible = true
+		_taskbar.add_theme_constant_override(&"separation", 4)
+		for child in _taskbar.get_children():
+			if child is Button:
+				(child as Button).custom_minimum_size = Vector2(40.0, 40.0)
+		_taskbar_island.add_theme_stylebox_override(
+			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+		)
+	else:
+		var row := _taskbar_island.get_parent() as HBoxContainer
+		if row != null and _taskbar.get_parent() != row:
+			_taskbar.reparent(row)
+			row.move_child(_taskbar, row.get_child_count() - 1)
+		_taskbar.add_theme_constant_override(&"separation", 3)
+		for child in _taskbar.get_children():
+			if child is Button:
+				(child as Button).custom_minimum_size = TASK_BUTTON_SIZE
+		_taskbar_island.visible = false
+		_taskbar_island.remove_theme_stylebox_override(&"panel")
+	if active:
+		_refresh_taskbar()
+
+
 func _on_workspace_resized() -> void:
 	if active and is_instance_valid(_palette_popup) and _palette_popup.visible:
-		_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
+		if _palette_pinned:
+			_palette_popup.position = _constrain_stage3_palette_position(
+				Stage3.popup_position(
+					_palette_popup.position, Vector2.ZERO, _palette_popup.size, ui_root.size
+				)
+			)
+		else:
+			_place_popup_below(_palette_popup, _color_button, PALETTE_POPUP_SIZE)
 	_place_quick_bar.call_deferred()
 
 
@@ -1187,7 +1759,18 @@ func _source_button(tool_name: StringName) -> BaseButton:
 func _apply_tool_button_highlight(button: BaseButton, selected: bool) -> void:
 	if not is_instance_valid(button):
 		return
-	button.modulate = SELECTED_TOOL_TINT if selected else UNSELECTED_TOOL_TINT
+	if _quick_pixel_mode != Tokens.LEGACY and button is Button:
+		var pixel_button := button as Button
+		Chrome.style_button(pixel_button, _quick_pixel_mode)
+		if selected:
+			pixel_button.add_theme_stylebox_override(
+				&"normal", Chrome.make_panel(_quick_pixel_mode, Tokens.TIER_M, &"accent_primary")
+			)
+		button.modulate = Color.WHITE
+	else:
+		if button is Button:
+			Chrome.clear_button(button as Button)
+		button.modulate = SELECTED_TOOL_TINT if selected else UNSELECTED_TOOL_TINT
 
 
 func _source_represents_tool(source: BaseButton, active_tool: StringName) -> bool:

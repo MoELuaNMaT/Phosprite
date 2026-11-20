@@ -2,6 +2,7 @@ extends VBoxContainer
 
 enum FamilyTapAction { SELECT, OPEN, CLOSE }
 
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
 const IOS_SELECTION_RECENT_SECTION := "preferences"
@@ -76,6 +77,10 @@ static func is_ios_toolbar_removed_tool(tool_name: StringName) -> bool:
 
 
 func _ready() -> void:
+	Themes.theme_switched.connect(_refresh_stage4_tool_buttons)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_tool_buttons)
+	Global.pixelorama_opened.connect(_refresh_stage4_tool_buttons)
+	_refresh_stage4_tool_buttons.call_deferred()
 	if OS.get_name() == "iOS":
 		# Installation is transactional: until all seven runtime buttons exist, D1's normal
 		# toolbar remains untouched. Once installed, the six child buttons are moved out of
@@ -85,6 +90,15 @@ func _ready() -> void:
 		call_deferred("_install_ios_selection_family")
 		call_deferred("_install_ios_shape_family")
 		call_deferred("_install_ios_toolbar_removals")
+
+
+func _refresh_stage4_tool_buttons() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	for child in get_children():
+		if child is Button:
+			Stage4.style_button(child as Button, mode)
 
 
 func _input(event: InputEvent) -> void:

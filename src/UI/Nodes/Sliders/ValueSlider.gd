@@ -18,6 +18,7 @@ const VALUE_ARROW_ICON := preload("uid://ct8wn8m6x4m54")
 const VALUE_ARROW_HOVER_ICON := preload("uid://bq8h66v4ie8xl")
 const VALUE_ARROW_PRESS_ICON := preload("uid://hhxenhteahv6")
 const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const TOOL_VERTICAL_ARROW_INSET := 6.0
 const TOOL_VERTICAL_ARROW_HALF_WIDTH := 4.0
 const TOOL_VERTICAL_VALUE_INSET := 12.0
@@ -106,6 +107,13 @@ func _ready() -> void:
 		_value_up_button.modulate = Global.modulate_icon_color
 		_value_down_button.modulate = Global.modulate_icon_color
 	_setup_nodes()
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+
+
+func _refresh_stage4_visuals() -> void:
+	if tool_vertical_drag:
+		queue_redraw()
 
 
 func _notification(what: int) -> void:
@@ -140,37 +148,46 @@ func configure_tool_vertical_drag() -> void:
 func _draw() -> void:
 	if not tool_vertical_drag:
 		return
+	var mode := Stage4.active_mode() if not Engine.is_editor_hint() else PhospriteTokens.LEGACY
+	if mode != PhospriteTokens.LEGACY:
+		Stage4.draw_scrubby_pill(self, Rect2(Vector2.ZERO, size), mode)
 	var center_x := size.x * 0.5
 	var upper_y := TOOL_VERTICAL_ARROW_INSET + TOOL_VERTICAL_ARROW_HALF_WIDTH
 	var lower_y := size.y - upper_y
-	var ink := get_theme_color(&"font_color", &"LineEdit")
+	var ink := (
+		PhospriteTokens.color(mode, &"text_primary")
+		if mode != PhospriteTokens.LEGACY
+		else get_theme_color(&"font_color", &"LineEdit")
+	)
+	var stroke := 2.0 if mode != PhospriteTokens.LEGACY else 1.5
+	var antialias := mode == PhospriteTokens.LEGACY
 	draw_line(
 		Vector2(center_x - TOOL_VERTICAL_ARROW_HALF_WIDTH, upper_y),
 		Vector2(center_x, TOOL_VERTICAL_ARROW_INSET),
 		ink,
-		1.5,
-		true
+		stroke,
+		antialias
 	)
 	draw_line(
 		Vector2(center_x, TOOL_VERTICAL_ARROW_INSET),
 		Vector2(center_x + TOOL_VERTICAL_ARROW_HALF_WIDTH, upper_y),
 		ink,
-		1.5,
-		true
+		stroke,
+		antialias
 	)
 	draw_line(
 		Vector2(center_x - TOOL_VERTICAL_ARROW_HALF_WIDTH, lower_y),
 		Vector2(center_x, size.y - TOOL_VERTICAL_ARROW_INSET),
 		ink,
-		1.5,
-		true
+		stroke,
+		antialias
 	)
 	draw_line(
 		Vector2(center_x, size.y - TOOL_VERTICAL_ARROW_INSET),
 		Vector2(center_x + TOOL_VERTICAL_ARROW_HALF_WIDTH, lower_y),
 		ink,
-		1.5,
-		true
+		stroke,
+		antialias
 	)
 
 

@@ -5086,3 +5086,9 @@ msgstr ""
 
 msgid "Animation Workspace"
 msgstr ""
+
+msgid "Swap Colors"
+msgstr ""
+
+msgid "Share / Export"
+msgstr ""

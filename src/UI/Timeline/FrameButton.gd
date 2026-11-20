@@ -3,6 +3,7 @@ extends Button
 enum { PROPERTIES, REMOVE, CLONE, MOVE_LEFT, MOVE_RIGHT, NEW_TAG, IMPORT_TAG, REVERSE, CENTER }
 
 const IOS_TOUCH_MOUSE_FILTER_META := &"phosprite_timeline_touch_mouse_filter"
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 
 var frame := 0
 
@@ -28,6 +29,13 @@ func _ready() -> void:
 		alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	pressed.connect(_button_pressed)
 	mouse_entered.connect(_update_tooltip)
+	Themes.theme_switched.connect(_refresh_stage4_visuals)
+	Global.pixel_ui_unit_changed.connect(_refresh_stage4_visuals)
+	_refresh_stage4_visuals()
+
+
+func _refresh_stage4_visuals() -> void:
+	Stage4.style_button(self, Stage4.active_mode())
 
 
 func _sync_ios_new_tag_context() -> void:

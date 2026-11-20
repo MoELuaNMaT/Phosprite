@@ -5185,3 +5185,9 @@ msgstr "沉浸胶囊"
 
 msgid "Animation Workspace"
 msgstr "动画工作台"
+
+msgid "Swap Colors"
+msgstr "交换颜色"
+
+msgid "Share / Export"
+msgstr "分享 / 导出"

@@ -16,6 +16,7 @@ signal auto_outline_changed
 
 const INDEXED_MODE := -1
 const ProjectIdentityScript := preload("res://src/ProjectLibrary/ProjectIdentity.gd")
+const LAYER_ORDER_UI := preload("res://src/UI/Timeline/LayerOrderUI.gd")
 
 const WARNING_LOADING_3D_LAYERS_MSG := """Projects with 3D layers exported with a Pixelorama version
 older than 1.2 are no longer compatible with current versions. If you want to keep the 3D data
@@ -1033,6 +1034,11 @@ func remove_layers(indices: PackedInt32Array) -> void:
 func move_layers(
 	from_indices: PackedInt32Array, to_indices: PackedInt32Array, to_parents: Array
 ) -> void:
+	var layer_rows := {}
+	if Global.current_project == self:
+		layer_rows = LAYER_ORDER_UI.capture(Global.animation_timeline, self)
+		if layer_rows.is_empty():
+			return
 	Global.transform_content_confirmed.emit(self)
 	selected_cels.clear()
 	var removed_layers := []
@@ -1045,21 +1051,23 @@ func move_layers(
 		removed_cels.append([])
 		for frame in frames:
 			removed_cels[i].append(frame.cels.pop_at(from_indices[i] - i))
-		if Global.current_project == self:
-			Global.animation_timeline.project_layer_removed(from_indices[i] - i)
 	for i in to_indices.size():
 		layers.insert(to_indices[i], removed_layers[i])
 		for f in frames.size():
 			frames[f].cels.insert(to_indices[i], removed_cels[i][f])
-		if Global.current_project == self:
-			Global.animation_timeline.project_layer_added(to_indices[i])
 	if Global.current_project == self:
+		LAYER_ORDER_UI.restore(Global.animation_timeline, self, layer_rows)
 		layers_updated.emit()
 
 
 # "a" and "b" should both contain "from", "to", and "to_parents" arrays.
 # (Using dictionaries because there seems to be a limit of 5 arguments for do/undo method calls)
 func swap_layers(a: Dictionary, b: Dictionary) -> void:
+	var layer_rows := {}
+	if Global.current_project == self:
+		layer_rows = LAYER_ORDER_UI.capture(Global.animation_timeline, self)
+		if layer_rows.is_empty():
+			return
 	Global.transform_content_confirmed.emit(self)
 	selected_cels.clear()
 	var a_layers := []
@@ -1068,7 +1076,6 @@ func swap_layers(a: Dictionary, b: Dictionary) -> void:
 	var b_cels := []  # 2D array of cels (an array for each layer removed)
 	for i in a.from.size():
 		a_layers.append(layers.pop_at(a.from[i] - i))
-		Global.animation_timeline.project_layer_removed(a.from[i] - i)
 		a_layers[i].parent = a.to_parents[i]  # All parents must be set early, before creating buttons
 		a_cels.append([])
 		for frame in frames:
@@ -1076,7 +1083,6 @@ func swap_layers(a: Dictionary, b: Dictionary) -> void:
 	for i in b.from.size():
 		var index = (b.from[i] - i) if a.from[0] > b.from[0] else (b.from[i] - i - a.from.size())
 		b_layers.append(layers.pop_at(index))
-		Global.animation_timeline.project_layer_removed(index)
 		b_layers[i].parent = b.to_parents[i]  # All parents must be set early, before creating buttons
 		b_cels.append([])
 		for frame in frames:
@@ -1087,12 +1093,12 @@ func swap_layers(a: Dictionary, b: Dictionary) -> void:
 		layers.insert(index, a_layers[i])
 		for f in frames.size():
 			frames[f].cels.insert(index, a_cels[i][f])
-		Global.animation_timeline.project_layer_added(index)
 	for i in b_layers.size():
 		layers.insert(b.to[i], b_layers[i])
 		for f in frames.size():
 			frames[f].cels.insert(b.to[i], b_cels[i][f])
-		Global.animation_timeline.project_layer_added(b.to[i])
+	if Global.current_project == self:
+		LAYER_ORDER_UI.restore(Global.animation_timeline, self, layer_rows)
 	layers_updated.emit()
 
 

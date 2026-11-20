@@ -145,9 +145,21 @@ func _rebuild_styles() -> void:
 		_rebuild_pixel_styles()
 
 
-## Pilot scope: floating/peeking/collapsed WorkspaceModule chrome only.
-## Docked and bottom Timeline panels retain their edge-to-edge geometry.
+## Stage 4 extends opt-in chrome to docked side panels and bottom Timeline.
+## No Workspace hit region, header height, drag gesture or layout size changes.
 func _rebuild_pixel_styles() -> void:
+	_pixel_module_styles[&"docked"] = PixelStyle.make_style(
+		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
+	)
+	_pixel_module_styles[&"bottom_bar"] = PixelStyle.make_style(
+		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
+	)
+	_pixel_header_styles[&"docked"] = PixelStyle.make_style(
+		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+	)
+	_pixel_header_styles[&"bottom_bar"] = PixelStyle.make_style(
+		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+	)
 	_pixel_module_styles[&"floating"] = PixelStyle.make_style(
 		Tokens.TIER_L, elevated_color, border_color, shadow_color, true, pixel_unit
 	)
