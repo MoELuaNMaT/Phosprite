@@ -55,7 +55,9 @@ func test_two_layer_bottom_to_top_reorder_survives_touch_release() -> void:
 	check_eq(project.frames[0].cels[1], bottom_cel, "bottom cel must move with its layer")
 	check_true(is_instance_valid(source_row), "source row must survive reorder")
 	check_true(is_instance_valid(source_touch), "source touch adapter must survive reorder")
-	check_eq(timeline.layer_vbox.get_child(0), source_row, "source row must move without replacement")
+	check_eq(
+		timeline.layer_vbox.get_child(0), source_row, "source row must move without replacement"
+	)
 	check_eq(timeline.layer_vbox.get_child(1), target_row, "target row must stay alive")
 	check_eq(source_row.layer_index, 1, "source row must track its new model index")
 	check_eq(target_row.layer_index, 0, "target row must track its new model index")
