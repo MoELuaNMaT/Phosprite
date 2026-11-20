@@ -97,9 +97,7 @@ func test_timeline_share_export_button_is_fixed_and_uses_existing_export_action(
 	check_true(share_button.visible, "Export remains visible when other actions overflow")
 	accessory.set_available_width(initial_width)
 
-	var source := FileAccess.get_file_as_string(
-		"res://src/UI/Workspace/TimelineHeaderControls.gd"
-	)
+	var source := FileAccess.get_file_as_string("res://src/UI/Workspace/TimelineHeaderControls.gd")
 	check_has(
 		source,
 		"Global.top_menu_container.file_menu_id_pressed(Global.FileMenu.EXPORT_AS)",
