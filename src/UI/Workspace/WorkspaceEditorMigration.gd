@@ -40,25 +40,25 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.TOOLS_ID,
 		"zone": WorkspaceDockLayout.DockZone.LEFT,
 		"index": 0,
-		"size": Vector2(176.0, 400.0),
+		"size": Vector2(176.0, 620.0),
 	},
 	{
 		"id": Builtins.PREVIEW_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 0,
-		"size": Vector2(280.0, 196.0),
+		"size": Vector2(280.0, 236.0),
 	},
 	{
 		"id": Builtins.PALETTE_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 1,
-		"size": Vector2(300.0, 320.0),
+		"size": Vector2(280.0, 384.0),
 	},
 	{
 		"id": Builtins.RIGHT_TOOL_OPTIONS_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 2,
-		"size": Vector2(280.0, 140.0),
+		"size": Vector2(280.0, 112.0),
 	},
 ]
 

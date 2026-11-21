@@ -22,8 +22,8 @@ const Icons := preload("res://src/UI/DesignSystem/PhospriteStage2Icons.gd")
 
 const LANDSCAPE_COLUMNS := 6
 const PORTRAIT_COLUMNS := 4
-const GRID_SIDE_MARGIN := 32.0
-const GRID_SEPARATION := 16.0
+const GRID_SIDE_MARGIN := 24.0
+const GRID_SEPARATION := 18.0
 const THUMBNAIL_PRELOAD_MARGIN := 96.0
 const REFLOW_DURATION := 0.18
 const FEEDBACK_DURATION := 2.4
@@ -57,15 +57,20 @@ var _popover_menu: PopupMenu
 var _feedback_generation := 0
 var _stage2_mode: StringName = Tokens.LEGACY
 var _stage2_legacy: Dictionary = {}
-var _stage2_left_island: PanelContainer
-var _stage2_left_buttons: HBoxContainer
+var _selection_status_pill: PanelContainer
+var _selection_status_label: Label
+var _batch_duplicate_button: Button
+var _batch_export_button: Button
+var _batch_delete_button: Button
 
 @onready var background := $Background as ColorRect
 @onready var top_bar := $Shell/TopBar as PanelContainer
+@onready var top_bar_margin := $Shell/TopBar/Margin as MarginContainer
 @onready var top_bar_row := $Shell/TopBar/Margin/Row as HBoxContainer
 @onready var top_bar_spacer := $Shell/TopBar/Margin/Row/Spacer as Control
 @onready var brand_icon := $Shell/TopBar/Margin/Row/Brand/Icon as TextureRect
 @onready var brand_wordmark := $Shell/TopBar/Margin/Row/Brand/Wordmark as Label
+@onready var content_margin := $Shell/ProjectScroll/ContentMargin as MarginContainer
 @onready var empty_title := $Shell/ProjectScroll/ContentMargin/Content/EmptyState/Title as Label
 @onready var empty_hint := $Shell/ProjectScroll/ContentMargin/Content/EmptyState/Hint as Label
 @onready var scroll_container := %ProjectScroll as ScrollContainer
@@ -87,7 +92,9 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		_sync_multiselect_button_presentation()
 		if _stage2_mode != Tokens.LEGACY:
+			import_button.text = tr("Import")
 			new_button.text = tr("New")
+			_sync_multiselect_toolbar()
 
 
 func _ready() -> void:
@@ -137,6 +144,7 @@ func _capture_stage2_legacy() -> void:
 		"brand_icon_filter": brand_icon.texture_filter,
 		"brand_icon_size": brand_icon.custom_minimum_size,
 		"topbar": top_bar.get_theme_stylebox(&"panel"),
+		"topbar_min": top_bar.custom_minimum_size,
 		"wordmark": brand_wordmark.get_theme_color(&"font_color"),
 		"build": build_identity_label.get_theme_color(&"font_color"),
 		"empty_title": empty_title.get_theme_color(&"font_color"),
@@ -148,48 +156,113 @@ func _capture_stage2_legacy() -> void:
 	}
 
 
+func _ensure_multiselect_toolbar() -> void:
+	if is_instance_valid(_selection_status_pill):
+		return
+	_selection_status_pill = PanelContainer.new()
+	_selection_status_pill.name = &"SelectionStatusPill"
+	_selection_status_pill.visible = false
+	_selection_status_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_selection_status_label = Label.new()
+	_selection_status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_selection_status_pill.add_child(_selection_status_label)
+
+	_batch_duplicate_button = _make_batch_button(&"BatchDuplicate", ActionMenuId.DUPLICATE)
+	_batch_export_button = _make_batch_button(&"BatchExport", ActionMenuId.EXPORT)
+	_batch_delete_button = _make_batch_button(&"BatchDelete", ActionMenuId.DELETE)
+
+	for node: Control in [
+		_selection_status_pill,
+		_batch_duplicate_button,
+		_batch_export_button,
+		_batch_delete_button,
+	]:
+		top_bar_row.add_child(node)
+
+
+func _make_batch_button(node_name: StringName, action_id: int) -> Button:
+	var btn := Button.new()
+	btn.name = node_name
+	btn.visible = false
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.pressed.connect(_on_batch_action_pressed.bind(action_id))
+	return btn
+
+
+func _order_action_buttons_unified() -> void:
+	var spacer_idx := top_bar_spacer.get_index()
+	var cursor := spacer_idx + 1
+	if is_instance_valid(_selection_status_pill):
+		for node: Control in [
+			_selection_status_pill,
+			_batch_duplicate_button,
+			_batch_export_button,
+			_batch_delete_button,
+		]:
+			if node.get_parent() == top_bar_row:
+				top_bar_row.move_child(node, cursor)
+				cursor += 1
+	for btn: Button in [multiselect_button, import_button, new_button]:
+		if btn.get_parent() != top_bar_row:
+			btn.reparent(top_bar_row)
+		top_bar_row.move_child(btn, cursor)
+		cursor += 1
+
+
 func _sync_multiselect_button_presentation() -> void:
 	if not is_instance_valid(multiselect_button):
 		return
 	var title := tr("Exit Multi-Select") if multiselect_mode else tr("Multi-Select")
+	multiselect_button.text = title
+	multiselect_button.tooltip_text = title if _stage2_mode != Tokens.LEGACY else ""
 	if _stage2_mode != Tokens.LEGACY:
-		multiselect_button.text = ""
-		multiselect_button.tooltip_text = title
+		Chrome.style_button_variant(
+			multiselect_button, _stage2_mode, &"active" if multiselect_mode else &"secondary", true
+		)
+		var shadow_px := 0.0
+		multiselect_button.custom_minimum_size.y = (36.0 if multiselect_mode else 36.0)
+	_sync_multiselect_toolbar()
+
+
+func _sync_multiselect_toolbar() -> void:
+	var themed := _stage2_mode != Tokens.LEGACY
+	if not is_instance_valid(_selection_status_pill):
+		if not themed:
+			import_button.visible = true
+			new_button.visible = true
+		return
+	var show_batch := themed and multiselect_mode
+	_selection_status_pill.visible = show_batch
+	_batch_duplicate_button.visible = show_batch
+	_batch_export_button.visible = show_batch
+	_batch_delete_button.visible = show_batch
+	import_button.visible = not show_batch
+	new_button.visible = not show_batch
+	if not show_batch:
+		return
+
+	var selected := get_selected_paths()
+	var count := selected.size()
+	var healthy := _selected_all_healthy()
+	var unlocked := _interaction_locks.is_empty()
+	if count == 0:
+		_selection_status_label.text = tr("Select")
 	else:
-		multiselect_button.text = title
-		multiselect_button.tooltip_text = ""
+		_selection_status_label.text = "%d" % count
+		var locale := TranslationServer.get_locale().to_lower()
+		if locale.begins_with("zh"):
+			_selection_status_label.text = "已选 %d 项" % count
+		else:
+			_selection_status_label.text = "%d selected" % count
 
-
-func _ensure_stage2_left_island() -> void:
-	if is_instance_valid(_stage2_left_island):
-		return
-	_stage2_left_island = PanelContainer.new()
-	_stage2_left_island.name = &"GalleryActionsIsland"
-	_stage2_left_island.mouse_filter = Control.MOUSE_FILTER_PASS
-	_stage2_left_buttons = HBoxContainer.new()
-	_stage2_left_buttons.add_theme_constant_override(&"separation", 4)
-	_stage2_left_island.add_child(_stage2_left_buttons)
-	top_bar_row.add_child(_stage2_left_island)
-	top_bar_row.move_child(_stage2_left_island, top_bar_spacer.get_index())
-
-
-func _set_stage2_gallery_group(enabled: bool) -> void:
-	if enabled:
-		_ensure_stage2_left_island()
-		for button in [import_button, multiselect_button]:
-			if button.get_parent() != _stage2_left_buttons:
-				button.reparent(_stage2_left_buttons)
-		return
-	if is_instance_valid(_stage2_left_island):
-		for button in [import_button, multiselect_button]:
-			if button.get_parent() == _stage2_left_buttons:
-				button.reparent(top_bar_row)
-		_stage2_left_island.queue_free()
-		_stage2_left_island = null
-		_stage2_left_buttons = null
-		top_bar_row.move_child(import_button, top_bar_spacer.get_index() + 1)
-		top_bar_row.move_child(new_button, import_button.get_index() + 1)
-		top_bar_row.move_child(multiselect_button, new_button.get_index() + 1)
+	_batch_duplicate_button.text = tr("Duplicate")
+	_batch_export_button.text = tr("Export")
+	_batch_delete_button.text = tr("Delete")
+	_batch_duplicate_button.disabled = (not unlocked) or (not healthy)
+	_batch_export_button.disabled = (not unlocked) or (not healthy)
+	_batch_delete_button.disabled = (not unlocked) or selected.is_empty()
 
 
 func _refresh_stage2_theme() -> void:
@@ -198,11 +271,11 @@ func _refresh_stage2_theme() -> void:
 	var mode := Chrome.active_mode()
 	_stage2_mode = mode
 	var themed := mode != Tokens.LEGACY
-	_set_stage2_gallery_group(themed)
 	if not themed:
 		background.color = _stage2_legacy["ground"]
 		brand_icon.texture_filter = int(_stage2_legacy["brand_icon_filter"])
 		brand_icon.custom_minimum_size = _stage2_legacy["brand_icon_size"]
+		top_bar.custom_minimum_size = _stage2_legacy["topbar_min"]
 		top_bar.add_theme_stylebox_override(&"panel", _stage2_legacy["topbar"])
 		brand_wordmark.add_theme_color_override(&"font_color", _stage2_legacy["wordmark"])
 		build_identity_label.add_theme_color_override(&"font_color", _stage2_legacy["build"])
@@ -211,6 +284,7 @@ func _refresh_stage2_theme() -> void:
 		feedback_banner.add_theme_color_override(&"font_color", _stage2_legacy["feedback"])
 		for button in [import_button, new_button, multiselect_button]:
 			Chrome.clear_button(button)
+			button.remove_theme_font_size_override(&"font_size")
 		import_button.icon = null
 		new_button.icon = null
 		multiselect_button.icon = null
@@ -219,37 +293,96 @@ func _refresh_stage2_theme() -> void:
 		import_button.custom_minimum_size = _stage2_legacy["import_min"]
 		new_button.custom_minimum_size = _stage2_legacy["new_min"]
 		multiselect_button.custom_minimum_size = _stage2_legacy["select_min"]
+		import_button.visible = true
+		new_button.visible = true
+		if is_instance_valid(_selection_status_pill):
+			_selection_status_pill.visible = false
+			_batch_duplicate_button.visible = false
+			_batch_export_button.visible = false
+			_batch_delete_button.visible = false
 	else:
+		_ensure_multiselect_toolbar()
+		_order_action_buttons_unified()
+
 		brand_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		# Source brand art is 16px: render at an exact 2x rather than 28/16.
+		# Source brand art is 16px: render at an exact 2x (32px).
 		brand_icon.custom_minimum_size = Vector2(32.0, 32.0)
 		background.color = Tokens.color(mode, &"gallery_ground")
-		top_bar.add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface")
-		)
+
+		# Full-width edge-docked TopBar: 0px outer corners, no drop shadow, crisp bottom divider
+		top_bar.custom_minimum_size = Vector2(0.0, 58.0)
+		top_bar.add_theme_stylebox_override(&"panel", Chrome.make_topbar_style(mode))
+		top_bar_margin.add_theme_constant_override(&"margin_left", Tokens.SPACE_XL)
+		top_bar_margin.add_theme_constant_override(&"margin_right", Tokens.SPACE_XL)
+		top_bar_margin.add_theme_constant_override(&"margin_top", 10)
+		top_bar_margin.add_theme_constant_override(&"margin_bottom", 10)
+		top_bar_row.add_theme_constant_override(&"separation", Tokens.SPACE_SM)
+
+		content_margin.add_theme_constant_override(&"margin_left", Tokens.SPACE_XL)
+		content_margin.add_theme_constant_override(&"margin_right", Tokens.SPACE_XL)
+		content_margin.add_theme_constant_override(&"margin_top", 24)
+		content_margin.add_theme_constant_override(&"margin_bottom", 36)
+		grid.add_theme_constant_override(&"h_separation", 18)
+		grid.add_theme_constant_override(&"v_separation", 18)
+
 		var foreground := Tokens.color(mode, &"text_primary")
 		var muted := Tokens.color(mode, &"text_muted")
-		brand_wordmark.add_theme_color_override(&"font_color", foreground)
-		build_identity_label.add_theme_color_override(&"font_color", muted)
+		brand_wordmark.add_theme_color_override(&"font_color", Tokens.color(mode, &"topbar_text"))
+		brand_wordmark.add_theme_font_size_override(&"font_size", Tokens.FONT_BRAND)
+		build_identity_label.add_theme_color_override(
+			&"font_color", Tokens.color(mode, &"topbar_pill_surface")
+		)
+		build_identity_label.add_theme_font_size_override(&"font_size", Tokens.FONT_CAPTION)
 		empty_title.add_theme_color_override(&"font_color", foreground)
 		empty_hint.add_theme_color_override(&"font_color", muted)
 		feedback_banner.add_theme_color_override(&"font_color", muted)
-		_stage2_left_island.add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
-		)
-		for button in [import_button, new_button, multiselect_button]:
-			Chrome.style_button(button, mode, button == new_button)
-			button.custom_minimum_size.y = 40.0
+
+		# Unified right-side action group: Multi-Select, Import, New (CTA)
+		var btn_h := 36.0
+		for button: Button in [multiselect_button, import_button, new_button]:
+			button.custom_minimum_size = Vector2(0.0, btn_h)
+			button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			button.expand_icon = false
-		import_button.icon = Icons.icon(&"import")
-		multiselect_button.icon = Icons.icon(&"multi_select")
-		new_button.icon = Icons.icon(&"new")
-		import_button.text = ""
+			button.add_theme_font_size_override(
+				&"font_size", Tokens.FONT_CARD_TITLE if button == new_button else Tokens.FONT_BODY
+			)
+		Chrome.style_button_variant(import_button, mode, &"secondary", true)
+		Chrome.style_button_variant(new_button, mode, &"cta", true)
+		Chrome.style_button_variant(
+			multiselect_button, mode, &"active" if multiselect_mode else &"secondary", true
+		)
+
+		# Crisp 16x16 (exact 1x) pixel icons inside 38px text+icon buttons
+		import_button.icon = Icons.icon_1x(&"import")
+		multiselect_button.icon = Icons.icon_1x(&"multi_select")
+		new_button.icon = Icons.icon_1x(&"new")
+		import_button.text = tr("Import")
 		import_button.tooltip_text = tr("Import")
 		new_button.text = tr("New")
+		new_button.tooltip_text = tr("New")
+
+		# Selection mode status pill & inline batch actions
+		_selection_status_pill.add_theme_stylebox_override(
+			&"panel", Chrome.make_recessed_topbar_pill(mode, 12.0, 6.0)
+		)
+		_selection_status_label.add_theme_color_override(
+			&"font_color", Tokens.color(mode, &"topbar_pill_text")
+		)
+		_selection_status_label.add_theme_font_size_override(&"font_size", Tokens.FONT_META)
+
+		for batch_btn: Button in [
+			_batch_duplicate_button, _batch_export_button, _batch_delete_button
+		]:
+			batch_btn.custom_minimum_size = Vector2(0.0, btn_h)
+			batch_btn.add_theme_font_size_override(&"font_size", Tokens.FONT_BODY)
+		Chrome.style_button_variant(_batch_duplicate_button, mode, &"subtle", true)
+		Chrome.style_button_variant(_batch_export_button, mode, &"subtle", true)
+		Chrome.style_button_variant(_batch_delete_button, mode, &"danger", true)
+
 	_sync_multiselect_button_presentation()
 	for card: ProjectGalleryCard in _cards:
 		card.apply_stage2_theme(mode)
+		card.set_multiselect_mode(multiselect_mode)
 	call_deferred("_update_layout")
 
 
@@ -399,14 +532,13 @@ func request_open(path: String) -> void:
 
 func set_multiselect_mode(enabled: bool) -> void:
 	multiselect_mode = enabled
-	# Preserve the explicit accessibility label before Stage-2 icon treatment.
-	# Legacy UI keeps the visible caption; pixel UI keeps it as a tooltip.
+	# Preserve the explicit accessibility label before Stage-2 treatment.
 	multiselect_button.text = tr("Exit Multi-Select") if enabled else tr("Multi-Select")
-	_sync_multiselect_button_presentation()
 	_gesture_resolver.reset()
 	_hide_popovers()
 	if not enabled:
 		_selected_paths.clear()
+	_sync_multiselect_button_presentation()
 	_sync_card_selection()
 
 
@@ -481,6 +613,7 @@ func _rebuild_cards() -> void:
 			display_name = "%s %d" % [tr("Untitled"), untitled_number]
 		card.set_display_title(display_name)
 		card.apply_stage2_theme(_stage2_mode)
+		card.set_multiselect_mode(multiselect_mode)
 		card.set_selected(_selected_paths.has(_normalized_path(entry.path)))
 		card.pointer_down.connect(_on_card_pointer_down)
 		card.pointer_up.connect(_on_card_pointer_up)
@@ -515,7 +648,8 @@ func _update_layout() -> void:
 	grid.columns = columns
 	var layout_width := _current_layout_width()
 	_last_layout_width = layout_width
-	var available_width := maxf(layout_width - GRID_SIDE_MARGIN * 2.0, 1.0)
+	var side_margin := GRID_SIDE_MARGIN if _stage2_mode != Tokens.LEGACY else 32.0
+	var available_width := maxf(layout_width - side_margin * 2.0, 1.0)
 	var separators := GRID_SEPARATION * float(columns - 1)
 	# The ScrollContainer can retain its previous landscape width for a frame (or
 	# longer on iPad safe-area rotation). Derive card geometry from the live shell
@@ -683,12 +817,14 @@ func _set_path_selected(path: String, value: bool) -> void:
 	else:
 		_selected_paths.erase(normalized)
 	_sync_card_selection()
+	_sync_multiselect_toolbar()
 
 
 func _sync_card_selection() -> void:
 	for card: ProjectGalleryCard in _cards:
 		if card.entry == null:
 			continue
+		card.set_multiselect_mode(multiselect_mode)
 		card.set_selected(_selected_paths.has(_normalized_path(card.entry.path)))
 
 
@@ -911,6 +1047,7 @@ func _sync_interaction_state() -> void:
 	import_button.disabled = not enabled
 	new_button.disabled = not enabled
 	multiselect_button.disabled = not enabled
+	_sync_multiselect_toolbar()
 	for card: ProjectGalleryCard in _cards:
 		card.set_interaction_enabled(enabled)
 

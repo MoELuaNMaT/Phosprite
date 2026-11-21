@@ -17,6 +17,7 @@ const Stage3 := preload("res://src/UI/DesignSystem/PhospriteStage3Controls.gd")
 const CLOSE_Q_ICON := preload("res://assets/graphics/q_icons/chrome/window_close.png")
 const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 const Draw := preload("res://src/UI/DesignSystem/PhospriteDraw.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
@@ -58,6 +59,9 @@ const OPTIONS_CONTENT_PADDING := Vector2(22.0, 72.0)
 const OPTIONS_MAX_VIEWPORT_RATIO := 0.82
 const SELECTED_TOOL_TINT := Color(0.45, 0.78, 1.0, 1.0)
 const UNSELECTED_TOOL_TINT := Color.WHITE
+
+static var _ui3_panel_cache: Dictionary = {}
+static var _ui3_slider_cache: Dictionary = {}
 
 var ui_root: Control
 var left_tool_options: ScrollContainer
@@ -511,23 +515,33 @@ func _create_palette_popup() -> bool:
 	_palette_header.mouse_filter = Control.MOUSE_FILTER_STOP
 	_palette_header.gui_input.connect(_on_palette_header_input)
 	stack.add_child(_palette_header)
+	var hdr_margin := MarginContainer.new()
+	hdr_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hdr_margin.add_theme_constant_override(&"margin_left", 8)
+	hdr_margin.add_theme_constant_override(&"margin_right", 6)
+	hdr_margin.add_theme_constant_override(&"margin_top", 2)
+	hdr_margin.add_theme_constant_override(&"margin_bottom", 2)
+	_palette_header.add_child(hdr_margin)
 	var heading_row := HBoxContainer.new()
 	heading_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_palette_header.add_child(heading_row)
+	hdr_margin.add_child(heading_row)
 	_palette_header_label = Label.new()
 	_palette_header_label.text = tr("Palette & Color")
 	_palette_header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_palette_header_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_palette_header_label.add_theme_font_size_override(&"font_size", 12)
 	_palette_header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	heading_row.add_child(_palette_header_label)
 	_palette_close_button = Button.new()
 	_palette_close_button.name = &"ClosePinnedPalette"
 	var close_image := CLOSE_Q_ICON.get_image().get_region(Rect2i(2, 2, 12, 12))
-	close_image.resize(24, 24, Image.INTERPOLATE_NEAREST)
+	close_image.resize(16, 16, Image.INTERPOLATE_NEAREST)
 	_palette_close_button.icon = ImageTexture.create_from_image(close_image)
 	_palette_close_button.expand_icon = false
+	_palette_close_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_palette_close_button.tooltip_text = tr("Close")
-	_palette_close_button.custom_minimum_size = Vector2(36.0, 36.0)
+	_palette_close_button.custom_minimum_size = Vector2(24.0, 24.0)
+	_palette_close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_palette_close_button.pressed.connect(_close_palette_popup)
 	heading_row.add_child(_palette_close_button)
 
@@ -567,7 +581,7 @@ func _constrain_stage3_palette_position(position: Vector2) -> Vector2:
 
 func _source_icon(source: BaseButton) -> Texture2D:
 	if Chrome.active_mode() != Tokens.LEGACY:
-		var q_tex := QIcons.tool_icon(StringName(source.name))
+		var q_tex := QIcons.tool_icon_1x(StringName(source.name))
 		if q_tex != null:
 			return q_tex
 	var icon_node := source.get_node_or_null(^"ToolIcon") as TextureRect
@@ -783,7 +797,7 @@ func _refresh_family_row(current: StringName) -> void:
 		var pixel_mode := Chrome.active_mode()
 		button.flat = pixel_mode == Tokens.LEGACY
 		button.toggle_mode = true
-		var q_tex := QIcons.tool_icon(tool_name) if pixel_mode != Tokens.LEGACY else null
+		var q_tex := QIcons.tool_icon_1x(tool_name) if pixel_mode != Tokens.LEGACY else null
 		button.expand_icon = q_tex == null
 		button.icon = q_tex if q_tex != null else tool.icon
 		button.tooltip_text = tr(tool.display_name)
@@ -945,10 +959,13 @@ func _place_quick_bar() -> void:
 		_quick_bar.visible = false
 		_set_quick_reservation(Rect2())
 		return
+	var title_height := (
+		_quick_title.get_combined_minimum_size().y + 6.0 if _quick_title.visible else 0.0
+	)
 	var natural_height := (
 		_quick_controls.get_combined_minimum_size().y
-		+ _quick_title.get_combined_minimum_size().y
-		+ 24.0
+		+ title_height
+		+ (22.0 if _quick_pixel_mode != Tokens.LEGACY else 24.0)
 	)
 	var requested_width := (
 		Stage3.CAPSULE_WIDTH if _quick_pixel_mode != Tokens.LEGACY else QUICK_BAR_WIDTH
@@ -1063,17 +1080,20 @@ func _add_stage3_quick_slider(tool: BaseTool, path: NodePath, title: String, is_
 	caption.text = title
 	caption.tooltip_text = title
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caption.add_theme_font_size_override(&"font_size", 12)
+	caption.add_theme_font_size_override(&"font_size", 9)
+	caption.add_theme_color_override(&"font_color", Tokens.color(_quick_pixel_mode, &"text_muted"))
 	group.add_child(caption)
 	var slider := VSlider.new()
 	slider.name = StringName("CapsuleSize" if is_size else "CapsuleOpacity")
 	slider.custom_minimum_size = Vector2(Stage3.TRACK_WIDTH, Stage3.TRACK_HEIGHT)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	slider.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_style_stage3_vslider(slider, _quick_pixel_mode)
 	group.add_child(slider)
 	var label := Label.new()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override(&"font_size", 12)
+	label.add_theme_font_size_override(&"font_size", 10)
+	label.add_theme_color_override(&"font_color", Tokens.color(_quick_pixel_mode, &"text_primary"))
 	group.add_child(label)
 	var suffix := "px" if is_size else "%"
 	if is_size and source is ValueSlider:
@@ -1142,22 +1162,31 @@ func _on_stage3_source_value_changed(
 
 
 func _add_stage3_color_swatches() -> void:
+	var spacer := MarginContainer.new()
+	spacer.add_theme_constant_override(&"margin_top", 2)
+	spacer.add_theme_constant_override(&"margin_bottom", 2)
+	spacer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_quick_controls.add_child(spacer)
 	var overlap := Control.new()
 	overlap.name = &"UI3ColorOverlap"
-	overlap.custom_minimum_size = Vector2(36.0, 28.0)
+	overlap.custom_minimum_size = Vector2(32.0, 28.0)
 	overlap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_quick_controls.add_child(overlap)
+	spacer.add_child(overlap)
 	_quick_swatch_right = Button.new()
 	_quick_swatch_right.name = &"SecondaryColor"
-	_quick_swatch_right.position = Vector2(12, 0)
-	_quick_swatch_right.custom_minimum_size = Vector2(22, 22)
+	_quick_swatch_right.position = Vector2(11, 0)
+	_quick_swatch_right.custom_minimum_size = Vector2(20, 20)
+	_quick_swatch_right.focus_mode = Control.FOCUS_NONE
+	_quick_swatch_right.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_quick_swatch_right.tooltip_text = tr("Swap Colors")
 	_quick_swatch_right.pressed.connect(_on_stage3_swap_colors)
 	overlap.add_child(_quick_swatch_right)
 	_quick_swatch_left = Button.new()
 	_quick_swatch_left.name = &"PrimaryColor"
-	_quick_swatch_left.position = Vector2(0, 6)
-	_quick_swatch_left.custom_minimum_size = Vector2(22, 22)
+	_quick_swatch_left.position = Vector2(1, 7)
+	_quick_swatch_left.custom_minimum_size = Vector2(20, 20)
+	_quick_swatch_left.focus_mode = Control.FOCUS_NONE
+	_quick_swatch_left.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_quick_swatch_left.tooltip_text = tr("Swap Colors")
 	_quick_swatch_left.pressed.connect(_on_stage3_swap_colors)
 	overlap.add_child(_quick_swatch_left)
@@ -1179,19 +1208,15 @@ func _update_stage3_swatches() -> void:
 		var button := pair["button"] as Button
 		if not is_instance_valid(button):
 			continue
-		var outline := (
+		var style := StyleBoxFlat.new()
+		style.bg_color = Tools.get_assigned_color(pair["side"])
+		style.border_color = (
 			Tokens.color(_quick_pixel_mode, &"accent_primary")
 			if pair["side"] == MOUSE_BUTTON_LEFT
-			else Tokens.color(_quick_pixel_mode, &"outline_ink")
+			else Tokens.color(_quick_pixel_mode, &"border_subtle")
 		)
-		var style := PixelStyle.make_style(
-			Tokens.TIER_S,
-			Tools.get_assigned_color(pair["side"]),
-			outline,
-			Tokens.color(_quick_pixel_mode, &"pixel_shadow"),
-			false,
-			Global.pixel_ui_unit
-		)
+		style.set_border_width_all(2 if pair["side"] == MOUSE_BUTTON_LEFT else 1)
+		style.set_corner_radius_all(3)
 		for state in [&"normal", &"hover", &"pressed", &"focus"]:
 			button.add_theme_stylebox_override(state, style)
 
@@ -1640,28 +1665,26 @@ func _refresh_stage3_visuals() -> void:
 	_sync_stage3_taskbar_island(pixel, mode)
 	var margin := _quick_bar.get_child(0) as MarginContainer
 	if margin != null:
-		for side in [&"left", &"top", &"right", &"bottom"]:
-			margin.add_theme_constant_override(
-				StringName("margin_" + String(side)), 4 if pixel else 6
-			)
+		margin.add_theme_constant_override(&"margin_left", 4 if pixel else 6)
+		margin.add_theme_constant_override(&"margin_right", 4 if pixel else 6)
+		margin.add_theme_constant_override(&"margin_top", 8 if pixel else 6)
+		margin.add_theme_constant_override(&"margin_bottom", 8 if pixel else 6)
 	_quick_bar.custom_minimum_size.x = Stage3.CAPSULE_WIDTH if pixel else QUICK_BAR_WIDTH
 	_quick_bar.texture_filter = (
 		CanvasItem.TEXTURE_FILTER_NEAREST if pixel else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 	)
 	if pixel:
 		_quick_bar.add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+			&"panel", _make_ui3_card_style(mode, &"panel_surface", 6, true)
 		)
 		_palette_popup.add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
+			&"panel", _make_ui3_card_style(mode, &"panel_surface", 6, true)
 		)
-		_palette_header.add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_M, &"accent_soft")
-		)
+		_palette_header.add_theme_stylebox_override(&"panel", _make_ui3_header_style(mode))
 		_quick_hud.add_theme_stylebox_override(
-			&"panel", Chrome.make_panel(mode, Tokens.TIER_M, &"panel_surface", true)
+			&"panel", _make_ui3_card_style(mode, &"panel_surface", 6, true)
 		)
-		Chrome.style_button(_palette_close_button, mode)
+		Stage4.style_button(_palette_close_button, mode)
 	else:
 		# The legacy popup has no tear-off header or close control.
 		# Clear the pinned state before hiding that control to avoid a
@@ -1683,7 +1706,7 @@ func _refresh_stage3_visuals() -> void:
 
 ## Reparent only the presentation node. The existing proxy buttons and
 ## their original tool bindings stay mounted and stateful across profiles.
-func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
+func _sync_stage3_taskbar_island(pixel: bool, _mode: StringName) -> void:
 	if not is_instance_valid(_taskbar_island) or not is_instance_valid(_taskbar):
 		return
 	if pixel and active:
@@ -1691,12 +1714,15 @@ func _sync_stage3_taskbar_island(pixel: bool, mode: StringName) -> void:
 			_taskbar.reparent(_taskbar_scroller)
 		_taskbar_island.visible = true
 		_taskbar.add_theme_constant_override(&"separation", 4)
+		_taskbar_island.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_taskbar_scroller.custom_minimum_size = Vector2(120.0, 36.0)
 		for child in _taskbar.get_children():
 			if child is Button:
-				(child as Button).custom_minimum_size = Vector2(40.0, 40.0)
-		_taskbar_island.add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
-		)
+				var btn := child as Button
+				btn.custom_minimum_size = Vector2(34.0, 34.0)
+				btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_taskbar_island.add_theme_stylebox_override(&"panel", StyleBoxEmpty.new())
 	else:
 		var row := _taskbar_island.get_parent() as HBoxContainer
 		if row != null and _taskbar.get_parent() != row:
@@ -1747,7 +1773,7 @@ func _refresh_taskbar() -> void:
 		var source := _source_button(BRUSH_TOOL)
 		_brush_button.visible = source == null or source.visible
 		_brush_button.icon = (
-			QIcons.tool_icon(BRUSH_TOOL)
+			QIcons.tool_icon_1x(BRUSH_TOOL)
 			if pixel_on
 			else (_source_icon(source) if source != null else null)
 		)
@@ -1759,7 +1785,7 @@ func _refresh_taskbar() -> void:
 		var source := _source_button(ERASER_TOOL)
 		_eraser_button.visible = source == null or source.visible
 		_eraser_button.icon = (
-			QIcons.tool_icon(ERASER_TOOL)
+			QIcons.tool_icon_1x(ERASER_TOOL)
 			if pixel_on
 			else (_source_icon(source) if source != null else null)
 		)
@@ -1789,15 +1815,12 @@ func _apply_tool_button_highlight(button: BaseButton, selected: bool) -> void:
 		return
 	if _quick_pixel_mode != Tokens.LEGACY and button is Button:
 		var pixel_button := button as Button
-		Chrome.style_button(pixel_button, _quick_pixel_mode)
-		if selected:
-			pixel_button.add_theme_stylebox_override(
-				&"normal", Chrome.make_panel(_quick_pixel_mode, Tokens.TIER_M, &"accent_primary")
-			)
+		Stage4.style_button(pixel_button, _quick_pixel_mode)
+		pixel_button.button_pressed = selected
 		button.modulate = Color.WHITE
 	else:
 		if button is Button:
-			Chrome.clear_button(button as Button)
+			Stage4.style_button(button as Button, Tokens.LEGACY)
 		button.modulate = SELECTED_TOOL_TINT if selected else UNSELECTED_TOOL_TINT
 
 
@@ -1878,3 +1901,86 @@ func _draw_color_indicator() -> void:
 			true,
 		)
 	)
+
+
+func _make_ui3_card_style(
+	mode: StringName, fill_role: StringName, radius: int, with_shadow: bool
+) -> StyleBoxFlat:
+	var key := "%s:%s:%d:%s" % [mode, fill_role, radius, str(with_shadow)]
+	if _ui3_panel_cache.has(key):
+		return _ui3_panel_cache[key] as StyleBoxFlat
+	var style := StyleBoxFlat.new()
+	style.bg_color = Tokens.color(mode, fill_role)
+	style.border_color = Tokens.color(mode, &"border_subtle")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(radius)
+	if with_shadow:
+		style.shadow_color = Color(0.10, 0.08, 0.18, 0.18 if mode == Tokens.SUNNY else 0.34)
+		style.shadow_size = 2
+		style.shadow_offset = Vector2(0, 2)
+	_ui3_panel_cache[key] = style
+	return style
+
+
+func _make_ui3_header_style(mode: StringName) -> StyleBoxFlat:
+	var key := "hdr:%s" % mode
+	if _ui3_panel_cache.has(key):
+		return _ui3_panel_cache[key] as StyleBoxFlat
+	var style := StyleBoxFlat.new()
+	style.bg_color = Tokens.color(mode, &"accent_soft")
+	style.border_color = Tokens.color(mode, &"border_subtle")
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 5
+	style.corner_radius_top_right = 5
+	_ui3_panel_cache[key] = style
+	return style
+
+
+func _style_stage3_vslider(slider: VSlider, mode: StringName) -> void:
+	if not is_instance_valid(slider) or mode == Tokens.LEGACY:
+		return
+	var cache_key := String(mode)
+	var pack: Dictionary
+	if _ui3_slider_cache.has(cache_key):
+		pack = _ui3_slider_cache[cache_key] as Dictionary
+	else:
+		var track := StyleBoxFlat.new()
+		track.bg_color = (Color("D8D0E4") if mode == Tokens.SUNNY else Color("3B3554"))
+		track.border_color = Tokens.color(mode, &"border_subtle")
+		track.set_border_width_all(1)
+		track.set_corner_radius_all(3)
+		track.content_margin_left = 3.0
+		track.content_margin_right = 3.0
+
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = Tokens.color(mode, &"accent_primary")
+		fill.set_corner_radius_all(2)
+		fill.content_margin_left = 3.0
+		fill.content_margin_right = 3.0
+
+		var grabber_img := Image.create(12, 10, false, Image.FORMAT_RGBA8)
+		var border_col := (
+			Tokens.color(mode, &"outline_ink") if mode == Tokens.SUNNY else Color("C8C2E6")
+		)
+		var face_col := Color("FFFFFF") if mode == Tokens.SUNNY else Color("E6E2F5")
+		var lip_col := Color("C4BCE0") if mode == Tokens.SUNNY else Color("8A7FB5")
+		for y in range(10):
+			for x in range(12):
+				var is_corner := (x == 0 or x == 11) and (y == 0 or y == 9)
+				if is_corner:
+					grabber_img.set_pixel(x, y, Color(0, 0, 0, 0))
+				elif x == 0 or x == 11 or y == 0 or y == 9:
+					grabber_img.set_pixel(x, y, border_col)
+				elif y == 8:
+					grabber_img.set_pixel(x, y, lip_col)
+				else:
+					grabber_img.set_pixel(x, y, face_col)
+		var grabber_tex := ImageTexture.create_from_image(grabber_img)
+		pack = {"track": track, "fill": fill, "grabber": grabber_tex}
+		_ui3_slider_cache[cache_key] = pack
+
+	slider.add_theme_stylebox_override(&"slider", pack["track"] as StyleBoxFlat)
+	slider.add_theme_stylebox_override(&"grabber_area", pack["fill"] as StyleBoxFlat)
+	slider.add_theme_stylebox_override(&"grabber_area_highlight", pack["fill"] as StyleBoxFlat)
+	slider.add_theme_icon_override(&"grabber", pack["grabber"] as Texture2D)
+	slider.add_theme_icon_override(&"grabber_highlight", pack["grabber"] as Texture2D)

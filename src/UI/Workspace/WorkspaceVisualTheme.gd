@@ -148,35 +148,38 @@ func _rebuild_styles() -> void:
 ## Stage 4 extends opt-in chrome to docked side panels and bottom Timeline.
 ## No Workspace hit region, header height, drag gesture or layout size changes.
 func _rebuild_pixel_styles() -> void:
+	var subtle_border := Tokens.color(pixel_mode, &"border_subtle")
 	_pixel_module_styles[&"docked"] = PixelStyle.make_style(
-		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
+		Tokens.TIER_M, surface_color, subtle_border, shadow_color, false, 1
 	)
-	_pixel_module_styles[&"bottom_bar"] = PixelStyle.make_style(
-		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
+	_pixel_header_styles[&"docked"] = PixelStyle.make_flat_panel_texture(
+		header_color, Color.TRANSPARENT, subtle_border, 1
 	)
-	_pixel_header_styles[&"docked"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+	# Full-width docked bottom Timeline bar: strictly 0px outer corners, crisp 2px top divider!
+	_pixel_module_styles[&"bottom_bar"] = PixelStyle.make_flat_panel_texture(
+		surface_color, subtle_border, Color.TRANSPARENT, 2
 	)
-	_pixel_header_styles[&"bottom_bar"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+	_pixel_header_styles[&"bottom_bar"] = PixelStyle.make_flat_panel_texture(
+		header_color, Color.TRANSPARENT, subtle_border, 1
 	)
+	var soft_shadow := Color("#C7C3DA") if pixel_mode == Tokens.SUNNY else Color("#0D0A1A")
 	_pixel_module_styles[&"floating"] = PixelStyle.make_style(
-		Tokens.TIER_L, elevated_color, border_color, shadow_color, true, pixel_unit
+		Tokens.TIER_M, elevated_color, subtle_border, soft_shadow, true, 1
 	)
 	_pixel_module_styles[&"peek"] = PixelStyle.make_style(
-		Tokens.TIER_L, elevated_color, accent_color, shadow_color, true, pixel_unit
+		Tokens.TIER_M, elevated_color, accent_color, soft_shadow, true, 1
 	)
 	_pixel_module_styles[&"collapsed"] = PixelStyle.make_style(
-		Tokens.TIER_L, surface_color, border_color, shadow_color, false, pixel_unit
+		Tokens.TIER_M, surface_color, subtle_border, soft_shadow, false, 1
 	)
-	_pixel_header_styles[&"floating"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+	_pixel_header_styles[&"floating"] = PixelStyle.make_flat_panel_texture(
+		header_color, Color.TRANSPARENT, subtle_border, 1
 	)
-	_pixel_header_styles[&"peek"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, accent_color, shadow_color, false, pixel_unit
+	_pixel_header_styles[&"peek"] = PixelStyle.make_flat_panel_texture(
+		header_color, Color.TRANSPARENT, accent_color, 1
 	)
-	_pixel_header_styles[&"collapsed"] = PixelStyle.make_style(
-		Tokens.TIER_L, header_color, border_color, shadow_color, false, pixel_unit
+	_pixel_header_styles[&"collapsed"] = PixelStyle.make_flat_panel_texture(
+		header_color, Color.TRANSPARENT, subtle_border, 1
 	)
 
 

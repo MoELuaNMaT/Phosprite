@@ -19,9 +19,9 @@ const VALUE_ARROW_HOVER_ICON := preload("uid://bq8h66v4ie8xl")
 const VALUE_ARROW_PRESS_ICON := preload("uid://hhxenhteahv6")
 const VALUE_SLIDER_ICON := preload("uid://c7u0yofrpm50a")
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
-const TOOL_VERTICAL_ARROW_INSET := 6.0
-const TOOL_VERTICAL_ARROW_HALF_WIDTH := 4.0
-const TOOL_VERTICAL_VALUE_INSET := 12.0
+const TOOL_VERTICAL_ARROW_INSET := 3.0
+const TOOL_VERTICAL_ARROW_HALF_WIDTH := 2.5
+const TOOL_VERTICAL_VALUE_INSET := 7.0
 
 @export var editable := true:
 	set(v):
@@ -141,6 +141,7 @@ func configure_tool_vertical_drag() -> void:
 	allow_text_input = false
 	_line_edit.offset_top = TOOL_VERTICAL_VALUE_INSET
 	_line_edit.offset_bottom = -TOOL_VERTICAL_VALUE_INSET
+	_line_edit.add_theme_font_size_override(&"font_size", 10)
 	_reset_display(true)
 	queue_redraw()
 
@@ -150,16 +151,18 @@ func _draw() -> void:
 		return
 	var mode := Stage4.active_mode() if not Engine.is_editor_hint() else PhospriteTokens.LEGACY
 	if mode != PhospriteTokens.LEGACY:
-		Stage4.draw_scrubby_pill(self, Rect2(Vector2.ZERO, size), mode)
+		Stage4.draw_scrubby_pill(
+			self, Rect2(Vector2(3.0, 0.0), Vector2(maxf(size.x - 6.0, 1.0), size.y)), mode
+		)
 	var center_x := size.x * 0.5
 	var upper_y := TOOL_VERTICAL_ARROW_INSET + TOOL_VERTICAL_ARROW_HALF_WIDTH
 	var lower_y := size.y - upper_y
 	var ink := (
-		PhospriteTokens.color(mode, &"text_primary")
+		PhospriteTokens.color(mode, &"text_muted")
 		if mode != PhospriteTokens.LEGACY
 		else get_theme_color(&"font_color", &"LineEdit")
 	)
-	var stroke := 2.0 if mode != PhospriteTokens.LEGACY else 1.5
+	var stroke := 1.5
 	var antialias := mode == PhospriteTokens.LEGACY
 	draw_line(
 		Vector2(center_x - TOOL_VERTICAL_ARROW_HALF_WIDTH, upper_y),

@@ -757,7 +757,7 @@ texture = ExtResource("31")
 
 [node name="FPSValue" parent="TimelineContainer/TimelineButtons/VBoxContainer/AnimationToolsScrollContainer/AnimationTools/MarginContainer/AnimationButtons/LoopButtons" unique_id=2018151557 instance=ExtResource("9")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 24)
+custom_minimum_size = Vector2(92, 24)
 layout_mode = 2
 size_flags_horizontal = 1
 tooltip_text = "How many frames per second should the animation preview be?

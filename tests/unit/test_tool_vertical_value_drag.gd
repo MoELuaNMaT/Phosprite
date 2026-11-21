@@ -24,9 +24,9 @@ func test_tool_numeric_control_uses_vertical_arrows_and_clear_background() -> vo
 	check_true(slider.texture_progress == null, "tool slider has no colored progress bar")
 	check_eq(slider.tint_under, Color.TRANSPARENT, "slider underlay is transparent")
 	check_eq(slider.tint_progress, Color.TRANSPARENT, "slider progress is transparent")
-	check_eq(slider.custom_minimum_size, Vector2(54, 48), "vertical arrows fit 54x48")
-	check_eq(slider._line_edit.offset_top, 12.0, "value is below upper arrow")
-	check_eq(slider._line_edit.offset_bottom, -12.0, "value is above lower arrow")
+	check_eq(slider.custom_minimum_size, Vector2(54, 36), "vertical arrows fit 54x36")
+	check_eq(slider._line_edit.offset_top, 7.0, "value is below upper arrow")
+	check_eq(slider._line_edit.offset_bottom, -7.0, "value is above lower arrow")
 	check_eq(slider.min_value, 1.0, "minimum stays unchanged")
 	check_eq(slider.max_value, 100.0, "maximum stays unchanged")
 	check_eq(slider.step, 1.0, "step stays unchanged")
@@ -48,7 +48,7 @@ func test_all_tool_vector_components_reuse_vertical_mode() -> void:
 	check_eq(vector.grid_columns, 1, "coordinate controls remain vertically stacked")
 	for slider in vector.get_sliders():
 		check_true(slider.tool_vertical_drag, "position and size components use vertical mode")
-		check_eq(slider.custom_minimum_size, Vector2(54, 48), "vector component has arrow space")
+		check_eq(slider.custom_minimum_size, Vector2(54, 36), "vector component has arrow space")
 	vector.free()
 	tool.free()
 

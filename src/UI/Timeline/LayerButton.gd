@@ -111,7 +111,7 @@ func _refresh_stage4_visuals() -> void:
 	var mode := Stage4.active_mode()
 	Stage4.style_button(main_button, mode)
 	for side_button in [visibility_button, lock_button, linked_button, expand_button]:
-		Stage4.style_button(side_button, mode)
+		PhospriteStage4Timeline.style_flat_layer_button(side_button, mode)
 	if (
 		not is_node_ready()
 		or Global.current_project == null
@@ -254,11 +254,20 @@ func update_buttons() -> void:
 	var vis_tr := visibility_button.get_child(0) as TextureRect
 	var lock_tr := lock_button.get_child(0) as TextureRect
 	if px_mode:
-		_set_side_q_icon(vis_tr, &"eye_open" if layer.visible else &"eye_closed")
-		_set_side_q_icon(lock_tr, &"lock_closed" if layer.locked else &"lock_open")
+		var cur_mode := Stage4.active_mode()
+		PhospriteStage4Timeline.apply_layer_icon(
+			vis_tr, &"eye_open" if layer.visible else &"eye_closed", cur_mode
+		)
+		PhospriteStage4Timeline.apply_layer_icon(
+			lock_tr, &"lock_closed" if layer.locked else &"lock_open", cur_mode
+		)
 		if linked_button:
 			var link_tr := linked_button.get_child(0) as TextureRect
-			_set_side_q_icon(link_tr, &"cel_linked" if layer.new_cels_linked else &"cel_unlinked")
+			PhospriteStage4Timeline.apply_layer_icon(
+				link_tr,
+				&"cel_linked" if layer.new_cels_linked else &"cel_unlinked",
+				Stage4.active_mode()
+			)
 	else:
 		var legacy_seed := load("res://assets/graphics/layers/layer_visible.png") as Texture2D
 		for tr_item in [vis_tr, lock_tr, linked_button.get_child(0) if linked_button else null]:

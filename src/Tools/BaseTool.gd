@@ -2,7 +2,7 @@ class_name BaseTool
 extends GridContainer
 
 const SIDEBAR_CONTROL_WIDTH := 54.0
-const SIDEBAR_VALUE_CONTROL_HEIGHT := 48.0
+const SIDEBAR_VALUE_CONTROL_HEIGHT := 36.0
 const MODE_BUTTON_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const MODE_ICON_BUTTON_SIZE := 32.0
 const COMPACT_OPTION_CONTROL_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
@@ -64,6 +64,7 @@ func prepare_stacked_option_layout() -> void:
 	if _stacked_option_layout_prepared:
 		return
 	_stacked_option_layout_prepared = true
+	add_theme_constant_override(&"v_separation", 4)
 	_apply_stacked_option_layout(self)
 
 
@@ -127,6 +128,7 @@ func _configure_sidebar_label(label: Label) -> void:
 	# Text may describe a long tool name/setting; never widen the shared sidebar.
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = 0.0
+	label.add_theme_font_size_override(&"font_size", 10)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
@@ -149,6 +151,9 @@ func _configure_sidebar_button(button: Button) -> void:
 		return
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.clip_text = true
+	button.add_theme_font_size_override(&"font_size", 10)
+	if button.icon == null and not button.text.is_empty():
+		button.custom_minimum_size.y = 22.0
 
 
 func _tool_drag_sensitivity(slider: ValueSlider) -> float:
@@ -194,6 +199,7 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.name = StringName("%sOptionLabel" % control.name)
 	label.text = _format_option_label(raw_text)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override(&"font_size", 10)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -2,6 +2,9 @@ class_name PhospriteStage4Chrome
 extends RefCounted
 
 ## Stage 4 skin for existing Palette, UI1/UI4 and Timeline controls.
+## Uses clean, centered single-layer 3D tactile pixel buttons (symmetric margins,
+## subtle 1px border + 2px bottom depth lip, flattened pressed/selected state)
+## so icons stay dead-center inside compact 24-32px toolbar buttons.
 ## All overrides are opt-in and reversible; no gesture or data model changes.
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
@@ -32,57 +35,52 @@ static func active_mode() -> StringName:
 	return Stage2.active_mode()
 
 
-static func button_style(mode: StringName, state: StringName) -> StyleBoxTexture:
+static func button_style(mode: StringName, state: StringName) -> StyleBox:
 	if mode == Tokens.LEGACY:
 		return null
 	var unit := clampi(Global.pixel_ui_unit, 1, 3)
-	var cache_key := "%s/%d/%s" % [mode, unit, state]
+	var cache_key := "s4_v2|%s/%d/%s" % [mode, unit, state]
 	if _styles.has(cache_key):
-		return _styles[cache_key] as StyleBoxTexture
-	var surface := &"panel_surface"
-	var border := Tokens.color(mode, &"outline_ink")
-	var with_shadow := state in [&"normal", &"hover", &"guide"]
+		return _styles[cache_key] as StyleBox
+
+	var is_light := mode == Tokens.SUNNY
+	var bg := Tokens.color(mode, &"panel_surface")
+	var border := Tokens.color(mode, &"border_subtle")
+	var is_pressed := state in [&"pressed", &"selected"]
+	var is_well := state == &"well"
+	var has_lip := state in [&"normal", &"hover", &"guide"]
+
 	match state:
+		&"normal":
+			bg = Color("#EDE6FA") if is_light else Color("#332B54")
 		&"hover", &"guide":
-			surface = &"accent_soft"
+			bg = Tokens.color(mode, &"accent_soft")
+			border = Tokens.color(mode, &"accent_primary").lerp(border, 0.5)
 		&"pressed", &"selected":
-			surface = &"accent_primary"
+			bg = Tokens.color(mode, &"accent_primary")
+			border = bg.darkened(0.25)
 		&"disabled":
-			surface = &"well_surface"
+			bg = Tokens.color(mode, &"well_surface")
+			border = Color(border, 0.6)
 		&"focus":
+			bg = Color("#EDE6FA") if is_light else Color("#332B54")
 			border = Tokens.color(mode, &"accent_primary")
 		&"well":
-			surface = &"well_surface"
-	var is_pressed := state in [&"pressed", &"selected"]
-	var style := PixelStyle.make_style(
-		Tokens.TIER_M,
-		Tokens.color(mode, surface),
-		border,
-		Tokens.color(mode, &"pixel_shadow"),
-		with_shadow,
-		unit,
-		is_pressed
+			bg = Tokens.color(mode, &"well_surface")
+
+	var lip_col := Color("#BEB2DF") if is_light else Color("#1D1736")
+	if is_pressed or is_well:
+		lip_col = bg.darkened(0.24 if is_light else 0.38)
+	var style := PixelStyle.make_single_layer_button_style(
+		bg,
+		border if is_light else bg.darkened(0.35),
+		lip_col,
+		has_lip,
+		is_pressed or is_well,
+		4.0,
+		3.0
 	)
-	# Compact positive margins (total 8px at unit=2): never negative, so Godot
-	# never treats content_margin_right/bottom as unset (-1 sentinel).
-	var pad := 2.0
-	var s := float(PixelStyle.SHADOW_OFFSET * unit)
-	if with_shadow and not is_pressed:
-		style.content_margin_left = pad
-		style.content_margin_top = pad
-		style.content_margin_right = pad + s
-		style.content_margin_bottom = pad + s
-	elif is_pressed:
-		style.content_margin_left = pad + s
-		style.content_margin_top = pad + s
-		style.content_margin_right = pad
-		style.content_margin_bottom = pad
-	else:
-		var half := floorf(s * 0.5)
-		style.content_margin_left = pad + half
-		style.content_margin_top = pad + half
-		style.content_margin_right = pad + half
-		style.content_margin_bottom = pad + half
+
 	_styles[cache_key] = style
 	return style
 
@@ -172,7 +170,7 @@ static func restore_button(button: Button) -> void:
 	button.remove_meta(ORIGINAL_BUTTON_META)
 
 
-static func style_panel(panel: Control, mode: StringName, tier := Tokens.TIER_L) -> void:
+static func style_panel(panel: Control, mode: StringName, _tier := Tokens.TIER_L) -> void:
 	if not is_instance_valid(panel):
 		return
 	var key := ORIGINAL_PANEL_META
@@ -196,12 +194,11 @@ static func style_panel(panel: Control, mode: StringName, tier := Tokens.TIER_L)
 				}
 			)
 		)
-	var style := Stage2.make_shell(mode, tier, &"panel_surface")
-	if (
-		not panel.has_theme_stylebox_override(&"panel")
-		or panel.get_theme_stylebox(&"panel") != style
-	):
-		panel.add_theme_stylebox_override(&"panel", style)
+	# Flat borderless inner panel so docked modules never show double nested borders
+	var style := StyleBoxFlat.new()
+	style.bg_color = Tokens.color(mode, &"panel_surface")
+	style.anti_aliasing = false
+	panel.add_theme_stylebox_override(&"panel", style)
 
 
 static func style_option(option: OptionButton, mode: StringName) -> void:
@@ -213,7 +210,7 @@ static func style_option(option: OptionButton, mode: StringName) -> void:
 		style_button(option, mode)
 
 
-static func draw_scrubby_pill(item: CanvasItem, bounds: Rect2, mode: StringName) -> void:
+static func draw_scrubby_pill(_item: CanvasItem, _bounds: Rect2, mode: StringName) -> void:
 	if mode == Tokens.LEGACY:
 		return
-	item.draw_style_box(button_style(mode, &"well"), bounds)
+	# Ultra-clean borderless vertical numeric control (no clunky slab box around "1 px" / "100 %")

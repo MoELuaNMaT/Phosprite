@@ -17,6 +17,7 @@ const STATUS_ERROR_COLOR := Color(1.0, 0.45, 0.42, 1.0)
 var entry: ProjectLibraryEntry
 var thumbnail_loaded := false
 var selected := false
+var multiselect_active := false
 var interaction_enabled := true
 var _pointer_active := false
 var _pointer_origin := Vector2.ZERO
@@ -27,17 +28,23 @@ var _display_title := ""
 var _legacy_styles: Dictionary = {}
 var _legacy_colors: Dictionary = {}
 var _legacy_thumbnail_filter := CanvasItem.TEXTURE_FILTER_PARENT_NODE
+var _empty_style := StyleBoxEmpty.new()
 
 @onready var visual_root := %VisualRoot as Control
+@onready var content_box := $VisualRoot/Content as VBoxContainer
+@onready var info_block := %InfoBlock as VBoxContainer
 @onready var thumbnail_frame := %ThumbnailFrame as Control
 @onready var title_strip := %ProjectTitleStrip as PanelContainer
 @onready var title_label := %ProjectTitle as Label
 @onready var thumbnail_rect := %Thumbnail as TextureRect
 @onready var thumbnail_status := %ThumbnailStatus as Label
+@onready var metadata_box := %Metadata as VBoxContainer
 @onready var size_label := %CanvasSize as Label
 @onready var modified_label := %ModifiedTime as Label
 @onready var selection_outline := %SelectionOutline as Panel
 @onready var selection_check := %SelectionCheck as Label
+@onready var selection_badge := %SelectionBadge as PanelContainer
+@onready var selection_badge_mark := %SelectionBadgeMark as Label
 
 
 func _ready() -> void:
@@ -60,14 +67,20 @@ func set_display_title(value: String) -> void:
 		title_label.text = value
 
 
+func set_multiselect_mode(enabled: bool) -> void:
+	multiselect_active = enabled
+	_sync_stage2_selection()
+
+
 ## Set by the Gallery, never by project serialization. Legacy palettes keep
 ## their preexisting scene resources. The image itself remains untouched.
 func apply_stage2_theme(mode: StringName) -> void:
 	if not is_node_ready():
 		return
 	_pixel_mode = mode
-	title_strip.visible = mode != Tokens.LEGACY
-	if mode == Tokens.LEGACY:
+	var is_pixel := mode != Tokens.LEGACY
+	title_strip.visible = is_pixel
+	if not is_pixel:
 		thumbnail_rect.texture_filter = _legacy_thumbnail_filter
 		add_theme_stylebox_override(&"panel", _legacy_styles["card"])
 		thumbnail_frame.add_theme_stylebox_override(&"panel", _legacy_styles["thumbnail"])
@@ -75,57 +88,105 @@ func apply_stage2_theme(mode: StringName) -> void:
 		size_label.add_theme_color_override(&"font_color", _legacy_colors["size"])
 		modified_label.add_theme_color_override(&"font_color", _legacy_colors["modified"])
 		selection_check.add_theme_color_override(&"font_color", _legacy_colors["title_check"])
+		selection_check.visible = selected
+		selection_badge.visible = false
 		title_strip.remove_theme_stylebox_override(&"panel")
 		title_label.remove_theme_color_override(&"font_color")
-		var content_box := visual_root.get_node_or_null(^"Content") as Control
-		if content_box != null:
-			content_box.offset_left = 8.0
-			content_box.offset_top = 8.0
-			content_box.offset_right = -8.0
-			content_box.offset_bottom = -8.0
+		content_box.offset_left = 8.0
+		content_box.offset_top = 8.0
+		content_box.offset_right = -8.0
+		content_box.offset_bottom = -8.0
+		content_box.add_theme_constant_override(&"separation", 8)
+		info_block.add_theme_constant_override(&"separation", 2)
+		metadata_box.add_theme_constant_override(&"separation", 2)
 	else:
-		var content_box := visual_root.get_node_or_null(^"Content") as Control
-		if content_box != null:
-			content_box.offset_left = 10.0
-			content_box.offset_top = 10.0
-			content_box.offset_right = -14.0
-			content_box.offset_bottom = -14.0
+		# Clean minimal grid item: zero outer tile chrome, simple bordered square preview on top,
+		# project name + dimensions + timestamp grouped cleanly below.
+		content_box.offset_left = 0.0
+		content_box.offset_top = 0.0
+		content_box.offset_right = 0.0
+		content_box.offset_bottom = 0.0
+		content_box.add_theme_constant_override(&"separation", Tokens.SPACE_SM)
+		info_block.add_theme_constant_override(&"separation", Tokens.SPACE_XXS)
+		metadata_box.add_theme_constant_override(&"separation", Tokens.SPACE_XXS)
+
 		# Only the thumbnail image is pixel-filtered. UI text remains antialiased.
 		thumbnail_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		add_theme_stylebox_override(
-			&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface", true)
-		)
-		thumbnail_frame.add_theme_stylebox_override(
-			&"panel", Chrome.make_panel(mode, Tokens.TIER_M, &"well_surface")
-		)
-		size_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
-		modified_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_muted"))
-		selection_check.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
-		title_label.add_theme_color_override(&"font_color", Tokens.color(mode, &"text_primary"))
+		title_label.add_theme_font_size_override(&"font_size", 14)
+		size_label.add_theme_font_size_override(&"font_size", 12)
+		modified_label.add_theme_font_size_override(&"font_size", 11)
+		title_strip.add_theme_stylebox_override(&"panel", _empty_style)
+		selection_check.visible = false
 	_sync_stage2_selection()
 
 
 func _sync_stage2_selection() -> void:
-	if _pixel_mode == Tokens.LEGACY:
+	if not is_node_ready():
 		return
-	var surface := &"accent_primary" if selected else &"accent_soft"
-	var cached_strip := Chrome.make_panel(_pixel_mode, Tokens.TIER_M, surface)
-	var strip_style := cached_strip.duplicate() as StyleBoxTexture if cached_strip != null else null
-	if strip_style != null:
-		strip_style.content_margin_left = 8.0
-		strip_style.content_margin_right = 8.0
-	title_strip.add_theme_stylebox_override(&"panel", strip_style)
-	selection_outline.add_theme_stylebox_override(
-		&"panel",
-		PhospritePixelStyle.make_style(
-			Tokens.TIER_L,
-			Color.TRANSPARENT,
-			Tokens.color(_pixel_mode, &"accent_primary"),
-			Tokens.color(_pixel_mode, &"pixel_shadow"),
-			false,
-			Global.pixel_ui_unit
+	if _pixel_mode == Tokens.LEGACY:
+		selection_check.visible = selected
+		selection_badge.visible = false
+		return
+
+	# Keep outer card container visually transparent (no heavy tile/card shell) while retaining
+	# a StyleBoxTexture resource for theme-contract compatibility.
+	var clear_shell := PhospritePixelStyle.make_style(
+		Tokens.TIER_S, Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, false, 1
+	)
+	if clear_shell != null:
+		clear_shell.content_margin_left = 0.0
+		clear_shell.content_margin_top = 0.0
+		clear_shell.content_margin_right = 0.0
+		clear_shell.content_margin_bottom = 0.0
+		add_theme_stylebox_override(&"panel", clear_shell)
+
+	# Borderless clean preview well in normal mode; crisp accent outline only when selected.
+	var frame_bg := &"gallery_thumb_selected_bg" if selected else &"gallery_thumb_bg"
+	var frame_border: StringName = &"accent_primary" if selected else &""
+	var frame_style := Chrome.make_panel(
+		_pixel_mode, Tokens.TIER_M, frame_bg, false, frame_border, &""
+	)
+	if frame_style != null:
+		var frame_copy := frame_style.duplicate() as StyleBoxTexture
+		frame_copy.content_margin_left = 8.0
+		frame_copy.content_margin_top = 8.0
+		frame_copy.content_margin_right = 8.0
+		frame_copy.content_margin_bottom = 8.0
+		thumbnail_frame.add_theme_stylebox_override(&"panel", frame_copy)
+
+	# Clean light typography underneath the preview against the darker gallery background
+	title_label.add_theme_color_override(
+		&"font_color",
+		(
+			Tokens.color(_pixel_mode, &"accent_primary")
+			if selected
+			else Tokens.color(_pixel_mode, &"gallery_title_text")
 		)
 	)
+	size_label.add_theme_color_override(
+		&"font_color", Tokens.color(_pixel_mode, &"gallery_meta_text")
+	)
+	modified_label.add_theme_color_override(
+		&"font_color", Tokens.color(_pixel_mode, &"gallery_meta_text")
+	)
+
+	selection_outline.add_theme_stylebox_override(&"panel", _empty_style)
+	selection_check.visible = false
+
+	# Clean checkbox badge inside top-right corner of preview frame during select mode
+	var show_checkbox := multiselect_active or selected
+	selection_badge.visible = show_checkbox
+	if show_checkbox:
+		var badge_bg := &"accent_primary" if selected else &"gallery_thumb_bg"
+		var badge_border := &"accent_primary" if selected else &"gallery_meta_text"
+		selection_badge.add_theme_stylebox_override(
+			&"panel",
+			Chrome.make_shell(_pixel_mode, Tokens.TIER_S, badge_bg, false, badge_border, &"")
+		)
+		selection_badge_mark.visible = selected
+		selection_badge_mark.add_theme_color_override(
+			&"font_color", Tokens.color(_pixel_mode, &"text_on_accent")
+		)
 
 
 func _notification(what: int) -> void:
@@ -159,10 +220,14 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 
 func set_card_width(card_width: float) -> void:
 	var width := maxf(card_width, 1.0)
-	var inset := 24.0 if _pixel_mode != Tokens.LEGACY else 16.0
-	var thumbnail_width := maxf(width - inset, 1.0)
-	custom_minimum_size = Vector2(width, width + (94.0 if _pixel_mode != Tokens.LEGACY else 54.0))
-	thumbnail_frame.custom_minimum_size = Vector2(thumbnail_width, thumbnail_width)
+	if _pixel_mode == Tokens.LEGACY:
+		var legacy_thumb := maxf(width - 16.0, 1.0)
+		custom_minimum_size = Vector2(width, width + 54.0)
+		thumbnail_frame.custom_minimum_size = Vector2(legacy_thumb, legacy_thumb)
+		return
+	# Clean grid item: 1:1 preview + 8px gap + title/size/time (56px) = width + 64
+	custom_minimum_size = Vector2(width, width + 66.0)
+	thumbnail_frame.custom_minimum_size = Vector2(width, width)
 
 
 func set_thumbnail(image: Image) -> void:
@@ -231,7 +296,7 @@ func set_selected(value: bool) -> void:
 	if is_instance_valid(selection_outline):
 		selection_outline.visible = value
 	if is_instance_valid(selection_check):
-		selection_check.visible = value
+		selection_check.visible = value and _pixel_mode == Tokens.LEGACY
 	_sync_stage2_selection()
 
 

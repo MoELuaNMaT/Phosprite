@@ -1962,20 +1962,18 @@ func update_global_layer_buttons() -> void:
 				global_layer_expand = false
 			if global_layer_visibility and not global_layer_lock and not global_layer_expand:
 				break
-	if global_layer_visibility:
-		Global.change_button_texturerect(%GlobalVisibilityButton.get_child(0), "layer_visible.png")
-	else:
-		Global.change_button_texturerect(
-			%GlobalVisibilityButton.get_child(0), "layer_invisible.png"
-		)
-	if global_layer_lock:
-		Global.change_button_texturerect(%GlobalLockButton.get_child(0), "lock.png")
-	else:
-		Global.change_button_texturerect(%GlobalLockButton.get_child(0), "unlock.png")
-	if global_layer_expand:
-		Global.change_button_texturerect(%GlobalExpandButton.get_child(0), "group_expanded.png")
-	else:
-		Global.change_button_texturerect(%GlobalExpandButton.get_child(0), "group_collapsed.png")
+	var px_mode := PhospriteStage4Chrome.active_mode()
+	if px_mode != PhospriteTokens.LEGACY:
+		var btns: Array[Button] = [%GlobalVisibilityButton, %GlobalLockButton, %GlobalExpandButton]
+		var fl: Array[bool] = [global_layer_visibility, global_layer_lock, global_layer_expand]
+		PhospriteStage4Timeline.sync_global_layer_buttons(btns, fl, px_mode)
+		return
+	var vis_icon := "layer_visible.png" if global_layer_visibility else "layer_invisible.png"
+	Global.change_button_texturerect(%GlobalVisibilityButton.get_child(0), vis_icon)
+	var lock_icon := "lock.png" if global_layer_lock else "unlock.png"
+	Global.change_button_texturerect(%GlobalLockButton.get_child(0), lock_icon)
+	var exp_icon := "group_expanded.png" if global_layer_expand else "group_collapsed.png"
+	Global.change_button_texturerect(%GlobalExpandButton.get_child(0), exp_icon)
 
 
 func _on_layer_frame_h_split_dragged(offset: int) -> void:

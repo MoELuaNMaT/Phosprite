@@ -75,6 +75,7 @@ var _effects_icon_button: Button
 var _compact_edit_menu: PopupMenu
 var _compact_view_menu: PopupMenu
 var _ipad_settings_populated := false
+var _preview_ipad_topbar := false
 var _ipad_project_actions: PopupMenu
 var _ipad_canvas_actions: PopupMenu
 var _ipad_workspace_actions: PopupMenu
@@ -255,7 +256,7 @@ func _attach_settings_project_menu() -> void:
 ## Keep original MenuBar nodes and command IDs alive for shortcuts and extensions.
 ## Only the editor's iPad presentation is compacted; desktop menus are unchanged.
 func _is_ipad_editor() -> bool:
-	return OS.get_name() == "iOS" and return_home_button.visible
+	return (OS.get_name() == "iOS" or _preview_ipad_topbar) and return_home_button.visible
 
 
 func _apply_ipad_topbar_visibility() -> void:
@@ -348,22 +349,23 @@ func _refresh_stage2_topbar() -> void:
 				_effects_icon_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
 		return
 	custom_minimum_size.y = 48.0
-	add_theme_stylebox_override(&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface"))
+	add_theme_stylebox_override(&"panel", Chrome.make_topbar_style(mode))
 	for button in [return_home_button, settings_button, _effects_icon_button]:
 		if not is_instance_valid(button):
 			continue
-		Chrome.style_button(button, mode)
+		Chrome.style_button_variant(button, mode, &"secondary", true)
 		button.flat = false
-		button.custom_minimum_size = Vector2(40, 40)
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		button.custom_minimum_size = Vector2(34, 34)
 		button.expand_icon = false
-	return_home_button.icon = Icons.icon(&"gallery")
+	return_home_button.icon = Icons.icon_1x(&"gallery")
 	return_home_button.text = tr("Gallery")
 	return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	return_home_button.custom_minimum_size = Vector2(96, 40)
+	return_home_button.custom_minimum_size = Vector2(84, 34)
 	if is_instance_valid(settings_button):
-		settings_button.icon = Icons.icon(&"settings")
+		settings_button.icon = Icons.icon_1x(&"settings")
 	if is_instance_valid(_effects_icon_button):
-		_effects_icon_button.icon = Icons.icon(&"effects")
+		_effects_icon_button.icon = Icons.icon_1x(&"effects")
 
 
 func _ensure_effects_icon_button() -> void:

@@ -5,6 +5,8 @@ const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 
+static var _preview_bg_styles: Dictionary = {}
+
 var _preview_touches: Dictionary = {}
 var _navigation_ids := PackedInt32Array()
 var _baseline_centroid := Vector2.ZERO
@@ -16,6 +18,8 @@ var _anchor_canvas := Vector2.ZERO
 var _pan_active := false
 var _pinch_active := false
 var _reference_import_menu: PopupMenu
+var _controls_expanded := false
+var _controls_toggle_button: Button
 
 @onready
 var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
@@ -29,6 +33,8 @@ var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubView
 @onready var show_pixel_grid_button := $"%ShowPixelGridButton" as Button
 @onready var start_frame := $"%StartFrame" as ValueSlider
 @onready var end_frame := $"%EndFrame" as ValueSlider
+@onready var animation_bar := $VBox/Animation as HBoxContainer
+@onready var preview_vbox := $VBox as VBoxContainer
 
 
 func _enter_tree() -> void:
@@ -45,10 +51,13 @@ func _enter_tree() -> void:
 	# _ready() is not guaranteed to run when UI3 reuses and reparents the Preview.
 	_on_greyscale_view_changed(Global.greyscale_view)
 	_sync_view_controls()
+	_apply_controls_expanded_state.call_deferred()
 	_refresh_preview_pixel_chrome.call_deferred()
 
 
 func _ready() -> void:
+	_ensure_collapsible_controls_ui()
+	_apply_controls_expanded_state()
 	_on_greyscale_view_changed(Global.greyscale_view)
 	_sync_view_controls()
 	if OS.get_name() == "iOS":
@@ -232,23 +241,122 @@ func _on_reference_import_source_selected(source: int) -> void:
 		Global.control.call(&"request_reference_image_import", source == 1)
 
 
+func is_controls_expanded() -> bool:
+	return _controls_expanded
+
+
+func set_controls_expanded(expanded: bool) -> void:
+	_controls_expanded = expanded
+	_ensure_collapsible_controls_ui()
+	_apply_controls_expanded_state()
+
+
+func workspace_module_initialized(_module: WorkspaceModule, _context: Dictionary) -> void:
+	_ensure_collapsible_controls_ui.call_deferred()
+
+
+func workspace_module_mounted(_module: WorkspaceModule, _host: Control) -> void:
+	_ensure_collapsible_controls_ui.call_deferred()
+
+
+func _ensure_collapsible_controls_ui() -> void:
+	if not is_node_ready():
+		return
+	if not is_instance_valid(_controls_toggle_button):
+		var btn := Button.new()
+		btn.name = "PreviewControlsToggleButton"
+		btn.toggle_mode = true
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.custom_minimum_size = Vector2(24.0, 22.0)
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var menu_icon := QIcons.standard_icon_1x(&"more_overflow")
+		if menu_icon != null:
+			btn.icon = menu_icon
+			btn.text = ""
+		else:
+			btn.text = "⋯"
+			btn.add_theme_font_size_override(&"font_size", 11)
+		btn.toggled.connect(_on_controls_toggle_button_toggled)
+		_controls_toggle_button = btn
+	var parent_module := get_parent() as WorkspaceModule
+	if parent_module != null:
+		if parent_module.get_header_accessory() != _controls_toggle_button:
+			parent_module.set_header_accessory(_controls_toggle_button)
+		_controls_toggle_button.visible = true
+		Stage4.style_button(_controls_toggle_button, Stage4.active_mode())
+	elif _controls_toggle_button.get_parent() == null:
+		_controls_toggle_button.visible = false
+		add_child(_controls_toggle_button)
+
+
+func _on_controls_toggle_button_toggled(toggled_on: bool) -> void:
+	if _controls_expanded == toggled_on:
+		return
+	_controls_expanded = toggled_on
+	_apply_controls_expanded_state()
+
+
+func _apply_controls_expanded_state() -> void:
+	if not is_node_ready():
+		return
+	if is_instance_valid(animation_bar):
+		animation_bar.visible = _controls_expanded
+	if is_instance_valid(preview_vbox):
+		var sep := 4 if _controls_expanded else 0
+		if preview_vbox.get_theme_constant(&"separation") != sep:
+			preview_vbox.add_theme_constant_override(&"separation", sep)
+	if is_instance_valid(_controls_toggle_button):
+		_controls_toggle_button.set_pressed_no_signal(_controls_expanded)
+		_controls_toggle_button.tooltip_text = (
+			tr("Hide preview controls") if _controls_expanded else tr("Show preview controls")
+		)
+
+
+func _get_preview_bg_style(mode: StringName) -> StyleBoxFlat:
+	if _preview_bg_styles.has(mode):
+		return _preview_bg_styles[mode] as StyleBoxFlat
+	var style := StyleBoxFlat.new()
+	style.bg_color = PhospriteTokens.color(&"canvas_backdrop", mode)
+	style.content_margin_left = 0.0
+	style.content_margin_top = 0.0
+	style.content_margin_right = 0.0
+	style.content_margin_bottom = 0.0
+	_preview_bg_styles[mode] = style
+	return style
+
+
 func _refresh_preview_pixel_chrome() -> void:
 	if not is_node_ready():
 		return
+	_ensure_collapsible_controls_ui()
+	_apply_controls_expanded_state()
 	var mode := Stage4.active_mode()
 	var pixel := mode != PhospriteTokens.LEGACY
+	if pixel:
+		var bg_style := _get_preview_bg_style(mode)
+		if get_theme_stylebox(&"panel") != bg_style:
+			add_theme_stylebox_override(&"panel", bg_style)
+	elif has_theme_stylebox_override(&"panel"):
+		remove_theme_stylebox_override(&"panel")
+	if is_instance_valid(_controls_toggle_button):
+		Stage4.style_button(_controls_toggle_button, mode)
 	if is_instance_valid(preview_viewport_container):
 		preview_viewport_container.custom_minimum_size = (
 			Vector2(0.0, 72.0) if pixel else Vector2.ZERO
 		)
 	var view_buttons := get_node_or_null(^"VBox/Animation/PreviewViewButtons") as HFlowContainer
 	if view_buttons != null:
-		view_buttons.add_theme_constant_override(&"h_separation", 2 if pixel else 4)
-		view_buttons.add_theme_constant_override(&"v_separation", 2 if pixel else 4)
+		var sep := 2 if pixel else 4
+		if view_buttons.get_theme_constant(&"h_separation") != sep:
+			view_buttons.add_theme_constant_override(&"h_separation", sep)
+		if view_buttons.get_theme_constant(&"v_separation") != sep:
+			view_buttons.add_theme_constant_override(&"v_separation", sep)
 		for child in view_buttons.get_children():
 			if child is Button:
 				var btn := child as Button
-				btn.custom_minimum_size = Vector2(34.0, 36.0) if pixel else Vector2(36.0, 48.0)
+				btn.custom_minimum_size = Vector2(34.0, 34.0) if pixel else Vector2(36.0, 48.0)
 				Stage4.style_button(btn, mode)
 	if is_instance_valid(play_button):
 		Stage4.style_button(play_button, mode)

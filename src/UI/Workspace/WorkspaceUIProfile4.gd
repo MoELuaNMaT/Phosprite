@@ -6,10 +6,11 @@ extends Node
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
-const LEFT_WIDTH := 176.0
+const LEFT_WIDTH := 236.0
 const RIGHT_WIDTH := Builtins.TOOL_SIDEBAR_WIDTH
 const TIMELINE_HEIGHT := 224.0
-const PREVIEW_OFFSET := Vector2(18.0, 18.0)
+const PREVIEW_HEIGHT := 184.0
+const PREVIEW_OFFSET := Vector2(14.0, 14.0)
 const SPLIT_MIN := 0.2
 const SPLIT_MAX := 0.85
 const SPLIT_GRAB_HEIGHT := 18.0
@@ -20,6 +21,7 @@ var active := false
 
 var _tools_width_state: Dictionary = {}
 var _palette_width_state: Dictionary = {}
+var _preview_width_state: Dictionary = {}
 var _module_position_states: Dictionary = {}
 var _palette_stretch_state := Vector2(-1.0, -1.0)
 var _palette_root: Control
@@ -70,6 +72,7 @@ func deactivate() -> void:
 	_module_position_states.clear()
 	_restore_tools_width()
 	_restore_palette_width()
+	_restore_preview_width()
 
 
 func refresh_after_tools_ready() -> bool:
@@ -81,8 +84,22 @@ func refresh_after_tools_ready() -> bool:
 func enforce_workspace() -> bool:
 	if not active or surface == null:
 		return true
+	var has_preview := surface.manager.has_instance(Builtins.PREVIEW_ID)
+	if has_preview:
+		if not _place_fixed_module(
+			Builtins.PREVIEW_ID,
+			WorkspaceDockLayout.DockZone.LEFT,
+			Vector2(LEFT_WIDTH, PREVIEW_HEIGHT),
+			0,
+			false
+		):
+			return false
 	if not _place_fixed_module(
-		Builtins.PALETTE_ID, WorkspaceDockLayout.DockZone.LEFT, Vector2(LEFT_WIDTH, 500.0)
+		Builtins.PALETTE_ID,
+		WorkspaceDockLayout.DockZone.LEFT,
+		Vector2(LEFT_WIDTH, 500.0),
+		1 if has_preview else 0,
+		true
 	):
 		return false
 	if not _place_fixed_module(
@@ -101,29 +118,19 @@ func enforce_workspace() -> bool:
 func apply_initial_workspace() -> bool:
 	if not enforce_workspace():
 		return false
-	var placement := surface.get_module_placement(Builtins.PREVIEW_ID)
-	if placement == WorkspaceSurface.Placement.COLLAPSED:
-		if not surface.restore_module(Builtins.PREVIEW_ID):
-			return false
-		placement = surface.get_module_placement(Builtins.PREVIEW_ID)
-	var definition := surface.manager.get_definition(Builtins.PREVIEW_ID)
-	if definition == null:
-		return false
-	var preview_size := definition.get_constrained_preferred_size()
-	if placement == WorkspaceSurface.Placement.FLOATING:
-		var current := surface.get_floating_rect(Builtins.PREVIEW_ID)
-		if current.has_area() and current.size.y >= 180.0 and current.size.x >= 260.0:
-			preview_size = current.size
-	var bounds := surface.get_floating_bounds()
-	var target := Rect2(
-		Vector2(
-			bounds.end.x - preview_size.x - PREVIEW_OFFSET.x, bounds.position.y + PREVIEW_OFFSET.y
-		),
-		preview_size
-	)
-	if placement == WorkspaceSurface.Placement.FLOATING:
-		return surface.set_floating_rect(Builtins.PREVIEW_ID, target)
-	return surface.float_module(Builtins.PREVIEW_ID, target)
+	if surface.manager.has_instance(Builtins.PREVIEW_ID):
+		var placement := surface.get_module_placement(Builtins.PREVIEW_ID)
+		if placement == WorkspaceSurface.Placement.COLLAPSED:
+			if not surface.restore_module(Builtins.PREVIEW_ID):
+				return false
+		return _place_fixed_module(
+			Builtins.PREVIEW_ID,
+			WorkspaceDockLayout.DockZone.LEFT,
+			Vector2(LEFT_WIDTH, PREVIEW_HEIGHT),
+			0,
+			false
+		)
+	return true
 
 
 func _configure_fixed_layout() -> void:
@@ -139,6 +146,17 @@ func _configure_fixed_layout() -> void:
 		palette_definition.minimum_size.x = 156.0
 		palette_definition.preferred_size.x = LEFT_WIDTH
 		palette_definition.maximum_size.x = 440.0
+	var preview_definition := manager.get_definition(Builtins.PREVIEW_ID)
+	if preview_definition != null:
+		if _preview_width_state.is_empty():
+			_preview_width_state = {
+				"minimum": preview_definition.minimum_size.x,
+				"preferred": preview_definition.preferred_size.x,
+				"maximum": preview_definition.maximum_size.x,
+			}
+		preview_definition.minimum_size.x = 156.0
+		preview_definition.preferred_size.x = LEFT_WIDTH
+		preview_definition.maximum_size.x = 440.0
 	var tools_definition := manager.get_definition(Builtins.TOOLS_ID)
 	if tools_definition != null:
 		if _tools_width_state.is_empty():
@@ -157,12 +175,15 @@ func _configure_fixed_layout() -> void:
 		. configure_floating_snap_policy(
 			{
 				Builtins.TIMELINE_ID: WorkspaceDockLayout.DockZone.BOTTOM,
+				Builtins.PREVIEW_ID: WorkspaceDockLayout.DockZone.LEFT,
 				Builtins.PALETTE_ID: WorkspaceDockLayout.DockZone.LEFT,
 				Builtins.TOOLS_ID: WorkspaceDockLayout.DockZone.RIGHT,
 			}
 		)
 	)
-	for module_id in [Builtins.PALETTE_ID, Builtins.TOOLS_ID, Builtins.TIMELINE_ID]:
+	for module_id in [
+		Builtins.PREVIEW_ID, Builtins.PALETTE_ID, Builtins.TOOLS_ID, Builtins.TIMELINE_ID
+	]:
 		var module := manager.get_instance(module_id)
 		if module != null:
 			if not _module_position_states.has(module_id):
@@ -192,12 +213,29 @@ func _restore_palette_width() -> void:
 	_palette_width_state.clear()
 
 
-func _place_fixed_module(module_id: StringName, zone: int, default_size: Vector2) -> bool:
+func _restore_preview_width() -> void:
+	if _preview_width_state.is_empty() or surface == null:
+		return
+	var definition := surface.manager.get_definition(Builtins.PREVIEW_ID)
+	if definition != null:
+		definition.minimum_size.x = float(_preview_width_state["minimum"])
+		definition.preferred_size.x = float(_preview_width_state["preferred"])
+		definition.maximum_size.x = float(_preview_width_state["maximum"])
+	_preview_width_state.clear()
+
+
+func _place_fixed_module(
+	module_id: StringName,
+	zone: int,
+	default_size: Vector2,
+	index: int = 0,
+	region_fill: bool = true
+) -> bool:
 	var placement := surface.get_module_placement(module_id)
 	if placement == WorkspaceSurface.Placement.DOCKED:
 		if (
 			surface.dock_host.layout.get_module_zone(module_id) == zone
-			and surface.dock_host.layout.is_module_region_fill(module_id)
+			and surface.dock_host.layout.is_module_region_fill(module_id) == region_fill
 		):
 			# UI4 may restore an older snapshot saved with a wider tool sidebar.
 			# Reapply the fixed width even when no dock transition is necessary.
@@ -221,14 +259,16 @@ func _place_fixed_module(module_id: StringName, zone: int, default_size: Vector2
 			var timeline_rect := surface.get_floating_rect(module_id)
 			if timeline_rect.has_area():
 				current_size.y = timeline_rect.size.y
-	# Preserve height for Timeline; height of the two side panels is container-driven.
-	if module_id == Builtins.PALETTE_ID:
+	# Preserve height for Timeline and Preview; height of Palette/Tools is container-driven.
+	if module_id == Builtins.PREVIEW_ID:
+		current_size = Vector2(LEFT_WIDTH, PREVIEW_HEIGHT)
+	elif module_id == Builtins.PALETTE_ID:
 		current_size.x = LEFT_WIDTH
 	elif module_id == Builtins.TOOLS_ID:
 		current_size.x = RIGHT_WIDTH
 	elif module_id == Builtins.TIMELINE_ID and current_size.y <= 0.0:
 		current_size.y = TIMELINE_HEIGHT
-	if not surface.dock_module(module_id, zone, 0, current_size, {}, true):
+	if not surface.dock_module(module_id, zone, index, current_size, {}, region_fill):
 		return false
 	var module := surface.manager.get_instance(module_id)
 	if module != null:
@@ -257,7 +297,7 @@ func _apply_live_palette_presentation() -> void:
 			palette.size_flags_stretch_ratio, picker.size_flags_stretch_ratio
 		)
 	var ratio := clampf(
-		float(Global.config_cache.get_value("ui4", "palette_split_ratio", 0.68)),
+		float(Global.config_cache.get_value("ui4", "palette_split_ratio", 0.54)),
 		SPLIT_MIN,
 		SPLIT_MAX
 	)
@@ -326,12 +366,23 @@ func _draw_stage4_split_handle() -> void:
 	var mode := Stage4.active_mode()
 	if mode == Tokens.LEGACY:
 		return
-	var origin := Vector2i((_split_handle.size * 0.5).round())
-	var color := Tokens.color(mode, &"outline_ink")
-	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	var sz := _split_handle.size
+	var mid_y := roundf(sz.y * 0.5)
+	var line_col := Tokens.color(mode, &"border_subtle")
+	line_col.a = 0.45
+	_split_handle.draw_line(Vector2(8.0, mid_y), Vector2(sz.x - 8.0, mid_y), line_col, 1.0)
+	var pill_w := 32.0
+	var pill_h := 6.0
+	var pill_rect := Rect2(
+		Vector2((sz.x - pill_w) * 0.5, mid_y - pill_h * 0.5), Vector2(pill_w, pill_h)
+	)
+	_split_handle.draw_rect(pill_rect, Tokens.color(mode, &"panel_surface"))
+	var dot_col := Tokens.color(mode, &"text_muted")
+	var cx := roundi(sz.x * 0.5)
+	var cy := roundi(mid_y)
 	for dot_index in range(-1, 2):
-		var top_left := origin + Vector2i(-unit, dot_index * (unit + 2) - unit / 2)
-		_split_handle.draw_rect(Rect2i(top_left, Vector2i(2 * unit, unit)), color)
+		var x := cx + dot_index * 7 - 1
+		_split_handle.draw_rect(Rect2i(x, cy - 1, 3, 2), dot_col)
 
 
 func _update_split_handle() -> void:

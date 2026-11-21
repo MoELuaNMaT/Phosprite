@@ -21,6 +21,12 @@ func test_preview_view_toolbar_wraps_with_window_width() -> void:
 	]:
 		var button := toolbar.get_node_or_null(name) as Button
 		check_true(button != null, "%s lives beside Grayscale" % name)
+	check_true(
+		not preview.is_controls_expanded(),
+		"Preview controls start collapsed so artwork fills the viewport"
+	)
+	preview.set_controls_expanded(true)
+	check_true(preview.is_controls_expanded(), "Preview controls expand on demand")
 	preview.size = Vector2(720, 210)
 	await tree.process_frame
 	await tree.process_frame

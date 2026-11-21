@@ -41,6 +41,8 @@ func _notification(what: int) -> void:
 
 
 func _ready() -> void:
+	if get_theme_constant(&"separation") != 6:
+		add_theme_constant_override(&"separation", 6)
 	undo_button.pressed.connect(_on_undo_pressed)
 	redo_button.pressed.connect(_on_redo_pressed)
 	undo_history_button.pressed.connect(_on_undo_history_pressed)

@@ -9,6 +9,7 @@ extends RefCounted
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 
 
 static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> void:
@@ -26,21 +27,22 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 
 	var panel_l := PixelStyle.make_style(Tokens.TIER_L, surface, ink, shadow, true, u)
 	var panel_m := PixelStyle.make_style(Tokens.TIER_M, surface, ink, shadow, false, u)
-	var well_m := PixelStyle.make_style(Tokens.TIER_M, well, ink, shadow, false, u)
+	var border_sub := Tokens.color(mode, &"border_subtle")
+	var well_m := PixelStyle.make_style(Tokens.TIER_M, well, border_sub, shadow, false, 1)
 	var focus_m := PixelStyle.make_style(Tokens.TIER_M, well, accent, shadow, false, u)
 	var hover_s := PixelStyle.make_style(Tokens.TIER_S, soft, ink, shadow, false, u)
-	var btn_normal := PixelStyle.make_style(Tokens.TIER_M, surface, ink, shadow, true, u)
-	var btn_hover := PixelStyle.make_style(Tokens.TIER_M, soft, ink, shadow, true, u)
-	var btn_pressed := PixelStyle.make_style(Tokens.TIER_M, accent, ink, shadow, false, u, true)
-	var btn_disabled := PixelStyle.make_style(Tokens.TIER_M, well, ink, shadow, false, u)
-	var btn_focus := PixelStyle.make_style(Tokens.TIER_M, soft, accent, shadow, false, u)
+	var btn_normal := Stage4.button_style(mode, &"normal")
+	var btn_hover := Stage4.button_style(mode, &"hover")
+	var btn_pressed := Stage4.button_style(mode, &"pressed")
+	var btn_disabled := Stage4.button_style(mode, &"disabled")
+	var btn_focus := Stage4.button_style(mode, &"focus")
 
 	# Keep unreplaced monochrome SVG/PNG icons crisp against Sunny Cream & Twilight Berry.
 	theme.set_color(&"modulate_color", &"Icons", text)
 	theme.set_color(&"font_color", &"Label", text)
 
 	# 1. Buttons, MenuButtons, OptionButtons, CheckBoxes, CheckButtons
-	for btype in [&"Button", &"MenuButton", &"OptionButton", &"CheckBox", &"CheckButton"]:
+	for btype in [&"Button", &"MenuButton", &"OptionButton"]:
 		theme.set_stylebox(&"normal", btype, btn_normal)
 		theme.set_stylebox(&"hover", btype, btn_hover)
 		theme.set_stylebox(&"pressed", btype, btn_pressed)
@@ -68,18 +70,28 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 		theme.set_color(&"icon_focus_color", &"OptionButton", Color.WHITE)
 
 	# Pixel CheckBox & Radio icons (crisp integer squares, zero vector curves)
-	var chk_off := _make_pixel_checkbox(false, false, surface, accent, ink)
-	var chk_on := _make_pixel_checkbox(true, false, surface, accent, ink)
-	var rad_off := _make_pixel_checkbox(false, true, surface, accent, ink)
-	var rad_on := _make_pixel_checkbox(true, true, surface, accent, ink)
+	var chk_border := Tokens.color(mode, &"checkbox_border")
+	var chk_off := _make_pixel_checkbox(false, false, surface, accent, chk_border)
+	var chk_on := _make_pixel_checkbox(true, false, surface, accent, accent.darkened(0.25))
+	var rad_off := _make_pixel_checkbox(false, true, surface, accent, chk_border)
+	var rad_on := _make_pixel_checkbox(true, true, surface, accent, accent.darkened(0.25))
 	for ctype in [&"CheckBox", &"PopupMenu"]:
 		theme.set_icon(&"unchecked", ctype, chk_off)
 		theme.set_icon(&"checked", ctype, chk_on)
 		theme.set_icon(&"radio_unchecked", ctype, rad_off)
 		theme.set_icon(&"radio_checked", ctype, rad_on)
+	var empty_chk := StyleBoxEmpty.new()
 	for ctype in [&"CheckBox", &"CheckButton"]:
+		for st in [&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled", &"focus"]:
+			theme.set_stylebox(st, ctype, empty_chk)
+		theme.set_color(&"font_color", ctype, text)
+		theme.set_color(&"font_hover_color", ctype, text)
+		theme.set_color(&"font_pressed_color", ctype, text)
+		theme.set_color(&"font_disabled_color", ctype, muted)
 		theme.set_color(&"icon_normal_color", ctype, Color.WHITE)
 		theme.set_color(&"icon_hover_color", ctype, Color.WHITE)
+		theme.set_color(&"icon_pressed_color", ctype, Color.WHITE)
+		theme.set_color(&"icon_hover_pressed_color", ctype, Color.WHITE)
 		theme.set_color(&"icon_focus_color", ctype, Color.WHITE)
 
 	# 2. Popups, Dialogs, Panels, Tooltips, Tabs
@@ -155,31 +167,31 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 static func _make_pixel_checkbox(
 	checked: bool, radio: bool, surface: Color, accent: Color, ink: Color
 ) -> ImageTexture:
-	var img := Image.create_empty(18, 18, false, Image.FORMAT_RGBA8)
+	var img := Image.create_empty(12, 12, false, Image.FORMAT_RGBA8)
 	img.fill(Color.TRANSPARENT)
 	var fill := accent if checked else surface
-	for y in range(2, 16):
-		for x in range(2, 16):
-			var corner_dist := mini(x - 2, 15 - x) + mini(y - 2, 15 - y)
+	for y in range(0, 12):
+		for x in range(0, 12):
+			var corner_dist := mini(x, 11 - x) + mini(y, 11 - y)
 			if corner_dist < (3 if radio else 1):
 				continue
-			var is_border := x <= 3 or x >= 14 or y <= 3 or y >= 14 or (radio and corner_dist == 3)
+			var is_border := x == 0 or x == 11 or y == 0 or y == 11 or (radio and corner_dist == 3)
 			img.set_pixel(x, y, ink if is_border else fill)
 	if checked:
 		if radio:
-			for y in range(7, 11):
-				for x in range(7, 11):
+			for y in range(5, 9):
+				for x in range(5, 9):
 					img.set_pixel(x, y, Color.WHITE)
 		else:
 			for pt in [
+				Vector2i(3, 7),
+				Vector2i(4, 8),
 				Vector2i(5, 9),
-				Vector2i(6, 10),
-				Vector2i(7, 11),
-				Vector2i(8, 10),
-				Vector2i(9, 9),
-				Vector2i(10, 8),
-				Vector2i(11, 7),
-				Vector2i(12, 6),
+				Vector2i(6, 8),
+				Vector2i(7, 7),
+				Vector2i(8, 6),
+				Vector2i(9, 5),
+				Vector2i(10, 4),
 			]:
 				img.set_pixel(pt.x, pt.y, Color.WHITE)
 				img.set_pixel(pt.x, pt.y + 1, Color.WHITE)
