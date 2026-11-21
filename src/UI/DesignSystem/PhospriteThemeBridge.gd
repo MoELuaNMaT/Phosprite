@@ -35,6 +35,10 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 	var btn_disabled := PixelStyle.make_style(Tokens.TIER_M, well, ink, shadow, false, u)
 	var btn_focus := PixelStyle.make_style(Tokens.TIER_M, soft, accent, shadow, false, u)
 
+	# Keep unreplaced monochrome SVG/PNG icons crisp against Sunny Cream & Twilight Berry.
+	theme.set_color(&"modulate_color", &"Icons", text)
+	theme.set_color(&"font_color", &"Label", text)
+
 	# 1. Buttons, MenuButtons, OptionButtons, CheckBoxes, CheckButtons
 	for btype in [&"Button", &"MenuButton", &"OptionButton", &"CheckBox", &"CheckButton"]:
 		theme.set_stylebox(&"normal", btype, btn_normal)
@@ -48,10 +52,20 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 		theme.set_color(&"font_pressed_color", btype, Color.WHITE)
 		theme.set_color(&"font_hover_pressed_color", btype, Color.WHITE)
 		theme.set_color(&"font_disabled_color", btype, muted)
+		theme.set_color(&"icon_normal_color", btype, text)
+		theme.set_color(&"icon_hover_color", btype, text)
+		theme.set_color(&"icon_focus_color", btype, text)
+		theme.set_color(&"icon_pressed_color", btype, Color.WHITE)
+		theme.set_color(&"icon_hover_pressed_color", btype, Color.WHITE)
+		theme.set_color(&"icon_disabled_color", btype, Color(muted, 0.55))
 
-	var chevron := QIcons.compact_icon(&"chevron_down")
+	var chevron := QIcons.compact_icon_1x(&"chevron_down")
 	if chevron != null:
 		theme.set_icon(&"arrow", &"OptionButton", chevron)
+		# Keep colored pixel chevron un-tinted by monochrome icon modulation.
+		theme.set_color(&"icon_normal_color", &"OptionButton", Color.WHITE)
+		theme.set_color(&"icon_hover_color", &"OptionButton", Color.WHITE)
+		theme.set_color(&"icon_focus_color", &"OptionButton", Color.WHITE)
 
 	# Pixel CheckBox & Radio icons (crisp integer squares, zero vector curves)
 	var chk_off := _make_pixel_checkbox(false, false, surface, accent, ink)
@@ -63,6 +77,10 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 		theme.set_icon(&"checked", ctype, chk_on)
 		theme.set_icon(&"radio_unchecked", ctype, rad_off)
 		theme.set_icon(&"radio_checked", ctype, rad_on)
+	for ctype in [&"CheckBox", &"CheckButton"]:
+		theme.set_color(&"icon_normal_color", ctype, Color.WHITE)
+		theme.set_color(&"icon_hover_color", ctype, Color.WHITE)
+		theme.set_color(&"icon_focus_color", ctype, Color.WHITE)
 
 	# 2. Popups, Dialogs, Panels, Tooltips, Tabs
 	for ptype in [&"PopupMenu", &"PopupPanel", &"AcceptDialog", &"TooltipPanel"]:
@@ -72,7 +90,20 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 	theme.set_color(&"font_hover_color", &"PopupMenu", text)
 	theme.set_color(&"font_color", &"TooltipLabel", text)
 
-	for cpanel in [&"Panel", &"PanelContainer", &"TabContainer", &"FoldableContainer"]:
+	# Inner layout containers (Panel / PanelContainer) must remain flat and borderless
+	# so WorkspaceModule windows do not render nested double/triple black frames
+	# and CanvasVisualPolicy / Themes can read surface bg_color cleanly.
+	var flat_panel := StyleBoxFlat.new()
+	flat_panel.bg_color = surface
+	flat_panel.anti_aliasing = false
+	flat_panel.content_margin_left = 2.0
+	flat_panel.content_margin_top = 2.0
+	flat_panel.content_margin_right = 2.0
+	flat_panel.content_margin_bottom = 2.0
+	for flat_type in [&"Panel", &"PanelContainer"]:
+		theme.set_stylebox(&"panel", flat_type, flat_panel)
+
+	for cpanel in [&"TabContainer", &"FoldableContainer"]:
 		theme.set_stylebox(&"panel", cpanel, panel_m)
 
 	for ttype in [&"TabBar", &"TabContainer"]:

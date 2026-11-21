@@ -5,6 +5,9 @@ const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 const LEGACY_GTO_TEX := &"phosprite_legacy_gto_tex"
 const LEGACY_GTO_MOD := &"phosprite_legacy_gto_mod"
+const LEGACY_GTO_EXP := &"phosprite_legacy_gto_exp"
+const LEGACY_GTO_STR := &"phosprite_legacy_gto_str"
+const Q_ACTIVE_META := &"phosprite_q_icon_active"
 
 @onready var grid_container: GridContainer = find_child("GridContainer")
 @onready var horizontal_mirror: BaseButton = grid_container.get_node("Horizontal")
@@ -72,6 +75,7 @@ func _on_Horizontal_toggled(toggled_on: bool) -> void:
 	if not toggled_on:
 		file_name = "horizontal_mirror_off.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	_refresh_phosprite_global_options()
 
 
 func _on_Vertical_toggled(toggled_on: bool) -> void:
@@ -88,6 +92,7 @@ func _on_Vertical_toggled(toggled_on: bool) -> void:
 	if not toggled_on:
 		file_name = "vertical_mirror_off.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	_refresh_phosprite_global_options()
 
 
 func _on_diagonal_xy_toggled(toggled_on: bool) -> void:
@@ -130,6 +135,7 @@ func _on_PixelPerfect_toggled(button_pressed: bool) -> void:
 	if !button_pressed:
 		file_name = "pixel_perfect_off.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	_refresh_phosprite_global_options()
 	Tools.draw_options_changed.emit()
 
 
@@ -141,6 +147,7 @@ func _on_alpha_lock_toggled(toggled_on: bool) -> void:
 	if not toggled_on:
 		file_name = "alpha_lock_off.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	_refresh_phosprite_global_options()
 	Tools.draw_options_changed.emit()
 
 
@@ -216,13 +223,23 @@ func _refresh_phosprite_global_options() -> void:
 			if not tex_rect.has_meta(LEGACY_GTO_TEX):
 				tex_rect.set_meta(LEGACY_GTO_TEX, tex_rect.texture)
 				tex_rect.set_meta(LEGACY_GTO_MOD, tex_rect.modulate)
-			var q_tex := QIcons.standard_icon(q_map[btn])
+				tex_rect.set_meta(LEGACY_GTO_EXP, tex_rect.expand_mode)
+				tex_rect.set_meta(LEGACY_GTO_STR, tex_rect.stretch_mode)
+			var q_tex := QIcons.standard_icon_1x(q_map[btn])
 			if q_tex != null:
+				tex_rect.set_meta(Q_ACTIVE_META, true)
 				tex_rect.texture = q_tex
+				tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 				tex_rect.modulate = Color.WHITE
 				tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		elif tex_rect.has_meta(LEGACY_GTO_TEX):
 			tex_rect.texture = tex_rect.get_meta(LEGACY_GTO_TEX) as Texture2D
 			tex_rect.modulate = tex_rect.get_meta(LEGACY_GTO_MOD) as Color
+			tex_rect.expand_mode = int(tex_rect.get_meta(LEGACY_GTO_EXP))
+			tex_rect.stretch_mode = int(tex_rect.get_meta(LEGACY_GTO_STR))
 			tex_rect.remove_meta(LEGACY_GTO_TEX)
 			tex_rect.remove_meta(LEGACY_GTO_MOD)
+			tex_rect.remove_meta(LEGACY_GTO_EXP)
+			tex_rect.remove_meta(LEGACY_GTO_STR)
+			tex_rect.remove_meta(Q_ACTIVE_META)

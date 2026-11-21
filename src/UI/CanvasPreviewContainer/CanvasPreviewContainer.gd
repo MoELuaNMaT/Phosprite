@@ -1,6 +1,9 @@
 extends PanelContainer
 
 const NAVIGATION := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 
 var _preview_touches: Dictionary = {}
 var _navigation_ids := PackedInt32Array()
@@ -35,9 +38,14 @@ func _enter_tree() -> void:
 		Global.preview_view_controls_changed.connect(_sync_view_controls)
 	if not Global.project_switched.is_connected(_sync_view_controls):
 		Global.project_switched.connect(_sync_view_controls)
+	if not Themes.theme_switched.is_connected(_refresh_preview_pixel_chrome):
+		Themes.theme_switched.connect(_refresh_preview_pixel_chrome)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_preview_pixel_chrome):
+		Global.pixel_ui_unit_changed.connect(_refresh_preview_pixel_chrome)
 	# _ready() is not guaranteed to run when UI3 reuses and reparents the Preview.
 	_on_greyscale_view_changed(Global.greyscale_view)
 	_sync_view_controls()
+	_refresh_preview_pixel_chrome.call_deferred()
 
 
 func _ready() -> void:
@@ -58,6 +66,10 @@ func _exit_tree() -> void:
 		Global.preview_view_controls_changed.disconnect(_sync_view_controls)
 	if Global.project_switched.is_connected(_sync_view_controls):
 		Global.project_switched.disconnect(_sync_view_controls)
+	if Themes.theme_switched.is_connected(_refresh_preview_pixel_chrome):
+		Themes.theme_switched.disconnect(_refresh_preview_pixel_chrome)
+	if Global.pixel_ui_unit_changed.is_connected(_refresh_preview_pixel_chrome):
+		Global.pixel_ui_unit_changed.disconnect(_refresh_preview_pixel_chrome)
 
 
 func _input(event: InputEvent) -> void:
@@ -218,6 +230,50 @@ func _on_add_reference_pressed() -> void:
 func _on_reference_import_source_selected(source: int) -> void:
 	if is_instance_valid(Global.control):
 		Global.control.call(&"request_reference_image_import", source == 1)
+
+
+func _refresh_preview_pixel_chrome() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	var pixel := mode != PhospriteTokens.LEGACY
+	if is_instance_valid(preview_viewport_container):
+		preview_viewport_container.custom_minimum_size = (
+			Vector2(0.0, 72.0) if pixel else Vector2.ZERO
+		)
+	var view_buttons := get_node_or_null(^"VBox/Animation/PreviewViewButtons") as HFlowContainer
+	if view_buttons != null:
+		view_buttons.add_theme_constant_override(&"h_separation", 2 if pixel else 4)
+		view_buttons.add_theme_constant_override(&"v_separation", 2 if pixel else 4)
+		for child in view_buttons.get_children():
+			if child is Button:
+				var btn := child as Button
+				btn.custom_minimum_size = Vector2(34.0, 36.0) if pixel else Vector2(36.0, 48.0)
+				Stage4.style_button(btn, mode)
+	if is_instance_valid(play_button):
+		Stage4.style_button(play_button, mode)
+		var play_tr := play_button.get_node_or_null(^"TextureRect") as TextureRect
+		if play_tr != null:
+			if pixel:
+				if not play_tr.has_meta(&"phosprite_legacy_play_tex"):
+					play_tr.set_meta(&"phosprite_legacy_play_tex", play_tr.texture)
+					play_tr.set_meta(&"phosprite_legacy_play_mod", play_tr.modulate)
+				var q_play := QIcons.standard_icon_1x(
+					&"pause" if play_button.button_pressed else &"play"
+				)
+				if q_play != null:
+					play_tr.set_meta(&"phosprite_q_icon_active", true)
+					play_tr.texture = q_play
+					play_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+					play_tr.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+					play_tr.modulate = Color.WHITE
+					play_tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			elif play_tr.has_meta(&"phosprite_legacy_play_tex"):
+				play_tr.texture = play_tr.get_meta(&"phosprite_legacy_play_tex") as Texture2D
+				play_tr.modulate = play_tr.get_meta(&"phosprite_legacy_play_mod") as Color
+				play_tr.remove_meta(&"phosprite_legacy_play_tex")
+				play_tr.remove_meta(&"phosprite_legacy_play_mod")
+				play_tr.remove_meta(&"phosprite_q_icon_active")
 
 
 ## Preview actions share the existing View menu handlers and global canvas state.

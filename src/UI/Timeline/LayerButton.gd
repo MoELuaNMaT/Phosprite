@@ -123,12 +123,17 @@ func _refresh_stage4_visuals() -> void:
 	if mode != PhospriteTokens.LEGACY and ltype >= 0 and ltype < Q_LAYER_TYPE_IDS.size():
 		var q_id: StringName = Q_LAYER_TYPE_IDS[ltype]
 		if q_id != &"":
-			var q_tex := QIcons.compact_icon(q_id)
+			var q_tex := QIcons.compact_icon_1x(q_id)
 			if q_tex != null:
+				layer_type_texture_rect.set_meta(&"phosprite_q_icon_active", true)
 				layer_type_texture_rect.texture = q_tex
+				layer_type_texture_rect.modulate = Color.WHITE
 				layer_type_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
+		layer_type_texture_rect.remove_meta(&"phosprite_q_icon_active")
 		layer_type_texture_rect.texture = ARRAY_TEXTURE_TYPES[ltype]
+		layer_type_texture_rect.modulate = Global.modulate_icon_color
+	update_buttons()
 
 
 ## Reparenting a layer changes the ancestors that affect its inherited UI color.
@@ -197,6 +202,20 @@ func _on_animation_looped() -> void:
 				audio_player.stop()
 
 
+func _set_side_q_icon(tex_rect: TextureRect, icon_id: StringName) -> void:
+	if tex_rect == null:
+		return
+	var q_tex := QIcons.compact_icon_1x(icon_id)
+	if q_tex == null:
+		return
+	tex_rect.set_meta(&"phosprite_q_icon_active", true)
+	tex_rect.texture = q_tex
+	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	tex_rect.modulate = Color.WHITE
+	tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
 func _on_animation_finished() -> void:
 	animation_running = false
 	if is_instance_valid(audio_player):
@@ -231,21 +250,37 @@ func update_buttons() -> void:
 		else:
 			Global.change_button_texturerect(expand_button.get_child(0), "group_collapsed.png")
 
-	if layer.visible:
-		Global.change_button_texturerect(visibility_button.get_child(0), "layer_visible.png")
+	var px_mode := Stage4.active_mode() != PhospriteTokens.LEGACY
+	var vis_tr := visibility_button.get_child(0) as TextureRect
+	var lock_tr := lock_button.get_child(0) as TextureRect
+	if px_mode:
+		_set_side_q_icon(vis_tr, &"eye_open" if layer.visible else &"eye_closed")
+		_set_side_q_icon(lock_tr, &"lock_closed" if layer.locked else &"lock_open")
+		if linked_button:
+			var link_tr := linked_button.get_child(0) as TextureRect
+			_set_side_q_icon(link_tr, &"cel_linked" if layer.new_cels_linked else &"cel_unlinked")
 	else:
-		Global.change_button_texturerect(visibility_button.get_child(0), "layer_invisible.png")
-
-	if layer.locked:
-		Global.change_button_texturerect(lock_button.get_child(0), "lock.png")
-	else:
-		Global.change_button_texturerect(lock_button.get_child(0), "unlock.png")
-
-	if linked_button:
-		if layer.new_cels_linked:  # If new layers will be linked
-			Global.change_button_texturerect(linked_button.get_child(0), "linked_layer.png")
+		var legacy_seed := load("res://assets/graphics/layers/layer_visible.png") as Texture2D
+		for tr_item in [vis_tr, lock_tr, linked_button.get_child(0) if linked_button else null]:
+			if tr_item is TextureRect:
+				var rect := tr_item as TextureRect
+				rect.remove_meta(&"phosprite_q_icon_active")
+				rect.modulate = Global.modulate_icon_color
+				if rect.texture == null or rect.texture.resource_path.is_empty():
+					rect.texture = legacy_seed
+		if layer.visible:
+			Global.change_button_texturerect(vis_tr, "layer_visible.png")
 		else:
-			Global.change_button_texturerect(linked_button.get_child(0), "unlinked_layer.png")
+			Global.change_button_texturerect(vis_tr, "layer_invisible.png")
+		if layer.locked:
+			Global.change_button_texturerect(lock_tr, "lock.png")
+		else:
+			Global.change_button_texturerect(lock_tr, "unlock.png")
+		if linked_button:
+			if layer.new_cels_linked:
+				Global.change_button_texturerect(linked_button.get_child(0), "linked_layer.png")
+			else:
+				Global.change_button_texturerect(linked_button.get_child(0), "unlinked_layer.png")
 
 	visibility_button.modulate.a = 1
 	lock_button.modulate.a = 1

@@ -655,7 +655,15 @@ func update_module_drag(pointer: Vector2) -> Dictionary:
 			_drag_candidate = dock_candidate
 		else:
 			_drag_candidate = _floating_candidate_for_pointer(pointer)
-	_show_surface_candidate(_drag_candidate)
+	if (
+		not _drag_started_from_dock
+		and bool(_drag_candidate.get("valid", false))
+		and int(_drag_candidate.get("placement", Placement.NONE)) == Placement.FLOATING
+	):
+		_apply_floating_rect(_drag_module_id, _drag_candidate.get("rect", Rect2()) as Rect2)
+		_hide_surface_preview()
+	else:
+		_show_surface_candidate(_drag_candidate)
 	surface_preview_changed.emit(_drag_candidate.duplicate(true))
 	return _drag_candidate.duplicate(true)
 
@@ -691,6 +699,10 @@ func cancel_module_drag() -> void:
 		return
 	if _drag_started_from_dock:
 		dock_host.cancel_module_drag()
+	elif int(_drag_origin.get("placement", Placement.NONE)) == Placement.FLOATING:
+		var origin_rect := _drag_origin.get("rect", get_floating_rect(_drag_module_id)) as Rect2
+		if origin_rect.has_area():
+			_apply_floating_rect(_drag_module_id, origin_rect)
 	_finish_drag(false)
 
 

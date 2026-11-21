@@ -296,6 +296,7 @@ func _on_lock_grid_toggled(toggled_on: bool) -> void:
 	if not toggled_on:
 		file_name = "unlock.png"
 	Global.change_button_texturerect(texture_button, file_name)
+	_refresh_stage4_palette_chrome()
 	Global.config_cache.set_value("palettes", "palette_locked", toggled_on)
 
 
@@ -594,11 +595,15 @@ func _refresh_stage4_palette_chrome() -> void:
 		return
 	var mode := Stage4.active_mode()
 	Stage4.style_option(palette_select, mode)
+	var edit_pal_btn := get_node_or_null(^"PaletteVBoxContainer/PaletteButtons/EditPalette")
+	var add_pal_btn := get_node_or_null(^"PaletteVBoxContainer/PaletteButtons/AddPalette")
 	var btn_map := {
 		add_color_button: &"add_color",
 		delete_color_button: &"remove_color",
 		sort_button: &"sort_colors",
 		lock_grid: &"lock_grid",
+		edit_pal_btn: &"edit_palette",
+		add_pal_btn: &"add_color",
 	}
 	for btn in btn_map:
 		if not is_instance_valid(btn):
@@ -611,13 +616,32 @@ func _refresh_stage4_palette_chrome() -> void:
 			if not tr_node.has_meta(LEGACY_PAL_TEX):
 				tr_node.set_meta(LEGACY_PAL_TEX, tr_node.texture)
 				tr_node.set_meta(LEGACY_PAL_MOD, tr_node.modulate)
-			var q_tex := QIcons.compact_icon(btn_map[btn])
+				tr_node.set_meta(&"phosprite_legacy_pal_exp", tr_node.expand_mode)
+				tr_node.set_meta(&"phosprite_legacy_pal_str", tr_node.stretch_mode)
+			var icon_id: StringName = btn_map[btn]
+			if btn == lock_grid and not lock_grid.button_pressed:
+				icon_id = &"lock_open"
+			if btn == edit_pal_btn or btn == add_pal_btn:
+				(btn as Control).custom_minimum_size = Vector2(26.0, 26.0)
+			var q_tex := (
+				QIcons.tool_icon_1x(&"Pencil")
+				if icon_id == &"edit_palette"
+				else QIcons.compact_icon_1x(icon_id)
+			)
 			if q_tex != null:
+				tr_node.set_meta(&"phosprite_q_icon_active", true)
 				tr_node.texture = q_tex
-				tr_node.modulate = Color.WHITE
+				tr_node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tr_node.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+				tr_node.modulate = Color(1.0, 1.0, 1.0, 0.5 if (btn as Button).disabled else 1.0)
 				tr_node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		elif tr_node.has_meta(LEGACY_PAL_TEX):
 			tr_node.texture = tr_node.get_meta(LEGACY_PAL_TEX) as Texture2D
 			tr_node.modulate = tr_node.get_meta(LEGACY_PAL_MOD) as Color
+			tr_node.expand_mode = int(tr_node.get_meta(&"phosprite_legacy_pal_exp"))
+			tr_node.stretch_mode = int(tr_node.get_meta(&"phosprite_legacy_pal_str"))
 			tr_node.remove_meta(LEGACY_PAL_TEX)
 			tr_node.remove_meta(LEGACY_PAL_MOD)
+			tr_node.remove_meta(&"phosprite_legacy_pal_exp")
+			tr_node.remove_meta(&"phosprite_legacy_pal_str")
+			tr_node.remove_meta(&"phosprite_q_icon_active")

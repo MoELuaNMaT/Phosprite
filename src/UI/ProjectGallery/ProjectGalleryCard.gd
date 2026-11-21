@@ -77,7 +77,19 @@ func apply_stage2_theme(mode: StringName) -> void:
 		selection_check.add_theme_color_override(&"font_color", _legacy_colors["title_check"])
 		title_strip.remove_theme_stylebox_override(&"panel")
 		title_label.remove_theme_color_override(&"font_color")
+		var content_box := visual_root.get_node_or_null(^"Content") as Control
+		if content_box != null:
+			content_box.offset_left = 8.0
+			content_box.offset_top = 8.0
+			content_box.offset_right = -8.0
+			content_box.offset_bottom = -8.0
 	else:
+		var content_box := visual_root.get_node_or_null(^"Content") as Control
+		if content_box != null:
+			content_box.offset_left = 10.0
+			content_box.offset_top = 10.0
+			content_box.offset_right = -14.0
+			content_box.offset_bottom = -14.0
 		# Only the thumbnail image is pixel-filtered. UI text remains antialiased.
 		thumbnail_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_theme_stylebox_override(
@@ -97,7 +109,8 @@ func _sync_stage2_selection() -> void:
 	if _pixel_mode == Tokens.LEGACY:
 		return
 	var surface := &"accent_primary" if selected else &"accent_soft"
-	var strip_style := Chrome.make_panel(_pixel_mode, Tokens.TIER_M, surface)
+	var cached_strip := Chrome.make_panel(_pixel_mode, Tokens.TIER_M, surface)
+	var strip_style := cached_strip.duplicate() as StyleBoxTexture if cached_strip != null else null
 	if strip_style != null:
 		strip_style.content_margin_left = 8.0
 		strip_style.content_margin_right = 8.0
@@ -146,8 +159,9 @@ func bind(project_entry: ProjectLibraryEntry) -> void:
 
 func set_card_width(card_width: float) -> void:
 	var width := maxf(card_width, 1.0)
-	var thumbnail_width := maxf(width - 16.0, 1.0)
-	custom_minimum_size = Vector2(width, width + (84.0 if _pixel_mode != Tokens.LEGACY else 54.0))
+	var inset := 24.0 if _pixel_mode != Tokens.LEGACY else 16.0
+	var thumbnail_width := maxf(width - inset, 1.0)
+	custom_minimum_size = Vector2(width, width + (94.0 if _pixel_mode != Tokens.LEGACY else 54.0))
 	thumbnail_frame.custom_minimum_size = Vector2(thumbnail_width, thumbnail_width)
 
 

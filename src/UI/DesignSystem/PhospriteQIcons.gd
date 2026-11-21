@@ -1,9 +1,9 @@
 class_name PhospriteQIcons
 extends RefCounted
 
-## Unified Q-version (Chibi / Puffy) pixel icon loader with integer 2x scaling.
-## Standard icons: 20x20 PNG (16x16 safe box + 2px padding) -> 32x32 nearest.
-## Compact icons:  16x16 PNG (12x12 safe box + 2px padding) -> 24x24 nearest.
+## Unified Q-version (Chibi / Puffy) pixel icon loader with integer scaling.
+## Standard icons: 20x20 PNG (16x16 safe box + 2px padding) -> 32x32 (2x) or 16x16 (1x).
+## Compact icons:  16x16 PNG (12x12 safe box + 2px padding) -> 24x24 (2x) or 12x12 (1x).
 
 const TOOL_PATHS := {
 	&"RectSelect": "res://assets/graphics/q_icons/tools/rect_select.png",
@@ -29,7 +29,7 @@ const TOOL_PATHS := {
 	&"RectangleTool": "res://assets/graphics/q_icons/tools/rectangle.png",
 	&"EllipseTool": "res://assets/graphics/q_icons/tools/ellipse.png",
 	&"IsometricBoxTool": "res://assets/graphics/q_icons/tools/isometric_box.png",
-	&"GradientTool": "res://assets/graphics/q_icons/tools/gradient.png",
+	&"Gradient": "res://assets/graphics/q_icons/tools/gradient.png",
 }
 
 const STANDARD_PATHS := {
@@ -97,10 +97,19 @@ static var _cache: Dictionary = {}
 
 
 static func tool_icon(tool_name: StringName) -> Texture2D:
-	var path: String = TOOL_PATHS.get(tool_name, "")
+	var resolved := &"Gradient" if tool_name == &"GradientTool" else tool_name
+	var path: String = TOOL_PATHS.get(resolved, "")
 	if path.is_empty():
 		return null
-	return _load_scaled("tool:%s" % tool_name, path, 16, 32)
+	return _load_scaled("tool:%s" % resolved, path, 16, 32)
+
+
+static func tool_icon_1x(tool_name: StringName) -> Texture2D:
+	var resolved := &"Gradient" if tool_name == &"GradientTool" else tool_name
+	var path: String = TOOL_PATHS.get(resolved, "")
+	if path.is_empty():
+		return null
+	return _load_scaled("tool1x:%s" % resolved, path, 16, 16)
 
 
 static func standard_icon(id: StringName) -> Texture2D:
@@ -110,11 +119,25 @@ static func standard_icon(id: StringName) -> Texture2D:
 	return _load_scaled("std:%s" % id, path, 16, 32)
 
 
+static func standard_icon_1x(id: StringName) -> Texture2D:
+	var path: String = STANDARD_PATHS.get(id, "")
+	if path.is_empty():
+		return null
+	return _load_scaled("std1x:%s" % id, path, 16, 16)
+
+
 static func compact_icon(id: StringName) -> Texture2D:
 	var path: String = COMPACT_PATHS.get(id, "")
 	if path.is_empty():
 		return null
 	return _load_scaled("cmp:%s" % id, path, 12, 24)
+
+
+static func compact_icon_1x(id: StringName) -> Texture2D:
+	var path: String = COMPACT_PATHS.get(id, "")
+	if path.is_empty():
+		return null
+	return _load_scaled("cmp1x:%s" % id, path, 12, 12)
 
 
 static func _load_scaled(
@@ -129,7 +152,8 @@ static func _load_scaled(
 	if image == null or image.is_empty():
 		return null
 	var region := image.get_region(Rect2i(2, 2, safe_side, safe_side))
-	region.resize(target_side, target_side, Image.INTERPOLATE_NEAREST)
+	if target_side != safe_side:
+		region.resize(target_side, target_side, Image.INTERPOLATE_NEAREST)
 	var texture := ImageTexture.create_from_image(region)
 	_cache[cache_key] = texture
 	return texture

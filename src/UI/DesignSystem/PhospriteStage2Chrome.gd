@@ -22,6 +22,10 @@ const BUTTON_COLORS := [
 	&"icon_focus_color"
 ]
 
+static var _panel_cache: Dictionary = {}
+static var _shell_cache: Dictionary = {}
+static var _button_cache: Dictionary = {}
+
 
 static func active_mode() -> StringName:
 	if Global.theme_preset_index == Themes.CUSTOM_THEME_INDEX:
@@ -34,14 +38,21 @@ static func make_panel(
 ) -> StyleBoxTexture:
 	if mode == Tokens.LEGACY:
 		return null
-	return PixelStyle.make_style(
+	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	var key := "%s|%s|%s|%d|%d" % [mode, tier, surface, int(with_shadow), unit]
+	if _panel_cache.has(key):
+		return _panel_cache[key] as StyleBoxTexture
+	var style := PixelStyle.make_style(
 		tier,
 		Tokens.color(mode, surface),
 		Tokens.color(mode, &"outline_ink"),
 		Tokens.color(mode, &"pixel_shadow"),
 		with_shadow,
-		Global.pixel_ui_unit
+		unit
 	)
+	if style != null:
+		_panel_cache[key] = style
+	return style
 
 
 ## Gallery panels already have child MarginContainers and card content insets.
@@ -51,13 +62,58 @@ static func make_panel(
 static func make_shell(
 	mode: StringName, tier: StringName, surface: StringName, with_shadow := false
 ) -> StyleBoxTexture:
-	var style := make_panel(mode, tier, surface, with_shadow)
+	if mode == Tokens.LEGACY:
+		return null
+	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	var key := "%s|%s|%s|%d|%d" % [mode, tier, surface, int(with_shadow), unit]
+	if _shell_cache.has(key):
+		return _shell_cache[key] as StyleBoxTexture
+	var style := PixelStyle.make_style(
+		tier,
+		Tokens.color(mode, surface),
+		Tokens.color(mode, &"outline_ink"),
+		Tokens.color(mode, &"pixel_shadow"),
+		with_shadow,
+		unit
+	)
 	if style != null:
 		style.content_margin_left = 0.0
 		style.content_margin_top = 0.0
 		style.content_margin_right = 0.0
 		style.content_margin_bottom = 0.0
+		_shell_cache[key] = style
 	return style
+
+
+static func _button_styles(mode: StringName, cta: bool) -> Dictionary:
+	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	var key := "%s|%d|%d" % [mode, unit, int(cta)]
+	if _button_cache.has(key):
+		return _button_cache[key] as Dictionary
+	var normal_surface := &"accent_cta_coral" if cta else &"panel_surface"
+	var outline := Tokens.color(mode, &"outline_ink")
+	var shadow := Tokens.color(mode, &"pixel_shadow")
+	var styles := {
+		&"normal": make_panel(mode, Tokens.TIER_M, normal_surface, true),
+		&"hover":
+		make_panel(mode, Tokens.TIER_M, &"accent_cta_coral" if cta else &"accent_soft", true),
+		&"pressed":
+		PixelStyle.make_style(
+			Tokens.TIER_M, Tokens.color(mode, &"accent_primary"), outline, shadow, false, unit, true
+		),
+		&"disabled": make_panel(mode, Tokens.TIER_M, &"well_surface"),
+		&"focus":
+		PixelStyle.make_style(
+			Tokens.TIER_M,
+			Tokens.color(mode, normal_surface),
+			Tokens.color(mode, &"accent_primary"),
+			shadow,
+			false,
+			unit
+		),
+	}
+	_button_cache[key] = styles
+	return styles
 
 
 static func style_button(button: Button, mode: StringName, cta := false) -> void:
@@ -66,65 +122,38 @@ static func style_button(button: Button, mode: StringName, cta := false) -> void
 	if mode == Tokens.LEGACY:
 		clear_button(button)
 		return
-	# Preserve the caller's original texture sampling for legacy-theme restore.
-	# Q icons are already 2x rasterized, but iPad display scaling can add another
-	# sampling step unless their controls explicitly request nearest filtering.
 	if not button.has_meta(&"stage2_legacy_texture_filter"):
 		button.set_meta(&"stage2_legacy_texture_filter", button.texture_filter)
-	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var normal_surface := &"accent_cta_coral" if cta else &"panel_surface"
-	var color := Tokens.color(mode, &"text_primary")
-	var outline := Tokens.color(mode, &"outline_ink")
-	var muted := Tokens.color(mode, &"text_muted")
-	var shadow := Tokens.color(mode, &"pixel_shadow")
-	var normal := make_panel(mode, Tokens.TIER_M, normal_surface, true)
-	var hover := make_panel(
-		mode, Tokens.TIER_M, &"accent_cta_coral" if cta else &"accent_soft", true
-	)
-	var pressed := PixelStyle.make_style(
-		Tokens.TIER_M,
-		Tokens.color(mode, &"accent_primary"),
-		outline,
-		shadow,
-		false,
-		Global.pixel_ui_unit,
-		true
-	)
-	var disabled := make_panel(mode, Tokens.TIER_M, &"well_surface")
-	var focused := PixelStyle.make_style(
-		Tokens.TIER_M,
-		Tokens.color(mode, normal_surface),
-		Tokens.color(mode, &"accent_primary"),
-		shadow,
-		false,
-		Global.pixel_ui_unit
-	)
+	if button.texture_filter != CanvasItem.TEXTURE_FILTER_NEAREST:
+		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var styles := _button_styles(mode, cta)
 	for key in BUTTON_STYLES:
-		match key:
-			&"normal":
-				button.add_theme_stylebox_override(key, normal)
-			&"hover":
-				button.add_theme_stylebox_override(key, hover)
-			&"pressed":
-				button.add_theme_stylebox_override(key, pressed)
-			&"disabled":
-				button.add_theme_stylebox_override(key, disabled)
-			&"focus":
-				button.add_theme_stylebox_override(key, focused)
+		var target := styles[key] as StyleBox
+		if not button.has_theme_stylebox_override(key) or button.get_theme_stylebox(key) != target:
+			button.add_theme_stylebox_override(key, target)
+	var color := Tokens.color(mode, &"text_primary")
+	var muted := Tokens.color(mode, &"text_muted")
 	for key in [&"font_color", &"font_hover_color", &"font_pressed_color", &"font_focus_color"]:
-		button.add_theme_color_override(key, color)
-	button.add_theme_color_override(&"font_disabled_color", muted)
+		var target_c := Color.WHITE if key == &"font_pressed_color" else color
+		if not button.has_theme_color_override(key) or button.get_theme_color(key) != target_c:
+			button.add_theme_color_override(key, target_c)
+	if (
+		not button.has_theme_color_override(&"font_disabled_color")
+		or (button.get_theme_color(&"font_disabled_color") != muted)
+	):
+		button.add_theme_color_override(&"font_disabled_color", muted)
 	# Q icons are colored PNGs, not monochrome SVG masks. Keep their actual pixels.
 	for key in [
-		&"icon_normal_color",
-		&"icon_hover_color",
-		&"icon_pressed_color",
-		&"icon_disabled_color",
-		&"icon_focus_color"
+		&"icon_normal_color", &"icon_hover_color", &"icon_pressed_color", &"icon_focus_color"
 	]:
-		button.add_theme_color_override(key, Color.WHITE)
-	button.remove_theme_color_override(&"icon_disabled_color")
-	button.add_theme_color_override(&"icon_disabled_color", Color(1.0, 1.0, 1.0, 0.5))
+		if not button.has_theme_color_override(key) or button.get_theme_color(key) != Color.WHITE:
+			button.add_theme_color_override(key, Color.WHITE)
+	var disabled_icon := Color(1.0, 1.0, 1.0, 0.5)
+	if (
+		not button.has_theme_color_override(&"icon_disabled_color")
+		or (button.get_theme_color(&"icon_disabled_color") != disabled_icon)
+	):
+		button.add_theme_color_override(&"icon_disabled_color", disabled_icon)
 
 
 static func clear_button(button: Button) -> void:

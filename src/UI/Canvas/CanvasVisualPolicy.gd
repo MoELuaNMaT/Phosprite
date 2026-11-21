@@ -4,6 +4,8 @@ extends RefCounted
 ## Visual constants and theme-derived colors shared by the Canvas presentation layer.
 ## Gameplay, document pixels, and editor input must never depend on this policy.
 
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+
 const DOCUMENT_CHECKER_SIZE := 2.0
 const PIXEL_GRID_ALPHA_FACTOR := 0.55
 const BORDER_MIX := 0.38
@@ -27,6 +29,9 @@ static func resolve_text_color(source_theme: Theme, surface: Color) -> Color:
 
 static func resolve_backdrop_color(source_theme: Theme, fallback := Color("2b2b2b")) -> Color:
 	var surface := resolve_surface_color(source_theme, fallback)
+	for mode in [Tokens.SUNNY, Tokens.TWILIGHT]:
+		if surface.is_equal_approx(Tokens.color(mode, &"panel_surface")):
+			return Color(Tokens.color(mode, &"canvas_backdrop"), 1.0)
 	var depth := 0.16 if surface.get_luminance() < 0.5 else 0.08
 	return Color(surface.lerp(Color.BLACK, depth), 1.0)
 

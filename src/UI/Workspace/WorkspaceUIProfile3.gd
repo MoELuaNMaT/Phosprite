@@ -237,7 +237,7 @@ func apply_initial_workspace() -> bool:
 	var size := definition.get_constrained_preferred_size()
 	if placement == WorkspaceSurface.Placement.FLOATING:
 		var current := surface.get_floating_rect(Builtins.PREVIEW_ID)
-		if current.has_area():
+		if current.has_area() and current.size.y >= 180.0 and current.size.x >= 260.0:
 			size = current.size
 	var bounds := surface.get_floating_bounds()
 	var margin := (

@@ -46,13 +46,13 @@ const DEFAULT_LAYOUT := [
 		"id": Builtins.PREVIEW_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 0,
-		"size": Vector2(280.0, 110.0),
+		"size": Vector2(280.0, 196.0),
 	},
 	{
 		"id": Builtins.PALETTE_ID,
 		"zone": WorkspaceDockLayout.DockZone.RIGHT,
 		"index": 1,
-		"size": Vector2(300.0, 360.0),
+		"size": Vector2(300.0, 320.0),
 	},
 	{
 		"id": Builtins.RIGHT_TOOL_OPTIONS_ID,
@@ -103,6 +103,7 @@ var _previous_autosave_enabled := true
 var _single_project_editor := false
 var _timeline_height_restore_generation := 0
 var _active_ui_profile := 1
+var _pending_initial_default_layout := false
 var _ui_profile_3: WorkspaceUIProfile3
 var _ui_profile_4: WorkspaceUIProfile4
 
@@ -420,7 +421,10 @@ func _migrate_live_editor() -> bool:
 			if not saved_ids.has(module_id):
 				missing_defaults.append(module_id)
 		layout_ready = _apply_default_entries(missing_defaults)
+		if _is_degenerate_ui1_stack():
+			_pending_initial_default_layout = true
 	else:
+		_pending_initial_default_layout = not surface.get_floating_bounds().has_area()
 		layout_ready = _apply_default_entries(_default_ids())
 
 	if not layout_ready:
@@ -1271,8 +1275,45 @@ func _on_layout_geometry_changed(_content_rect: Rect2) -> void:
 	_update_canvas_chrome_geometry.call_deferred()
 
 
+func _is_degenerate_ui1_stack() -> bool:
+	if _active_ui_profile != 1 or surface == null:
+		return false
+	if (
+		surface.get_module_placement(Builtins.TOOLS_ID) != WorkspaceSurface.Placement.FLOATING
+		or surface.get_module_placement(Builtins.PREVIEW_ID) != WorkspaceSurface.Placement.FLOATING
+	):
+		return false
+	var tools_rect := surface.get_floating_rect(Builtins.TOOLS_ID)
+	var preview_rect := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	return (
+		tools_rect.position.distance_to(preview_rect.position) < 4.0
+		and tools_rect.position.x <= 16.0
+	)
+
+
 func _on_workspace_resized() -> void:
 	_update_main_canvas_rect()
+	if (
+		_pending_initial_default_layout
+		and surface != null
+		and surface.get_floating_bounds().size.x >= 600.0
+		and surface.get_floating_bounds().size.y >= 300.0
+	):
+		_pending_initial_default_layout = false
+		var prev_autosave := layout_store.autosave_enabled
+		layout_store.autosave_enabled = false
+		var float_defaults: Array[StringName] = [
+			Builtins.TOOLS_ID,
+			Builtins.PREVIEW_ID,
+			Builtins.PALETTE_ID,
+			Builtins.RIGHT_TOOL_OPTIONS_ID,
+		]
+		_apply_default_entries(float_defaults)
+		if has_ui_profile_custom_composition(_active_ui_profile):
+			apply_ui_profile_initial_defaults(_active_ui_profile)
+		_apply_active_ui_profile_workspace()
+		layout_store.autosave_enabled = prev_autosave
+		layout_store.save_current_layout()
 	_update_canvas_chrome_geometry.call_deferred()
 
 
@@ -1527,4 +1568,5 @@ func _clear_setup() -> void:
 	_tools_palette_state.clear()
 	_project_tabs_height = 0.0
 	_single_project_editor = false
+	_pending_initial_default_layout = false
 	live = false

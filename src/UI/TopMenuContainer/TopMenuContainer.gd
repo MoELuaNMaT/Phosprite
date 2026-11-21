@@ -328,12 +328,14 @@ func _refresh_stage2_topbar() -> void:
 	var ipad_editor := _is_ipad_editor()
 	var mode := Chrome.active_mode() if ipad_editor else Tokens.LEGACY
 	if mode == Tokens.LEGACY:
+		custom_minimum_size.y = 0.0
 		remove_theme_stylebox_override(&"panel")
 		for button in [return_home_button, settings_button, _effects_icon_button]:
 			Chrome.clear_button(button)
 		if ipad_editor:
 			return_home_button.text = ""
 			return_home_button.icon = PROJECTS_TOPBAR_ICON
+			return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			return_home_button.flat = true
 			return_home_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
 			if is_instance_valid(settings_button):
@@ -345,7 +347,8 @@ func _refresh_stage2_topbar() -> void:
 				_effects_icon_button.flat = true
 				_effects_icon_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
 		return
-	add_theme_stylebox_override(&"panel", Chrome.make_panel(mode, Tokens.TIER_L, &"panel_surface"))
+	custom_minimum_size.y = 48.0
+	add_theme_stylebox_override(&"panel", Chrome.make_shell(mode, Tokens.TIER_L, &"panel_surface"))
 	for button in [return_home_button, settings_button, _effects_icon_button]:
 		if not is_instance_valid(button):
 			continue
@@ -355,7 +358,8 @@ func _refresh_stage2_topbar() -> void:
 		button.expand_icon = false
 	return_home_button.icon = Icons.icon(&"gallery")
 	return_home_button.text = tr("Gallery")
-	return_home_button.custom_minimum_size = Vector2(88, 40)
+	return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	return_home_button.custom_minimum_size = Vector2(96, 40)
 	if is_instance_valid(settings_button):
 		settings_button.icon = Icons.icon(&"settings")
 	if is_instance_valid(_effects_icon_button):

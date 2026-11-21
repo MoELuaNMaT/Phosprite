@@ -149,7 +149,7 @@ func set_module_size(module_id: StringName, requested_size: Vector2) -> bool:
 
 
 static func timeline_height_limit(workspace_height: float, minimum_height: float) -> float:
-	if workspace_height <= 0.0:
+	if workspace_height < minimum_height:
 		return INF
 	return maxf(
 		minimum_height,

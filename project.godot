@@ -21,6 +21,7 @@ config/project_settings_override="user://override.cfg"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7")
 run/low_processor_mode=true
+run/low_processor_mode.mobile=false
 boot_splash/bg_color=Color(0.145098, 0.145098, 0.164706, 1)
 boot_splash/use_filter=false
 boot_splash/image="res://assets/graphics/splash.png"

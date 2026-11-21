@@ -78,12 +78,23 @@ func _refresh_stage4_visuals() -> void:
 	Stage4.style_button(layer_visibility_button, mode)
 	Stage4.style_button(add_layer_button, mode)
 	var add_icon := add_layer_button.get_node_or_null(^"TextureRect") as TextureRect
-	if add_icon != null and mode != PhospriteTokens.LEGACY:
-		var q_new := QIcons.standard_icon(&"new_item")
-		if q_new != null:
-			add_icon.texture = q_new
-			add_icon.modulate = Color.WHITE
-			add_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if add_icon != null:
+		if mode != PhospriteTokens.LEGACY:
+			if not add_icon.has_meta(&"phosprite_legacy_strip_add"):
+				add_icon.set_meta(&"phosprite_legacy_strip_add", add_icon.texture)
+				add_icon.set_meta(&"phosprite_legacy_strip_mod", add_icon.modulate)
+			var q_new := QIcons.standard_icon(&"new_item")
+			if q_new != null:
+				add_icon.set_meta(&"phosprite_q_icon_active", true)
+				add_icon.texture = q_new
+				add_icon.modulate = Color.WHITE
+				add_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		elif add_icon.has_meta(&"phosprite_legacy_strip_add"):
+			add_icon.texture = add_icon.get_meta(&"phosprite_legacy_strip_add") as Texture2D
+			add_icon.modulate = add_icon.get_meta(&"phosprite_legacy_strip_mod") as Color
+			add_icon.remove_meta(&"phosprite_legacy_strip_add")
+			add_icon.remove_meta(&"phosprite_legacy_strip_mod")
+			add_icon.remove_meta(&"phosprite_q_icon_active")
 	_sync_layer_settings()
 
 
@@ -367,6 +378,16 @@ func _sync_layer_settings() -> void:
 
 func _sync_visibility_icon(layer: BaseLayer) -> void:
 	layer_visibility_icon.texture = VISIBLE_EYE_TEXTURE if layer.visible else INVISIBLE_EYE_TEXTURE
+	if Stage4.active_mode() != PhospriteTokens.LEGACY:
+		var q_eye := QIcons.compact_icon_1x(&"eye_open" if layer.visible else &"eye_closed")
+		if q_eye != null:
+			layer_visibility_icon.set_meta(&"phosprite_q_icon_active", true)
+			layer_visibility_icon.texture = q_eye
+			layer_visibility_icon.modulate = Color.WHITE
+			layer_visibility_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		layer_visibility_icon.remove_meta(&"phosprite_q_icon_active")
+		layer_visibility_icon.modulate = Global.modulate_icon_color
 	layer_visibility_button.tooltip_text = tr("Hide layer") if layer.visible else tr("Show layer")
 
 

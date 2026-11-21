@@ -60,6 +60,8 @@ var global_layer_visibility := true
 var global_layer_lock := false
 var global_layer_expand := true
 var timeline_mode := TimelineMode.ANIMATION
+var _applying_stage4_visuals := false
+var _theme_refresh_pending := false
 
 @onready var animation_timer := $AnimationTimer as Timer
 @onready var timeline_container := $TimelineContainer as VBoxContainer
@@ -144,13 +146,11 @@ func _ready() -> void:
 	%BlueRedMode.button_pressed = blue_red
 	%PastPlacement.select(0 if past_above else 1)
 	%FuturePlacement.select(0 if future_above else 1)
-	# Emit signals that were supposed to be emitted.
 	%PastPlacement.item_selected.emit(0 if past_above else 1)
 	%FuturePlacement.item_selected.emit(0 if future_above else 1)
 	Global.project_about_to_switch.connect(_on_project_about_to_switch)
 	Global.project_switched.connect(_on_project_switched)
 	Global.cel_switched.connect(_cel_switched)
-	# Makes sure that the frame and tag scroll bars are in the right place:
 	layer_vbox.emit_signal.call_deferred("resized")
 	drag_highlight.visibility_changed.connect(clear_highlight)
 	single_frame_layer_strip.set_project(Global.current_project)
@@ -165,16 +165,27 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END:
 		drag_highlight.hide()
 	elif what == NOTIFICATION_THEME_CHANGED or what == NOTIFICATION_TRANSLATION_CHANGED:
+		if _applying_stage4_visuals or _theme_refresh_pending or not is_inside_tree():
+			return
+		_theme_refresh_pending = true
 		await get_tree().process_frame
-		min_cel_size = get_tree().current_scene.theme.default_font_size + CEL_MIN_SIZE_OFFSET
+		_theme_refresh_pending = false
+		if not is_inside_tree():
+			return
+		var sc := get_tree().current_scene
+		if is_instance_valid(sc) and sc.theme != null:
+			min_cel_size = sc.theme.default_font_size + CEL_MIN_SIZE_OFFSET
 		if is_instance_valid(layer_settings_container):
 			layer_container.custom_minimum_size.x = layer_settings_container.size.x + 12
 			layer_header_container.custom_minimum_size.x = layer_container.custom_minimum_size.x
-		_refresh_stage4_visuals.call_deferred()
+		_refresh_stage4_visuals()
 
 
 func _refresh_stage4_visuals() -> void:
-	Stage4Timeline.apply(self)
+	if not _applying_stage4_visuals and is_inside_tree():
+		_applying_stage4_visuals = true
+		Stage4Timeline.apply(self)
+		_applying_stage4_visuals = false
 
 
 func clear_highlight() -> void:
@@ -187,7 +198,6 @@ func clear_highlight() -> void:
 		drag_highlight.queue_redraw()
 
 
-## Manages frame highlighting during drag and drop.
 func set_frames_highlight(frame_indices: Array, offset: int) -> void:
 	if drag_highlight.draw.is_connected(_draw_highlight_frames):
 		drag_highlight.draw.disconnect(_draw_highlight_frames)
@@ -195,7 +205,6 @@ func set_frames_highlight(frame_indices: Array, offset: int) -> void:
 	drag_highlight.queue_redraw()
 
 
-## Draws frame highlighting during drag and drop.
 func _draw_highlight_frames(frame_indices: Array, offset: int) -> void:
 	for frame in frame_indices:
 		var frame_drop: int = frame + offset
@@ -207,7 +216,6 @@ func _draw_highlight_frames(frame_indices: Array, offset: int) -> void:
 	frame_indices.clear()
 
 
-## Manages cel highlighting during drag and drop.
 func set_cels_highlight(cel_coords: Array, offset: Vector2i) -> void:
 	if drag_highlight.draw.is_connected(_draw_highlight_cels):
 		drag_highlight.draw.disconnect(_draw_highlight_cels)
@@ -215,7 +223,6 @@ func set_cels_highlight(cel_coords: Array, offset: Vector2i) -> void:
 	drag_highlight.queue_redraw()
 
 
-## Draws cel highlighting during drag and drop.
 func _draw_highlight_cels(cel_coords: Array, offset: Vector2i) -> void:
 	for cel in cel_coords:  # Press selected buttons
 		var frame: int = cel[0] + offset.x

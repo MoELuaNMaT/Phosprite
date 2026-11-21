@@ -15,6 +15,13 @@ const COLOR_KEYS := [
 	&"font_disabled_color",
 	&"font_focus_color",
 ]
+const ICON_COLOR_KEYS := [
+	&"icon_normal_color",
+	&"icon_hover_color",
+	&"icon_pressed_color",
+	&"icon_disabled_color",
+	&"icon_focus_color",
+]
 const ORIGINAL_BUTTON_META := &"phosprite_stage4_original_button"
 const ORIGINAL_PANEL_META := &"phosprite_stage4_original_panel"
 const ORIGINAL_OPTION_META := &"phosprite_stage4_original_option"
@@ -28,7 +35,8 @@ static func active_mode() -> StringName:
 static func button_style(mode: StringName, state: StringName) -> StyleBoxTexture:
 	if mode == Tokens.LEGACY:
 		return null
-	var cache_key := "%s/%d/%s" % [mode, Global.pixel_ui_unit, state]
+	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	var cache_key := "%s/%d/%s" % [mode, unit, state]
 	if _styles.has(cache_key):
 		return _styles[cache_key] as StyleBoxTexture
 	var surface := &"panel_surface"
@@ -52,17 +60,29 @@ static func button_style(mode: StringName, state: StringName) -> StyleBoxTexture
 		border,
 		Tokens.color(mode, &"pixel_shadow"),
 		with_shadow,
-		Global.pixel_ui_unit,
+		unit,
 		is_pressed
 	)
-	# Existing toolbar rows control their own padding and hit areas.
-	var shift := (
-		float(PixelStyle.SHADOW_OFFSET * clampi(Global.pixel_ui_unit, 1, 3)) if is_pressed else 0.0
-	)
-	style.content_margin_left = shift
-	style.content_margin_top = shift
-	style.content_margin_right = -shift
-	style.content_margin_bottom = -shift
+	# Compact positive margins (total 8px at unit=2): never negative, so Godot
+	# never treats content_margin_right/bottom as unset (-1 sentinel).
+	var pad := 2.0
+	var s := float(PixelStyle.SHADOW_OFFSET * unit)
+	if with_shadow and not is_pressed:
+		style.content_margin_left = pad
+		style.content_margin_top = pad
+		style.content_margin_right = pad + s
+		style.content_margin_bottom = pad + s
+	elif is_pressed:
+		style.content_margin_left = pad + s
+		style.content_margin_top = pad + s
+		style.content_margin_right = pad
+		style.content_margin_bottom = pad
+	else:
+		var half := floorf(s * 0.5)
+		style.content_margin_left = pad + half
+		style.content_margin_top = pad + half
+		style.content_margin_right = pad + half
+		style.content_margin_bottom = pad + half
 	_styles[cache_key] = style
 	return style
 
@@ -83,21 +103,54 @@ static func style_button(button: Button, mode: StringName, guide := false) -> vo
 		for key in STYLE_KEYS:
 			if button.has_theme_stylebox_override(key):
 				original.styles[key] = button.get_theme_stylebox(key)
-		for key in COLOR_KEYS:
+		for key in COLOR_KEYS + ICON_COLOR_KEYS:
 			if button.has_theme_color_override(key):
 				original.colors[key] = button.get_theme_color(key)
 		button.set_meta(ORIGINAL_BUTTON_META, original)
-	button.flat = false
-	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if button.flat:
+		button.flat = false
+	if button.texture_filter != CanvasItem.TEXTURE_FILTER_NEAREST:
+		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	for key in STYLE_KEYS:
-		button.add_theme_stylebox_override(
-			key, button_style(mode, &"guide" if guide and key == &"normal" else key)
-		)
+		var target := button_style(mode, &"guide" if guide and key == &"normal" else key)
+		if not button.has_theme_stylebox_override(key) or button.get_theme_stylebox(key) != target:
+			button.add_theme_stylebox_override(key, target)
 	var foreground := Tokens.color(mode, &"text_primary")
+	var muted := Tokens.color(mode, &"text_muted")
 	for key in COLOR_KEYS:
-		button.add_theme_color_override(
-			key, Tokens.color(mode, &"text_muted") if key == &"font_disabled_color" else foreground
+		var target_c := (
+			muted
+			if key == &"font_disabled_color"
+			else (Color.WHITE if key == &"font_pressed_color" else foreground)
 		)
+		if not button.has_theme_color_override(key) or button.get_theme_color(key) != target_c:
+			button.add_theme_color_override(key, target_c)
+
+
+static func set_q_icon_colors(button: Button, enabled: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	if enabled:
+		for key in [
+			&"icon_normal_color",
+			&"icon_hover_color",
+			&"icon_pressed_color",
+			&"icon_focus_color",
+		]:
+			if (
+				not button.has_theme_color_override(key)
+				or button.get_theme_color(key) != Color.WHITE
+			):
+				button.add_theme_color_override(key, Color.WHITE)
+		var dis := Color(1.0, 1.0, 1.0, 0.45)
+		if (
+			not button.has_theme_color_override(&"icon_disabled_color")
+			or (button.get_theme_color(&"icon_disabled_color") != dis)
+		):
+			button.add_theme_color_override(&"icon_disabled_color", dis)
+	else:
+		for key in ICON_COLOR_KEYS:
+			button.remove_theme_color_override(key)
 
 
 static func restore_button(button: Button) -> void:
@@ -109,7 +162,7 @@ static func restore_button(button: Button) -> void:
 			button.add_theme_stylebox_override(key, original.styles[key])
 		else:
 			button.remove_theme_stylebox_override(key)
-	for key in COLOR_KEYS:
+	for key in COLOR_KEYS + ICON_COLOR_KEYS:
 		if original.colors.has(key):
 			button.add_theme_color_override(key, original.colors[key])
 		else:
@@ -144,7 +197,11 @@ static func style_panel(panel: Control, mode: StringName, tier := Tokens.TIER_L)
 			)
 		)
 	var style := Stage2.make_shell(mode, tier, &"panel_surface")
-	panel.add_theme_stylebox_override(&"panel", style)
+	if (
+		not panel.has_theme_stylebox_override(&"panel")
+		or panel.get_theme_stylebox(&"panel") != style
+	):
+		panel.add_theme_stylebox_override(&"panel", style)
 
 
 static func style_option(option: OptionButton, mode: StringName) -> void:

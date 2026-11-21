@@ -33,7 +33,16 @@ var empty := true:
 		empty = value
 		if empty:
 			mouse_default_cursor_shape = Control.CURSOR_ARROW
-			color = Global.control.theme.get_stylebox("disabled", "Button").bg_color
+			var disabled_sb: StyleBox = (
+				Global.control.theme.get_stylebox("disabled", "Button")
+				if is_instance_valid(Global.control) and Global.control.theme != null
+				else null
+			)
+			color = (
+				(disabled_sb as StyleBoxFlat).bg_color
+				if disabled_sb is StyleBoxFlat
+				else DEFAULT_COLOR
+			)
 		else:
 			mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 

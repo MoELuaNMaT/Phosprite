@@ -5,13 +5,16 @@ extends RefCounted
 ## Do not make the user canvas a child of a dedicated filtering control just
 ## to style its window: the workspace renders these as isolated chrome.
 ##
-## Each asset is built once when its theme changes, never on every draw frame.
+## Textures are cached by visual key so repeated style lookups never re-upload
+## GPU textures or trigger redundant theme invalidations.
 ## The hard shadow follows the selected 1/2/3px unit (2/4/6px offset).
 ## The window size and nine-slice geometry stay constant. This avoids
 ## StyleBoxFlat.shadow_size, which applies an unwanted soft shadow.
 
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const SHADOW_OFFSET := 2
+
+static var _texture_cache: Dictionary = {}
 
 
 static func make_style(
@@ -30,50 +33,80 @@ static func make_style(
 		push_error("Invalid Phosprite pixel tier: %s" % tier)
 		return null
 	var shadow_offset := SHADOW_OFFSET * unit
-	var image := Image.create_empty(side, side, false, Image.FORMAT_RGBA8)
-	image.fill(Color.TRANSPARENT)
-	var use_inset := with_shadow or pressed_shift
-	var body_side := side - (shadow_offset if use_inset else 0)
-	var body_offset := shadow_offset if pressed_shift else 0
-	var corner_steps := Tokens.corner_cutoffs(tier, unit)
+	var tex_key := (
+		"%s|%s|%s|%s|%d|%d|%d"
+		% [
+			tier,
+			background.to_html(),
+			outline.to_html(),
+			shadow.to_html(),
+			int(with_shadow),
+			unit,
+			int(pressed_shift),
+		]
+	)
+	var texture := _texture_cache.get(tex_key) as ImageTexture
+	if texture == null:
+		var image := Image.create_empty(side, side, false, Image.FORMAT_RGBA8)
+		image.fill(Color.TRANSPARENT)
+		var use_inset := with_shadow or pressed_shift
+		var body_side := side - (shadow_offset if use_inset else 0)
+		var body_offset := shadow_offset if pressed_shift else 0
+		var corner_steps := Tokens.corner_cutoffs(tier, unit)
 
-	if with_shadow and not pressed_shift:
-		for y in range(side):
-			for x in range(side):
-				if _inside(x - shadow_offset, y - shadow_offset, body_side, corner_steps):
-					image.set_pixel(x, y, shadow)
+		if with_shadow and not pressed_shift:
+			for y in range(side):
+				for x in range(side):
+					if _inside(x - shadow_offset, y - shadow_offset, body_side, corner_steps):
+						image.set_pixel(x, y, shadow)
 
-	for y in range(body_side):
-		for x in range(body_side):
-			if not _inside(x, y, body_side, corner_steps):
-				continue
-			# Erode the silhouette inward by an integer number of pixels.
-			# A wider stroke must not enlarge the nine-slice or touch target.
-			var edge := false
-			for distance in range(1, unit + 1):
-				if (
-					not _inside(x - distance, y, body_side, corner_steps)
-					or not _inside(x + distance, y, body_side, corner_steps)
-					or not _inside(x, y - distance, body_side, corner_steps)
-					or not _inside(x, y + distance, body_side, corner_steps)
-				):
-					edge = true
-					break
-			image.set_pixel(x + body_offset, y + body_offset, outline if edge else background)
+		for y in range(body_side):
+			for x in range(body_side):
+				if not _inside(x, y, body_side, corner_steps):
+					continue
+				# Erode the silhouette inward by an integer number of pixels.
+				# A wider stroke must not enlarge the nine-slice or touch target.
+				var edge := false
+				for distance in range(1, unit + 1):
+					if (
+						not _inside(x - distance, y, body_side, corner_steps)
+						or not _inside(x + distance, y, body_side, corner_steps)
+						or not _inside(x, y - distance, body_side, corner_steps)
+						or not _inside(x, y + distance, body_side, corner_steps)
+					):
+						edge = true
+						break
+				image.set_pixel(x + body_offset, y + body_offset, outline if edge else background)
+		texture = ImageTexture.create_from_image(image)
+		_texture_cache[tex_key] = texture
 
 	var style := StyleBoxTexture.new()
-	style.texture = ImageTexture.create_from_image(image)
+	style.texture = texture
 	style.region_rect = Rect2(Vector2.ZERO, Vector2(side, side))
 	style.texture_margin_left = slice_margin
 	style.texture_margin_right = slice_margin
 	style.texture_margin_top = slice_margin
 	style.texture_margin_bottom = slice_margin
-	var base_margin := float(Tokens.tier_content_margin(tier))
-	var shift := float(body_offset)
-	style.content_margin_left = base_margin + shift
-	style.content_margin_top = base_margin + shift
-	style.content_margin_right = base_margin - shift
-	style.content_margin_bottom = base_margin - shift
+	var pad := float(Tokens.tier_content_margin(tier))
+	var s := float(shadow_offset)
+	# Keep all content margins strictly non-negative: Godot treats < 0 as unset
+	# and falls back to texture_margin. Normal/hover reserve pad + s on the
+	# shadow side, while pressed shifts content (+s, +s) with identical total span.
+	if with_shadow and not pressed_shift:
+		style.content_margin_left = pad
+		style.content_margin_top = pad
+		style.content_margin_right = pad + s
+		style.content_margin_bottom = pad + s
+	elif pressed_shift:
+		style.content_margin_left = pad + s
+		style.content_margin_top = pad + s
+		style.content_margin_right = pad
+		style.content_margin_bottom = pad
+	else:
+		style.content_margin_left = pad
+		style.content_margin_top = pad
+		style.content_margin_right = pad
+		style.content_margin_bottom = pad
 	style.draw_center = true
 	return style
 

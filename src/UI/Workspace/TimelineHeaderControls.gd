@@ -59,18 +59,28 @@ func _ready() -> void:
 		global_tool_options, undo_button, redo_button, undo_history_button, frame_group
 	]
 	_refresh_item_widths()
+	_connect_live_signals()
+	_update_frame_mark()
+	_refresh_phosprite_chrome()
+	_sync_mode_switch()
+	_apply_overflow_layout()
+
+
+func _enter_tree() -> void:
+	_connect_live_signals()
+	if is_node_ready():
+		_refresh_phosprite_chrome()
+
+
+func _connect_live_signals() -> void:
 	if not Global.project_switched.is_connected(_on_project_switched):
 		Global.project_switched.connect(_on_project_switched)
 	if not Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.connect(_update_frame_mark)
-	_update_frame_mark()
 	if not Themes.theme_switched.is_connected(_refresh_phosprite_chrome):
 		Themes.theme_switched.connect(_refresh_phosprite_chrome)
 	if not Global.pixel_ui_unit_changed.is_connected(_refresh_phosprite_chrome):
 		Global.pixel_ui_unit_changed.connect(_refresh_phosprite_chrome)
-	_refresh_phosprite_chrome()
-	_sync_mode_switch()
-	_apply_overflow_layout()
 
 
 func _exit_tree() -> void:
@@ -321,13 +331,19 @@ func _refresh_phosprite_chrome() -> void:
 				if not button.has_meta(LEGACY_ICON_META):
 					button.set_meta(LEGACY_ICON_META, button.icon)
 					button.set_meta(LEGACY_EXPAND_META, button.expand_icon)
-				var q_tex := QIcons.standard_icon(icon_map[button])
+				var q_tex := (
+					QIcons.standard_icon(icon_map[button])
+					if button == share_export_button and OS.get_name() == "iOS"
+					else QIcons.standard_icon_1x(icon_map[button])
+				)
 				if q_tex != null:
 					button.icon = q_tex
 					button.expand_icon = false
+				Stage4.set_q_icon_colors(button, true)
 				if button == overflow_button:
 					button.text = ""
 			else:
+				Stage4.set_q_icon_colors(button, false)
 				if button.has_meta(LEGACY_ICON_META):
 					button.icon = button.get_meta(LEGACY_ICON_META) as Texture2D
 					button.expand_icon = bool(button.get_meta(LEGACY_EXPAND_META))

@@ -242,7 +242,7 @@ var preferences: Array[Preference] = [
 		"update_continuously",
 		"Performance/PerformanceContainer/UpdateContinuously",
 		"button_pressed",
-		false
+		OS.has_feature("mobile")
 	),
 	Preference.new(
 		"window_transparency",

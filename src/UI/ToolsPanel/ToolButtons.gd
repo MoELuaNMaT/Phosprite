@@ -7,6 +7,8 @@ const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PhospriteQIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 const LEGACY_TOOL_ICON_META := &"phosprite_legacy_tool_icon"
 const LEGACY_TOOL_FILTER_META := &"phosprite_legacy_tool_filter"
+const LEGACY_TOOL_MOD_META := &"phosprite_legacy_tool_mod"
+const Q_ACTIVE_META := &"phosprite_q_icon_active"
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
 const IOS_SELECTION_RECENT_SECTION := "preferences"
@@ -111,15 +113,29 @@ func _refresh_stage4_tool_buttons() -> void:
 				if not icon_rect.has_meta(LEGACY_TOOL_ICON_META):
 					icon_rect.set_meta(LEGACY_TOOL_ICON_META, icon_rect.texture)
 					icon_rect.set_meta(LEGACY_TOOL_FILTER_META, icon_rect.texture_filter)
-				var q_tex := PhospriteQIcons.tool_icon(StringName(button.name))
+					icon_rect.set_meta(LEGACY_TOOL_MOD_META, icon_rect.modulate)
+					icon_rect.set_meta(&"phosprite_legacy_tool_exp", icon_rect.expand_mode)
+					icon_rect.set_meta(&"phosprite_legacy_tool_str", icon_rect.stretch_mode)
+				var q_tex := PhospriteQIcons.tool_icon_1x(StringName(button.name))
 				if q_tex != null:
+					icon_rect.set_meta(Q_ACTIVE_META, true)
 					icon_rect.texture = q_tex
+					icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+					icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+					icon_rect.modulate = Color(1.0, 1.0, 1.0, 0.5 if button.disabled else 1.0)
 					icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			elif icon_rect.has_meta(LEGACY_TOOL_ICON_META):
 				icon_rect.texture = icon_rect.get_meta(LEGACY_TOOL_ICON_META) as Texture2D
 				icon_rect.texture_filter = int(icon_rect.get_meta(LEGACY_TOOL_FILTER_META))
+				icon_rect.modulate = icon_rect.get_meta(LEGACY_TOOL_MOD_META) as Color
+				icon_rect.expand_mode = int(icon_rect.get_meta(&"phosprite_legacy_tool_exp"))
+				icon_rect.stretch_mode = int(icon_rect.get_meta(&"phosprite_legacy_tool_str"))
 				icon_rect.remove_meta(LEGACY_TOOL_ICON_META)
 				icon_rect.remove_meta(LEGACY_TOOL_FILTER_META)
+				icon_rect.remove_meta(LEGACY_TOOL_MOD_META)
+				icon_rect.remove_meta(&"phosprite_legacy_tool_exp")
+				icon_rect.remove_meta(&"phosprite_legacy_tool_str")
+				icon_rect.remove_meta(Q_ACTIVE_META)
 
 
 func _input(event: InputEvent) -> void:
