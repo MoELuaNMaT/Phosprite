@@ -27,6 +27,8 @@ enum ResizeEdge {
 
 const INTERACTION_TARGET_SIZE := 28.0
 const RESIZE_EDGE_HIT_SIZE := 18.0
+const FLOATING_RESIZE_OUTER_HIT_SIZE := 14.0
+const CORNER_RESIZE_HIT_SIZE := 30.0
 const HEADERLESS_RESIZE_INNER_HIT_SIZE := 7.0
 const HEADERLESS_RESIZE_OUTER_HIT_SIZE := 14.0
 const TOP_RESIZE_EDGE_HIT_SIZE := 10.0
@@ -407,26 +409,53 @@ func get_resize_edges(local_point: Vector2) -> int:
 	if _visual_state != &"floating" or _content_collapsed:
 		return ResizeEdge.NONE
 	var visual := get_visual_rect()
+	var outer := (
+		FLOATING_RESIZE_OUTER_HIT_SIZE
+		if _header_chrome_visible
+		else HEADERLESS_RESIZE_OUTER_HIT_SIZE
+	)
 	if _header_chrome_visible:
-		if not visual.has_point(local_point):
+		var expanded := Rect2(
+			Vector2(-outer, 0.0), Vector2(visual.size.x + outer * 2.0, visual.size.y + outer)
+		)
+		if not expanded.has_point(local_point):
 			return ResizeEdge.NONE
-	elif not visual.grow(HEADERLESS_RESIZE_OUTER_HIT_SIZE).has_point(local_point):
+	elif not visual.grow(outer).has_point(local_point):
 		return ResizeEdge.NONE
-	# Keep interactive content usable: add tolerance outside the frame rather
-	# than turning the first row of tool buttons into a resize target.
+	# Keep interactive content usable while giving bottom corners a generous
+	# touch target (inward + outward) so iPad corner drags respond immediately.
 	var edges := ResizeEdge.NONE
 	var edge_hit := (
 		RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else HEADERLESS_RESIZE_INNER_HIT_SIZE
 	)
 	var top_hit := TOP_RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else edge_hit
-	if definition == null or not definition.is_horizontal_resize_locked():
-		if local_point.x <= edge_hit:
+	var horz_unlocked := definition == null or not definition.is_horizontal_resize_locked()
+	var near_bottom_corner := local_point.y >= size.y - CORNER_RESIZE_HIT_SIZE
+	if horz_unlocked:
+		var corner_x := CORNER_RESIZE_HIT_SIZE if near_bottom_corner else edge_hit
+		if local_point.x <= corner_x:
 			edges |= ResizeEdge.LEFT
-		elif local_point.x >= size.x - edge_hit:
+		elif local_point.x >= size.x - corner_x:
 			edges |= ResizeEdge.RIGHT
 	if local_point.y <= top_hit:
 		edges |= ResizeEdge.TOP
-	elif local_point.y >= size.y - edge_hit:
+	elif (
+		local_point.y
+		>= (
+			size.y
+			- (
+				CORNER_RESIZE_HIT_SIZE
+				if (
+					horz_unlocked
+					and (
+						local_point.x <= CORNER_RESIZE_HIT_SIZE
+						or local_point.x >= size.x - CORNER_RESIZE_HIT_SIZE
+					)
+				)
+				else edge_hit
+			)
+		)
+	):
 		edges |= ResizeEdge.BOTTOM
 	return edges
 

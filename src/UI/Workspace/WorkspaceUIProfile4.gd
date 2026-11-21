@@ -13,7 +13,10 @@ const PREVIEW_HEIGHT := 184.0
 const PREVIEW_OFFSET := Vector2(14.0, 14.0)
 const SPLIT_MIN := 0.2
 const SPLIT_MAX := 0.85
-const SPLIT_GRAB_HEIGHT := 18.0
+const SPLIT_GRAB_HEIGHT := 20.0
+const PREVIEW_SPLIT_GRAB_HEIGHT := 26.0
+const PREVIEW_MIN_HEIGHT := 112.0
+const PALETTE_MIN_HEIGHT := 240.0
 
 var ui_root: Control
 var surface: WorkspaceSurface
@@ -30,6 +33,9 @@ var _picker_content: Control
 var _split_handle: Control
 var _split_drag_mouse := false
 var _split_drag_touch := -1
+var _preview_split_handle: Control
+var _preview_split_drag_mouse := false
+var _preview_split_drag_touch := -1
 
 
 func setup(root: Control, workspace_surface: WorkspaceSurface) -> bool:
@@ -58,6 +64,8 @@ func deactivate() -> void:
 	active = false
 	_split_drag_mouse = false
 	_split_drag_touch = -1
+	_preview_split_drag_mouse = false
+	_preview_split_drag_touch = -1
 	_restore_live_palette_presentation()
 	if surface != null and surface.dock_host != null:
 		surface.dock_host.set_u_frame_layout(false)
@@ -261,7 +269,7 @@ func _place_fixed_module(
 				current_size.y = timeline_rect.size.y
 	# Preserve height for Timeline and Preview; height of Palette/Tools is container-driven.
 	if module_id == Builtins.PREVIEW_ID:
-		current_size = Vector2(LEFT_WIDTH, PREVIEW_HEIGHT)
+		current_size = Vector2(LEFT_WIDTH, _saved_preview_height())
 	elif module_id == Builtins.PALETTE_ID:
 		current_size.x = LEFT_WIDTH
 	elif module_id == Builtins.TOOLS_ID:
@@ -303,6 +311,7 @@ func _apply_live_palette_presentation() -> void:
 	)
 	_set_split_ratio(ratio, false)
 	_ensure_split_handle()
+	_ensure_preview_split_handle()
 	# Foreground/background swatches are now shared by all three profiles.
 	# The ColorPicker places them in its own sampler row.
 
@@ -311,6 +320,9 @@ func _restore_live_palette_presentation() -> void:
 	if is_instance_valid(_split_handle):
 		_split_handle.queue_free()
 	_split_handle = null
+	if is_instance_valid(_preview_split_handle):
+		_preview_split_handle.queue_free()
+	_preview_split_handle = null
 	if is_instance_valid(_palette_content) and is_instance_valid(_picker_content):
 		if _palette_stretch_state.x >= 0.0:
 			_palette_content.size_flags_stretch_ratio = _palette_stretch_state.x
@@ -337,6 +349,8 @@ func _ensure_split_handle() -> void:
 		return
 	_split_handle = Control.new()
 	_split_handle.name = &"UI4PaletteSplitHandle"
+	_split_handle.add_to_group(&"phosprite_ui4_split_handles")
+	_split_handle.z_index = 4
 	_split_handle.mouse_filter = Control.MOUSE_FILTER_STOP
 	_split_handle.mouse_default_cursor_shape = Control.CURSOR_VSIZE
 	surface.dock_host.add_child(_split_handle)
@@ -358,6 +372,8 @@ func _ensure_split_handle() -> void:
 func _refresh_stage4_split_handle() -> void:
 	if is_instance_valid(_split_handle):
 		_split_handle.queue_redraw()
+	if is_instance_valid(_preview_split_handle):
+		_preview_split_handle.queue_redraw()
 
 
 func _draw_stage4_split_handle() -> void:
@@ -435,3 +451,177 @@ func _adjust_split(delta_y: float) -> void:
 		)
 	)
 	_set_split_ratio(old_ratio + delta_y / _palette_root.size.y, true)
+
+
+func _saved_preview_height() -> float:
+	var saved := float(Global.config_cache.get_value("ui4", "preview_height", PREVIEW_HEIGHT))
+	return clampf(saved, PREVIEW_MIN_HEIGHT, 480.0)
+
+
+func _ensure_preview_split_handle() -> void:
+	if is_instance_valid(_preview_split_handle) or not is_instance_valid(surface.dock_host):
+		return
+	var preview_module := surface.manager.get_instance(Builtins.PREVIEW_ID)
+	var palette_module := surface.manager.get_instance(Builtins.PALETTE_ID)
+	if preview_module == null or palette_module == null:
+		return
+	_preview_split_handle = Control.new()
+	_preview_split_handle.name = &"UI4PreviewPaletteSplitHandle"
+	_preview_split_handle.add_to_group(&"phosprite_ui4_split_handles")
+	_preview_split_handle.mouse_filter = Control.MOUSE_FILTER_STOP
+	_preview_split_handle.mouse_default_cursor_shape = Control.CURSOR_VSIZE
+	_preview_split_handle.z_index = 5
+	surface.dock_host.add_child(_preview_split_handle)
+	_preview_split_handle.gui_input.connect(_on_preview_split_input)
+	_preview_split_handle.draw.connect(_draw_preview_split_handle)
+	if not preview_module.resized.is_connected(_update_preview_split_handle):
+		preview_module.resized.connect(_update_preview_split_handle)
+	if not palette_module.resized.is_connected(_update_preview_split_handle):
+		palette_module.resized.connect(_update_preview_split_handle)
+	if not surface.dock_host.resized.is_connected(_update_preview_split_handle):
+		surface.dock_host.resized.connect(_update_preview_split_handle)
+	_update_preview_split_handle.call_deferred()
+
+
+func _draw_preview_split_handle() -> void:
+	if not is_instance_valid(_preview_split_handle):
+		return
+	var mode := Stage4.active_mode()
+	if mode == Tokens.LEGACY:
+		return
+	var sz := _preview_split_handle.size
+	var mid_y := 8.0
+	var dot_col := Tokens.color(mode, &"text_muted")
+	var cx := roundi(sz.x * 0.5)
+	var cy := roundi(mid_y)
+	var pill_w := 34.0
+	var pill_h := 6.0
+	var pill_col := Tokens.color(mode, &"accent_soft")
+	pill_col.a = 0.92
+	_preview_split_handle.draw_rect(
+		Rect2(Vector2((sz.x - pill_w) * 0.5, mid_y - pill_h * 0.5), Vector2(pill_w, pill_h)),
+		pill_col
+	)
+	for dot_index in range(-1, 2):
+		var x := cx + dot_index * 7 - 1
+		_preview_split_handle.draw_rect(Rect2i(x, cy - 1, 3, 2), dot_col)
+
+
+func _update_preview_split_handle() -> void:
+	if not active or not is_instance_valid(_preview_split_handle):
+		return
+	var preview_module := surface.manager.get_instance(Builtins.PREVIEW_ID)
+	var palette_module := surface.manager.get_instance(Builtins.PALETTE_ID)
+	if preview_module == null or palette_module == null:
+		_preview_split_handle.visible = false
+		return
+	var visible_pair := (
+		preview_module.is_visible_in_tree()
+		and palette_module.is_visible_in_tree()
+		and surface.get_module_placement(Builtins.PREVIEW_ID) == WorkspaceSurface.Placement.DOCKED
+		and surface.get_module_placement(Builtins.PALETTE_ID) == WorkspaceSurface.Placement.DOCKED
+	)
+	_preview_split_handle.visible = visible_pair
+	if not visible_pair:
+		return
+	var host := surface.dock_host
+	var seam_global := palette_module.get_global_transform_with_canvas() * Vector2(0.0, 0.0)
+	var seam_host := host.get_global_transform_with_canvas().affine_inverse() * seam_global
+	var handle_w := maxf(40.0, palette_module.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE)
+	var header_h := palette_module.get_header_height()
+	var top_pad := 10.0
+	_preview_split_handle.position = Vector2(seam_host.x, seam_host.y - top_pad)
+	_preview_split_handle.size = Vector2(handle_w, top_pad + header_h)
+	_preview_split_handle.queue_redraw()
+
+
+func _on_preview_split_input(event: InputEvent) -> void:
+	if not active:
+		return
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.button_index == MOUSE_BUTTON_LEFT:
+			_preview_split_drag_mouse = button.pressed
+			_preview_split_handle.accept_event()
+	elif event is InputEventMouseMotion and _preview_split_drag_mouse:
+		_adjust_preview_split((event as InputEventMouseMotion).relative.y)
+		_preview_split_handle.accept_event()
+	elif event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed and _preview_split_drag_touch == -1:
+			_preview_split_drag_touch = touch.index
+		elif not touch.pressed and _preview_split_drag_touch == touch.index:
+			_preview_split_drag_touch = -1
+		_preview_split_handle.accept_event()
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if drag.index == _preview_split_drag_touch:
+			_adjust_preview_split(drag.relative.y)
+			_preview_split_handle.accept_event()
+
+
+func _adjust_preview_split(delta_y: float) -> void:
+	if surface == null or surface.dock_host == null:
+		return
+	var left_host := surface.dock_host.get_zone_host(WorkspaceDockLayout.DockZone.LEFT)
+	var cur := surface.dock_host.layout.get_module_size(Builtins.PREVIEW_ID)
+	if cur == Vector2.ZERO:
+		cur = Vector2(LEFT_WIDTH, _saved_preview_height())
+	var max_h := maxf(
+		PREVIEW_MIN_HEIGHT, (left_host.size.y if left_host != null else 640.0) - PALETTE_MIN_HEIGHT
+	)
+	var next_h := clampf(cur.y + delta_y, PREVIEW_MIN_HEIGHT, max_h)
+	if is_equal_approx(next_h, cur.y):
+		return
+	surface.dock_host.set_module_size(Builtins.PREVIEW_ID, Vector2(cur.x, next_h))
+	Global.config_cache.set_value("ui4", "preview_height", next_h)
+	_update_preview_split_handle.call_deferred()
+	_update_split_handle.call_deferred()
+
+
+func _input(event: InputEvent) -> void:
+	if not active:
+		return
+	if _preview_split_drag_mouse:
+		if event is InputEventMouseMotion:
+			_adjust_preview_split((event as InputEventMouseMotion).relative.y)
+			get_viewport().set_input_as_handled()
+		elif event is InputEventMouseButton:
+			var mb := event as InputEventMouseButton
+			if mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
+				_preview_split_drag_mouse = false
+				get_viewport().set_input_as_handled()
+		return
+	if _preview_split_drag_touch >= 0:
+		if event is InputEventScreenDrag:
+			var drag := event as InputEventScreenDrag
+			if drag.index == _preview_split_drag_touch:
+				_adjust_preview_split(drag.relative.y)
+				get_viewport().set_input_as_handled()
+		elif event is InputEventScreenTouch:
+			var touch := event as InputEventScreenTouch
+			if not touch.pressed and touch.index == _preview_split_drag_touch:
+				_preview_split_drag_touch = -1
+				get_viewport().set_input_as_handled()
+		return
+	if _split_drag_mouse:
+		if event is InputEventMouseMotion:
+			_adjust_split((event as InputEventMouseMotion).relative.y)
+			get_viewport().set_input_as_handled()
+		elif event is InputEventMouseButton:
+			var mb := event as InputEventMouseButton
+			if mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
+				_split_drag_mouse = false
+				get_viewport().set_input_as_handled()
+		return
+	if _split_drag_touch >= 0:
+		if event is InputEventScreenDrag:
+			var drag := event as InputEventScreenDrag
+			if drag.index == _split_drag_touch:
+				_adjust_split(drag.relative.y)
+				get_viewport().set_input_as_handled()
+		elif event is InputEventScreenTouch:
+			var touch := event as InputEventScreenTouch
+			if not touch.pressed and touch.index == _split_drag_touch:
+				_split_drag_touch = -1
+				get_viewport().set_input_as_handled()

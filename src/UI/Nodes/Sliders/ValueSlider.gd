@@ -141,7 +141,7 @@ func configure_tool_vertical_drag() -> void:
 	allow_text_input = false
 	_line_edit.offset_top = TOOL_VERTICAL_VALUE_INSET
 	_line_edit.offset_bottom = -TOOL_VERTICAL_VALUE_INSET
-	_line_edit.add_theme_font_size_override(&"font_size", 10)
+	_line_edit.add_theme_font_size_override(&"font_size", 12)
 	_reset_display(true)
 	queue_redraw()
 

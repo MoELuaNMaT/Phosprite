@@ -139,11 +139,16 @@ func _event_over_color_options_popup(event: InputEvent) -> bool:
 		or event is InputEventMouseMotion
 	):
 		return false
-	for group_name in [&"phosprite_color_options_popup", &"phosprite_ui3_palette_popup"]:
-		var popup := get_tree().get_first_node_in_group(group_name) as Control
-		if popup != null and popup.is_visible_in_tree():
-			if popup.get_global_rect().has_point(event.position):
-				return true
+	for group_name in [
+		&"phosprite_color_options_popup",
+		&"phosprite_ui3_palette_popup",
+		&"phosprite_ui4_split_handles",
+	]:
+		for node in get_tree().get_nodes_in_group(group_name):
+			var popup := node as Control
+			if popup != null and popup.is_visible_in_tree():
+				if popup.get_global_rect().has_point(event.position):
+					return true
 	return false
 
 

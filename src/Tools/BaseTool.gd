@@ -128,7 +128,7 @@ func _configure_sidebar_label(label: Label) -> void:
 	# Text may describe a long tool name/setting; never widen the shared sidebar.
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = 0.0
-	label.add_theme_font_size_override(&"font_size", 10)
+	label.add_theme_font_size_override(&"font_size", 12)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
@@ -149,11 +149,14 @@ func _configure_sidebar_button(button: Button) -> void:
 		if button.tooltip_text.is_empty() and not button.text.is_empty():
 			button.tooltip_text = button.text
 		return
-	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL if button.icon == null else Control.SIZE_SHRINK_CENTER
+	)
 	button.clip_text = true
-	button.add_theme_font_size_override(&"font_size", 10)
+	var btn_font_size := 11 if button.icon == null and button.text.length() >= 4 else 12
+	button.add_theme_font_size_override(&"font_size", btn_font_size)
 	if button.icon == null and not button.text.is_empty():
-		button.custom_minimum_size.y = 22.0
+		button.custom_minimum_size.y = 26.0
 
 
 func _tool_drag_sensitivity(slider: ValueSlider) -> float:
@@ -199,7 +202,7 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.name = StringName("%sOptionLabel" % control.name)
 	label.text = _format_option_label(raw_text)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override(&"font_size", 10)
+	label.add_theme_font_size_override(&"font_size", 12)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
