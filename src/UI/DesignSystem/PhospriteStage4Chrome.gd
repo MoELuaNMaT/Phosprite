@@ -45,17 +45,24 @@ static func button_style(mode: StringName, state: StringName) -> StyleBoxTexture
 			border = Tokens.color(mode, &"accent_primary")
 		&"well":
 			surface = &"well_surface"
+	var is_pressed := state in [&"pressed", &"selected"]
 	var style := PixelStyle.make_style(
 		Tokens.TIER_M,
 		Tokens.color(mode, surface),
 		border,
 		Tokens.color(mode, &"pixel_shadow"),
 		with_shadow,
-		Global.pixel_ui_unit
+		Global.pixel_ui_unit,
+		is_pressed
 	)
 	# Existing toolbar rows control their own padding and hit areas.
-	for side in [&"left", &"right", &"top", &"bottom"]:
-		style.set("content_margin_%s" % side, 0.0)
+	var shift := (
+		float(PixelStyle.SHADOW_OFFSET * clampi(Global.pixel_ui_unit, 1, 3)) if is_pressed else 0.0
+	)
+	style.content_margin_left = shift
+	style.content_margin_top = shift
+	style.content_margin_right = -shift
+	style.content_margin_bottom = -shift
 	_styles[cache_key] = style
 	return style
 

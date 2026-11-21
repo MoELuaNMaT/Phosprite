@@ -263,7 +263,7 @@ var integer_zoom := false:
 
 ## Pixel-art UI stroke size. This is NOT the iPad display scale or canvas pixel size.
 ## Changing it regenerates only the opt-in Phosprite window chrome.
-var pixel_ui_unit := 1:
+var pixel_ui_unit := 2:
 	set(value):
 		var valid_unit := clampi(int(value), 1, 3)
 		if pixel_ui_unit == valid_unit:

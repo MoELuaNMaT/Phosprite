@@ -518,9 +518,20 @@ func _draw() -> void:
 			- accessory_gap
 		)
 	)
+	var grip_offset := 0.0
+	if _visual_theme.pixel_mode != &"legacy" and _position_adjustment_enabled:
+		var u := maxi(2, _visual_theme.pixel_unit)
+		var gx := roundi(_visual_theme.CONTENT_PADDING + 2.0)
+		var gy := roundi(header_height * 0.5 - float(u * 2.5))
+		for r in range(3):
+			for c in range(2):
+				draw_rect(
+					Rect2(gx + c * (u + 2), gy + r * (u + 2), u, u), _visual_theme.border_color
+				)
+		grip_offset = float(u * 2 + 8)
 	draw_string(
 		_visual_theme.default_font,
-		Vector2(_visual_theme.CONTENT_PADDING + 1.0, baseline),
+		Vector2(_visual_theme.CONTENT_PADDING + 1.0 + grip_offset, baseline),
 		title,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		title_width,
@@ -632,6 +643,18 @@ func _draw_collapse_affordance() -> void:
 	if definition == null or not definition.can_collapse or _visual_theme == null:
 		return
 	var center := Vector2(size.x - INTERACTION_TARGET_SIZE * 0.5, get_header_height() * 0.5)
+	if _visual_theme.pixel_mode != &"legacy":
+		var cx := roundi(center.x)
+		var cy := roundi(center.y)
+		if _content_collapsed:
+			draw_rect(Rect2(cx - 2, cy - 4, 2, 8), _visual_theme.border_color)
+			draw_rect(Rect2(cx, cy - 2, 2, 4), _visual_theme.border_color)
+			draw_rect(Rect2(cx + 2, cy - 1, 2, 2), _visual_theme.border_color)
+		else:
+			draw_rect(Rect2(cx - 4, cy - 2, 8, 2), _visual_theme.border_color)
+			draw_rect(Rect2(cx - 2, cy, 4, 2), _visual_theme.border_color)
+			draw_rect(Rect2(cx - 1, cy + 2, 2, 2), _visual_theme.border_color)
+		return
 	var half := 4.0
 	var direction := -1.0 if _content_collapsed else 1.0
 	draw_line(
@@ -650,6 +673,12 @@ func _draw_collapse_affordance() -> void:
 
 func _draw_resize_affordance() -> void:
 	if _visual_state != &"floating" or _visual_theme == null or _content_collapsed:
+		return
+	if _visual_theme.pixel_mode != &"legacy":
+		var rx := roundi(size.x) - 6
+		var ry := roundi(size.y) - 6
+		for step in [Vector2i(0, 0), Vector2i(-4, 0), Vector2i(0, -4)]:
+			draw_rect(Rect2(rx + step.x, ry + step.y, 2, 2), _visual_theme.border_color)
 		return
 	var right_corner := size - Vector2(6.0, 6.0)
 	var left_corner := Vector2(6.0, size.y - 6.0)

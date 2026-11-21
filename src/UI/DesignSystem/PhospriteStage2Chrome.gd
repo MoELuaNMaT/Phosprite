@@ -81,7 +81,15 @@ static func style_button(button: Button, mode: StringName, cta := false) -> void
 	var hover := make_panel(
 		mode, Tokens.TIER_M, &"accent_cta_coral" if cta else &"accent_soft", true
 	)
-	var pressed := make_panel(mode, Tokens.TIER_M, &"accent_primary")
+	var pressed := PixelStyle.make_style(
+		Tokens.TIER_M,
+		Tokens.color(mode, &"accent_primary"),
+		outline,
+		shadow,
+		false,
+		Global.pixel_ui_unit,
+		true
+	)
 	var disabled := make_panel(mode, Tokens.TIER_M, &"well_surface")
 	var focused := PixelStyle.make_style(
 		Tokens.TIER_M,

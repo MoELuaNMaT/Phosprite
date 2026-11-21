@@ -15,6 +15,8 @@ const Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 const Stage3 := preload("res://src/UI/DesignSystem/PhospriteStage3Controls.gd")
 const CLOSE_Q_ICON := preload("res://assets/graphics/q_icons/chrome/window_close.png")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const Draw := preload("res://src/UI/DesignSystem/PhospriteDraw.gd")
 
 const BRUSH_TOOL := &"Pencil"
 const ERASER_TOOL := &"Eraser"
@@ -564,6 +566,10 @@ func _constrain_stage3_palette_position(position: Vector2) -> Vector2:
 
 
 func _source_icon(source: BaseButton) -> Texture2D:
+	if Chrome.active_mode() != Tokens.LEGACY:
+		var q_tex := QIcons.tool_icon(StringName(source.name))
+		if q_tex != null:
+			return q_tex
 	var icon_node := source.get_node_or_null(^"ToolIcon") as TextureRect
 	if icon_node != null:
 		return icon_node.texture
@@ -774,10 +780,12 @@ func _refresh_family_row(current: StringName) -> void:
 		button.custom_minimum_size = FAMILY_BUTTON_SIZE
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		button.flat = true
+		var pixel_mode := Chrome.active_mode()
+		button.flat = pixel_mode == Tokens.LEGACY
 		button.toggle_mode = true
-		button.expand_icon = true
-		button.icon = tool.icon
+		var q_tex := QIcons.tool_icon(tool_name) if pixel_mode != Tokens.LEGACY else null
+		button.expand_icon = q_tex == null
+		button.icon = q_tex if q_tex != null else tool.icon
 		button.tooltip_text = tr(tool.display_name)
 		var selected := tool_name == current
 		button.button_pressed = selected
@@ -1728,23 +1736,43 @@ func _refresh_taskbar() -> void:
 			continue
 		proxy.visible = source.visible
 		proxy.icon = _source_icon(source)
+		proxy.expand_icon = Chrome.active_mode() == Tokens.LEGACY
 		proxy.tooltip_text = source.tooltip_text
 		var selected := _source_represents_tool(source, current)
 		proxy.button_pressed = selected
 		_apply_tool_button_highlight(proxy, selected)
 
+	var pixel_on := Chrome.active_mode() != Tokens.LEGACY
 	if is_instance_valid(_brush_button):
 		var source := _source_button(BRUSH_TOOL)
 		_brush_button.visible = source == null or source.visible
+		_brush_button.icon = (
+			QIcons.tool_icon(BRUSH_TOOL)
+			if pixel_on
+			else (_source_icon(source) if source != null else null)
+		)
+		_brush_button.expand_icon = not pixel_on
 		var brush_selected := current == BRUSH_TOOL
 		_brush_button.button_pressed = brush_selected
 		_apply_tool_button_highlight(_brush_button, brush_selected)
 	if is_instance_valid(_eraser_button):
 		var source := _source_button(ERASER_TOOL)
 		_eraser_button.visible = source == null or source.visible
+		_eraser_button.icon = (
+			QIcons.tool_icon(ERASER_TOOL)
+			if pixel_on
+			else (_source_icon(source) if source != null else null)
+		)
+		_eraser_button.expand_icon = not pixel_on
 		var eraser_selected := current == ERASER_TOOL
 		_eraser_button.button_pressed = eraser_selected
 		_apply_tool_button_highlight(_eraser_button, eraser_selected)
+	if is_instance_valid(_color_button):
+		if pixel_on:
+			Chrome.style_button(_color_button, _quick_pixel_mode)
+		else:
+			Chrome.clear_button(_color_button)
+			_color_button.flat = true
 	if is_instance_valid(_color_indicator):
 		_color_indicator.queue_redraw()
 
@@ -1812,6 +1840,25 @@ func _current_left_tool_name() -> StringName:
 
 func _draw_color_indicator() -> void:
 	if not is_instance_valid(_color_indicator):
+		return
+	if _quick_pixel_mode != Tokens.LEGACY:
+		var side := mini(int(_color_indicator.size.x), int(_color_indicator.size.y)) - 8
+		if side >= 12:
+			var offset := Vector2(
+				floorf((_color_indicator.size.x - side) * 0.5),
+				floorf((_color_indicator.size.y - side) * 0.5)
+			)
+			_color_indicator.draw_set_transform(offset)
+			Draw.draw_pixel_swatch_r4(
+				_color_indicator,
+				Vector2(side, side),
+				Tools.get_assigned_color(MOUSE_BUTTON_LEFT),
+				_quick_pixel_mode,
+				false,
+				false,
+				false
+			)
+			_color_indicator.draw_set_transform(Vector2.ZERO)
 		return
 	var radius := minf(_color_indicator.size.x, _color_indicator.size.y) * 0.30
 	var center := _color_indicator.size * 0.5

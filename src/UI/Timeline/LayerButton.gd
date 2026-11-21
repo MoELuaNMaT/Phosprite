@@ -7,6 +7,9 @@ enum MenuOptions {
 
 const HIERARCHY_DEPTH_PIXEL_SHIFT := 24
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const Q_LAYER_TYPE_IDS := [&"layer_pixel", &"layer_group", &"", &"layer_tilemap", &"layer_audio"]
 const ARRAY_TEXTURE_TYPES: Array[Texture2D] = [
 	preload("res://assets/graphics/layers/type_icons/layer_pixel.png"),
 	preload("res://assets/graphics/layers/type_icons/layer_group.png"),
@@ -109,6 +112,23 @@ func _refresh_stage4_visuals() -> void:
 	Stage4.style_button(main_button, mode)
 	for side_button in [visibility_button, lock_button, linked_button, expand_button]:
 		Stage4.style_button(side_button, mode)
+	if (
+		not is_node_ready()
+		or Global.current_project == null
+		or layer_index >= Global.current_project.layers.size()
+	):
+		return
+	var layer := Global.current_project.layers[layer_index]
+	var ltype := layer.get_layer_type()
+	if mode != PhospriteTokens.LEGACY and ltype >= 0 and ltype < Q_LAYER_TYPE_IDS.size():
+		var q_id: StringName = Q_LAYER_TYPE_IDS[ltype]
+		if q_id != &"":
+			var q_tex := QIcons.compact_icon(q_id)
+			if q_tex != null:
+				layer_type_texture_rect.texture = q_tex
+				layer_type_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		layer_type_texture_rect.texture = ARRAY_TEXTURE_TYPES[ltype]
 
 
 ## Reparenting a layer changes the ancestors that affect its inherited UI color.

@@ -20,7 +20,8 @@ static func make_style(
 	outline: Color,
 	shadow: Color,
 	with_shadow := false,
-	pixel_unit := 1
+	pixel_unit := 1,
+	pressed_shift := false
 ) -> StyleBoxTexture:
 	var unit := clampi(pixel_unit, 1, 3)
 	var side := Tokens.tier_size(tier, unit)
@@ -31,10 +32,12 @@ static func make_style(
 	var shadow_offset := SHADOW_OFFSET * unit
 	var image := Image.create_empty(side, side, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
-	var body_side := side - (shadow_offset if with_shadow else 0)
+	var use_inset := with_shadow or pressed_shift
+	var body_side := side - (shadow_offset if use_inset else 0)
+	var body_offset := shadow_offset if pressed_shift else 0
 	var corner_steps := Tokens.corner_cutoffs(tier, unit)
 
-	if with_shadow:
+	if with_shadow and not pressed_shift:
 		for y in range(side):
 			for x in range(side):
 				if _inside(x - shadow_offset, y - shadow_offset, body_side, corner_steps):
@@ -56,7 +59,7 @@ static func make_style(
 				):
 					edge = true
 					break
-			image.set_pixel(x, y, outline if edge else background)
+			image.set_pixel(x + body_offset, y + body_offset, outline if edge else background)
 
 	var style := StyleBoxTexture.new()
 	style.texture = ImageTexture.create_from_image(image)
@@ -65,10 +68,12 @@ static func make_style(
 	style.texture_margin_right = slice_margin
 	style.texture_margin_top = slice_margin
 	style.texture_margin_bottom = slice_margin
-	style.content_margin_left = Tokens.tier_content_margin(tier)
-	style.content_margin_right = Tokens.tier_content_margin(tier)
-	style.content_margin_top = Tokens.tier_content_margin(tier)
-	style.content_margin_bottom = Tokens.tier_content_margin(tier)
+	var base_margin := float(Tokens.tier_content_margin(tier))
+	var shift := float(body_offset)
+	style.content_margin_left = base_margin + shift
+	style.content_margin_top = base_margin + shift
+	style.content_margin_right = base_margin - shift
+	style.content_margin_bottom = base_margin - shift
 	style.draw_center = true
 	return style
 
@@ -97,7 +102,9 @@ static func make_button_theme(mode: StringName, pixel_unit := 1) -> Theme:
 		&"hover", &"Button", make_style(Tokens.TIER_M, soft, outline, shadow, true, pixel_unit)
 	)
 	theme.set_stylebox(
-		&"pressed", &"Button", make_style(Tokens.TIER_M, active, outline, shadow, false, pixel_unit)
+		&"pressed",
+		&"Button",
+		make_style(Tokens.TIER_M, active, outline, shadow, false, pixel_unit, true)
 	)
 	theme.set_stylebox(
 		&"disabled", &"Button", make_style(Tokens.TIER_M, well, outline, shadow, false, pixel_unit)

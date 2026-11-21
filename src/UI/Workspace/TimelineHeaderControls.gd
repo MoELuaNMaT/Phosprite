@@ -4,6 +4,11 @@ extends HBoxContainer
 const ITEM_SEPARATION := 4.0
 const OVERFLOW_POPUP_MIN_WIDTH := 160.0
 const OVERFLOW_POPUP_MAX_WIDTH := 320.0
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const LEGACY_ICON_META := &"phosprite_legacy_header_icon"
+const LEGACY_EXPAND_META := &"phosprite_legacy_header_expand"
 
 var _available_width := INF
 var _applying_overflow := false
@@ -59,6 +64,11 @@ func _ready() -> void:
 	if not Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.connect(_update_frame_mark)
 	_update_frame_mark()
+	if not Themes.theme_switched.is_connected(_refresh_phosprite_chrome):
+		Themes.theme_switched.connect(_refresh_phosprite_chrome)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_phosprite_chrome):
+		Global.pixel_ui_unit_changed.connect(_refresh_phosprite_chrome)
+	_refresh_phosprite_chrome()
 	_sync_mode_switch()
 	_apply_overflow_layout()
 
@@ -68,6 +78,10 @@ func _exit_tree() -> void:
 		Global.project_switched.disconnect(_on_project_switched)
 	if Global.cel_switched.is_connected(_update_frame_mark):
 		Global.cel_switched.disconnect(_update_frame_mark)
+	if Themes.theme_switched.is_connected(_refresh_phosprite_chrome):
+		Themes.theme_switched.disconnect(_refresh_phosprite_chrome)
+	if Global.pixel_ui_unit_changed.is_connected(_refresh_phosprite_chrome):
+		Global.pixel_ui_unit_changed.disconnect(_refresh_phosprite_chrome)
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if (
 		is_instance_valid(timeline)
@@ -278,3 +292,48 @@ func _update_frame_mark() -> void:
 	var current_frame := str(project.current_frame + 1)
 	var frame_count := str(project.frames.size())
 	frame_mark.text = "%s/%s" % [current_frame, frame_count]
+
+
+func _refresh_phosprite_chrome() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	var icon_map := {
+		undo_button: &"undo",
+		redo_button: &"redo",
+		undo_history_button: &"undo_history",
+		share_export_button: &"export_share",
+		overflow_button: &"more_overflow",
+	}
+	for button in [
+		undo_button,
+		redo_button,
+		undo_history_button,
+		overflow_button,
+		share_export_button,
+		mode_switch_button,
+	]:
+		if not is_instance_valid(button):
+			continue
+		Stage4.style_button(button, mode)
+		if icon_map.has(button):
+			if mode != Tokens.LEGACY:
+				if not button.has_meta(LEGACY_ICON_META):
+					button.set_meta(LEGACY_ICON_META, button.icon)
+					button.set_meta(LEGACY_EXPAND_META, button.expand_icon)
+				var q_tex := QIcons.standard_icon(icon_map[button])
+				if q_tex != null:
+					button.icon = q_tex
+					button.expand_icon = false
+				if button == overflow_button:
+					button.text = ""
+			else:
+				if button.has_meta(LEGACY_ICON_META):
+					button.icon = button.get_meta(LEGACY_ICON_META) as Texture2D
+					button.expand_icon = bool(button.get_meta(LEGACY_EXPAND_META))
+					button.remove_meta(LEGACY_ICON_META)
+					button.remove_meta(LEGACY_EXPAND_META)
+				if button == overflow_button:
+					button.text = "…"
+	_refresh_item_widths()
+	_apply_overflow_layout()

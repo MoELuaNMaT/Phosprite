@@ -22,6 +22,8 @@ const GROUP_BRACKET_SCENE := preload("res://src/UI/Timeline/SingleFrameLayerGrou
 const BLEND_MODE_MENU := preload("res://src/UI/Timeline/LayerBlendModeMenu.gd")
 const GESTURE_RESOLVER := preload("res://src/UI/ProjectGallery/ProjectCardGestureResolver.gd")
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 const CONTEXT_HOLD_MSEC := 650
 
 const VISIBLE_EYE_TEXTURE := preload("res://assets/graphics/layers/layer_visible.png")
@@ -75,6 +77,14 @@ func _refresh_stage4_visuals() -> void:
 	Stage4.style_option(layer_style_button, mode)
 	Stage4.style_button(layer_visibility_button, mode)
 	Stage4.style_button(add_layer_button, mode)
+	var add_icon := add_layer_button.get_node_or_null(^"TextureRect") as TextureRect
+	if add_icon != null and mode != PhospriteTokens.LEGACY:
+		var q_new := QIcons.standard_icon(&"new_item")
+		if q_new != null:
+			add_icon.texture = q_new
+			add_icon.modulate = Color.WHITE
+			add_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_sync_layer_settings()
 
 
 func _process(_delta: float) -> void:

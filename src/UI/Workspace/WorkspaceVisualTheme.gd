@@ -13,7 +13,7 @@ const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 
 const HEADER_HEIGHT := 28.0
-const CONTENT_PADDING := 6.0
+const CONTENT_PADDING := 4.0
 const BORDER_WIDTH := 1
 const FLOATING_BORDER_WIDTH := 2
 const CORNER_RADIUS := 4

@@ -10,6 +10,12 @@ on:
   pull_request:
     branches: [ master, main, phosprite-main ]
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'macOS runner label (macos-latest or macos-15-intel)'
+        required: false
+        default: 'macos-latest'
+        type: string
 
 concurrency:
   group: ios-${{ github.head_ref || github.ref_name }}
@@ -24,7 +30,7 @@ env:
 jobs:
   export-ios:
     name: iOS Export 📱
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runner || 'macos-latest' }}
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v7

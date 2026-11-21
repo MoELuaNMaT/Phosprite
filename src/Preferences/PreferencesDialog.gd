@@ -890,11 +890,11 @@ func _refresh_ipad_project_settings() -> void:
 func _ipad_profile_title(id: int) -> String:
 	match id:
 		1:
-			return tr("Classic Two-Column")
+			return tr("UI 1 · Classic Split")
 		3:
-			return tr("Immersive Capsule")
+			return tr("UI 3 · Minimal Touch")
 		4:
-			return tr("Animation Workspace")
+			return tr("UI 4 · U-Frame Dock")
 		_:
 			return "UI%d" % id
 

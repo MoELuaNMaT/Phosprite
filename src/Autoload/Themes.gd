@@ -8,6 +8,8 @@ signal theme_removed(theme: Theme)
 signal theme_switched
 
 const MAIN_THEME := preload("uid://dog5j8wjiwikc")
+const PixelTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const PixelThemeBridge := preload("res://src/UI/DesignSystem/PhospriteThemeBridge.gd")
 const CUSTOM_THEME_INDEX := -99999
 
 var system_base_color := Color(DisplayServer.get_base_color(), 1.0)
@@ -85,15 +87,19 @@ class ThemeVariation:
 
 func _ready() -> void:
 	DisplayServer.set_system_theme_change_callback(_on_set_system_theme_changed)
+	Global.pixel_ui_unit = Global.config_cache.get_value("preferences", "pixel_ui_unit", 2)
+	if not Global.pixel_ui_unit_changed.is_connected(_on_pixel_ui_unit_changed):
+		Global.pixel_ui_unit_changed.connect(_on_pixel_ui_unit_changed)
 	system_theme_index = themes.find(system_theme)
-	var theme_id: int = Global.config_cache.get_value("preferences", "theme_preset_index", 0)
+	var theme_id: int = Global.config_cache.get_value("preferences", "theme_preset_index", -1)
 	## Wait until extensions register their themes. Existing saved numeric
 	## theme IDs must keep pointing at those extensions after this upgrade.
 	await Global.pixelorama_opened
+	var sunny_index := themes.size()
 	add_theme(MAIN_THEME, "Sunny Cream (Phosprite)", Color("FAF8F3"), Color("4BA3FF"))
 	add_theme(MAIN_THEME, "Twilight Berry (Phosprite)", Color("262A40"), Color("58A6FF"))
-	if theme_id >= themes.size():
-		theme_id = 0
+	if theme_id < 0 or theme_id >= themes.size():
+		theme_id = sunny_index
 	Global.theme_preset_index = theme_id
 
 
@@ -143,6 +149,9 @@ func apply_theme(base_theme_var: ThemeVariation) -> void:
 			Global.theme_color_contrast
 		)
 	var theme := ThemeUtils.generate_theme(theme_var)
+	var px_mode := PixelTokens.detect_mode(Global.theme_base_color, Global.theme_accent_color)
+	if Global.theme_preset_index != CUSTOM_THEME_INDEX and px_mode != PixelTokens.LEGACY:
+		PixelThemeBridge.apply_to_theme(theme, px_mode, Global.pixel_ui_unit)
 	Global.theme_font_index = Global.theme_font_index  # Trigger the setter
 	if theme.default_font != Global.theme_font:
 		theme.default_font = Global.theme_font
@@ -209,3 +218,8 @@ func _on_set_system_theme_changed() -> void:
 	themes[system_theme_index] = system_theme
 	if Global.theme_preset_index == system_theme_index:
 		change_theme(system_theme_index)
+
+
+func _on_pixel_ui_unit_changed() -> void:
+	if Global.pixelorama_has_loaded:
+		change_theme(Global.theme_preset_index)

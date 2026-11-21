@@ -5177,17 +5177,20 @@ msgstr "像素描边、阶梯圆角和硬边阴影。仅对 Phosprite 主题生�
 msgid "Untitled"
 msgstr "未命名"
 
-msgid "Classic Two-Column"
-msgstr "经典双栏"
+msgid "UI 1 · Classic Split"
+msgstr "UI 1 · 经典双栏"
 
-msgid "Immersive Capsule"
-msgstr "沉浸胶囊"
+msgid "UI 3 · Minimal Touch"
+msgstr "UI 3 · 沉浸触控"
 
-msgid "Animation Workspace"
-msgstr "动画工作台"
+msgid "UI 4 · U-Frame Dock"
+msgstr "UI 4 · U 型停靠"
 
 msgid "Swap Colors"
 msgstr "交换颜色"
 
 msgid "Share / Export"
 msgstr "分享 / 导出"
+
+msgid "Gallery"
+msgstr "画廊"

@@ -1,5 +1,11 @@
 extends PanelContainer
 
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const LEGACY_GTO_TEX := &"phosprite_legacy_gto_tex"
+const LEGACY_GTO_MOD := &"phosprite_legacy_gto_mod"
+
 @onready var grid_container: GridContainer = find_child("GridContainer")
 @onready var horizontal_mirror: BaseButton = grid_container.get_node("Horizontal")
 @onready var vertical_mirror: BaseButton = grid_container.get_node("Vertical")
@@ -23,6 +29,11 @@ func _ready() -> void:
 	diagonal_x_minus_y_mirror.button_pressed = Tools.diagonal_x_minus_y_mirror
 	pixel_perfect.button_pressed = Tools.pixel_perfect
 	alpha_lock.button_pressed = Tools.alpha_locked
+	if not Themes.theme_switched.is_connected(_refresh_phosprite_global_options):
+		Themes.theme_switched.connect(_refresh_phosprite_global_options)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_phosprite_global_options):
+		Global.pixel_ui_unit_changed.connect(_refresh_phosprite_global_options)
+	_refresh_phosprite_global_options.call_deferred()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -172,3 +183,46 @@ func _on_mirror_options_id_pressed(id: int) -> void:
 	project.diagonal_x_minus_y_symmetry_axis.set_point_position(
 		1, Vector2(19999, 19999) + project.x_minus_y_symmetry_point * 2.0
 	)
+
+
+func _refresh_phosprite_global_options() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	var q_map := {
+		horizontal_mirror: &"mirror_h",
+		vertical_mirror: &"mirror_v",
+		pixel_perfect: &"pixel_perfect",
+		alpha_lock: &"alpha_lock",
+	}
+	for btn in [
+		horizontal_mirror,
+		vertical_mirror,
+		diagonal_xy_mirror,
+		diagonal_x_minus_y_mirror,
+		mirror_options,
+		pixel_perfect,
+		alpha_lock,
+		dynamics,
+	]:
+		if btn is Button:
+			Stage4.style_button(btn as Button, mode)
+		if not q_map.has(btn) or not is_instance_valid(btn):
+			continue
+		var tex_rect := btn.get_node_or_null(^"TextureRect") as TextureRect
+		if tex_rect == null:
+			continue
+		if mode != Tokens.LEGACY:
+			if not tex_rect.has_meta(LEGACY_GTO_TEX):
+				tex_rect.set_meta(LEGACY_GTO_TEX, tex_rect.texture)
+				tex_rect.set_meta(LEGACY_GTO_MOD, tex_rect.modulate)
+			var q_tex := QIcons.standard_icon(q_map[btn])
+			if q_tex != null:
+				tex_rect.texture = q_tex
+				tex_rect.modulate = Color.WHITE
+				tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		elif tex_rect.has_meta(LEGACY_GTO_TEX):
+			tex_rect.texture = tex_rect.get_meta(LEGACY_GTO_TEX) as Texture2D
+			tex_rect.modulate = tex_rect.get_meta(LEGACY_GTO_MOD) as Color
+			tex_rect.remove_meta(LEGACY_GTO_TEX)
+			tex_rect.remove_meta(LEGACY_GTO_MOD)

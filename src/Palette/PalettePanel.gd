@@ -4,6 +4,11 @@ extends Container
 const CREATE_PALETTE_SCENE_PATH := "res://src/Palette/CreatePaletteDialog.tscn"
 const ProjectFactoryScript := preload("res://src/ProjectLibrary/ProjectFactory.gd")
 const EDIT_PALETTE_SCENE_PATH := "res://src/Palette/EditPaletteDialog.tscn"
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const LEGACY_PAL_TEX := &"phosprite_legacy_pal_tex"
+const LEGACY_PAL_MOD := &"phosprite_legacy_pal_mod"
 
 var palettes_name_id := {}
 var palettes_id_name := {}
@@ -87,6 +92,11 @@ func _ready() -> void:
 	# Hide presets from color picker
 	hidden_color_picker.get_picker().presets_visible = false
 	hidden_color_picker.get_picker().visibility_changed.connect(_on_colorpicker_visibility_changed)
+	if not Themes.theme_switched.is_connected(_refresh_stage4_palette_chrome):
+		Themes.theme_switched.connect(_refresh_stage4_palette_chrome)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_stage4_palette_chrome):
+		Global.pixel_ui_unit_changed.connect(_refresh_stage4_palette_chrome)
+	_refresh_stage4_palette_chrome()
 
 
 ## returns same palette back if it's local, otherwise attempt to make local copy
@@ -577,3 +587,37 @@ func _current_palette_undo_redo_remove_color(index := 0) -> void:
 	undo_redo.add_undo_method(redraw_current_palette)
 	undo_redo.add_undo_method(toggle_add_delete_buttons)
 	commit_undo()
+
+
+func _refresh_stage4_palette_chrome() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	Stage4.style_option(palette_select, mode)
+	var btn_map := {
+		add_color_button: &"add_color",
+		delete_color_button: &"remove_color",
+		sort_button: &"sort_colors",
+		lock_grid: &"lock_grid",
+	}
+	for btn in btn_map:
+		if not is_instance_valid(btn):
+			continue
+		Stage4.style_button(btn as Button, mode)
+		var tr_node := (btn as Node).get_node_or_null(^"TextureRect") as TextureRect
+		if tr_node == null:
+			continue
+		if mode != Tokens.LEGACY:
+			if not tr_node.has_meta(LEGACY_PAL_TEX):
+				tr_node.set_meta(LEGACY_PAL_TEX, tr_node.texture)
+				tr_node.set_meta(LEGACY_PAL_MOD, tr_node.modulate)
+			var q_tex := QIcons.compact_icon(btn_map[btn])
+			if q_tex != null:
+				tr_node.texture = q_tex
+				tr_node.modulate = Color.WHITE
+				tr_node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		elif tr_node.has_meta(LEGACY_PAL_TEX):
+			tr_node.texture = tr_node.get_meta(LEGACY_PAL_TEX) as Texture2D
+			tr_node.modulate = tr_node.get_meta(LEGACY_PAL_MOD) as Color
+			tr_node.remove_meta(LEGACY_PAL_TEX)
+			tr_node.remove_meta(LEGACY_PAL_MOD)

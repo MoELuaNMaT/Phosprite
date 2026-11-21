@@ -332,6 +332,7 @@ func _refresh_stage2_topbar() -> void:
 		for button in [return_home_button, settings_button, _effects_icon_button]:
 			Chrome.clear_button(button)
 		if ipad_editor:
+			return_home_button.text = ""
 			return_home_button.icon = PROJECTS_TOPBAR_ICON
 			return_home_button.flat = true
 			return_home_button.custom_minimum_size = TOPBAR_ICON_BUTTON_SIZE
@@ -353,6 +354,8 @@ func _refresh_stage2_topbar() -> void:
 		button.custom_minimum_size = Vector2(40, 40)
 		button.expand_icon = false
 	return_home_button.icon = Icons.icon(&"gallery")
+	return_home_button.text = tr("Gallery")
+	return_home_button.custom_minimum_size = Vector2(88, 40)
 	if is_instance_valid(settings_button):
 		settings_button.icon = Icons.icon(&"settings")
 	if is_instance_valid(_effects_icon_button):
@@ -458,11 +461,11 @@ func _setup_ipad_settings_menu() -> void:
 func _stage2_profile_title(profile_id: int) -> String:
 	match profile_id:
 		1:
-			return tr("Classic Two-Column")
+			return tr("UI 1 · Classic Split")
 		3:
-			return tr("Immersive Capsule")
+			return tr("UI 3 · Minimal Touch")
 		4:
-			return tr("Animation Workspace")
+			return tr("UI 4 · U-Frame Dock")
 		_:
 			return "UI%d" % profile_id
 

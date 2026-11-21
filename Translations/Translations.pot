@@ -5078,17 +5078,20 @@ msgstr ""
 msgid "Untitled"
 msgstr ""
 
-msgid "Classic Two-Column"
+msgid "UI 1 · Classic Split"
 msgstr ""
 
-msgid "Immersive Capsule"
+msgid "UI 3 · Minimal Touch"
 msgstr ""
 
-msgid "Animation Workspace"
+msgid "UI 4 · U-Frame Dock"
 msgstr ""
 
 msgid "Swap Colors"
 msgstr ""
 
 msgid "Share / Export"
+msgstr ""
+
+msgid "Gallery"
 msgstr ""

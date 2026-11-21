@@ -97,9 +97,11 @@ func _sync_stage2_selection() -> void:
 	if _pixel_mode == Tokens.LEGACY:
 		return
 	var surface := &"accent_primary" if selected else &"accent_soft"
-	title_strip.add_theme_stylebox_override(
-		&"panel", Chrome.make_panel(_pixel_mode, Tokens.TIER_M, surface)
-	)
+	var strip_style := Chrome.make_panel(_pixel_mode, Tokens.TIER_M, surface)
+	if strip_style != null:
+		strip_style.content_margin_left = 8.0
+		strip_style.content_margin_right = 8.0
+	title_strip.add_theme_stylebox_override(&"panel", strip_style)
 	selection_outline.add_theme_stylebox_override(
 		&"panel",
 		PhospritePixelStyle.make_style(

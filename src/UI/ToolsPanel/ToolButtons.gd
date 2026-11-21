@@ -3,6 +3,10 @@ extends VBoxContainer
 enum FamilyTapAction { SELECT, OPEN, CLOSE }
 
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const PhospriteQIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
+const LEGACY_TOOL_ICON_META := &"phosprite_legacy_tool_icon"
+const LEGACY_TOOL_FILTER_META := &"phosprite_legacy_tool_filter"
 const TOUCH_TAP_SLOP_PX := 12.0
 const TOUCH_FILTER_META := &"phosprite_touch_mouse_filter"
 const IOS_SELECTION_RECENT_SECTION := "preferences"
@@ -98,7 +102,24 @@ func _refresh_stage4_tool_buttons() -> void:
 	var mode := Stage4.active_mode()
 	for child in get_children():
 		if child is Button:
-			Stage4.style_button(child as Button, mode)
+			var button := child as Button
+			Stage4.style_button(button, mode)
+			var icon_rect := button.get_node_or_null(^"ToolIcon") as TextureRect
+			if icon_rect == null:
+				continue
+			if mode != PhospriteTokens.LEGACY:
+				if not icon_rect.has_meta(LEGACY_TOOL_ICON_META):
+					icon_rect.set_meta(LEGACY_TOOL_ICON_META, icon_rect.texture)
+					icon_rect.set_meta(LEGACY_TOOL_FILTER_META, icon_rect.texture_filter)
+				var q_tex := PhospriteQIcons.tool_icon(StringName(button.name))
+				if q_tex != null:
+					icon_rect.texture = q_tex
+					icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			elif icon_rect.has_meta(LEGACY_TOOL_ICON_META):
+				icon_rect.texture = icon_rect.get_meta(LEGACY_TOOL_ICON_META) as Texture2D
+				icon_rect.texture_filter = int(icon_rect.get_meta(LEGACY_TOOL_FILTER_META))
+				icon_rect.remove_meta(LEGACY_TOOL_ICON_META)
+				icon_rect.remove_meta(LEGACY_TOOL_FILTER_META)
 
 
 func _input(event: InputEvent) -> void:
