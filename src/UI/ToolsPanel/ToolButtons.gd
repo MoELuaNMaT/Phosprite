@@ -102,6 +102,10 @@ func _refresh_stage4_tool_buttons() -> void:
 	if not is_node_ready():
 		return
 	var mode := Stage4.active_mode()
+	_refresh_ios_family_menu_icons()
+	if OS.get_name() == "iOS":
+		_sync_ios_selection_family_visual()
+		_sync_ios_shape_family_visual()
 	for child in get_children():
 		if child is Button:
 			var button := child as Button
@@ -706,6 +710,7 @@ func _show_ios_family_menu(selection_family: bool, anchor: Control) -> void:
 	if not is_instance_valid(menu):
 		return
 	_hide_ios_family_menus()
+	_refresh_ios_family_menu_icons()
 	# Keep the chooser beside its own icon, including UI3's right-aligned taskbar.
 	# Clamp the window inside the viewport instead of letting right-side menus clip.
 	var rect := anchor.get_global_rect()
@@ -830,8 +835,7 @@ func _sync_ios_selection_family_visual() -> void:
 		child_left.visible = false
 		child_right.visible = false
 	var recent_tool: Tools.Tool = Tools.tools[String(_ios_selection_recent_tool)]
-	var icon := _ios_selection_family_button.get_node("ToolIcon") as TextureRect
-	icon.texture = recent_tool.icon
+	_apply_family_button_icon(_ios_selection_family_button, _ios_selection_recent_tool, recent_tool)
 	if not _touch_ui_mode:
 		_ios_selection_family_button.tooltip_text = "Selection: %s" % tr(recent_tool.display_name)
 	var left_name := StringName()
@@ -875,8 +879,7 @@ func _sync_ios_shape_family_visual() -> void:
 		child_left.visible = false
 		child_right.visible = false
 	var recent_tool: Tools.Tool = Tools.tools[String(_ios_shape_recent_tool)]
-	var icon := _ios_shape_family_button.get_node("ToolIcon") as TextureRect
-	icon.texture = recent_tool.icon
+	_apply_family_button_icon(_ios_shape_family_button, _ios_shape_recent_tool, recent_tool)
 	if not _touch_ui_mode:
 		_ios_shape_family_button.tooltip_text = "Shapes: %s" % tr(recent_tool.display_name)
 	var left_name := StringName()
@@ -928,3 +931,66 @@ func _on_tool_pressed(tool_pressed: BaseButton) -> void:
 			tool_name = String(_ios_shape_recent_tool)
 		_hide_ios_family_menus()
 		Tools.assign_tool(tool_name, button)
+
+
+func _adaptive_icon_color(mode: StringName) -> Color:
+	if mode == PhospriteTokens.SUNNY:
+		return PhospriteTokens.color(mode, &"outline_ink")
+	if mode == PhospriteTokens.TWILIGHT:
+		return PhospriteTokens.color(mode, &"text_primary")
+	return Color.WHITE
+
+
+func _apply_family_button_icon(button: BaseButton, tool_name: StringName, tool: Tools.Tool) -> void:
+	if not is_instance_valid(button):
+		return
+	var icon_rect := button.get_node_or_null(^"ToolIcon") as TextureRect
+	if icon_rect == null:
+		return
+	var mode := Stage4.active_mode()
+	var alpha := 0.5 if button.disabled else 1.0
+	if mode != PhospriteTokens.LEGACY:
+		var q_tex := PhospriteQIcons.tool_icon_1x(tool_name)
+		if q_tex != null:
+			icon_rect.set_meta(Q_ACTIVE_META, true)
+			icon_rect.texture = q_tex
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+			icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			icon_rect.modulate = Color(1.0, 1.0, 1.0, alpha)
+			return
+		var ink := _adaptive_icon_color(mode)
+		icon_rect.texture = tool.icon
+		icon_rect.modulate = Color(ink.r, ink.g, ink.b, alpha)
+		return
+	icon_rect.texture = tool.icon
+	icon_rect.modulate = Color(1.0, 1.0, 1.0, alpha)
+
+
+func _refresh_ios_family_menu_icons() -> void:
+	var mode := Stage4.active_mode()
+	var pairs := [
+		{"menu": _ios_selection_menu, "tools": IOS_SELECTION_TOOLS},
+		{"menu": _ios_shape_menu, "tools": IOS_SHAPE_TOOLS},
+	]
+	for pair in pairs:
+		var menu := pair["menu"] as PopupMenu
+		if not is_instance_valid(menu):
+			continue
+		var tool_list: Array = pair["tools"]
+		for index in range(mini(tool_list.size(), menu.item_count)):
+			var tool_name: StringName = tool_list[index]
+			if not Tools.tools.has(String(tool_name)):
+				continue
+			var tool: Tools.Tool = Tools.tools[String(tool_name)]
+			if mode != PhospriteTokens.LEGACY:
+				var q_tex := PhospriteQIcons.tool_icon_1x(tool_name)
+				if q_tex != null:
+					menu.set_item_icon(index, q_tex)
+					menu.set_item_icon_modulate(index, Color.WHITE)
+				else:
+					menu.set_item_icon(index, tool.icon)
+					menu.set_item_icon_modulate(index, _adaptive_icon_color(mode))
+			else:
+				menu.set_item_icon(index, tool.icon)
+				menu.set_item_icon_modulate(index, Color.WHITE)

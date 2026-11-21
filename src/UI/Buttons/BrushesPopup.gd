@@ -18,7 +18,10 @@ class Brush:
 
 
 func _ready() -> void:
-	var container = get_node("Background/Brushes/Categories/DefaultBrushContainer")
+	var container := (
+		get_node("Background/Brushes/Categories/DefaultBrushContainer") as GridContainer
+	)
+	container.columns = 4
 	_add_default_brush(
 		container,
 		PIXEL,
@@ -43,6 +46,42 @@ func _ready() -> void:
 		BrushShapes.Shape.HOLLOW_CIRCLE,
 		"Hollow circle brush",
 	)
+	if not about_to_popup.is_connected(_sync_category_visibility):
+		about_to_popup.connect(_sync_category_visibility)
+	_sync_category_visibility()
+
+
+func _sync_category_visibility() -> void:
+	var cats := get_node_or_null("Background/Brushes/Categories")
+	if cats == null:
+		return
+	var is_ios := OS.get_name() == "iOS"
+	var proj_container := cats.get_node_or_null("ProjectBrushContainer") as Control
+	var proj_label := cats.get_node_or_null("ProjectLabel") as Control
+	var file_container := cats.get_node_or_null("FileBrushContainer") as Control
+	var file_label := cats.get_node_or_null("FileLabel") as Control
+	var rand_container := cats.get_node_or_null("RandomFileBrushContainer") as Control
+	var rand_label := cats.get_node_or_null("RandomFileLabel") as Control
+	var default_label := cats.get_node_or_null("Label") as Control
+	var has_proj := proj_container != null and proj_container.get_child_count() > 0
+	var has_file := not is_ios and file_container != null and file_container.get_child_count() > 0
+	var has_rand := not is_ios and rand_container != null and rand_container.get_child_count() > 0
+	if proj_container != null:
+		proj_container.visible = has_proj
+	if proj_label != null:
+		proj_label.visible = has_proj
+	if file_container != null:
+		file_container.visible = has_file
+	if file_label != null:
+		file_label.visible = has_file
+	if rand_container != null:
+		rand_container.visible = has_rand
+	if rand_label != null:
+		rand_label.visible = has_rand
+	if default_label != null:
+		default_label.visible = has_proj or has_file or has_rand
+	if not has_proj and not has_file and not has_rand:
+		size = Vector2i(176, 56)
 
 
 func _add_default_brush(
@@ -54,6 +93,8 @@ func _add_default_brush(
 	button.tooltip_text = tooltip
 	container.add_child(button)
 	button.brush.index = button.get_index()
+	if is_instance_valid(Global.brushes_popup):
+		Global.brushes_popup._sync_category_visibility()
 
 
 func select_brush(brush: Brush) -> void:

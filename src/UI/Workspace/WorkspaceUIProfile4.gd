@@ -582,6 +582,50 @@ func _adjust_preview_split(delta_y: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not active:
 		return
+	if (
+		not _preview_split_drag_mouse
+		and _preview_split_drag_touch < 0
+		and not _split_drag_mouse
+		and _split_drag_touch < 0
+	):
+		if event is InputEventScreenTouch:
+			var touch := event as InputEventScreenTouch
+			if touch.pressed:
+				if (
+					is_instance_valid(_preview_split_handle)
+					and _preview_split_handle.is_visible_in_tree()
+					and _preview_split_handle.get_global_rect().has_point(touch.position)
+				):
+					_preview_split_drag_touch = touch.index
+					get_viewport().set_input_as_handled()
+					return
+				if (
+					is_instance_valid(_split_handle)
+					and _split_handle.is_visible_in_tree()
+					and _split_handle.get_global_rect().has_point(touch.position)
+				):
+					_split_drag_touch = touch.index
+					get_viewport().set_input_as_handled()
+					return
+		elif event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION:
+			var mb := event as InputEventMouseButton
+			if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
+				if (
+					is_instance_valid(_preview_split_handle)
+					and _preview_split_handle.is_visible_in_tree()
+					and _preview_split_handle.get_global_rect().has_point(mb.position)
+				):
+					_preview_split_drag_mouse = true
+					get_viewport().set_input_as_handled()
+					return
+				if (
+					is_instance_valid(_split_handle)
+					and _split_handle.is_visible_in_tree()
+					and _split_handle.get_global_rect().has_point(mb.position)
+				):
+					_split_drag_mouse = true
+					get_viewport().set_input_as_handled()
+					return
 	if _preview_split_drag_mouse:
 		if event is InputEventMouseMotion:
 			_adjust_preview_split((event as InputEventMouseMotion).relative.y)
