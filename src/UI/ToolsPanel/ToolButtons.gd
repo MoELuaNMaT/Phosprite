@@ -126,7 +126,7 @@ func _refresh_stage4_tool_buttons() -> void:
 					icon_rect.texture = q_tex
 					icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 					icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-					icon_rect.modulate = Color(1.0, 1.0, 1.0, 0.5 if button.disabled else 1.0)
+					icon_rect.modulate = Stage4.icon_tint_for_button(mode, button)
 					icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			elif icon_rect.has_meta(LEGACY_TOOL_ICON_META):
 				icon_rect.texture = icon_rect.get_meta(LEGACY_TOOL_ICON_META) as Texture2D

@@ -356,12 +356,14 @@ func _refresh_stage2_topbar() -> void:
 		Chrome.style_button_variant(button, mode, &"secondary", true)
 		button.flat = false
 		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		button.custom_minimum_size = Vector2(34, 34)
+		button.custom_minimum_size = Vector2(36, 36)
 		button.expand_icon = false
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return_home_button.icon = Icons.icon_1x(&"gallery")
-	return_home_button.text = tr("Gallery")
-	return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	return_home_button.custom_minimum_size = Vector2(84, 34)
+	return_home_button.text = ""
+	return_home_button.tooltip_text = tr("Gallery")
+	return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return_home_button.custom_minimum_size = Vector2(36, 36)
 	if is_instance_valid(settings_button):
 		settings_button.icon = Icons.icon_1x(&"settings")
 	if is_instance_valid(_effects_icon_button):

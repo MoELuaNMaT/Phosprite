@@ -6,6 +6,9 @@ const TOUCH_TOOLTIP_META := &"phosprite_touch_tooltip"
 const TOUCH_MOUSE_FILTER_META := &"phosprite_touch_mouse_filter"
 const TOUCH_TAP_SLOP_PX := 12.0
 const SETTINGS_ICON := preload("res://assets/graphics/misc/settings.svg")
+const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 
 ## The HBoxContainer parent of the picker shapes.
 var shapes_container: HBoxContainer
@@ -69,6 +72,11 @@ var color_switch := $ScrollContainer/VerticalContainer/ColorButtons/ColorSwitch 
 func _ready() -> void:
 	Tools.options_reset.connect(reset_options)
 	Tools.color_changed.connect(update_color)
+	if not Themes.theme_switched.is_connected(_refresh_warm_cartridge_chrome):
+		Themes.theme_switched.connect(_refresh_warm_cartridge_chrome)
+	if not Global.pixel_ui_unit_changed.is_connected(_refresh_warm_cartridge_chrome):
+		Global.pixel_ui_unit_changed.connect(_refresh_warm_cartridge_chrome)
+	call_deferred(&"_refresh_warm_cartridge_chrome")
 	_average(left_color_rect.color, right_color_rect.color)
 	color_picker.color_mode = Global.config_cache.get_value(
 		"color_picker", "color_mode", ColorPicker.MODE_RGB
@@ -714,3 +722,19 @@ func _on_copy_average_gui_input(event: InputEvent) -> void:
 		Tools.assign_color(average_color.color, MOUSE_BUTTON_LEFT)
 	elif event.is_action_released(&"right_mouse"):
 		Tools.assign_color(average_color.color, MOUSE_BUTTON_RIGHT)
+
+
+func _refresh_warm_cartridge_chrome() -> void:
+	if not is_node_ready():
+		return
+	var mode := Stage4.active_mode()
+	for btn in [left_color_button, right_color_button, expand_button]:
+		if is_instance_valid(btn):
+			Stage4.style_button(btn, mode)
+	if is_instance_valid(expand_button):
+		if mode != Tokens.LEGACY:
+			var gear := QIcons.standard_icon_1x(&"settings")
+			if gear != null:
+				expand_button.icon = gear
+		else:
+			expand_button.icon = SETTINGS_ICON

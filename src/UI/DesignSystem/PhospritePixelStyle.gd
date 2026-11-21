@@ -11,10 +11,10 @@ extends RefCounted
 
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const SHADOW_OFFSET := 2
-const BAR_U := 4
-const FLOPPY_U := 5
-const FLOPPY_STROKE := 5
-const FLOPPY_SHADOW := 5
+const BAR_U := 2
+const FLOPPY_U := 2
+const FLOPPY_STROKE := 2
+const FLOPPY_SHADOW := 2
 
 static var _texture_cache: Dictionary = {}
 
@@ -761,12 +761,12 @@ static func make_single_layer_button_style(
 				var ry := mini(y, side - 1 - y)
 				if rx + ry < 2:
 					continue
-				var is_outer := x == 0 or x == side - 1 or y == 0 or y == side - 1 or rx + ry == 2
+				var is_outer := x <= 1 or x >= side - 2 or y <= 1 or y >= side - 2 or rx + ry <= 3
 				if is_outer:
 					image.set_pixel(x, y, border)
-				elif has_lip and y >= side - 3:
+				elif has_lip and y >= side - 4:
 					image.set_pixel(x, y, lip_color)
-				elif recessed and y <= 2:
+				elif recessed and y <= 3:
 					image.set_pixel(x, y, lip_color)
 				else:
 					image.set_pixel(x, y, bg)

@@ -52,7 +52,7 @@ static func button_style(mode: StringName, state: StringName) -> StyleBox:
 
 	match state:
 		&"normal":
-			bg = Color("#EDE6FA") if is_light else Color("#332B54")
+			bg = Tokens.color(mode, &"elevated_surface")
 		&"hover", &"guide":
 			bg = Tokens.color(mode, &"accent_soft")
 			border = Tokens.color(mode, &"accent_primary").lerp(border, 0.5)
@@ -63,22 +63,16 @@ static func button_style(mode: StringName, state: StringName) -> StyleBox:
 			bg = Tokens.color(mode, &"well_surface")
 			border = Color(border, 0.6)
 		&"focus":
-			bg = Color("#EDE6FA") if is_light else Color("#332B54")
+			bg = Tokens.color(mode, &"elevated_surface")
 			border = Tokens.color(mode, &"accent_primary")
 		&"well":
 			bg = Tokens.color(mode, &"well_surface")
 
-	var lip_col := Color("#BEB2DF") if is_light else Color("#1D1736")
+	var lip_col := Tokens.color(mode, &"outline_ink")
 	if is_pressed or is_well:
 		lip_col = bg.darkened(0.24 if is_light else 0.38)
 	var style := PixelStyle.make_single_layer_button_style(
-		bg,
-		border if is_light else bg.darkened(0.35),
-		lip_col,
-		has_lip,
-		is_pressed or is_well,
-		4.0,
-		3.0
+		bg, Tokens.color(mode, &"outline_ink"), lip_col, has_lip, is_pressed or is_well, 4.0, 3.0
 	)
 
 	_styles[cache_key] = style
@@ -119,28 +113,50 @@ static func style_button(button: Button, mode: StringName, guide := false) -> vo
 		var target_c := (
 			muted
 			if key == &"font_disabled_color"
-			else (Color.WHITE if key == &"font_pressed_color" else foreground)
+			else (
+				Tokens.color(mode, &"text_on_accent")
+				if key == &"font_pressed_color"
+				else foreground
+			)
 		)
 		if not button.has_theme_color_override(key) or button.get_theme_color(key) != target_c:
 			button.add_theme_color_override(key, target_c)
+	set_q_icon_colors(button, true)
+
+
+static func icon_tint_for_button(mode: StringName, button: BaseButton) -> Color:
+	if mode == Tokens.LEGACY:
+		return Color.WHITE
+	if is_instance_valid(button) and button.disabled:
+		return Color(Tokens.color(mode, &"text_muted"), 0.45)
+	if is_instance_valid(button) and button.button_pressed:
+		return Tokens.color(mode, &"text_on_accent")
+	return Tokens.color(mode, &"text_primary")
 
 
 static func set_q_icon_colors(button: Button, enabled: bool) -> void:
 	if not is_instance_valid(button):
 		return
 	if enabled:
-		for key in [
-			&"icon_normal_color",
-			&"icon_hover_color",
-			&"icon_pressed_color",
-			&"icon_focus_color",
-		]:
-			if (
-				not button.has_theme_color_override(key)
-				or button.get_theme_color(key) != Color.WHITE
-			):
-				button.add_theme_color_override(key, Color.WHITE)
-		var dis := Color(1.0, 1.0, 1.0, 0.45)
+		var mode := active_mode()
+		var fg := Tokens.color(mode, &"text_primary") if mode != Tokens.LEGACY else Color.WHITE
+		var on_acc := (
+			Tokens.color(mode, &"text_on_accent") if mode != Tokens.LEGACY else Color.WHITE
+		)
+		var muted := (
+			Tokens.color(mode, &"text_muted") if mode != Tokens.LEGACY else Color(1, 1, 1, 0.5)
+		)
+		var icon_map := {
+			&"icon_normal_color": fg,
+			&"icon_hover_color": fg,
+			&"icon_pressed_color": on_acc,
+			&"icon_focus_color": fg,
+		}
+		for key in icon_map:
+			var target_ic: Color = icon_map[key]
+			if not button.has_theme_color_override(key) or button.get_theme_color(key) != target_ic:
+				button.add_theme_color_override(key, target_ic)
+		var dis := Color(muted, 0.45)
 		if (
 			not button.has_theme_color_override(&"icon_disabled_color")
 			or (button.get_theme_color(&"icon_disabled_color") != dis)

@@ -97,14 +97,14 @@ func test_theme_bridge_applies_pixel_styleboxes_without_nested_panel_borders() -
 
 func test_pixel_styles_cache_textures_keep_non_negative_margins_and_are_idempotent() -> void:
 	var a := PixelStyle.make_style(
-		Tokens.TIER_M, Color("FAF8F3"), Color("282C40"), Color("B6DAFF"), true, 2
+		Tokens.TIER_M, Color("F2EFE9"), Color("2C2A29"), Color("C9C2B6"), true, 2
 	)
 	var b := PixelStyle.make_style(
-		Tokens.TIER_M, Color("FAF8F3"), Color("282C40"), Color("B6DAFF"), true, 2
+		Tokens.TIER_M, Color("F2EFE9"), Color("2C2A29"), Color("C9C2B6"), true, 2
 	)
 	check_eq(a.texture, b.texture, "identical pixel style keys reuse cached ImageTexture")
 	var p := PixelStyle.make_style(
-		Tokens.TIER_M, Color("4BA3FF"), Color("282C40"), Color("B6DAFF"), false, 2, true
+		Tokens.TIER_M, Color("E85D3F"), Color("2C2A29"), Color("C9C2B6"), false, 2, true
 	)
 	check_true(p.content_margin_right >= 0.0, "pressed right margin is never negative")
 	check_true(p.content_margin_bottom >= 0.0, "pressed bottom margin is never negative")

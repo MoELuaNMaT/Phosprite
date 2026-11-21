@@ -276,27 +276,30 @@ static func make_checkbox_badge(mode: StringName, selected: bool) -> StyleBoxTex
 
 
 static func _make_clean_btn_box(
-	bg: Color, lip_color: Color, pad_x: float, pad_y: float, lip_px := 3, pressed := false
+	bg: Color, lip_color: Color, pad_x: float, pad_y: float, lip_px := 2, pressed := false
 ) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = bg
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_right = 6
-	style.corner_radius_bottom_left = 6
+	style.corner_radius_top_left = 3
+	style.corner_radius_top_right = 3
+	style.corner_radius_bottom_right = 3
+	style.corner_radius_bottom_left = 3
 	style.anti_aliasing = false
+	style.border_color = lip_color
+	style.border_width_left = 2
+	style.border_width_right = 2
 	if lip_px > 0 and not pressed:
-		# Single clean bottom 3D depth layer (one-layer tactile button)
-		style.border_width_bottom = lip_px
-		style.border_color = lip_color
+		# 1U = 2dp ink border + 1U = 2dp tactile physical bottom lip
+		style.border_width_top = 2
+		style.border_width_bottom = 2 + lip_px
 		style.content_margin_left = pad_x
 		style.content_margin_right = pad_x
 		style.content_margin_top = pad_y
 		style.content_margin_bottom = pad_y + float(lip_px)
 	else:
-		# Pressed / active latched state: lip flattened, subtle top inset border
-		style.border_width_top = 2 if pressed else 0
-		style.border_color = lip_color
+		# Pressed / latched state: 2dp physical travel down, bottom lip flattened
+		style.border_width_top = 2
+		style.border_width_bottom = 2
 		style.content_margin_left = pad_x
 		style.content_margin_right = pad_x
 		style.content_margin_top = pad_y + (2.0 if pressed else 0.0)
@@ -313,12 +316,12 @@ static func _button_styles(mode: StringName, variant: StringName, on_topbar := f
 	var pad_y := 6.0
 
 	var normal_bg := (
-		Color("#F7F6FF")
+		Tokens.color(mode, &"topbar_btn_surface")
 		if (on_topbar and mode == Tokens.SUNNY)
 		else Tokens.color(mode, &"topbar_btn_surface" if on_topbar else &"panel_surface")
 	)
 	var hover_bg := (
-		Color("#FFFFFF")
+		Tokens.color(mode, &"topbar_btn_hover")
 		if (on_topbar and mode == Tokens.SUNNY)
 		else Tokens.color(mode, &"topbar_btn_hover" if on_topbar else &"accent_soft")
 	)
@@ -348,33 +351,33 @@ static func _button_styles(mode: StringName, variant: StringName, on_topbar := f
 			border = Color.TRANSPARENT
 		&"subtle":
 			normal_bg = (
-				Color("#F7F6FF")
+				Tokens.color(mode, &"topbar_btn_surface")
 				if (on_topbar and mode == Tokens.SUNNY)
 				else Tokens.color(mode, &"topbar_btn_surface" if on_topbar else &"panel_surface")
 			)
 			hover_bg = (
-				Color("#FFFFFF")
+				Tokens.color(mode, &"topbar_btn_hover")
 				if (on_topbar and mode == Tokens.SUNNY)
 				else Tokens.color(mode, &"topbar_btn_hover" if on_topbar else &"accent_soft")
 			)
 			pressed_bg = Tokens.color(mode, &"accent_primary")
 
 	var is_latched := variant == &"active"
-	var lip_normal := normal_bg.darkened(0.28)
-	var lip_hover := hover_bg.darkened(0.28)
-	var lip_pressed := pressed_bg.darkened(0.32)
+	var lip_normal := Tokens.color(mode, &"outline_ink")
+	var lip_hover := Tokens.color(mode, &"accent_primary")
+	var lip_pressed := Tokens.color(mode, &"outline_ink")
 	var styles := {
 		&"normal":
 		_make_clean_btn_box(
-			normal_bg, lip_normal, pad_x, pad_y, 0 if is_latched else 3, is_latched
+			normal_bg, lip_normal, pad_x, pad_y, 0 if is_latched else 2, is_latched
 		),
 		&"hover":
-		_make_clean_btn_box(hover_bg, lip_hover, pad_x, pad_y, 0 if is_latched else 3, is_latched),
+		_make_clean_btn_box(hover_bg, lip_hover, pad_x, pad_y, 0 if is_latched else 2, is_latched),
 		&"pressed": _make_clean_btn_box(pressed_bg, lip_pressed, pad_x, pad_y, 0, true),
 		&"disabled": _make_clean_btn_box(disabled_bg, disabled_bg, pad_x, pad_y, 0, false),
 		&"focus":
 		_make_clean_btn_box(
-			normal_bg, lip_normal, pad_x, pad_y, 0 if is_latched else 3, is_latched
+			normal_bg, lip_normal, pad_x, pad_y, 0 if is_latched else 2, is_latched
 		),
 	}
 	_button_cache[key] = styles
@@ -431,13 +434,18 @@ static func style_button_variant(
 		if not button.has_theme_color_override(key) or button.get_theme_color(key) != target_c:
 			button.add_theme_color_override(key, target_c)
 
-	# Q icons are colored PNGs, not monochrome SVG masks. Keep their actual pixels.
-	for key in [
-		&"icon_normal_color", &"icon_hover_color", &"icon_pressed_color", &"icon_focus_color"
-	]:
-		if not button.has_theme_color_override(key) or button.get_theme_color(key) != Color.WHITE:
-			button.add_theme_color_override(key, Color.WHITE)
-	var disabled_icon := Color(1.0, 1.0, 1.0, 0.45)
+	# Unified monochrome pixelarticons: tint dynamically via semantic tokens.
+	var icon_map := {
+		&"icon_normal_color": normal_font,
+		&"icon_hover_color": hover_font,
+		&"icon_pressed_color": pressed_font,
+		&"icon_focus_color": normal_font,
+	}
+	for key in icon_map:
+		var target_ic: Color = icon_map[key]
+		if not button.has_theme_color_override(key) or button.get_theme_color(key) != target_ic:
+			button.add_theme_color_override(key, target_ic)
+	var disabled_icon := Color(muted, 0.45)
 	if (
 		not button.has_theme_color_override(&"icon_disabled_color")
 		or (button.get_theme_color(&"icon_disabled_color") != disabled_icon)

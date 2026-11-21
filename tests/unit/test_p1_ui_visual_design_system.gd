@@ -19,17 +19,17 @@ func _source_theme() -> Theme:
 func test_exact_semantic_colors_and_explicit_preset_detection() -> void:
 	check_eq(
 		Tokens.color(Tokens.SUNNY, &"panel_surface"),
-		Color("FAF8F3"),
+		Color("F2EFE9"),
 		"Sunny Cream panel surface must match its production hex token"
 	)
 	check_eq(
 		Tokens.color(Tokens.TWILIGHT, &"panel_surface"),
-		Color("262A40"),
+		Color("242220"),
 		"Twilight Berry panel surface must match its production hex token"
 	)
 	check_eq(
 		Tokens.color(Tokens.SUNNY, &"pixel_shadow"),
-		Color("B6DAFF"),
+		Color("C9C2B6"),
 		"Sunny Cream should never fall back to a blurry gray shadow"
 	)
 	for mode in [Tokens.SUNNY, Tokens.TWILIGHT]:
@@ -41,7 +41,7 @@ func test_exact_semantic_colors_and_explicit_preset_detection() -> void:
 			"only a complete matching color pair should select a new preset"
 		)
 	check_eq(
-		Tokens.detect_mode(Color("FAF8F3"), Color("58A6FF")),
+		Tokens.detect_mode(Color("F2EFE9"), Color("F06D4F")),
 		Tokens.LEGACY,
 		"a mixed/partial color pair must not opt into pixel chrome"
 	)
@@ -57,7 +57,7 @@ func test_three_pixel_nine_slice_tiers_use_integer_margins_and_crisp_corners() -
 		var side: int = Tokens.tier_size(tier)
 		var margin: int = Tokens.tier_texture_margin(tier)
 		var content: int = Tokens.tier_content_margin(tier)
-		var style := PixelStyle.make_style(tier, Color("FAF8F3"), Color("282C40"), Color("B6DAFF"))
+		var style := PixelStyle.make_style(tier, Color("F2EFE9"), Color("2C2A29"), Color("C9C2B6"))
 		check_true(style is StyleBoxTexture, "each tier must produce a nine-slice style")
 		check_eq(style.region_rect.size, Vector2(side, side), "tier image dimensions")
 		check_eq(int(style.texture_margin_left), margin, "nine-slice left margin")
@@ -72,25 +72,25 @@ func test_three_pixel_nine_slice_tiers_use_integer_margins_and_crisp_corners() -
 		check_eq(image.get_pixel(0, 0).a, 0.0, "pixel corner must be fully transparent")
 		check_eq(
 			image.get_pixel(side / 2, 0),
-			Color("282C40"),
+			Color("2C2A29"),
 			"topmost border should be a solid non-antialiased ink pixel"
 		)
 		check_eq(
 			image.get_pixel(side / 2, side / 2),
-			Color("FAF8F3"),
+			Color("F2EFE9"),
 			"interior must keep the exact fill color"
 		)
 
 
 func test_floating_shadow_is_hard_two_pixel_offset() -> void:
 	var style := PixelStyle.make_style(
-		Tokens.TIER_L, Color("FAF8F3"), Color("282C40"), Color("B6DAFF"), true
+		Tokens.TIER_L, Color("F2EFE9"), Color("2C2A29"), Color("C9C2B6"), true
 	)
 	var image: Image = style.texture.get_image()
-	check_eq(image.get_pixel(23, 12), Color("B6DAFF"), "right-side shadow is exactly 2px")
-	check_eq(image.get_pixel(12, 23), Color("B6DAFF"), "bottom shadow is exactly 2px")
+	check_eq(image.get_pixel(23, 12), Color("C9C2B6"), "right-side shadow is exactly 2px")
+	check_eq(image.get_pixel(12, 23), Color("C9C2B6"), "bottom shadow is exactly 2px")
 	check_eq(image.get_pixel(0, 0).a, 0.0, "outermost corner should remain transparent")
-	check_eq(image.get_pixel(12, 12), Color("FAF8F3"), "opaque body must cover shadow")
+	check_eq(image.get_pixel(12, 12), Color("F2EFE9"), "opaque body must cover shadow")
 
 
 func test_button_states_preserve_fonts_and_change_only_visual_resources() -> void:
@@ -103,15 +103,15 @@ func test_button_states_preserve_fonts_and_change_only_visual_resources() -> voi
 	var pressed := theme.get_stylebox(&"pressed", &"Button") as StyleBoxTexture
 	check_eq(
 		normal.texture.get_image().get_pixel(19, 9),
-		Color("B6DAFF"),
+		Color("C9C2B6"),
 		"normal button has a hard lower-right shadow"
 	)
 	check_eq(
 		pressed.texture.get_image().get_pixel(19, 9),
-		Color("282C40"),
+		Color("2C2A29"),
 		"pressed button has no shadow and retains its own 1px outline"
 	)
-	check_eq(theme.get_color(&"font_color", &"Button"), Color("282C40"), "text ink token")
+	check_eq(theme.get_color(&"font_color", &"Button"), Color("2C2A29"), "text ink token")
 	check_true(PixelStyle.make_button_theme(Tokens.LEGACY) == null, "legacy not overridden")
 
 
@@ -146,7 +146,7 @@ func test_workspace_chrome_opt_in_and_legacy_round_trip() -> void:
 	var dark_accent := Tokens.color(Tokens.TWILIGHT, &"accent_primary")
 	check_true(theme.refresh(source, dark_base, dark_accent), "Twilight should refresh")
 	check_eq(theme.pixel_mode, Tokens.TWILIGHT, "dark preset should opt into pixel mode")
-	check_eq(theme.surface_color, Color("262A40"), "dark surface should use semantic token")
+	check_eq(theme.surface_color, Color("242220"), "dark surface should use semantic token")
 
 	check_true(
 		theme.refresh(source, Color("30343c"), Color("8aa0df")),

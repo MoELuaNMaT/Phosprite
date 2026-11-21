@@ -97,7 +97,7 @@ static func _style_add_layer_dropdown(button: Button, mode: StringName) -> void:
 				tex_rect.texture = chev
 				tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-				tex_rect.modulate = Color.WHITE
+				tex_rect.modulate = Stage4.icon_tint_for_button(mode, button)
 				tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		button.flat = false
@@ -126,7 +126,7 @@ static func _apply_button_q_icon(button: Button, mode: StringName) -> void:
 			tex_rect.texture = q_tex
 			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-			tex_rect.modulate = Color(1.0, 1.0, 1.0, 0.5 if button.disabled else 1.0)
+			tex_rect.modulate = Stage4.icon_tint_for_button(mode, button)
 			tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		_restore_tex_rect(tex_rect)
@@ -368,7 +368,7 @@ static func apply_layer_icon(tex_rect: TextureRect, kind: StringName, mode: Stri
 		tex_rect.texture = tex
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		tex_rect.modulate = Color.WHITE
+		tex_rect.modulate = Stage4.icon_tint_for_button(mode, button)
 		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 

@@ -633,7 +633,7 @@ func _refresh_stage4_palette_chrome() -> void:
 				tr_node.texture = q_tex
 				tr_node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				tr_node.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-				tr_node.modulate = Color(1.0, 1.0, 1.0, 0.5 if (btn as Button).disabled else 1.0)
+				tr_node.modulate = Stage4.icon_tint_for_button(mode, btn as BaseButton)
 				tr_node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		elif tr_node.has_meta(LEGACY_PAL_TEX):
 			tr_node.texture = tr_node.get_meta(LEGACY_PAL_TEX) as Texture2D

@@ -1,11 +1,9 @@
 class_name PhospriteTokens
 extends RefCounted
 
-## Opt-in semantic palette & unified design-system tokens for Phosprite pixel UI chrome.
+## Semantic palette, 4-tier surface ladder (S0-S3), pixel stroke unit (1U = 2dp),
+## and dynamic UX motion constants for Phosprite Warm Cartridge UI chrome.
 ## Keep these colors separate from user artwork and from legacy Pixelorama themes.
-##
-## The stored strings match the production specification exactly. Convert them
-## to Color only when needed, so no renderer modifies the user's paint pixels.
 
 const LEGACY := &"legacy"
 const SUNNY := &"sunny_cream"
@@ -15,6 +13,9 @@ const TIER_L := &"L"
 const TIER_M := &"M"
 const TIER_S := &"S"
 
+## Global Pixel Stroke Unit (1U = 2 logical px = 4 physical px on iPad Retina)
+const PIXEL_STROKE_UNIT := 2
+
 ## Unified Spacing Scale (4px base grid)
 const SPACE_XXS := 2
 const SPACE_XS := 4
@@ -23,166 +24,181 @@ const SPACE_MD := 12
 const SPACE_LG := 16
 const SPACE_XL := 24
 
-## Unified Typography Scale (CJK & Latin balanced; never overrides font resource)
-const FONT_BRAND := 20
-const FONT_TITLE := 15
-const FONT_CARD_TITLE := 13
-const FONT_BODY := 13
+## Unified Typography Scale (Fusion Pixel 12px Proportional + Noto CJK Fallback)
+const FONT_BRAND := 24
+const FONT_TITLE := 14
+const FONT_CARD_TITLE := 12
+const FONT_BODY := 12
 const FONT_META := 11
 const FONT_CAPTION := 10
 
 ## Unified Bar & Control Dimensions
-const GALLERY_TOPBAR_HEIGHT := 68
+const GALLERY_TOPBAR_HEIGHT := 56
 const EDITOR_TOPBAR_HEIGHT := 48
-const BUTTON_HEIGHT_MD := 40
+const BUTTON_HEIGHT_MD := 36
 const BUTTON_HEIGHT_SM := 34
+const TOPBAR_ICON_BTN_SIZE := 36
 const ICON_SIZE_COMPACT := 16
 
+## Dynamic UX Interaction Physics (adapted from open-claude-ui)
+const MOTION_HAPTIC_SNAP_SEC := 0.07
+const MOTION_GEOMETRIC_BITE_SEC := 0.12
+const MOTION_PANEL_SPRING_SEC := 0.24
+const POINTER_DEADZONE_PX := 4.0
+
+## Warm Paper (Light Mode — S0 #3D3B38 / S1 #E5E0D6 / S2 #F2EFE9 / S3 #FCFBF7)
 const SUNNY_COLORS := {
-	# Core preserved contract tokens
-	"panel_surface": "#FAF8F3",
-	"well_surface": "#F3ECF0",
-	"outline_ink": "#282C40",
-	"text_primary": "#282C40",
-	"text_muted": "#675D8F",
+	# Core 4-tier surface ladder & semantic tokens
+	"panel_surface": "#F2EFE9",
+	"well_surface": "#E5E0D6",
+	"elevated_surface": "#FCFBF7",
+	"outline_ink": "#2C2A29",
+	"text_primary": "#242220",
+	"text_muted": "#6E685F",
 	"text_on_accent": "#FFFFFF",
-	"pixel_shadow": "#B6DAFF",
-	"accent_primary": "#4BA3FF",
-	"accent_soft": "#C9ACE0",
-	"accent_selected_surface": "#EBF4FF",
-	"accent_cta_coral": "#FF7597",
-	"accent_cta_coral_hover": "#FF8CA8",
-	"border_subtle": "#6E6296",
-	"checkbox_border": "#5D528A",
-	"danger_primary": "#E54D66",
-	"danger_soft": "#FFE6EC",
-	# Dreamy Pastel Neo-Y2K Gallery & 3D Beveled Floppy Disk tokens
-	"gallery_ground": "#DCDCE6",
-	"gallery_thumb_bg": "#F6F5FA",
-	"gallery_thumb_selected_bg": "#E3F0FF",
-	"gallery_title_text": "#282C40",
-	"gallery_meta_text": "#5E627A",
-	"canvas_backdrop": "#4B4752",
-	"topbar_surface": "#7A74F0",
-	"topbar_highlight": "#A5A0FF",
-	"topbar_shade": "#5851C9",
-	"topbar_border": "#2A214A",
-	"topbar_cast_shadow": "#CBC3F7",
-	"topbar_text": "#FFFFFF",
-	"topbar_btn_surface": "#6761DC",
-	"topbar_btn_text": "#FFFFFF",
-	"topbar_btn_border": "#9691FA",
-	"topbar_btn_hover": "#5A54CF",
-	"topbar_btn_shadow": "#4740A8",
-	"topbar_pill_surface": "#5C55C9",
-	"topbar_pill_inner_shadow": "#453EA6",
-	"topbar_pill_inner_light": "#938DFC",
-	"topbar_pill_text": "#FFFFFF",
-	"floppy_ink": "#2A214A",
-	"floppy_shell": "#CFC6FF",
-	"floppy_shell_light": "#EFEBFF",
-	"floppy_shell_shade": "#A89CEB",
-	"floppy_shell_selected": "#66B3FF",
-	"floppy_shell_selected_light": "#B3DCFF",
-	"floppy_shell_selected_shade": "#3B82D6",
-	"floppy_shadow": "#B5AAED",
-	"floppy_shadow_selected": "#4478D9",
-	"floppy_shutter": "#F7F4FF",
-	"floppy_shutter_light": "#FFFFFF",
-	"floppy_shutter_shade": "#D4CCF2",
-	"floppy_shutter_selected": "#EAF5FF",
-	"floppy_shutter_selected_light": "#FFFFFF",
-	"floppy_shutter_selected_shade": "#B3D6FA",
-	"floppy_shutter_slot": "#BDB2F2",
-	"floppy_shutter_slot_shadow": "#8D80CF",
-	"floppy_shutter_slot_light": "#E5E0FF",
-	"floppy_label": "#FFFDF7",
-	"floppy_label_inner_shadow": "#E6E0D1",
+	"pixel_shadow": "#C9C2B6",
+	"accent_primary": "#E85D3F",
+	"accent_secondary": "#3A6EA5",
+	"accent_soft": "#FDE6DF",
+	"accent_selected_surface": "#FFF4F0",
+	"accent_cta_coral": "#E85D3F",
+	"accent_cta_coral_hover": "#D94F33",
+	"border_subtle": "#C9C2B6",
+	"checkbox_border": "#2C2A29",
+	"danger_primary": "#C93B2B",
+	"danger_soft": "#FCE4E1",
+	# Warm Cartridge Gallery & TopBar tokens (zero purple clash)
+	"gallery_ground": "#EAE5DC",
+	"gallery_thumb_bg": "#3D3B38",
+	"gallery_thumb_selected_bg": "#47433E",
+	"gallery_title_text": "#242220",
+	"gallery_meta_text": "#6E685F",
+	"canvas_backdrop": "#3D3B38",
+	"topbar_surface": "#E5E0D6",
+	"topbar_highlight": "#F5F2EB",
+	"topbar_shade": "#C9C2B6",
+	"topbar_border": "#2C2A29",
+	"topbar_cast_shadow": "#D6CFC3",
+	"topbar_text": "#242220",
+	"topbar_btn_surface": "#F5F2EB",
+	"topbar_btn_text": "#242220",
+	"topbar_btn_border": "#2C2A29",
+	"topbar_btn_hover": "#FCFBF7",
+	"topbar_btn_shadow": "#2C2A29",
+	"topbar_pill_surface": "#DCD6CA",
+	"topbar_pill_inner_shadow": "#C9C2B6",
+	"topbar_pill_inner_light": "#F5F2EB",
+	"topbar_pill_text": "#242220",
+	# Legacy aliases retained only for backward-compatible callers
+	"floppy_ink": "#2C2A29",
+	"floppy_shell": "#F2EFE9",
+	"floppy_shell_light": "#FCFBF7",
+	"floppy_shell_shade": "#D6CFC3",
+	"floppy_shell_selected": "#FFF4F0",
+	"floppy_shell_selected_light": "#FFFFFF",
+	"floppy_shell_selected_shade": "#E85D3F",
+	"floppy_shadow": "#C9C2B6",
+	"floppy_shadow_selected": "#E85D3F",
+	"floppy_shutter": "#E5E0D6",
+	"floppy_shutter_light": "#F5F2EB",
+	"floppy_shutter_shade": "#C9C2B6",
+	"floppy_shutter_selected": "#FDE6DF",
+	"floppy_shutter_selected_light": "#FFF4F0",
+	"floppy_shutter_selected_shade": "#E85D3F",
+	"floppy_shutter_slot": "#D6CFC3",
+	"floppy_shutter_slot_shadow": "#B5AEA2",
+	"floppy_shutter_slot_light": "#F2EFE9",
+	"floppy_label": "#FCFBF7",
+	"floppy_label_inner_shadow": "#E5E0D6",
 	"floppy_label_inner_light": "#FFFFFF",
-	"floppy_label_stripe": "#FF85A6",
-	"floppy_label_stripe_light": "#FFB5C9",
-	"floppy_label_stripe_shade": "#DB5E82",
-	"floppy_label_stripe_selected": "#459EFF",
-	"floppy_label_stripe_selected_light": "#8FC7FF",
-	"floppy_label_stripe_selected_shade": "#2A77CF",
-	"floppy_notch": "#B5AAEB",
+	"floppy_label_stripe": "#E85D3F",
+	"floppy_label_stripe_light": "#F2856D",
+	"floppy_label_stripe_shade": "#B83E25",
+	"floppy_label_stripe_selected": "#3A6EA5",
+	"floppy_label_stripe_selected_light": "#6192C4",
+	"floppy_label_stripe_selected_shade": "#264E78",
+	"floppy_notch": "#C9C2B6",
 }
 
+## Dark Cartridge (Dark Mode — S0 #171615 / S1 #1C1A18 / S2 #242220 / S3 #2C2926)
 const TWILIGHT_COLORS := {
-	# Core preserved contract tokens
-	"panel_surface": "#262A40",
-	"well_surface": "#1E2133",
-	"outline_ink": "#10121C",
-	"text_primary": "#F5F2FF",
-	"text_muted": "#A9A0CE",
-	"text_on_accent": "#FFFFFF",
-	"pixel_shadow": "#0F111B",
-	"accent_primary": "#58A6FF",
-	"accent_soft": "#3D3066",
-	"accent_selected_surface": "#293B6B",
-	"accent_cta_coral": "#FF7597",
-	"accent_cta_coral_hover": "#FF8CA8",
-	"border_subtle": "#4B4278",
-	"checkbox_border": "#A9A0CE",
-	"danger_primary": "#FF6B81",
-	"danger_soft": "#4A2236",
-	# Dreamy Twilight Berry Gallery & 3D Beveled Floppy Disk tokens
-	"gallery_ground": "#171526",
-	"gallery_thumb_bg": "#24213B",
-	"gallery_thumb_selected_bg": "#22345E",
-	"gallery_title_text": "#F5F3FF",
-	"gallery_meta_text": "#9D96C2",
-	"canvas_backdrop": "#181524",
-	"topbar_surface": "#3D3075",
-	"topbar_highlight": "#6251A8",
-	"topbar_shade": "#281E52",
-	"topbar_border": "#100C22",
-	"topbar_cast_shadow": "#100C21",
-	"topbar_text": "#FAF8FF",
-	"topbar_btn_surface": "#2D2259",
-	"topbar_btn_text": "#F5F2FF",
-	"topbar_btn_border": "#574899",
-	"topbar_btn_hover": "#403375",
-	"topbar_btn_shadow": "#16102E",
-	"topbar_pill_surface": "#241B4A",
-	"topbar_pill_inner_shadow": "#150F30",
-	"topbar_pill_inner_light": "#4D3F87",
-	"topbar_pill_text": "#D9D0FF",
-	"floppy_ink": "#0E0A1F",
-	"floppy_shell": "#372C66",
-	"floppy_shell_light": "#5A4B99",
-	"floppy_shell_shade": "#241B47",
-	"floppy_shell_selected": "#3B78F5",
-	"floppy_shell_selected_light": "#7BB0FF",
-	"floppy_shell_selected_shade": "#224EB5",
-	"floppy_shadow": "#0D091C",
-	"floppy_shadow_selected": "#1D3685",
-	"floppy_shutter": "#4C3F85",
-	"floppy_shutter_light": "#7060B3",
-	"floppy_shutter_shade": "#32285C",
-	"floppy_shutter_selected": "#2B4C9E",
-	"floppy_shutter_selected_light": "#4E78D6",
-	"floppy_shutter_selected_shade": "#1B3370",
-	"floppy_shutter_slot": "#211942",
-	"floppy_shutter_slot_shadow": "#120D29",
-	"floppy_shutter_slot_light": "#413573",
-	"floppy_label": "#201A3B",
-	"floppy_label_inner_shadow": "#130E26",
-	"floppy_label_inner_light": "#332B59",
-	"floppy_label_stripe": "#FF759E",
-	"floppy_label_stripe_light": "#FFA6C1",
-	"floppy_label_stripe_shade": "#CC4B74",
-	"floppy_label_stripe_selected": "#5EC2FF",
-	"floppy_label_stripe_selected_light": "#9EDDFF",
-	"floppy_label_stripe_selected_shade": "#338CC7",
-	"floppy_notch": "#221B42",
+	# Core 4-tier surface ladder & semantic tokens (de-dilated #EDE9E0 text)
+	"panel_surface": "#242220",
+	"well_surface": "#1C1A18",
+	"elevated_surface": "#2C2926",
+	"outline_ink": "#0E0D0C",
+	"text_primary": "#EDE9E0",
+	"text_muted": "#A39C92",
+	"text_on_accent": "#171615",
+	"pixel_shadow": "#0E0D0C",
+	"accent_primary": "#F06D4F",
+	"accent_secondary": "#5B93CC",
+	"accent_soft": "#3A241E",
+	"accent_selected_surface": "#36221C",
+	"accent_cta_coral": "#F06D4F",
+	"accent_cta_coral_hover": "#FF8266",
+	"border_subtle": "#3A3632",
+	"checkbox_border": "#A39C92",
+	"danger_primary": "#E5534B",
+	"danger_soft": "#3D1F1E",
+	# Dark Cartridge Gallery & TopBar tokens
+	"gallery_ground": "#1B1917",
+	"gallery_thumb_bg": "#171615",
+	"gallery_thumb_selected_bg": "#2B221F",
+	"gallery_title_text": "#EDE9E0",
+	"gallery_meta_text": "#A39C92",
+	"canvas_backdrop": "#171615",
+	"topbar_surface": "#1C1A18",
+	"topbar_highlight": "#2C2926",
+	"topbar_shade": "#0E0D0C",
+	"topbar_border": "#0E0D0C",
+	"topbar_cast_shadow": "#0E0D0C",
+	"topbar_text": "#EDE9E0",
+	"topbar_btn_surface": "#2C2926",
+	"topbar_btn_text": "#EDE9E0",
+	"topbar_btn_border": "#0E0D0C",
+	"topbar_btn_hover": "#36322E",
+	"topbar_btn_shadow": "#0E0D0C",
+	"topbar_pill_surface": "#171615",
+	"topbar_pill_inner_shadow": "#0E0D0C",
+	"topbar_pill_inner_light": "#3A3632",
+	"topbar_pill_text": "#EDE9E0",
+	# Legacy aliases retained only for backward-compatible callers
+	"floppy_ink": "#0E0D0C",
+	"floppy_shell": "#242220",
+	"floppy_shell_light": "#36322E",
+	"floppy_shell_shade": "#171615",
+	"floppy_shell_selected": "#3A241E",
+	"floppy_shell_selected_light": "#4D3129",
+	"floppy_shell_selected_shade": "#F06D4F",
+	"floppy_shadow": "#0E0D0C",
+	"floppy_shadow_selected": "#F06D4F",
+	"floppy_shutter": "#2C2926",
+	"floppy_shutter_light": "#3A3632",
+	"floppy_shutter_shade": "#171615",
+	"floppy_shutter_selected": "#3A241E",
+	"floppy_shutter_selected_light": "#4D3129",
+	"floppy_shutter_selected_shade": "#F06D4F",
+	"floppy_shutter_slot": "#171615",
+	"floppy_shutter_slot_shadow": "#0E0D0C",
+	"floppy_shutter_slot_light": "#2C2926",
+	"floppy_label": "#1C1A18",
+	"floppy_label_inner_shadow": "#0E0D0C",
+	"floppy_label_inner_light": "#2C2926",
+	"floppy_label_stripe": "#F06D4F",
+	"floppy_label_stripe_light": "#FF8C73",
+	"floppy_label_stripe_shade": "#B8442A",
+	"floppy_label_stripe_selected": "#5B93CC",
+	"floppy_label_stripe_selected_light": "#84B2E0",
+	"floppy_label_stripe_selected_shade": "#3A6EA5",
+	"floppy_notch": "#1C1A18",
 }
 
-## Legacy detection anchor colors (must match Themes.gd registration verbatim)
-const SUNNY_DETECT_BASE := "#FAF8F3"
-const SUNNY_DETECT_ACCENT := "#4BA3FF"
-const TWILIGHT_DETECT_BASE := "#262A40"
-const TWILIGHT_DETECT_ACCENT := "#58A6FF"
+## Detection anchor colors (must match Themes.gd registration verbatim)
+const SUNNY_DETECT_BASE := "#F2EFE9"
+const SUNNY_DETECT_ACCENT := "#E85D3F"
+const TWILIGHT_DETECT_BASE := "#242220"
+const TWILIGHT_DETECT_ACCENT := "#F06D4F"
 
 
 static func get_palette(mode: StringName) -> Dictionary:
@@ -258,33 +274,22 @@ static func tier_content_margin(tier: StringName) -> int:
 			return 0
 
 
-## Opaque corner cut lengths, counted row by row from the nearest edge.
-## Wider UI pixels use integer-aligned stair steps. Internal texture padding
-## grows with each step, but the UI Control rect and content margins do not.
-## The 3px L-tier uses 14px top and bottom slices: exactly a 28px title bar.
 static func corner_cutoffs(tier: StringName, pixel_unit := 1) -> PackedInt32Array:
 	var unit := clampi(pixel_unit, 1, 3)
+	var base: PackedInt32Array
 	match tier:
 		TIER_L:
-			match unit:
-				2:
-					return PackedInt32Array([8, 8, 4, 4, 2, 2, 0])
-				3:
-					return PackedInt32Array([6, 6, 6, 3, 3, 3, 0])
-			return PackedInt32Array([7, 4, 2, 1, 1, 0])
+			base = PackedInt32Array([2, 1])
 		TIER_M:
-			match unit:
-				2:
-					return PackedInt32Array([4, 4, 2, 2, 0])
-				3:
-					return PackedInt32Array([3, 3, 3, 0])
-			return PackedInt32Array([4, 2, 1, 0])
+			base = PackedInt32Array([1])
 		TIER_S:
-			match unit:
-				2:
-					return PackedInt32Array([4, 4, 2, 2, 0])
-				3:
-					return PackedInt32Array([3, 3, 3, 0])
-			return PackedInt32Array([3, 1, 0])
+			base = PackedInt32Array([1])
 		_:
 			return PackedInt32Array()
+	if unit == 1:
+		return base
+	var scaled := PackedInt32Array()
+	for cutoff in base:
+		for _repeat in range(unit):
+			scaled.append(cutoff * unit)
+	return scaled

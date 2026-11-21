@@ -30,3 +30,9 @@ SOFTWARE.
 
 Phosprite's iOS CI downloads the pinned prebuilt `SharePlugin-iOS-v6.0.zip`
 release artifact and verifies its SHA-256 before embedding it in the iOS build.
+
+
+## Pixel Art UI Assets (Warm Cartridge Design System)
+
+- **pixelarticons** (`assets/graphics/q_icons/`): Sourced from `halfmage/pixelarticons` (https://github.com/halfmage/pixelarticons), licensed under the **MIT License** (see `assets/graphics/q_icons/PIXELARTICONS_LICENSE.txt`).
+- **Fusion Pixel Font** (`assets/fonts/FusionPixel12pxProportional.ttf`): Sourced from `TakWolf/fusion-pixel-font` (https://github.com/TakWolf/fusion-pixel-font), licensed under the **SIL Open Font License 1.1** (see `assets/fonts/FusionPixel-License.txt`).

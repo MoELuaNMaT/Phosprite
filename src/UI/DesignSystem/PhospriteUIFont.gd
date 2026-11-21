@@ -3,12 +3,19 @@ extends RefCounted
 
 ## UI font cascade for exported iPad builds.
 ##
-## Roboto remains the user's selected Latin font. The export must also ship
-## Noto Sans CJK: OS-dependent SystemFont lookup alone cannot guarantee
-## Simplified/Traditional Chinese, Japanese, or Korean glyphs on every iPad.
-## The 16 MB font is downloaded and verified before the iOS Godot import.
+## Ships SIL OFL 1.1 Fusion Pixel 12px Proportional as the primary pixel-art UI
+## font (covering Latin, Simplified/Traditional Chinese, Japanese, and Korean)
+## with bundled Noto Sans CJK as the guaranteed first fallback so all 40+
+## translations render with zero tofu glyphs on every iPad.
 
+const BUNDLED_PIXEL_PATH := "res://assets/fonts/FusionPixel12pxProportional.ttf"
 const BUNDLED_CJK_PATH := "res://assets/fonts/NotoSansCJKsc-Regular.otf"
+
+
+static func load_bundled_pixel() -> Font:
+	if not ResourceLoader.exists(BUNDLED_PIXEL_PATH):
+		return null
+	return ResourceLoader.load(BUNDLED_PIXEL_PATH, "Font") as Font
 
 
 static func load_bundled_cjk() -> Font:
@@ -18,6 +25,7 @@ static func load_bundled_cjk() -> Font:
 
 
 static func prepare_ios_font(base: Font) -> Font:
+	var pixel := load_bundled_pixel()
 	var bundled := load_bundled_cjk()
 	if bundled == null:
 		# The iOS CI rejects such a package; this also helps identify broken
@@ -27,7 +35,8 @@ static func prepare_ios_font(base: Font) -> Font:
 	system.font_names = PackedStringArray(
 		["PingFang SC", "PingFang TC", "Hiragino Sans GB", "Heiti SC", "Helvetica Neue"]
 	)
-	return compose_font(base, bundled, system)
+	var primary := pixel if pixel != null else base
+	return compose_font(primary, bundled, system)
 
 
 ## Keep the selected font and its user-defined fallbacks. Put the guaranteed

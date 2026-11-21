@@ -4,9 +4,9 @@ const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 const VisualTheme := preload("res://src/UI/Workspace/WorkspaceVisualTheme.gd")
 
-const PAPER := Color("FAF8F3")
-const INK := Color("282C40")
-const SHADOW := Color("B6DAFF")
+const PAPER := Color("F2EFE9")
+const INK := Color("2C2A29")
+const SHADOW := Color("C9C2B6")
 
 
 func _source_theme() -> Theme:
