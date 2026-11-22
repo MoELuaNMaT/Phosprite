@@ -8,7 +8,11 @@ const LAYER_SCENE_SOURCE := "res://src/UI/Timeline/LayerButton.tscn"
 
 
 func test_layer_side_actions_get_finger_width_without_forcing_row_height() -> void:
-	check_eq(BOOTSTRAP.IOS_SIDE_TOUCH_WIDTH, 44.0, "Layer side actions must use 44 pt width")
+	check_eq(
+		BOOTSTRAP.IOS_SIDE_TOUCH_WIDTH,
+		32.0,
+		"Layer side actions must use compact 32 pt columns aligned with header toggles",
+	)
 	var src := FileAccess.get_file_as_string(BOOTSTRAP_SOURCE)
 	check_has(
 		src,
@@ -19,6 +23,15 @@ func test_layer_side_actions_get_finger_width_without_forcing_row_height() -> vo
 		not ("button.custom_minimum_size.y" in src),
 		"D4-C must leave Layer row height under the existing Timeline cel_size preference",
 	)
+	for header_btn in ["GlobalVisibilityButton", "GlobalLockButton", "GlobalExpandButton"]:
+		check_has(
+			src,
+			header_btn,
+			(
+				"%s must share IOS_SIDE_TOUCH_WIDTH so header buttons and OpacitySlider align with layer rows"
+				% header_btn
+			),
+		)
 
 
 func test_layer_scene_installs_touch_layout_without_replacing_existing_adapters() -> void:

@@ -4,7 +4,7 @@ const LAYER_PANEL_TOUCH_MANAGER := preload("res://src/UI/Timeline/LayerPanelTouc
 const TIMELINE_TOUCH_SELECTION_MANAGER := preload(
 	"res://src/UI/Timeline/TimelineTouchSelectionManager.gd"
 )
-const IOS_SIDE_TOUCH_WIDTH := 44.0
+const IOS_SIDE_TOUCH_WIDTH := 32.0
 const IOS_SIDE_CONTROL_SLOTS := 3.0
 const PANEL_MANAGER_NAME := "LayerPanelTouchManager"
 const TIMELINE_SELECTION_MANAGER_NAME := "TimelineTouchSelectionManager"
@@ -40,7 +40,15 @@ func _install_ios_layer_panel_touch() -> void:
 		var panel_manager := LAYER_PANEL_TOUCH_MANAGER.new() as Node
 		panel_manager.name = PANEL_MANAGER_NAME
 		timeline.add_child(panel_manager)
+	_align_timeline_header_columns(timeline)
 	if not timeline.has_node(TIMELINE_SELECTION_MANAGER_NAME):
 		var selection_manager := TIMELINE_TOUCH_SELECTION_MANAGER.new() as Node
 		selection_manager.name = TIMELINE_SELECTION_MANAGER_NAME
 		timeline.add_child(selection_manager)
+
+
+static func _align_timeline_header_columns(timeline: Control) -> void:
+	for header_btn_name in ["GlobalVisibilityButton", "GlobalLockButton", "GlobalExpandButton"]:
+		var header_btn := timeline.find_child(header_btn_name, true, false) as Control
+		if is_instance_valid(header_btn):
+			header_btn.custom_minimum_size.x = IOS_SIDE_TOUCH_WIDTH
