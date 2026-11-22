@@ -34,6 +34,7 @@ tooltip_text = "Undo"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon = ExtResource("3_undo")
+icon_alignment = 1
 expand_icon = true
 
 [node name="Redo" type="Button" parent="InlineRow" groups=["UIButtons"]]
@@ -45,6 +46,7 @@ tooltip_text = "Redo"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon = ExtResource("4_redo")
+icon_alignment = 1
 expand_icon = true
 
 [node name="UndoHistory" type="Button" parent="InlineRow" groups=["UIButtons"]]
@@ -56,6 +58,7 @@ tooltip_text = "Undo History"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon = ExtResource("5_history")
+icon_alignment = 1
 expand_icon = true
 
 [node name="FrameGroup" type="HBoxContainer" parent="InlineRow"]
@@ -88,13 +91,14 @@ text = "…"
 
 [node name="ShareExport" type="Button" parent="." groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 36)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Share / Export"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon = ExtResource("6_share_export")
+icon_alignment = 1
 expand_icon = true
 
 [node name="ModeSwitch" type="Button" parent="." groups=["UIButtons"]]

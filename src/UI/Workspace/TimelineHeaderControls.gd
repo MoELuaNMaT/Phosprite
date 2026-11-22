@@ -49,8 +49,7 @@ func _ready() -> void:
 	overflow_button.pressed.connect(_on_overflow_pressed)
 	share_export_button.pressed.connect(_on_share_export_pressed)
 	mode_switch_button.toggled.connect(_on_mode_switch_toggled)
-	if OS.get_name() == "iOS":
-		share_export_button.custom_minimum_size = Vector2(44.0, 44.0)
+	share_export_button.custom_minimum_size = Vector2(32.0, 32.0)
 	var timeline := Global.animation_timeline as AnimationTimeline
 	if (
 		is_instance_valid(timeline)
@@ -333,11 +332,8 @@ func _refresh_phosprite_chrome() -> void:
 				if not button.has_meta(LEGACY_ICON_META):
 					button.set_meta(LEGACY_ICON_META, button.icon)
 					button.set_meta(LEGACY_EXPAND_META, button.expand_icon)
-				var q_tex := (
-					QIcons.standard_icon(icon_map[button])
-					if button == share_export_button and OS.get_name() == "iOS"
-					else QIcons.standard_icon_1x(icon_map[button])
-				)
+				var q_tex := QIcons.standard_icon_1x(icon_map[button])
+				button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				if q_tex != null:
 					button.icon = q_tex
 					button.expand_icon = false

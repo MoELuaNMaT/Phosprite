@@ -857,17 +857,19 @@ func _on_LoopAnim_pressed() -> void:
 
 func _on_PlayForward_toggled(button_pressed: bool) -> void:
 	if button_pressed:
-		Global.change_button_texturerect(play_forward.get_child(0), "pause.png")
+		PhospriteStage4Timeline.set_playback_button_icon(play_forward, &"pause", "pause.png")
 	else:
-		Global.change_button_texturerect(play_forward.get_child(0), "play.png")
+		PhospriteStage4Timeline.set_playback_button_icon(play_forward, &"play", "play.png")
 	play_animation(button_pressed, true)
 
 
 func _on_PlayBackwards_toggled(button_pressed: bool) -> void:
 	if button_pressed:
-		Global.change_button_texturerect(play_backwards.get_child(0), "pause.png")
+		PhospriteStage4Timeline.set_playback_button_icon(play_backwards, &"pause", "pause.png")
 	else:
-		Global.change_button_texturerect(play_backwards.get_child(0), "play_backwards.png")
+		PhospriteStage4Timeline.set_playback_button_icon(
+			play_backwards, &"play_backwards", "play_backwards.png"
+		)
 	play_animation(button_pressed, false)
 
 
@@ -969,12 +971,14 @@ func play_animation(play: bool, forward_dir: bool) -> void:
 	if forward_dir:
 		play_backwards.toggled.disconnect(_on_PlayBackwards_toggled)
 		play_backwards.button_pressed = false
-		Global.change_button_texturerect(play_backwards.get_child(0), "play_backwards.png")
+		PhospriteStage4Timeline.set_playback_button_icon(
+			play_backwards, &"play_backwards", "play_backwards.png"
+		)
 		play_backwards.toggled.connect(_on_PlayBackwards_toggled)
 	else:
 		play_forward.toggled.disconnect(_on_PlayForward_toggled)
 		play_forward.button_pressed = false
-		Global.change_button_texturerect(play_forward.get_child(0), "play.png")
+		PhospriteStage4Timeline.set_playback_button_icon(play_forward, &"play", "play.png")
 		play_forward.toggled.connect(_on_PlayForward_toggled)
 
 	if play:

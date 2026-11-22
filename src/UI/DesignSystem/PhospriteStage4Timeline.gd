@@ -122,8 +122,25 @@ static func _apply_button_q_icon(button: Button, mode: StringName) -> void:
 			tex_rect.set_meta(LEGACY_STR_META, tex_rect.stretch_mode)
 		var q_tex := QIcons.standard_icon_1x(icon_id)
 		if q_tex != null:
+			if not tex_rect.has_meta(&"phosprite_legacy_timeline_offsets"):
+				(
+					tex_rect
+					. set_meta(
+						&"phosprite_legacy_timeline_offsets",
+						[
+							tex_rect.offset_left,
+							tex_rect.offset_top,
+							tex_rect.offset_right,
+							tex_rect.offset_bottom,
+						],
+					)
+				)
 			tex_rect.set_meta(Q_ACTIVE_META, true)
 			tex_rect.texture = q_tex
+			tex_rect.offset_left = -10.0
+			tex_rect.offset_top = -10.0
+			tex_rect.offset_right = 10.0
+			tex_rect.offset_bottom = 10.0
 			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 			tex_rect.modulate = Stage4.icon_tint_for_button(mode, button)
@@ -144,6 +161,14 @@ static func _restore_tex_rect(tex_rect: TextureRect) -> void:
 		tex_rect.remove_meta(LEGACY_FLT_META)
 		tex_rect.remove_meta(LEGACY_EXP_META)
 		tex_rect.remove_meta(LEGACY_STR_META)
+		if tex_rect.has_meta(&"phosprite_legacy_timeline_offsets"):
+			var offs: Array = tex_rect.get_meta(&"phosprite_legacy_timeline_offsets")
+			if offs.size() == 4:
+				tex_rect.offset_left = float(offs[0])
+				tex_rect.offset_top = float(offs[1])
+				tex_rect.offset_right = float(offs[2])
+				tex_rect.offset_bottom = float(offs[3])
+			tex_rect.remove_meta(&"phosprite_legacy_timeline_offsets")
 		tex_rect.remove_meta(Q_ACTIVE_META)
 
 
@@ -389,3 +414,29 @@ static func sync_global_layer_buttons(
 		&"group_expanded" if flags[2] else &"group_collapsed",
 		mode
 	)
+
+
+static func set_playback_button_icon(
+	button: Button, q_icon_id: StringName, legacy_png: String
+) -> void:
+	if not is_instance_valid(button) or button.get_child_count() == 0:
+		return
+	var tex_rect := button.get_child(0) as TextureRect
+	if tex_rect == null:
+		return
+	var mode := Stage4.active_mode()
+	if mode != Tokens.LEGACY:
+		var q_tex := QIcons.standard_icon_1x(q_icon_id)
+		if q_tex != null:
+			tex_rect.set_meta(Q_ACTIVE_META, true)
+			tex_rect.texture = q_tex
+			tex_rect.offset_left = -10.0
+			tex_rect.offset_top = -10.0
+			tex_rect.offset_right = 10.0
+			tex_rect.offset_bottom = 10.0
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+			tex_rect.modulate = Stage4.icon_tint_for_button(mode, button)
+			tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			return
+	Global.change_button_texturerect(tex_rect, legacy_png)
