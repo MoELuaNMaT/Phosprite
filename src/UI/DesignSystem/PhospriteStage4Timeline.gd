@@ -368,7 +368,7 @@ static func apply_layer_icon(tex_rect: TextureRect, kind: StringName, mode: Stri
 		tex_rect.texture = tex
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		tex_rect.modulate = Stage4.icon_tint_for_button(mode, button)
+		tex_rect.modulate = Color.WHITE
 		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
