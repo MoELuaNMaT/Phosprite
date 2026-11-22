@@ -863,3 +863,36 @@ func test_floating_side_snap_range_is_narrow_and_symmetric() -> void:
 		"right edge should snap at the 8-pixel threshold",
 	)
 	_free_workspace(workspace)
+
+
+func test_floating_top_snap_reserves_breathing_gap_below_top_bar() -> void:
+	var workspace := _make_workspace()
+	var host: WorkspaceDockHost = workspace["host"]
+	var surface: WorkspaceSurface = workspace["surface"]
+	surface.configure_floating_snap_policy({})
+	var content_rect := host.get_content_rect()
+	var bounds := surface.get_floating_bounds()
+	check_almost_eq(
+		bounds.position.y,
+		content_rect.position.y + Surface.FLOATING_TOP_GAP,
+		0.01,
+		"floating bounds should reserve a breathing gap below the top bar",
+	)
+	check_almost_eq(
+		bounds.end.y,
+		content_rect.end.y,
+		0.01,
+		"top breathing gap must not shift the bottom boundary",
+	)
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, Rect2(200.0, 0.0, 320.0, 200.0)),
+		"Preview should float and clamp/snap below the top gap",
+	)
+	var snapped := surface.get_floating_rect(Builtins.PREVIEW_ID)
+	check_almost_eq(
+		snapped.position.y,
+		content_rect.position.y + Surface.FLOATING_TOP_GAP,
+		0.01,
+		"top-snapped floating window must keep the breathing gap below the top bar",
+	)
+	_free_workspace(workspace)

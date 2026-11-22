@@ -34,6 +34,7 @@ enum FloatingSnapEdge {
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.14)
 const REGION_TARGET_HYSTERESIS := 48.0
 const FLOATING_SNAP_DISTANCE := 8.0
+const FLOATING_TOP_GAP := 12.0
 
 var manager: WorkspaceModuleManager
 var dock_host: WorkspaceDockHost
@@ -126,6 +127,9 @@ func get_floating_bounds() -> Rect2:
 	var bounds := dock_host.get_content_rect()
 	if not bounds.has_area():
 		return Rect2(Vector2.ZERO, dock_host.size)
+	var top_gap := minf(FLOATING_TOP_GAP, maxf(0.0, bounds.size.y - 120.0))
+	bounds.position.y += top_gap
+	bounds.size.y -= top_gap
 	return bounds
 
 
