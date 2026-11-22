@@ -22,11 +22,24 @@ func test_preview_view_toolbar_wraps_with_window_width() -> void:
 		var button := toolbar.get_node_or_null(name) as Button
 		check_true(button != null, "%s lives beside Grayscale" % name)
 	check_true(
-		not preview.is_controls_expanded(),
-		"Preview controls start collapsed so artwork fills the viewport"
+		preview.is_controls_expanded(), "Preview controls start expanded below the preview viewport"
 	)
+	var divider := preview.get_node_or_null("VBox/PreviewControlsDivider") as ColorRect
+	var toggle_btn := (
+		preview.get_node_or_null("VBox/PreviewControlsToggleRow/PreviewControlsToggleButton")
+		as Button
+	)
+	check_true(divider != null and divider.visible, "thin divider separates preview and toolbar")
+	check_true(toggle_btn != null, "triangle fold toggle sits at the bottom of Preview")
+	preview.size = Vector2(720, 210)
+	await tree.process_frame
+	var expanded_height := preview.size.y
+	preview.set_controls_expanded(false)
+	check_true(not preview.is_controls_expanded(), "Preview controls collapse on demand")
+	check_true(preview.size.y < expanded_height, "collapsing shrinks Preview height from bottom")
 	preview.set_controls_expanded(true)
-	check_true(preview.is_controls_expanded(), "Preview controls expand on demand")
+	check_true(preview.is_controls_expanded(), "Preview controls re-expand downward")
+	check_true(preview.size.y > expanded_height - 1.0, "re-expanding restores Preview height")
 	preview.size = Vector2(720, 210)
 	await tree.process_frame
 	await tree.process_frame

@@ -6,6 +6,8 @@ const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 
 static var _preview_bg_styles: Dictionary = {}
+static var _arrow_up_icon: ImageTexture
+static var _arrow_down_icon: ImageTexture
 
 var _preview_touches: Dictionary = {}
 var _navigation_ids := PackedInt32Array()
@@ -18,8 +20,11 @@ var _anchor_canvas := Vector2.ZERO
 var _pan_active := false
 var _pinch_active := false
 var _reference_import_menu: PopupMenu
-var _controls_expanded := false
+var _controls_expanded := true
+var _controls_divider: ColorRect
+var _controls_toggle_row: HBoxContainer
 var _controls_toggle_button: Button
+var _last_drawer_height := 42.0
 
 @onready
 var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
@@ -246,9 +251,18 @@ func is_controls_expanded() -> bool:
 
 
 func set_controls_expanded(expanded: bool) -> void:
-	_controls_expanded = expanded
 	_ensure_collapsible_controls_ui()
+	if _controls_expanded == expanded:
+		_apply_controls_expanded_state()
+		return
+	var previous := _controls_expanded
+	var before_drawer_h := _measure_controls_drawer_height() if previous else 0.0
+	if before_drawer_h > 0.0:
+		_last_drawer_height = before_drawer_h
+	_controls_expanded = expanded
 	_apply_controls_expanded_state()
+	var delta_y := _measure_controls_drawer_height() if expanded else -_last_drawer_height
+	_adjust_preview_height_downward(delta_y)
 
 
 func workspace_module_initialized(_module: WorkspaceModule, _context: Dictionary) -> void:
@@ -259,56 +273,171 @@ func workspace_module_mounted(_module: WorkspaceModule, _host: Control) -> void:
 	_ensure_collapsible_controls_ui.call_deferred()
 
 
+static func _triangle_icon(pointing_up: bool) -> ImageTexture:
+	if pointing_up and _arrow_up_icon != null:
+		return _arrow_up_icon
+	if not pointing_up and _arrow_down_icon != null:
+		return _arrow_down_icon
+	var img := Image.create_empty(9, 5, false, Image.FORMAT_RGBA8)
+	img.fill(Color.TRANSPARENT)
+	for row in range(5):
+		var inset := (4 - row) if pointing_up else row
+		for x in range(inset, 9 - inset):
+			img.set_pixel(x, row, Color.WHITE)
+	var tex := ImageTexture.create_from_image(img)
+	if pointing_up:
+		_arrow_up_icon = tex
+	else:
+		_arrow_down_icon = tex
+	return tex
+
+
 func _ensure_collapsible_controls_ui() -> void:
-	if not is_node_ready():
+	if not is_node_ready() or not is_instance_valid(preview_vbox):
 		return
+	if not is_instance_valid(_controls_divider):
+		var divider := ColorRect.new()
+		divider.name = "PreviewControlsDivider"
+		divider.custom_minimum_size = Vector2(0.0, 1.0)
+		divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		preview_vbox.add_child(divider)
+		if is_instance_valid(animation_bar):
+			preview_vbox.move_child(divider, animation_bar.get_index())
+		_controls_divider = divider
+	if not is_instance_valid(_controls_toggle_row):
+		var row := HBoxContainer.new()
+		row.name = "PreviewControlsToggleRow"
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		preview_vbox.add_child(row)
+		_controls_toggle_row = row
 	if not is_instance_valid(_controls_toggle_button):
 		var btn := Button.new()
 		btn.name = "PreviewControlsToggleButton"
 		btn.toggle_mode = true
+		btn.flat = true
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		btn.custom_minimum_size = Vector2(24.0, 22.0)
+		btn.custom_minimum_size = Vector2(56.0, 18.0)
+		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		var menu_icon := QIcons.standard_icon_1x(&"more_overflow")
-		if menu_icon != null:
-			btn.icon = menu_icon
-			btn.text = ""
-		else:
-			btn.text = "⋯"
-			btn.add_theme_font_size_override(&"font_size", 11)
+		btn.text = ""
 		btn.toggled.connect(_on_controls_toggle_button_toggled)
+		_controls_toggle_row.add_child(btn)
 		_controls_toggle_button = btn
-	var parent_module := get_parent() as WorkspaceModule
-	if parent_module != null:
-		if parent_module.get_header_accessory() != _controls_toggle_button:
-			parent_module.set_header_accessory(_controls_toggle_button)
-		_controls_toggle_button.visible = true
-		Stage4.style_button(_controls_toggle_button, Stage4.active_mode())
-	elif _controls_toggle_button.get_parent() == null:
-		_controls_toggle_button.visible = false
-		add_child(_controls_toggle_button)
+	_style_bottom_fold_controls(Stage4.active_mode())
+
+
+func _style_bottom_fold_controls(mode: StringName) -> void:
+	var pixel := mode != PhospriteTokens.LEGACY
+	if is_instance_valid(_controls_divider):
+		_controls_divider.color = (
+			PhospriteTokens.color(mode, &"border_subtle") if pixel else Color(1.0, 1.0, 1.0, 0.16)
+		)
+	if not is_instance_valid(_controls_toggle_button):
+		return
+	var normal_col := (
+		PhospriteTokens.color(mode, &"text_muted") if pixel else Color(0.76, 0.78, 0.82, 0.9)
+	)
+	var hover_col := (
+		PhospriteTokens.color(mode, &"text_primary") if pixel else Color(0.95, 0.96, 0.98, 1.0)
+	)
+	var accent_col := PhospriteTokens.color(mode, &"accent_primary") if pixel else hover_col
+	var pill_bg := StyleBoxFlat.new()
+	pill_bg.bg_color = (
+		PhospriteTokens.color(mode, &"well_surface") if pixel else Color(1.0, 1.0, 1.0, 0.06)
+	)
+	pill_bg.border_width_left = 1
+	pill_bg.border_width_top = 1
+	pill_bg.border_width_right = 1
+	pill_bg.border_width_bottom = 1
+	pill_bg.border_color = (
+		PhospriteTokens.color(mode, &"border_subtle") if pixel else Color(1.0, 1.0, 1.0, 0.14)
+	)
+	pill_bg.content_margin_left = 8.0
+	pill_bg.content_margin_right = 8.0
+	pill_bg.content_margin_top = 2.0
+	pill_bg.content_margin_bottom = 2.0
+	pill_bg.anti_aliasing = false
+	var pill_hover := pill_bg.duplicate() as StyleBoxFlat
+	pill_hover.bg_color = (
+		PhospriteTokens.color(mode, &"elevated_surface") if pixel else Color(1.0, 1.0, 1.0, 0.12)
+	)
+	for st in [&"normal", &"pressed", &"focus"]:
+		_controls_toggle_button.add_theme_stylebox_override(st, pill_bg)
+	for st in [&"hover", &"hover_pressed"]:
+		_controls_toggle_button.add_theme_stylebox_override(st, pill_hover)
+	_controls_toggle_button.add_theme_color_override(&"icon_normal_color", normal_col)
+	_controls_toggle_button.add_theme_color_override(&"icon_pressed_color", normal_col)
+	_controls_toggle_button.add_theme_color_override(&"icon_focus_color", normal_col)
+	_controls_toggle_button.add_theme_color_override(&"icon_hover_color", hover_col)
+	_controls_toggle_button.add_theme_color_override(&"icon_hover_pressed_color", accent_col)
 
 
 func _on_controls_toggle_button_toggled(toggled_on: bool) -> void:
-	if _controls_expanded == toggled_on:
+	set_controls_expanded(toggled_on)
+
+
+func _measure_controls_drawer_height() -> float:
+	if not is_instance_valid(animation_bar):
+		return _last_drawer_height
+	var bar_h := animation_bar.size.y
+	if not animation_bar.visible or bar_h <= 1.0:
+		bar_h = maxf(animation_bar.get_combined_minimum_size().y, 34.0)
+	return bar_h + 4.0
+
+
+func _resolve_workspace_surface() -> WorkspaceSurface:
+	if is_instance_valid(Global.control) and is_instance_valid(Global.control.ui):
+		var surface := Global.control.ui.get("workspace_surface") as WorkspaceSurface
+		if is_instance_valid(surface):
+			return surface
+	return null
+
+
+func _adjust_preview_height_downward(delta_y: float) -> void:
+	if absf(delta_y) < 0.5:
 		return
-	_controls_expanded = toggled_on
-	_apply_controls_expanded_state()
+	var parent_module := get_parent() as WorkspaceModule
+	var surface := _resolve_workspace_surface()
+	if surface != null and parent_module != null and parent_module.definition != null:
+		var module_id := parent_module.definition.module_id
+		var placement := surface.get_module_placement(module_id)
+		var min_h := parent_module.definition.minimum_size.y
+		if placement == WorkspaceSurface.Placement.FLOATING:
+			var rect := surface.get_floating_rect(module_id)
+			var target := Rect2(
+				rect.position,
+				Vector2(rect.size.x, maxf(min_h, rect.size.y + delta_y)),
+			)
+			surface.set_floating_rect(module_id, target)
+			return
+		if placement == WorkspaceSurface.Placement.DOCKED and surface.dock_host != null:
+			var cur_size := surface.dock_host.layout.get_module_size(module_id)
+			if cur_size != Vector2.ZERO:
+				var target_size := Vector2(cur_size.x, maxf(min_h, cur_size.y + delta_y))
+				surface.dock_host.set_module_size(module_id, target_size)
+				return
+	size.y = maxf(custom_minimum_size.y, size.y + delta_y)
 
 
 func _apply_controls_expanded_state() -> void:
 	if not is_node_ready():
 		return
+	if is_instance_valid(_controls_divider):
+		_controls_divider.visible = _controls_expanded
 	if is_instance_valid(animation_bar):
 		animation_bar.visible = _controls_expanded
 	if is_instance_valid(preview_vbox):
-		var sep := 4 if _controls_expanded else 0
+		var sep := 4 if _controls_expanded else 2
 		if preview_vbox.get_theme_constant(&"separation") != sep:
 			preview_vbox.add_theme_constant_override(&"separation", sep)
 	if is_instance_valid(_controls_toggle_button):
 		_controls_toggle_button.set_pressed_no_signal(_controls_expanded)
+		_controls_toggle_button.icon = _triangle_icon(_controls_expanded)
 		_controls_toggle_button.tooltip_text = (
 			tr("Hide preview controls") if _controls_expanded else tr("Show preview controls")
 		)
@@ -318,7 +447,7 @@ func _get_preview_bg_style(mode: StringName) -> StyleBoxFlat:
 	if _preview_bg_styles.has(mode):
 		return _preview_bg_styles[mode] as StyleBoxFlat
 	var style := StyleBoxFlat.new()
-	style.bg_color = PhospriteTokens.color(&"canvas_backdrop", mode)
+	style.bg_color = PhospriteTokens.color(mode, &"canvas_backdrop")
 	style.content_margin_left = 0.0
 	style.content_margin_top = 0.0
 	style.content_margin_right = 0.0
@@ -340,8 +469,7 @@ func _refresh_preview_pixel_chrome() -> void:
 			add_theme_stylebox_override(&"panel", bg_style)
 	elif has_theme_stylebox_override(&"panel"):
 		remove_theme_stylebox_override(&"panel")
-	if is_instance_valid(_controls_toggle_button):
-		Stage4.style_button(_controls_toggle_button, mode)
+	_style_bottom_fold_controls(mode)
 	if is_instance_valid(preview_viewport_container):
 		preview_viewport_container.custom_minimum_size = (
 			Vector2(0.0, 72.0) if pixel else Vector2.ZERO
