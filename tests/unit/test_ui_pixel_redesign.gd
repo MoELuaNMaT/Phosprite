@@ -203,8 +203,8 @@ func test_topbar_timeline_and_dock_host_pixel_contracts() -> void:
 	)
 	check_has(
 		top_src,
-		"return_home_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT",
-		"Gallery pill aligns icon left so label never overlaps icon"
+		"return_home_button.custom_minimum_size = Vector2(36, 36)",
+		"Gallery button matches 36x36 uniform icon-only topbar keycap"
 	)
 	var tl_src := FileAccess.get_file_as_string(
 		"res://src/UI/DesignSystem/PhospriteStage4Timeline.gd"

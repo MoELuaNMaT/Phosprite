@@ -111,7 +111,7 @@ func test_button_states_preserve_fonts_and_change_only_visual_resources() -> voi
 		Color("2C2A29"),
 		"pressed button has no shadow and retains its own 1px outline"
 	)
-	check_eq(theme.get_color(&"font_color", &"Button"), Color("2C2A29"), "text ink token")
+	check_eq(theme.get_color(&"font_color", &"Button"), Color("242220"), "text ink token")
 	check_true(PixelStyle.make_button_theme(Tokens.LEGACY) == null, "legacy not overridden")
 
 
