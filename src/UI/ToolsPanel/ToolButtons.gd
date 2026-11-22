@@ -103,9 +103,6 @@ func _refresh_stage4_tool_buttons() -> void:
 		return
 	var mode := Stage4.active_mode()
 	_refresh_ios_family_menu_icons()
-	if OS.get_name() == "iOS":
-		_sync_ios_selection_family_visual()
-		_sync_ios_shape_family_visual()
 	for child in get_children():
 		if child is Button:
 			var button := child as Button
@@ -140,6 +137,10 @@ func _refresh_stage4_tool_buttons() -> void:
 				icon_rect.remove_meta(&"phosprite_legacy_tool_exp")
 				icon_rect.remove_meta(&"phosprite_legacy_tool_str")
 				icon_rect.remove_meta(Q_ACTIVE_META)
+	Tools.update_tool_buttons()
+	if OS.get_name() == "iOS":
+		_sync_ios_selection_family_visual()
+		_sync_ios_shape_family_visual()
 
 
 func _input(event: InputEvent) -> void:
@@ -835,7 +836,6 @@ func _sync_ios_selection_family_visual() -> void:
 		child_left.visible = false
 		child_right.visible = false
 	var recent_tool: Tools.Tool = Tools.tools[String(_ios_selection_recent_tool)]
-	_apply_family_button_icon(_ios_selection_family_button, _ios_selection_recent_tool, recent_tool)
 	if not _touch_ui_mode:
 		_ios_selection_family_button.tooltip_text = "Selection: %s" % tr(recent_tool.display_name)
 	var left_name := StringName()
@@ -854,13 +854,26 @@ func _sync_ios_selection_family_visual() -> void:
 	var right_background := (
 		_ios_selection_family_button.get_node("BackgroundRight") as NinePatchRect
 	)
-	left_background.visible = is_ios_selection_tool(left_name)
-	if Global.single_tool_mode:
+	var is_sel_left := is_ios_selection_tool(left_name)
+	var is_sel_right := is_ios_selection_tool(right_name)
+	if Stage4.active_mode() != PhospriteTokens.LEGACY:
+		left_background.visible = false
 		right_background.visible = false
-		left_background.anchor_right = 1.0
+		_ios_selection_family_button.toggle_mode = true
+		_ios_selection_family_button.set_pressed_no_signal(
+			is_sel_left or (not Global.single_tool_mode and is_sel_right)
+		)
 	else:
-		right_background.visible = is_ios_selection_tool(right_name)
-		left_background.anchor_right = 0.5
+		_ios_selection_family_button.toggle_mode = false
+		_ios_selection_family_button.set_pressed_no_signal(false)
+		left_background.visible = is_sel_left
+		if Global.single_tool_mode:
+			right_background.visible = false
+			left_background.anchor_right = 1.0
+		else:
+			right_background.visible = is_sel_right
+			left_background.anchor_right = 0.5
+	_apply_family_button_icon(_ios_selection_family_button, _ios_selection_recent_tool, recent_tool)
 	_ios_selection_family_button.queue_redraw()
 
 
@@ -879,7 +892,6 @@ func _sync_ios_shape_family_visual() -> void:
 		child_left.visible = false
 		child_right.visible = false
 	var recent_tool: Tools.Tool = Tools.tools[String(_ios_shape_recent_tool)]
-	_apply_family_button_icon(_ios_shape_family_button, _ios_shape_recent_tool, recent_tool)
 	if not _touch_ui_mode:
 		_ios_shape_family_button.tooltip_text = "Shapes: %s" % tr(recent_tool.display_name)
 	var left_name := StringName()
@@ -896,13 +908,26 @@ func _sync_ios_shape_family_visual() -> void:
 		right_name = StringName(Tools._slots[MOUSE_BUTTON_RIGHT].tool_node.name)
 	var left_background := _ios_shape_family_button.get_node("BackgroundLeft") as NinePatchRect
 	var right_background := _ios_shape_family_button.get_node("BackgroundRight") as NinePatchRect
-	left_background.visible = is_ios_shape_tool(left_name)
-	if Global.single_tool_mode:
+	var is_shape_left := is_ios_shape_tool(left_name)
+	var is_shape_right := is_ios_shape_tool(right_name)
+	if Stage4.active_mode() != PhospriteTokens.LEGACY:
+		left_background.visible = false
 		right_background.visible = false
-		left_background.anchor_right = 1.0
+		_ios_shape_family_button.toggle_mode = true
+		_ios_shape_family_button.set_pressed_no_signal(
+			is_shape_left or (not Global.single_tool_mode and is_shape_right)
+		)
 	else:
-		right_background.visible = is_ios_shape_tool(right_name)
-		left_background.anchor_right = 0.5
+		_ios_shape_family_button.toggle_mode = false
+		_ios_shape_family_button.set_pressed_no_signal(false)
+		left_background.visible = is_shape_left
+		if Global.single_tool_mode:
+			right_background.visible = false
+			left_background.anchor_right = 1.0
+		else:
+			right_background.visible = is_shape_right
+			left_background.anchor_right = 0.5
+	_apply_family_button_icon(_ios_shape_family_button, _ios_shape_recent_tool, recent_tool)
 	_ios_shape_family_button.queue_redraw()
 
 

@@ -880,18 +880,37 @@ func set_button_size(button_size: int) -> void:
 
 
 func update_tool_buttons() -> void:
+	if not is_instance_valid(_tool_buttons):
+		return
+	var mode := PhospriteStage4Chrome.active_mode()
+	var use_pixel_pressed := mode != PhospriteTokens.LEGACY
 	for child in _tool_buttons.get_children():
 		var left_background: NinePatchRect = child.get_node("BackgroundLeft")
 		var right_background: NinePatchRect = child.get_node("BackgroundRight")
 		var is_left_tool := _slots[MOUSE_BUTTON_LEFT].tool_node.name == child.name
 		var is_right_tool := _slots[MOUSE_BUTTON_RIGHT].tool_node.name == child.name
-		left_background.visible = is_left_tool
-		if Global.single_tool_mode:
+		if use_pixel_pressed and child is Button:
+			var btn := child as Button
+			var is_selected := is_left_tool or (not Global.single_tool_mode and is_right_tool)
+			left_background.visible = false
 			right_background.visible = false
-			left_background.anchor_right = 1.0
+			btn.toggle_mode = true
+			btn.set_pressed_no_signal(is_selected)
+			var icon_rect := btn.get_node_or_null(^"ToolIcon") as TextureRect
+			if icon_rect != null:
+				icon_rect.modulate = PhospriteStage4Chrome.icon_tint_for_button(mode, btn)
 		else:
-			right_background.visible = is_right_tool
-			left_background.anchor_right = 0.5
+			if child is Button:
+				var btn := child as Button
+				btn.toggle_mode = false
+				btn.set_pressed_no_signal(false)
+			left_background.visible = is_left_tool
+			if Global.single_tool_mode:
+				right_background.visible = false
+				left_background.anchor_right = 1.0
+			else:
+				right_background.visible = is_right_tool
+				left_background.anchor_right = 0.5
 
 
 func update_hint_tooltips() -> void:
