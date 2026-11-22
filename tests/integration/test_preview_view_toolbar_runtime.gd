@@ -98,3 +98,74 @@ func test_preview_actions_reuse_existing_view_handlers() -> void:
 		"Global.ViewMenu.SHOW_PIXEL_GRID",
 	]:
 		check_has(source, "view_menu_id_pressed(%s)" % action, "Preview reuses %s" % action)
+
+
+func test_preview_bottom_fold_expands_floating_module_downward_without_squeezing_viewport() -> void:
+	var root := Control.new()
+	root.size = Vector2(1280.0, 800.0)
+	var manager := WorkspaceModuleManager.new()
+	var host := WorkspaceDockHost.new()
+	host.size = Vector2(1280.0, 800.0)
+	var surface := WorkspaceSurface.new()
+	surface.name = "WorkspaceSurface"
+	root.add_child(host)
+	root.add_child(surface)
+	var preview_def := WorkspaceBuiltinModules.create_definitions()[0]
+	check_true(manager.register_definition(preview_def), "preview definition registers")
+	check_true(host.setup(manager), "dock host initializes")
+	check_true(surface.setup(manager, host), "workspace surface initializes")
+	tree.root.add_child(root)
+	check_true(
+		surface.float_module(WorkspaceBuiltinModules.PREVIEW_ID, Rect2(120.0, 80.0, 320.0, 220.0)),
+		"preview floats on surface",
+	)
+	await tree.process_frame
+	await tree.process_frame
+	var module := manager.get_instance(WorkspaceBuiltinModules.PREVIEW_ID)
+	var preview := module.get_content() as PanelContainer
+	var expanded_rect := surface.get_floating_rect(WorkspaceBuiltinModules.PREVIEW_ID)
+	var expanded_vp_h: float = preview.preview_viewport_container.size.y
+	preview.set_controls_expanded(false)
+	await tree.process_frame
+	await tree.process_frame
+	var collapsed_rect := surface.get_floating_rect(WorkspaceBuiltinModules.PREVIEW_ID)
+	var collapsed_vp_h: float = preview.preview_viewport_container.size.y
+	check_almost_eq(
+		collapsed_rect.position.y,
+		expanded_rect.position.y,
+		0.5,
+		"collapsing keeps preview top edge anchored",
+	)
+	check_true(
+		collapsed_rect.size.y < expanded_rect.size.y - 20.0,
+		"collapsing shrinks floating preview window height",
+	)
+	check_almost_eq(
+		collapsed_vp_h,
+		expanded_vp_h,
+		2.0,
+		"collapsing preserves preview viewport height",
+	)
+	preview.set_controls_expanded(true)
+	await tree.process_frame
+	await tree.process_frame
+	var reexpanded_rect := surface.get_floating_rect(WorkspaceBuiltinModules.PREVIEW_ID)
+	var reexpanded_vp_h: float = preview.preview_viewport_container.size.y
+	check_almost_eq(
+		reexpanded_rect.position.y,
+		collapsed_rect.position.y,
+		0.5,
+		"expanding downward keeps preview top edge anchored",
+	)
+	check_true(
+		reexpanded_rect.size.y > collapsed_rect.size.y + 20.0,
+		"expanding grows floating preview window downward",
+	)
+	check_almost_eq(
+		reexpanded_vp_h,
+		collapsed_vp_h,
+		2.0,
+		"expanding downward does not squeeze preview viewport upward",
+	)
+	root.queue_free()
+	manager.free()

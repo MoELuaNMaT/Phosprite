@@ -255,14 +255,23 @@ func set_controls_expanded(expanded: bool) -> void:
 	if _controls_expanded == expanded:
 		_apply_controls_expanded_state()
 		return
+	var target_viewport_h := (
+		preview_viewport_container.size.y if is_instance_valid(preview_viewport_container) else 0.0
+	)
 	var previous := _controls_expanded
 	var before_drawer_h := _measure_controls_drawer_height() if previous else 0.0
 	if before_drawer_h > 0.0:
 		_last_drawer_height = before_drawer_h
 	_controls_expanded = expanded
 	_apply_controls_expanded_state()
-	var delta_y := _measure_controls_drawer_height() if expanded else -_last_drawer_height
+	var delta_y := (
+		maxf(_last_drawer_height, _measure_controls_drawer_height())
+		if expanded
+		else -_last_drawer_height
+	)
 	_adjust_preview_height_downward(delta_y)
+	if target_viewport_h > 1.0:
+		_reconcile_viewport_height.call_deferred(target_viewport_h)
 
 
 func workspace_module_initialized(_module: WorkspaceModule, _context: Dictionary) -> void:
@@ -387,14 +396,35 @@ func _measure_controls_drawer_height() -> float:
 	var bar_h := animation_bar.size.y
 	if not animation_bar.visible or bar_h <= 1.0:
 		bar_h = maxf(animation_bar.get_combined_minimum_size().y, 34.0)
-	return bar_h + 4.0
+	# Include 1px divider + 2 extra VBox gaps (expanded sep 4*2 vs collapsed sep 2*1 -> +6px)
+	return bar_h + 7.0
+
+
+func _reconcile_viewport_height(expected_viewport_h: float) -> void:
+	if not is_instance_valid(preview_viewport_container) or not is_visible_in_tree():
+		return
+	var current_viewport_h := preview_viewport_container.size.y
+	var diff := expected_viewport_h - current_viewport_h
+	if absf(diff) >= 1.0:
+		_adjust_preview_height_downward(diff)
+	if _controls_expanded and is_instance_valid(animation_bar) and animation_bar.size.y > 1.0:
+		_last_drawer_height = animation_bar.size.y + 7.0
 
 
 func _resolve_workspace_surface() -> WorkspaceSurface:
-	if is_instance_valid(Global.control) and is_instance_valid(Global.control.ui):
-		var surface := Global.control.ui.get("workspace_surface") as WorkspaceSurface
-		if is_instance_valid(surface):
-			return surface
+	var node: Node = get_parent()
+	while node != null:
+		var direct := node.get("workspace_surface") as WorkspaceSurface
+		if is_instance_valid(direct):
+			return direct
+		var child_surface := node.get_node_or_null("WorkspaceSurface") as WorkspaceSurface
+		if is_instance_valid(child_surface):
+			return child_surface
+		node = node.get_parent()
+	if is_instance_valid(Global.control):
+		var found := Global.control.find_child("WorkspaceSurface", true, false) as WorkspaceSurface
+		if is_instance_valid(found):
+			return found
 	return null
 
 
