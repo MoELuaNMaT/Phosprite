@@ -396,8 +396,8 @@ func _measure_controls_drawer_height() -> float:
 	var bar_h := animation_bar.size.y
 	if not animation_bar.visible or bar_h <= 1.0:
 		bar_h = maxf(animation_bar.get_combined_minimum_size().y, 34.0)
-	# Include 1px divider + 2 extra VBox gaps (expanded sep 4*2 vs collapsed sep 2*1 -> +6px)
-	return bar_h + 7.0
+	# Include 1px divider + VBox gap delta (expanded: 3*4=12px, collapsed: 1*2=2px -> +11px)
+	return bar_h + 11.0
 
 
 func _reconcile_viewport_height(expected_viewport_h: float) -> void:
@@ -408,7 +408,7 @@ func _reconcile_viewport_height(expected_viewport_h: float) -> void:
 	if absf(diff) >= 1.0:
 		_adjust_preview_height_downward(diff)
 	if _controls_expanded and is_instance_valid(animation_bar) and animation_bar.size.y > 1.0:
-		_last_drawer_height = animation_bar.size.y + 7.0
+		_last_drawer_height = animation_bar.size.y + 11.0
 
 
 func _resolve_workspace_surface() -> WorkspaceSurface:
