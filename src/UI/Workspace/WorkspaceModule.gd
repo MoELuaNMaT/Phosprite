@@ -408,56 +408,27 @@ func is_float_point(local_point: Vector2) -> bool:
 func get_resize_edges(local_point: Vector2) -> int:
 	if _visual_state != &"floating" or _content_collapsed:
 		return ResizeEdge.NONE
-	var visual := get_visual_rect()
+	# Floating panels move exclusively via their top header bar and resize
+	# exclusively via the bottom-right handle, preventing downward header drags
+	# from accidentally triggering a top-edge resize.
 	var outer := (
 		FLOATING_RESIZE_OUTER_HIT_SIZE
 		if _header_chrome_visible
 		else HEADERLESS_RESIZE_OUTER_HIT_SIZE
 	)
-	if _header_chrome_visible:
-		var expanded := Rect2(
-			Vector2(-outer, 0.0), Vector2(visual.size.x + outer * 2.0, visual.size.y + outer)
-		)
-		if not expanded.has_point(local_point):
-			return ResizeEdge.NONE
-	elif not visual.grow(outer).has_point(local_point):
-		return ResizeEdge.NONE
-	# Keep interactive content usable while giving bottom corners a generous
-	# touch target (inward + outward) so iPad corner drags respond immediately.
-	var edges := ResizeEdge.NONE
-	var edge_hit := (
-		RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else HEADERLESS_RESIZE_INNER_HIT_SIZE
+	var header_floor := get_header_height() + 1.0 if _header_chrome_visible else 0.0
+	var min_x := maxf(0.0, size.x - CORNER_RESIZE_HIT_SIZE)
+	var min_y := maxf(header_floor, size.y - CORNER_RESIZE_HIT_SIZE)
+	var handle_rect := Rect2(
+		Vector2(min_x, min_y),
+		Vector2(size.x + outer - min_x, size.y + outer - min_y),
 	)
-	var top_hit := TOP_RESIZE_EDGE_HIT_SIZE if _header_chrome_visible else edge_hit
+	if not handle_rect.has_point(local_point):
+		return ResizeEdge.NONE
 	var horz_unlocked := definition == null or not definition.is_horizontal_resize_locked()
-	var near_bottom_corner := local_point.y >= size.y - CORNER_RESIZE_HIT_SIZE
 	if horz_unlocked:
-		var corner_x := CORNER_RESIZE_HIT_SIZE if near_bottom_corner else edge_hit
-		if local_point.x <= corner_x:
-			edges |= ResizeEdge.LEFT
-		elif local_point.x >= size.x - corner_x:
-			edges |= ResizeEdge.RIGHT
-	if local_point.y <= top_hit:
-		edges |= ResizeEdge.TOP
-	elif (
-		local_point.y
-		>= (
-			size.y
-			- (
-				CORNER_RESIZE_HIT_SIZE
-				if (
-					horz_unlocked
-					and (
-						local_point.x <= CORNER_RESIZE_HIT_SIZE
-						or local_point.x >= size.x - CORNER_RESIZE_HIT_SIZE
-					)
-				)
-				else edge_hit
-			)
-		)
-	):
-		edges |= ResizeEdge.BOTTOM
-	return edges
+		return ResizeEdge.RIGHT | ResizeEdge.BOTTOM
+	return ResizeEdge.BOTTOM
 
 
 func is_resize_point(local_point: Vector2) -> bool:
@@ -710,17 +681,10 @@ func _draw_resize_affordance() -> void:
 			draw_rect(Rect2(rx + step.x, ry + step.y, 2, 2), _visual_theme.border_color)
 		return
 	var right_corner := size - Vector2(6.0, 6.0)
-	var left_corner := Vector2(6.0, size.y - 6.0)
 	for offset in [0.0, 5.0, 10.0]:
 		draw_line(
 			right_corner - Vector2(offset, 0.0),
 			right_corner - Vector2(0.0, offset),
-			_visual_theme.muted_text_color,
-			1.0
-		)
-		draw_line(
-			left_corner + Vector2(offset, 0.0),
-			left_corner + Vector2(0.0, -offset),
 			_visual_theme.muted_text_color,
 			1.0
 		)

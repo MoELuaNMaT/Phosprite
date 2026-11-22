@@ -694,10 +694,11 @@ func test_ui1_floating_tools_width_lock_still_allows_vertical_resize_hit_target(
 	var hit_right := module.get_resize_edges(Vector2(134.0, 80.0))
 	check_eq(hit_left, WorkspaceModule.ResizeEdge.NONE, "left edge cannot resize fixed UI1 width")
 	check_eq(hit_right, WorkspaceModule.ResizeEdge.NONE, "right edge cannot resize fixed UI1 width")
-	var hit_bottom := module.get_resize_edges(Vector2(68.0, 158.0))
-	check_true(
-		(hit_bottom & WorkspaceModule.ResizeEdge.BOTTOM) != 0,
-		"bottom edge remains available to resize the toolbar height",
+	var hit_bottom_right := module.get_resize_edges(Vector2(134.0, 158.0))
+	check_eq(
+		hit_bottom_right,
+		WorkspaceModule.ResizeEdge.BOTTOM,
+		"bottom-right handle remains available to resize fixed-width toolbar height",
 	)
 	module.release_external_content()
 	module.free()
@@ -785,33 +786,33 @@ func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() 
 	)
 	check_eq(
 		preview.get_resize_edges(Vector2(2.0, preview.size.y * 0.5)),
-		WorkspaceModule.ResizeEdge.LEFT,
-		"floating panel should expose a left-edge resize target",
+		WorkspaceModule.ResizeEdge.NONE,
+		"floating panel left edge should not intercept resize",
 	)
 	check_eq(
 		preview.get_resize_edges(Vector2(preview.size.x - 2.0, preview.size.y * 0.5)),
-		WorkspaceModule.ResizeEdge.RIGHT,
-		"floating panel should expose a right-edge resize target",
+		WorkspaceModule.ResizeEdge.NONE,
+		"floating panel right edge should not intercept resize",
 	)
 	check_eq(
 		preview.get_resize_edges(Vector2(preview.size.x * 0.5, 2.0)),
-		WorkspaceModule.ResizeEdge.TOP,
-		"floating panel should expose a top-edge resize target",
+		WorkspaceModule.ResizeEdge.NONE,
+		"floating panel top header edge must stay pure drag-move",
 	)
 	check_eq(
 		preview.get_resize_edges(Vector2(preview.size.x * 0.5, preview.size.y - 2.0)),
-		WorkspaceModule.ResizeEdge.BOTTOM,
-		"floating panel should expose a bottom-edge resize target",
+		WorkspaceModule.ResizeEdge.NONE,
+		"floating panel bottom middle edge should not intercept resize",
 	)
 	check_eq(
 		preview.get_resize_edges(Vector2(2.0, preview.size.y - 2.0)),
-		WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
-		"lower-left corner should combine horizontal and vertical resize",
+		WorkspaceModule.ResizeEdge.NONE,
+		"floating panel lower-left corner should not intercept resize",
 	)
 	check_eq(
 		preview.get_resize_edges(preview.size - Vector2(2.0, 2.0)),
 		WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
-		"lower-right corner should combine horizontal and vertical resize",
+		"lower-right handle should resize floating panel",
 	)
 	_free_fixture(fixture)
 

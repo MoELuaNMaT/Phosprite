@@ -80,10 +80,16 @@ func test_ui1_tools_lock_removes_horizontal_hits_but_preserves_vertical_hits() -
 		WorkspaceModule.ResizeEdge.NONE,
 		"right edge is not a horizontal resize target",
 	)
-	var lower_edge := module.get_resize_edges(Vector2(68.0, 158.0))
-	check_true(
-		(lower_edge & WorkspaceModule.ResizeEdge.BOTTOM) != 0,
-		"bottom edge still resizes Tools height",
+	check_eq(
+		module.get_resize_edges(Vector2(68.0, 2.0)),
+		WorkspaceModule.ResizeEdge.NONE,
+		"top header edge never triggers resize",
+	)
+	var corner_handle := module.get_resize_edges(Vector2(134.0, 158.0))
+	check_eq(
+		corner_handle,
+		WorkspaceModule.ResizeEdge.BOTTOM,
+		"bottom-right handle resizes fixed-width Tools height only",
 	)
 	module.release_external_content()
 	module.free()
