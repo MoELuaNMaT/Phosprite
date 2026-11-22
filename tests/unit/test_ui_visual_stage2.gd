@@ -112,9 +112,38 @@ func test_gallery_card_legacy_is_unchanged_and_phosprite_title_is_opt_in() -> vo
 	check_true(card.selection_outline.visible, "multiselect survives theme change")
 	card.apply_stage2_theme(Tokens.TWILIGHT)
 	check_true(card.title_strip.visible, "Twilight Berry also shows the title strip")
+	card.set_selected(false)
+	var thumb_style := card.thumbnail_frame.get_theme_stylebox(&"panel") as StyleBoxTexture
+	check_true(thumb_style != null and thumb_style.texture != null, "thumbnail uses pixel stylebox")
+	if thumb_style != null and thumb_style.texture != null:
+		var thumb_img := thumb_style.texture.get_image()
+		var center := thumb_img.get_pixel(thumb_img.get_width() / 2, thumb_img.get_height() / 2)
+		check_eq(center.a, 0.0, "preview well stays transparent instead of forcing a white fill")
+	for label in [card.title_label, card.size_label, card.modified_label]:
+		var label_style := label.get_theme_stylebox(&"normal")
+		check_true(label_style != null, "card metadata labels override default theme label padding")
+		if label_style != null:
+			check_eq(label_style.content_margin_top, 0.0, "metadata label has zero top margin")
+			check_eq(
+				label_style.content_margin_bottom, 0.0, "metadata label has zero bottom margin"
+			)
+	check_true(
+		card.info_block.get_theme_constant(&"separation") <= 1,
+		"title-to-metadata gap stays compact"
+	)
+	check_eq(
+		card.metadata_box.get_theme_constant(&"separation"),
+		0,
+		"canvas size and modified time rows stack tightly"
+	)
+	card.set_selected(true)
 	card.apply_stage2_theme(Tokens.LEGACY)
 	check_true(not card.title_strip.visible, "reverting restores old card layout")
 	check_true(card.selection_outline.visible, "selection survives revert")
+	check_true(
+		not card.title_label.has_theme_stylebox_override(&"normal"),
+		"reverting clears tight label style override"
+	)
 	card.free()
 
 

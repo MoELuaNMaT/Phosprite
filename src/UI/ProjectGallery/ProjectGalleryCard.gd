@@ -29,6 +29,7 @@ var _legacy_styles: Dictionary = {}
 var _legacy_colors: Dictionary = {}
 var _legacy_thumbnail_filter := CanvasItem.TEXTURE_FILTER_PARENT_NODE
 var _empty_style := StyleBoxEmpty.new()
+var _tight_label_style := StyleBoxEmpty.new()
 
 @onready var visual_root := %VisualRoot as Control
 @onready var content_box := $VisualRoot/Content as VBoxContainer
@@ -48,6 +49,11 @@ var _empty_style := StyleBoxEmpty.new()
 
 
 func _ready() -> void:
+	for style in [_empty_style, _tight_label_style]:
+		style.content_margin_left = 0.0
+		style.content_margin_top = 0.0
+		style.content_margin_right = 0.0
+		style.content_margin_bottom = 0.0
 	_legacy_thumbnail_filter = thumbnail_rect.texture_filter
 	_legacy_styles = {
 		"card": get_theme_stylebox(&"panel"),
@@ -92,6 +98,9 @@ func apply_stage2_theme(mode: StringName) -> void:
 		selection_badge.visible = false
 		title_strip.remove_theme_stylebox_override(&"panel")
 		title_label.remove_theme_color_override(&"font_color")
+		for label in [title_label, size_label, modified_label]:
+			label.remove_theme_stylebox_override(&"normal")
+			label.remove_theme_font_size_override(&"font_size")
 		content_box.offset_left = 8.0
 		content_box.offset_top = 8.0
 		content_box.offset_right = -8.0
@@ -100,21 +109,23 @@ func apply_stage2_theme(mode: StringName) -> void:
 		info_block.add_theme_constant_override(&"separation", 2)
 		metadata_box.add_theme_constant_override(&"separation", 2)
 	else:
-		# Clean minimal grid item: zero outer tile chrome, simple bordered square preview on top,
-		# project name + dimensions + timestamp grouped cleanly below.
+		# Clean minimal grid item: zero outer tile chrome, transparent square preview on top,
+		# project name + dimensions + timestamp tightly stacked below.
 		content_box.offset_left = 0.0
 		content_box.offset_top = 0.0
 		content_box.offset_right = 0.0
 		content_box.offset_bottom = 0.0
-		content_box.add_theme_constant_override(&"separation", Tokens.SPACE_SM)
-		info_block.add_theme_constant_override(&"separation", Tokens.SPACE_XXS)
-		metadata_box.add_theme_constant_override(&"separation", Tokens.SPACE_XXS)
+		content_box.add_theme_constant_override(&"separation", Tokens.SPACE_XS)
+		info_block.add_theme_constant_override(&"separation", 1)
+		metadata_box.add_theme_constant_override(&"separation", 0)
 
 		# Only the thumbnail image is pixel-filtered. UI text remains antialiased.
 		thumbnail_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		title_label.add_theme_font_size_override(&"font_size", 14)
 		size_label.add_theme_font_size_override(&"font_size", 12)
 		modified_label.add_theme_font_size_override(&"font_size", 11)
+		for label in [title_label, size_label, modified_label]:
+			label.add_theme_stylebox_override(&"normal", _tight_label_style)
 		title_strip.add_theme_stylebox_override(&"panel", _empty_style)
 		selection_check.visible = false
 	_sync_stage2_selection()
@@ -140,19 +151,21 @@ func _sync_stage2_selection() -> void:
 		clear_shell.content_margin_bottom = 0.0
 		add_theme_stylebox_override(&"panel", clear_shell)
 
-	# Borderless clean preview well in normal mode; crisp accent outline only when selected.
-	var frame_bg := &"gallery_thumb_selected_bg" if selected else &"gallery_thumb_bg"
-	var frame_border: StringName = &"accent_primary" if selected else &""
-	var frame_style := Chrome.make_panel(
-		_pixel_mode, Tokens.TIER_M, frame_bg, false, frame_border, &""
+	# Transparent preview well so transparent pixel canvases show their true alpha against
+	# the gallery ground instead of a forced white card backing; crisp accent outline on select.
+	var unit := clampi(Global.pixel_ui_unit, 1, 3)
+	var frame_border := (
+		Tokens.color(_pixel_mode, &"accent_primary") if selected else Color.TRANSPARENT
+	)
+	var frame_style := PhospritePixelStyle.make_style(
+		Tokens.TIER_M, Color.TRANSPARENT, frame_border, Color.TRANSPARENT, false, unit
 	)
 	if frame_style != null:
-		var frame_copy := frame_style.duplicate() as StyleBoxTexture
-		frame_copy.content_margin_left = 8.0
-		frame_copy.content_margin_top = 8.0
-		frame_copy.content_margin_right = 8.0
-		frame_copy.content_margin_bottom = 8.0
-		thumbnail_frame.add_theme_stylebox_override(&"panel", frame_copy)
+		frame_style.content_margin_left = 4.0
+		frame_style.content_margin_top = 4.0
+		frame_style.content_margin_right = 4.0
+		frame_style.content_margin_bottom = 4.0
+		thumbnail_frame.add_theme_stylebox_override(&"panel", frame_style)
 
 	# Clean light typography underneath the preview against the darker gallery background
 	title_label.add_theme_color_override(
@@ -225,8 +238,8 @@ func set_card_width(card_width: float) -> void:
 		custom_minimum_size = Vector2(width, width + 54.0)
 		thumbnail_frame.custom_minimum_size = Vector2(legacy_thumb, legacy_thumb)
 		return
-	# Clean grid item: 1:1 preview + 8px gap + title/size/time (56px) = width + 64
-	custom_minimum_size = Vector2(width, width + 66.0)
+	# Clean grid item: 1:1 preview + 4px gap + tight title/size/time (~52px) = width + 58
+	custom_minimum_size = Vector2(width, width + 58.0)
 	thumbnail_frame.custom_minimum_size = Vector2(width, width)
 
 
