@@ -373,3 +373,56 @@ func test_sidebar_labels_and_nested_numeric_prefixes_are_centered_without_colons
 			"nested numeric controls must use the compact right-column width",
 		)
 	tool.free()
+
+
+func test_ipad_brush_popup_hides_pc_file_categories_and_keeps_preview_centered() -> void:
+	var popup_src := FileAccess.get_file_as_string(BRUSH_POPUP_SOURCE)
+	var popup_scene := FileAccess.get_file_as_string("res://src/UI/Buttons/BrushesPopup.tscn")
+	var base_draw_src := FileAccess.get_file_as_string(BASE_DRAW_SOURCE)
+	check_has(
+		popup_src,
+		'return OS.get_name() == "iOS" or Global.single_tool_mode',
+		"iPad brush mode must activate on iOS and single-tool iPad layout",
+	)
+	check_has(
+		popup_src,
+		"func popup_for_button(",
+		"BrushesPopup must size and position itself cleanly for iPad geometric brush switching",
+	)
+	check_has(
+		popup_src,
+		"if is_ipad_brush_mode() and type in [FILE, RANDOM_FILE]:",
+		"persisted PC file brush types must fall back to the default geometric brush on iPad",
+	)
+	check_has(
+		base_draw_src,
+		"Global.brushes_popup.popup_for_button(brush_button, tool_option_container)",
+		"Pencil and Eraser must open the compact iPad brush switcher instead of desktop column math",
+	)
+	check_has(
+		popup_scene,
+		(
+			'[node name="FileLabel" type="Label" parent="Background/Brushes/Categories"'
+			+ " unique_id=1705630477]\nvisible = false"
+		),
+		"File Brushes heading must start hidden in BrushesPopup scene",
+	)
+	var tool := BaseTool.new()
+	var brush_btn := Button.new()
+	brush_btn.name = &"Type"
+	var preview := TextureRect.new()
+	preview.name = &"Texture"
+	brush_btn.add_child(preview)
+	tool.add_child(brush_btn)
+	tool._apply_stacked_option_layout(tool)
+	check_eq(
+		brush_btn.size_flags_horizontal,
+		Control.SIZE_SHRINK_CENTER,
+		"Brush preview button must stay centered instead of stretching across the sidebar",
+	)
+	check_eq(
+		brush_btn.custom_minimum_size,
+		Vector2(32.0, 32.0),
+		"Brush preview button must keep its 32x32 square bounds",
+	)
+	tool.free()

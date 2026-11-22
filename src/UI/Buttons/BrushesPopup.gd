@@ -51,23 +51,35 @@ func _ready() -> void:
 	_sync_category_visibility()
 
 
+static func is_ipad_brush_mode() -> bool:
+	return OS.get_name() == "iOS" or Global.single_tool_mode
+
+
 func _sync_category_visibility() -> void:
 	var cats := get_node_or_null("Background/Brushes/Categories")
 	if cats == null:
 		return
-	var is_ios := OS.get_name() == "iOS"
-	var proj_container := cats.get_node_or_null("ProjectBrushContainer") as Control
+	var hide_file_brushes := is_ipad_brush_mode()
+	var default_container := cats.get_node_or_null("DefaultBrushContainer") as GridContainer
+	var proj_container := cats.get_node_or_null("ProjectBrushContainer") as GridContainer
 	var proj_label := cats.get_node_or_null("ProjectLabel") as Control
-	var file_container := cats.get_node_or_null("FileBrushContainer") as Control
+	var file_container := cats.get_node_or_null("FileBrushContainer") as GridContainer
 	var file_label := cats.get_node_or_null("FileLabel") as Control
-	var rand_container := cats.get_node_or_null("RandomFileBrushContainer") as Control
+	var rand_container := cats.get_node_or_null("RandomFileBrushContainer") as GridContainer
 	var rand_label := cats.get_node_or_null("RandomFileLabel") as Control
 	var default_label := cats.get_node_or_null("Label") as Control
 	var has_proj := proj_container != null and proj_container.get_child_count() > 0
-	var has_file := not is_ios and file_container != null and file_container.get_child_count() > 0
-	var has_rand := not is_ios and rand_container != null and rand_container.get_child_count() > 0
+	var has_file := (
+		not hide_file_brushes and file_container != null and file_container.get_child_count() > 0
+	)
+	var has_rand := (
+		not hide_file_brushes and rand_container != null and rand_container.get_child_count() > 0
+	)
+	if default_container != null:
+		default_container.columns = 4
 	if proj_container != null:
 		proj_container.visible = has_proj
+		proj_container.columns = 4
 	if proj_label != null:
 		proj_label.visible = has_proj
 	if file_container != null:
@@ -81,7 +93,63 @@ func _sync_category_visibility() -> void:
 	if default_label != null:
 		default_label.visible = has_proj or has_file or has_rand
 	if not has_proj and not has_file and not has_rand:
-		size = Vector2i(176, 56)
+		size = Vector2i(180, 56)
+
+
+func popup_for_button(anchor_button: Control, fallback_container: Control = null) -> void:
+	_sync_category_visibility()
+	var cats := get_node_or_null("Background/Brushes/Categories")
+	if cats == null:
+		return
+	var proj_container := cats.get_node_or_null("ProjectBrushContainer") as GridContainer
+	var file_container := cats.get_node_or_null("FileBrushContainer") as GridContainer
+	var rand_container := cats.get_node_or_null("RandomFileBrushContainer") as GridContainer
+	var has_proj := proj_container != null and proj_container.visible
+	var has_file := file_container != null and file_container.visible
+	var has_rand := rand_container != null and rand_container.visible
+	var anchor_rect := (
+		anchor_button.get_global_rect() if is_instance_valid(anchor_button) else Rect2()
+	)
+	var pop_position := Vector2(anchor_rect.position.x, anchor_rect.end.y + 4.0)
+	var pop_size := Vector2(180.0, 56.0)
+	if has_file or has_rand:
+		var size_x := (
+			maxf(fallback_container.size.x, 180.0)
+			if is_instance_valid(fallback_container)
+			else 220.0
+		)
+		var size_y := (
+			maxf(fallback_container.size.y * 0.6, 160.0)
+			if is_instance_valid(fallback_container)
+			else 240.0
+		)
+		var cols := maxi(1, int(size_x / 36.0) - 1)
+		for child in cats.get_children():
+			if child is GridContainer:
+				child.columns = cols
+		pop_size = Vector2(size_x, size_y)
+	else:
+		for child in cats.get_children():
+			if child is GridContainer:
+				child.columns = 4
+		if has_proj:
+			var proj_rows := int(ceil(float(proj_container.get_child_count()) / 4.0))
+			pop_size = Vector2(180.0, clampf(116.0 + float(proj_rows) * 40.0, 156.0, 260.0))
+		else:
+			pop_size = Vector2(180.0, 56.0)
+	var vp := get_tree().root if get_tree() != null else null
+	if vp != null:
+		var vp_rect := vp.get_visible_rect()
+		pop_position.x = clampf(
+			pop_position.x,
+			vp_rect.position.x + 8.0,
+			maxf(vp_rect.position.x + 8.0, vp_rect.end.x - pop_size.x - 8.0)
+		)
+		if pop_position.y + pop_size.y > vp_rect.end.y - 8.0:
+			pop_position.y = maxf(
+				vp_rect.position.y + 8.0, anchor_rect.position.y - pop_size.y - 4.0
+			)
+	popup_on_parent(Rect2(pop_position, pop_size))
 
 
 func _add_default_brush(
@@ -118,6 +186,8 @@ static func create_button(image: Image) -> Node:
 
 
 static func add_file_brush(images: Array, hint := "") -> void:
+	if is_ipad_brush_mode():
+		return
 	var button := create_button(images[0])
 	button.brush.type = FILE if images.size() == 1 else RANDOM_FILE
 	button.brush.image = images[0]
@@ -168,6 +238,8 @@ func get_brush(type: int, index: int) -> Brush:
 				return child.brush
 		return Brushes.get_default_brush()
 
+	if is_ipad_brush_mode() and type in [FILE, RANDOM_FILE]:
+		return get_brush(PIXEL, 0)
 	match type:
 		CUSTOM:
 			container = get_node("Background/Brushes/Categories/ProjectBrushContainer")

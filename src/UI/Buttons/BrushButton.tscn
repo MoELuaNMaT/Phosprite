@@ -24,6 +24,7 @@ button_mask = 7
 script = ExtResource("2")
 
 [node name="BrushTexture" type="TextureRect" parent="." unique_id=1080571876]
+texture_filter = 1
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 0
 anchor_right = 1.0

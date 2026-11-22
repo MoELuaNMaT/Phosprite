@@ -1,6 +1,6 @@
 extends BaseButton
 
-var brush = Global.brushes_popup.Brush.new()
+var brush := Brushes.Brush.new()
 
 
 func _ready() -> void:

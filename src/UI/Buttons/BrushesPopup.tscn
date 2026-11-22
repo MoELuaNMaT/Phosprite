@@ -23,6 +23,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Label" type="Label" parent="Background/Brushes/Categories" unique_id=454992811]
+visible = false
 layout_mode = 2
 text = "Default Brushes"
 
@@ -49,9 +50,11 @@ anchor_bottom = 1.0
 offset_top = -4.0
 
 [node name="ProjectBrushContainer" type="GridContainer" parent="Background/Brushes/Categories" unique_id=2109562622]
+visible = false
 layout_mode = 2
 
 [node name="FileLabel" type="Label" parent="Background/Brushes/Categories" unique_id=1705630477]
+visible = false
 layout_mode = 2
 text = "File Brushes"
 
@@ -63,9 +66,11 @@ anchor_bottom = 1.0
 offset_top = -4.0
 
 [node name="FileBrushContainer" type="GridContainer" parent="Background/Brushes/Categories" unique_id=775454782]
+visible = false
 layout_mode = 2
 
 [node name="RandomFileLabel" type="Label" parent="Background/Brushes/Categories" unique_id=928533361]
+visible = false
 layout_mode = 2
 text = "Random File Brushes"
 
@@ -77,4 +82,5 @@ anchor_bottom = 1.0
 offset_top = -4.0
 
 [node name="RandomFileBrushContainer" type="GridContainer" parent="Background/Brushes/Categories" unique_id=546315926]
+visible = false
 layout_mode = 2

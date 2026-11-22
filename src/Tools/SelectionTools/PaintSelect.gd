@@ -274,18 +274,9 @@ func _on_draw_mode_item_selected(index: int) -> void:
 func _on_BrushType_pressed() -> void:
 	if not Global.brushes_popup.brush_selected.is_connected(_on_Brush_selected):
 		Global.brushes_popup.brush_selected.connect(_on_Brush_selected, CONNECT_ONE_SHOT)
-	# Now we set position and columns
-	var tool_option_container := get_node("../../") as Control
-	var brush_button := $Brush/Type as Button
-	var pop_position := Vector2i(brush_button.global_position) + Vector2i(0, brush_button.size.y)
-	var size_x := tool_option_container.size.x
-	var size_y: float = tool_option_container.size.y - $Brush.position.y - $Brush.size.y
-	var columns = int(size_x / 36) - 1  # 36 is the size of BrushButton.tscn
-	var categories = Global.brushes_popup.get_node("Background/Brushes/Categories")
-	for child in categories.get_children():
-		if child is GridContainer:
-			child.columns = columns
-	Global.brushes_popup.popup_on_parent(Rect2(pop_position, Vector2(size_x, size_y)))
+	var tool_option_container := get_node_or_null("../../") as Control
+	var brush_button := $Brush/Type as Control
+	Global.brushes_popup.popup_for_button(brush_button, tool_option_container)
 
 
 func _on_Brush_selected(brush: Brushes.Brush) -> void:

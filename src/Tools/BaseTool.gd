@@ -133,6 +133,18 @@ func _configure_sidebar_label(label: Label) -> void:
 
 
 func _configure_sidebar_button(button: Button) -> void:
+	# Keep embedded brush preview buttons (Brush/Type) centered at their exact 32x32 square size.
+	if (
+		button.text.is_empty()
+		and button.icon == null
+		and (
+			button.get_node_or_null(^"Texture") is TextureRect
+			or button.get_node_or_null(^"Texture2D") is TextureRect
+		)
+	):
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		button.custom_minimum_size = Vector2(32.0, 32.0)
+		return
 	# Icon-only mode buttons should not inherit the wide text-button minimum.
 	# The shrink flag prevents VBox containers from stretching them horizontally.
 	if button.button_group != null and button.icon != null and button.text.is_empty():

@@ -289,7 +289,8 @@ func _ready() -> void:
 	Global.current_project.layers.append(PixelLayer.new(Global.current_project))
 	Global.current_project.frames.append(Global.current_project.new_empty_frame())
 
-	Import.import_brushes(Global.path_join_array(Global.data_directories, "Brushes"))
+	if not Brushes.is_ipad_brush_mode():
+		Import.import_brushes(Global.path_join_array(Global.data_directories, "Brushes"))
 	Import.import_patterns(Global.path_join_array(Global.data_directories, "Patterns"))
 
 	quit_and_save_dialog.add_button("Exit without saving", false, "ExitWithoutSaving")
