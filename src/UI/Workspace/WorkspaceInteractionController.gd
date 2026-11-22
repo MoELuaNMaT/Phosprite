@@ -12,15 +12,15 @@ const InputAdapter := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 ## the central Canvas input surface.
 
 const TOUCH_DIRECT_DRAG_DISTANCE := 4.0
-const TIMELINE_HORIZONTAL_CANCEL_DISTANCE := 12.0
+const TIMELINE_HORIZONTAL_CANCEL_DISTANCE := 24.0
 const TIMELINE_DIRECT_RESIZE_DISTANCE := 8.0
 const TIMELINE_VERTICAL_INTENT_RATIO := 1.15
 const TIMELINE_PENCIL_RESIZE_DISTANCE := 6.0
-const TIMELINE_FINGER_RESIZE_DISTANCE := 16.0
-const TIMELINE_FINGER_VERTICAL_INTENT_RATIO := 1.6
-const TIMELINE_FINGER_PALM_REST_MAX_MSEC := 250
-const TIMELINE_PENCIL_COOLDOWN_MSEC := InputAdapter.PENCIL_COOLDOWN_MSEC
-const TIMELINE_PALM_MAJOR_RADIUS_PT := 35.0
+const TIMELINE_FINGER_RESIZE_DISTANCE := 10.0
+const TIMELINE_FINGER_VERTICAL_INTENT_RATIO := 1.25
+const TIMELINE_FINGER_PALM_REST_MAX_MSEC := 600
+const TIMELINE_PENCIL_COOLDOWN_MSEC := 200
+const TIMELINE_PALM_MAJOR_RADIUS_PT := 38.0
 
 var manager: WorkspaceModuleManager
 var surface: WorkspaceSurface
@@ -41,6 +41,8 @@ var _resize_edges := WorkspaceModule.ResizeEdge.NONE
 var _resize_is_docked := false
 var _resize_timeline_mode := -1
 var _resize_timeline_project: Project
+var _resize_transient_store: WorkspaceLayoutStore
+var _drag_transient_store: WorkspaceLayoutStore
 
 var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
@@ -467,11 +469,9 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 			return
 		if timeline_header_resize_intent_for_pointer(delta, _pending_touch_is_pencil, elapsed_msec):
 			var module_id := _pending_touch_module_id
-			var start_pointer := _pending_touch_start_pointer
 			var touch_index := _pending_touch_index
 			_clear_pending_touch()
-			if _begin_resize(module_id, start_pointer, touch_index, WorkspaceModule.ResizeEdge.TOP):
-				_update_resize(pointer)
+			_begin_resize(module_id, pointer, touch_index, WorkspaceModule.ResizeEdge.TOP)
 			get_viewport().set_input_as_handled()
 			return
 		if absf(delta.x) > TIMELINE_HORIZONTAL_CANCEL_DISTANCE and absf(delta.x) > absf(delta.y):
@@ -596,6 +596,12 @@ func _handle_screen_touch(
 			module.accept_event()
 
 
+func _resolve_layout_store() -> WorkspaceLayoutStore:
+	if is_instance_valid(editor_migration) and is_instance_valid(editor_migration.layout_store):
+		return editor_migration.layout_store
+	return null
+
+
 func _begin_drag(module_id: StringName, pointer: Vector2, touch_index: int) -> bool:
 	if _drag_module_id != &"" or _resize_module_id != &"":
 		return false
@@ -606,12 +612,20 @@ func _begin_drag(module_id: StringName, pointer: Vector2, touch_index: int) -> b
 		return false
 	_drag_module_id = module_id
 	_drag_touch_index = touch_index
+	_drag_transient_store = _resolve_layout_store()
+	if _drag_transient_store != null:
+		_drag_transient_store.begin_transient_update()
 	return true
 
 
 func _clear_drag() -> void:
+	var store := _drag_transient_store
+	_drag_transient_store = null
 	_drag_module_id = &""
 	_drag_touch_index = -1
+	if is_instance_valid(store):
+		store.end_transient_update()
+		store.save_current_layout()
 
 
 func _begin_resize(
@@ -634,6 +648,9 @@ func _begin_resize(
 	_resize_is_docked = placement == WorkspaceSurface.Placement.DOCKED
 	_resize_timeline_mode = -1
 	_resize_timeline_project = null
+	_resize_transient_store = _resolve_layout_store()
+	if _resize_transient_store != null:
+		_resize_transient_store.begin_transient_update()
 	if module_id == Builtins.TIMELINE_ID and is_instance_valid(Global.animation_timeline):
 		_resize_timeline_mode = Global.animation_timeline.get_timeline_mode()
 		_resize_timeline_project = Global.current_project
@@ -677,10 +694,18 @@ func _finish_resize() -> void:
 				else Global.current_project
 			)
 			Global.animation_timeline.store_workspace_height(final_height, mode, project)
+	var store := _resize_transient_store
+	_resize_transient_store = null
 	_clear_resize_state()
+	if is_instance_valid(store):
+		store.end_transient_update()
+		store.save_current_layout()
 
 
 func _clear_resize_state() -> void:
+	if is_instance_valid(_resize_transient_store):
+		_resize_transient_store.end_transient_update()
+	_resize_transient_store = null
 	_resize_module_id = &""
 	_resize_touch_index = -1
 	_resize_start_pointer = Vector2.ZERO

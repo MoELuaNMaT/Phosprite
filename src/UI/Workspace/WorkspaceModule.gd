@@ -345,6 +345,23 @@ func is_timeline_resize_grip_point(local_point: Vector2) -> bool:
 	return rect.has_area() and rect.has_point(local_point)
 
 
+func _point_hits_interactive_control(root: Node, module_local_point: Vector2) -> bool:
+	if root is Control:
+		var ctrl := root as Control
+		if not ctrl.visible:
+			return false
+		if ctrl is BaseButton or ctrl is LineEdit or ctrl is Range:
+			var inv := get_global_transform_with_canvas().affine_inverse()
+			var g_rect := ctrl.get_global_rect()
+			var local_rect := Rect2(inv * g_rect.position, g_rect.size)
+			if local_rect.has_point(module_local_point):
+				return true
+	for child in root.get_children():
+		if _point_hits_interactive_control(child, module_local_point):
+			return true
+	return false
+
+
 func is_timeline_header_resize_point(local_point: Vector2) -> bool:
 	if get_module_id() != TIMELINE_ID or _content_collapsed or not _header_chrome_visible:
 		return false
@@ -357,9 +374,11 @@ func is_timeline_header_resize_point(local_point: Vector2) -> bool:
 		or local_point.y > get_header_height()
 	):
 		return false
-	if get_header_accessory_rect().has_point(local_point):
+	if is_collapse_point(local_point):
 		return false
-	return not is_collapse_point(local_point)
+	if is_instance_valid(_header_accessory) and get_header_accessory_rect().has_point(local_point):
+		return not _point_hits_interactive_control(_header_accessory, local_point)
+	return true
 
 
 func set_position_adjustment_enabled(enabled: bool) -> void:

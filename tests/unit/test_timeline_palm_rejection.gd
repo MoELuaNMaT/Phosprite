@@ -45,7 +45,7 @@ func test_timeline_full_header_drag_and_palm_rejection_gates() -> void:
 		not Interaction.timeline_touch_allowed_for_resize(
 			CanvasInputAdapter.PointerKind.DIRECT, 40.0, false
 		),
-		"large-radius palm contact (>35pt) is rejected",
+		"large-radius palm contact (>38pt) is rejected",
 	)
 	check_true(
 		Interaction.timeline_touch_allowed_for_resize(
@@ -58,15 +58,15 @@ func test_timeline_full_header_drag_and_palm_rejection_gates() -> void:
 		"Apple Pencil triggers resize after 6px vertical motion",
 	)
 	check_true(
-		not Interaction.timeline_header_resize_intent_for_pointer(Vector2(1.0, -10.0), false, 80),
-		"finger requires 16px vertical intent",
+		not Interaction.timeline_header_resize_intent_for_pointer(Vector2(1.0, -6.0), false, 80),
+		"finger requires 10px vertical intent",
 	)
 	check_true(
-		not Interaction.timeline_header_resize_intent_for_pointer(Vector2(1.0, -20.0), false, 300),
-		"resting palm (>250ms before drifting) is rejected",
+		not Interaction.timeline_header_resize_intent_for_pointer(Vector2(1.0, -20.0), false, 700),
+		"resting palm (>600ms before drifting) is rejected",
 	)
 	check_true(
-		Interaction.timeline_header_resize_intent_for_pointer(Vector2(2.0, -18.0), false, 120),
+		Interaction.timeline_header_resize_intent_for_pointer(Vector2(4.0, -12.0), false, 300),
 		"deliberate quick vertical finger drag triggers resize",
 	)
 
