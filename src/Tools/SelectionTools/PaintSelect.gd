@@ -333,7 +333,14 @@ func update_brush() -> void:
 	_indicator = _create_brush_indicator()
 	_polylines = _create_polylines(_indicator)
 
-	$Brush/Type/Texture2D.texture = _brush_texture
+	var preview_rect := $Brush/Type/Texture2D as TextureRect
+	preview_rect.visible = true
+	preview_rect.modulate = Color.WHITE
+	preview_rect.self_modulate = Color.WHITE
+	preview_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	preview_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview_rect.texture = _brush_texture
 
 
 func _create_blended_brush_image(image: Image) -> Image:

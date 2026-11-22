@@ -23,7 +23,11 @@ anti_aliasing = false
 
 [sub_resource type="StyleBoxFlat" id="2"]
 bg_color = Color(1, 1, 1, 1)
-border_color = Color(1, 1, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.172549, 0.164706, 0.160784, 1)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
@@ -70,6 +74,7 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 0
+focus_mode = 0
 tooltip_text = "Select a brush"
 mouse_default_cursor_shape = 2
 theme_override_styles/normal = SubResource("1")
@@ -85,6 +90,7 @@ offset_left = 4.0
 offset_top = 4.0
 offset_right = 28.0
 offset_bottom = 28.0
+mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 

@@ -426,3 +426,79 @@ func test_ipad_brush_popup_hides_pc_file_categories_and_keeps_preview_centered()
 		"Brush preview button must keep its 32x32 square bounds",
 	)
 	tool.free()
+
+
+func test_brush_preview_buttons_render_black_scaled_glyph_and_keep_dark_border_on_focus() -> void:
+	for scene_path in [
+		"res://src/Tools/DesignTools/Pencil.tscn",
+		"res://src/Tools/DesignTools/Eraser.tscn",
+		"res://src/Tools/DesignTools/RectangleTool.tscn",
+		"res://src/Tools/DesignTools/EllipseTool.tscn",
+		"res://src/Tools/DesignTools/LineTool.tscn",
+	]:
+		var tool := (load(scene_path) as PackedScene).instantiate() as BaseDrawTool
+		var brush_btn := tool.get_node(^"Brush/Type") as Button
+		var preview_rect := tool.get_node(^"Brush/Type/Texture") as TextureRect
+		check_eq(
+			brush_btn.focus_mode,
+			Control.FOCUS_NONE,
+			(
+				"%s brush button must disable focus so tapping never paints a white focus overlay"
+				% scene_path
+			),
+		)
+		for style_name in [&"normal", &"hover", &"pressed", &"disabled", &"focus"]:
+			var sb := brush_btn.get_theme_stylebox(style_name) as StyleBoxFlat
+			check_true(
+				sb != null,
+				"%s brush button %s style must be StyleBoxFlat" % [scene_path, style_name]
+			)
+			if sb != null:
+				check_eq(
+					sb.border_width_left,
+					2,
+					"%s brush button %s style must keep a 2px border" % [scene_path, style_name],
+				)
+				check_true(
+					sb.border_color.get_luminance() < 0.3,
+					(
+						"%s brush button %s style must keep a dark ink border"
+						% [scene_path, style_name]
+					),
+				)
+		tool._brush = Brushes.get_default_brush()
+		tool._brush_size = 1
+		tool._refresh_default_brush_preview()
+		check_true(preview_rect.visible, "%s brush preview rect must be visible" % scene_path)
+		check_eq(
+			preview_rect.size,
+			Vector2(24.0, 24.0),
+			"%s brush preview rect must be 24x24" % scene_path
+		)
+		check_eq(
+			preview_rect.modulate,
+			Color.WHITE,
+			"%s brush preview rect must stay un-tinted" % scene_path
+		)
+		check_true(
+			preview_rect.texture != null, "%s brush preview texture must be assigned" % scene_path
+		)
+		var img_small := preview_rect.texture.get_image()
+		check_eq(
+			img_small.get_pixel(img_small.get_width() / 2, img_small.get_height() / 2),
+			Color.BLACK,
+			"%s 1px brush preview must draw black in the center" % scene_path,
+		)
+		tool._brush_size = 10
+		tool._refresh_default_brush_preview()
+		var img_large := preview_rect.texture.get_image()
+		check_true(
+			img_large.get_width() > img_small.get_width(),
+			"%s 10px brush preview must scale with brush size" % scene_path,
+		)
+		check_eq(
+			img_large.get_pixel(img_large.get_width() / 2, img_large.get_height() / 2),
+			Color.BLACK,
+			"%s 10px brush preview must draw black in the center" % scene_path,
+		)
+		tool.free()
