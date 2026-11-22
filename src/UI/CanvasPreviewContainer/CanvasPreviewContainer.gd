@@ -532,7 +532,7 @@ func _refresh_preview_pixel_chrome() -> void:
 					play_tr.texture = q_play
 					play_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 					play_tr.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-					play_tr.modulate = Color.WHITE
+					play_tr.modulate = Stage4.icon_tint_for_button(mode, play_button)
 					play_tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			elif play_tr.has_meta(&"phosprite_legacy_play_tex"):
 				play_tr.texture = play_tr.get_meta(&"phosprite_legacy_play_tex") as Texture2D

@@ -184,13 +184,13 @@ func change_icon_colors() -> void:
 		if node is TextureRect or node is Sprite2D or node is NinePatchRect:
 			node.modulate = (
 				Color.WHITE
-				if node.has_meta(&"phosprite_q_icon_active")
+				if node.has_meta(&"phosprite_precolored_icon")
 				else Global.modulate_icon_color
 			)
 		elif node is TextureButton:
 			node.modulate = (
 				Color.WHITE
-				if node.has_meta(&"phosprite_q_icon_active")
+				if node.has_meta(&"phosprite_precolored_icon")
 				else Global.modulate_icon_color
 			)
 			if node.disabled and not node is RestoreDefaultButton:
@@ -202,11 +202,17 @@ func change_icon_colors() -> void:
 					texture = child
 					break
 			if is_instance_valid(texture):
-				texture.modulate = (
-					Color.WHITE
-					if texture.has_meta(&"phosprite_q_icon_active")
-					else Global.modulate_icon_color
-				)
+				if texture.has_meta(&"phosprite_precolored_icon"):
+					texture.modulate = Color.WHITE
+				else:
+					var tint := Global.modulate_icon_color
+					if node.toggle_mode and node.button_pressed:
+						var mode := PixelTokens.detect_mode(
+							Global.theme_base_color, Global.theme_accent_color
+						)
+						if mode != PixelTokens.LEGACY:
+							tint = PixelTokens.color(mode, &"text_on_accent")
+					texture.modulate = tint
 				if node.disabled:
 					texture.modulate.a = 0.5
 

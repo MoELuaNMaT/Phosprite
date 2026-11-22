@@ -127,7 +127,7 @@ func _refresh_stage4_visuals() -> void:
 			if q_tex != null:
 				layer_type_texture_rect.set_meta(&"phosprite_q_icon_active", true)
 				layer_type_texture_rect.texture = q_tex
-				layer_type_texture_rect.modulate = Color.WHITE
+				layer_type_texture_rect.modulate = PhospriteTokens.color(mode, &"text_muted")
 				layer_type_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		layer_type_texture_rect.remove_meta(&"phosprite_q_icon_active")
@@ -212,7 +212,12 @@ func _set_side_q_icon(tex_rect: TextureRect, icon_id: StringName) -> void:
 	tex_rect.texture = q_tex
 	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	tex_rect.modulate = Color.WHITE
+	var mode := Stage4.active_mode()
+	tex_rect.modulate = (
+		PhospriteTokens.color(mode, &"text_primary")
+		if mode != PhospriteTokens.LEGACY
+		else Global.modulate_icon_color
+	)
 	tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 

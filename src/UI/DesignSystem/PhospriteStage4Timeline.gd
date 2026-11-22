@@ -365,6 +365,7 @@ static func apply_layer_icon(tex_rect: TextureRect, kind: StringName, mode: Stri
 	var tex := _make_crisp_layer_icon(kind, mode)
 	if tex != null:
 		tex_rect.set_meta(Q_ACTIVE_META, true)
+		tex_rect.set_meta(&"phosprite_precolored_icon", true)
 		tex_rect.texture = tex
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED

@@ -957,7 +957,8 @@ func _apply_family_button_icon(button: BaseButton, tool_name: StringName, tool: 
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 			icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			icon_rect.modulate = Color(1.0, 1.0, 1.0, alpha)
+			var tint := Stage4.icon_tint_for_button(mode, button)
+			icon_rect.modulate = Color(tint.r, tint.g, tint.b, alpha)
 			return
 		var ink := _adaptive_icon_color(mode)
 		icon_rect.texture = tool.icon
@@ -987,7 +988,7 @@ func _refresh_ios_family_menu_icons() -> void:
 				var q_tex := PhospriteQIcons.tool_icon_1x(tool_name)
 				if q_tex != null:
 					menu.set_item_icon(index, q_tex)
-					menu.set_item_icon_modulate(index, Color.WHITE)
+					menu.set_item_icon_modulate(index, PhospriteTokens.color(mode, &"text_primary"))
 				else:
 					menu.set_item_icon(index, tool.icon)
 					menu.set_item_icon_modulate(index, _adaptive_icon_color(mode))

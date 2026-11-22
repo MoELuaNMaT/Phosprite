@@ -231,7 +231,7 @@ func _refresh_phosprite_global_options() -> void:
 				tex_rect.texture = q_tex
 				tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-				tex_rect.modulate = Color.WHITE
+				tex_rect.modulate = Stage4.icon_tint_for_button(mode, btn as Button)
 				tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		elif tex_rect.has_meta(LEGACY_GTO_TEX):
 			tex_rect.texture = tex_rect.get_meta(LEGACY_GTO_TEX) as Texture2D

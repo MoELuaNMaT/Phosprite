@@ -64,10 +64,10 @@ static func apply_to_theme(theme: Theme, mode: StringName, pixel_unit := 2) -> v
 	var chevron := QIcons.compact_icon_1x(&"chevron_down")
 	if chevron != null:
 		theme.set_icon(&"arrow", &"OptionButton", chevron)
-		# Keep colored pixel chevron un-tinted by monochrome icon modulation.
-		theme.set_color(&"icon_normal_color", &"OptionButton", Color.WHITE)
-		theme.set_color(&"icon_hover_color", &"OptionButton", Color.WHITE)
-		theme.set_color(&"icon_focus_color", &"OptionButton", Color.WHITE)
+		# Tint monochrome pixel chevron with theme ink for crisp light/dark contrast.
+		theme.set_color(&"icon_normal_color", &"OptionButton", text)
+		theme.set_color(&"icon_hover_color", &"OptionButton", text)
+		theme.set_color(&"icon_focus_color", &"OptionButton", text)
 
 	# Pixel CheckBox & Radio icons (crisp integer squares, zero vector curves)
 	var chk_border := Tokens.color(mode, &"checkbox_border")

@@ -87,7 +87,7 @@ func _refresh_stage4_visuals() -> void:
 			if q_new != null:
 				add_icon.set_meta(&"phosprite_q_icon_active", true)
 				add_icon.texture = q_new
-				add_icon.modulate = Color.WHITE
+				add_icon.modulate = Stage4.icon_tint_for_button(mode, add_layer_button)
 				add_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		elif add_icon.has_meta(&"phosprite_legacy_strip_add"):
 			add_icon.texture = add_icon.get_meta(&"phosprite_legacy_strip_add") as Texture2D
@@ -383,7 +383,9 @@ func _sync_visibility_icon(layer: BaseLayer) -> void:
 		if q_eye != null:
 			layer_visibility_icon.set_meta(&"phosprite_q_icon_active", true)
 			layer_visibility_icon.texture = q_eye
-			layer_visibility_icon.modulate = Color.WHITE
+			layer_visibility_icon.modulate = Stage4.icon_tint_for_button(
+				Stage4.active_mode(), layer_visibility_button
+			)
 			layer_visibility_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		layer_visibility_icon.remove_meta(&"phosprite_q_icon_active")
