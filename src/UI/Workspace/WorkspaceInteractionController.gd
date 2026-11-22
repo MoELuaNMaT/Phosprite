@@ -20,6 +20,7 @@ const TIMELINE_FINGER_RESIZE_DISTANCE := 16.0
 const TIMELINE_FINGER_VERTICAL_INTENT_RATIO := 1.6
 const TIMELINE_FINGER_PALM_REST_MAX_MSEC := 250
 const TIMELINE_PENCIL_COOLDOWN_MSEC := InputAdapter.PENCIL_COOLDOWN_MSEC
+const TIMELINE_PALM_MAJOR_RADIUS_PT := 35.0
 
 var manager: WorkspaceModuleManager
 var surface: WorkspaceSurface
@@ -233,7 +234,7 @@ static func timeline_touch_allowed_for_resize(
 		return true
 	if pencil_active_or_cooldown:
 		return false
-	if InputAdapter.is_palm_contact(pointer_kind, major_radius):
+	if major_radius > TIMELINE_PALM_MAJOR_RADIUS_PT:
 		return false
 	return true
 

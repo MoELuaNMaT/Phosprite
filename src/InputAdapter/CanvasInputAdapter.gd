@@ -25,7 +25,6 @@ const LONG_PRESS_INDICATOR_CANVAS_LAYER := 100
 const TWO_FINGER_TAP_MAX_MS := 300
 const TWO_FINGER_TAP_SLOP_PX := 10.0
 const PENCIL_COOLDOWN_MSEC := 500
-const PALM_MAJOR_RADIUS_PT := 35.0
 
 # P1-C2 uses small acquisition-only dead zones. Once a degree of freedom activates,
 # navigation is direct from the fixed pair baseline: no inertia, no smoothing tween
@@ -79,10 +78,6 @@ static func is_in_pencil_cooldown(now_msec: int, cooldown_msec: int = PENCIL_COO
 	if _shared_last_pencil_msec < 0 or now_msec < _shared_last_pencil_msec:
 		return false
 	return now_msec - _shared_last_pencil_msec <= cooldown_msec
-
-
-static func is_palm_contact(kind: int, major_radius: float) -> bool:
-	return kind != PointerKind.PENCIL and major_radius > PALM_MAJOR_RADIUS_PT
 
 
 static func peek_touch_pointer_info(touch_id: int) -> Dictionary:
