@@ -345,6 +345,23 @@ func is_timeline_resize_grip_point(local_point: Vector2) -> bool:
 	return rect.has_area() and rect.has_point(local_point)
 
 
+func is_timeline_header_resize_point(local_point: Vector2) -> bool:
+	if get_module_id() != TIMELINE_ID or _content_collapsed or not _header_chrome_visible:
+		return false
+	if is_timeline_resize_grip_point(local_point):
+		return true
+	if (
+		local_point.x < 0.0
+		or local_point.x > size.x
+		or local_point.y < 0.0
+		or local_point.y > get_header_height()
+	):
+		return false
+	if get_header_accessory_rect().has_point(local_point):
+		return false
+	return not is_collapse_point(local_point)
+
+
 func set_position_adjustment_enabled(enabled: bool) -> void:
 	if _position_adjustment_enabled == enabled:
 		return

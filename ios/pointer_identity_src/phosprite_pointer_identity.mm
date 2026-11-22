@@ -48,6 +48,7 @@ void phosprite_touches_began(id p_self, SEL p_cmd, NSSet *p_touches, UIEvent *p_
 
 void PhospritePointerIdentity::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("consume_begin_info", "touch_id"), &PhospritePointerIdentity::consume_begin_info);
+	ClassDB::bind_method(D_METHOD("peek_begin_info", "touch_id"), &PhospritePointerIdentity::peek_begin_info);
 	ClassDB::bind_method(D_METHOD("clear_pending"), &PhospritePointerIdentity::clear_pending);
 
 	BIND_ENUM_CONSTANT(POINTER_UNKNOWN);
@@ -67,6 +68,17 @@ Dictionary PhospritePointerIdentity::consume_begin_info(int p_touch_id) {
 	}
 	BeginInfo info = begin_info[p_touch_id];
 	has_begin_info[p_touch_id] = false;
+	result["kind"] = info.kind;
+	result["major_radius"] = info.major_radius;
+	return result;
+}
+
+Dictionary PhospritePointerIdentity::peek_begin_info(int p_touch_id) const {
+	Dictionary result;
+	if (p_touch_id < 0 || p_touch_id >= MAX_TOUCHES || !has_begin_info[p_touch_id]) {
+		return result;
+	}
+	BeginInfo info = begin_info[p_touch_id];
 	result["kind"] = info.kind;
 	result["major_radius"] = info.major_radius;
 	return result;

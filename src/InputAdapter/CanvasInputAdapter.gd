@@ -24,6 +24,8 @@ const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2
 const LONG_PRESS_INDICATOR_CANVAS_LAYER := 100
 const TWO_FINGER_TAP_MAX_MS := 300
 const TWO_FINGER_TAP_SLOP_PX := 10.0
+const PENCIL_COOLDOWN_MSEC := 500
+const PALM_MAJOR_RADIUS_PT := 35.0
 
 # P1-C2 uses small acquisition-only dead zones. Once a degree of freedom activates,
 # navigation is direct from the fixed pair baseline: no inertia, no smoothing tween
@@ -32,6 +34,9 @@ const NAVIGATION_PAN_DEAD_ZONE_PX := 0.75
 const NAVIGATION_PINCH_DEAD_ZONE_FRACTION := 0.005
 
 static var _touch_color_sampler_requested := false
+static var _shared_pencil_touch_id := -1
+static var _shared_last_pencil_msec := -1
+static var _shared_touch_meta: Dictionary = {}
 
 var _touches: Dictionary = {}
 var _content_touch_id := -1
@@ -62,6 +67,34 @@ var _long_press_indicator: Node2D
 
 static func request_touch_color_sample() -> void:
 	_touch_color_sampler_requested = true
+
+
+static func is_pencil_active() -> bool:
+	return _shared_pencil_touch_id != -1
+
+
+static func is_in_pencil_cooldown(now_msec: int, cooldown_msec: int = PENCIL_COOLDOWN_MSEC) -> bool:
+	if _shared_pencil_touch_id != -1:
+		return true
+	if _shared_last_pencil_msec < 0 or now_msec < _shared_last_pencil_msec:
+		return false
+	return now_msec - _shared_last_pencil_msec <= cooldown_msec
+
+
+static func is_palm_contact(kind: int, major_radius: float) -> bool:
+	return kind != PointerKind.PENCIL and major_radius > PALM_MAJOR_RADIUS_PT
+
+
+static func peek_touch_pointer_info(touch_id: int) -> Dictionary:
+	if _shared_touch_meta.has(touch_id):
+		return (_shared_touch_meta[touch_id] as Dictionary).duplicate()
+	if Engine.has_singleton(POINTER_IDENTITY_SINGLETON):
+		var bridge := Engine.get_singleton(POINTER_IDENTITY_SINGLETON)
+		if bridge.has_method(&"peek_begin_info"):
+			var result: Variant = bridge.call(&"peek_begin_info", touch_id)
+			if result is Dictionary:
+				return result as Dictionary
+	return {}
 
 
 func initialize() -> void:
@@ -420,8 +453,12 @@ func _end_touch(canvas: Node2D, event: InputEventScreenTouch) -> void:
 	_finish_two_finger_tap_release(event.index, event.position)
 	if _content_touch_id == event.index:
 		_end_content(canvas, event.index, event.position)
+	_shared_touch_meta.erase(event.index)
 	if _pencil_touch_id == event.index:
 		_pencil_touch_id = -1
+	if _shared_pencil_touch_id == event.index:
+		_shared_pencil_touch_id = -1
+		_shared_last_pencil_msec = Time.get_ticks_msec()
 
 	_touches.erase(event.index)
 	if event.index in _navigation_ids:
@@ -473,6 +510,8 @@ func _handle_drag(canvas: Node2D, event: InputEventScreenDrag) -> void:
 
 func _begin_pencil_ownership(canvas: Node2D, touch_id: int) -> void:
 	_pencil_touch_id = touch_id
+	_shared_pencil_touch_id = touch_id
+	_shared_last_pencil_msec = Time.get_ticks_msec()
 	_clear_two_finger_tap_candidate()
 
 	# A finger content stroke is never retroactively converted to navigation. Pencil
@@ -1051,7 +1090,15 @@ func _consume_pointer_info(touch_id: int) -> Dictionary:
 		return {}
 	var bridge := Engine.get_singleton(POINTER_IDENTITY_SINGLETON)
 	var result: Variant = bridge.call("consume_begin_info", touch_id)
-	return result if result is Dictionary else {}
+	if result is Dictionary:
+		var dict := result as Dictionary
+		if not dict.is_empty():
+			_shared_touch_meta[touch_id] = dict.duplicate()
+			if int(dict.get("kind", PointerKind.UNKNOWN)) == PointerKind.PENCIL:
+				_shared_pencil_touch_id = touch_id
+				_shared_last_pencil_msec = Time.get_ticks_msec()
+		return dict
+	return {}
 
 
 func _clear_pointer_identity_pending() -> void:

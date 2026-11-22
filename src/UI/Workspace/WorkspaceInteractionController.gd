@@ -2,6 +2,7 @@ class_name WorkspaceInteractionController
 extends Node
 
 const Builtins := preload("res://src/UI/Workspace/WorkspaceBuiltinModules.gd")
+const InputAdapter := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 
 ## Live P2-G interaction bridge for Workspace chrome.
 ##
@@ -14,6 +15,11 @@ const TOUCH_DIRECT_DRAG_DISTANCE := 4.0
 const TIMELINE_HORIZONTAL_CANCEL_DISTANCE := 12.0
 const TIMELINE_DIRECT_RESIZE_DISTANCE := 8.0
 const TIMELINE_VERTICAL_INTENT_RATIO := 1.15
+const TIMELINE_PENCIL_RESIZE_DISTANCE := 6.0
+const TIMELINE_FINGER_RESIZE_DISTANCE := 16.0
+const TIMELINE_FINGER_VERTICAL_INTENT_RATIO := 1.6
+const TIMELINE_FINGER_PALM_REST_MAX_MSEC := 250
+const TIMELINE_PENCIL_COOLDOWN_MSEC := InputAdapter.PENCIL_COOLDOWN_MSEC
 
 var manager: WorkspaceModuleManager
 var surface: WorkspaceSurface
@@ -39,6 +45,8 @@ var _pending_touch_module_id: StringName = &""
 var _pending_touch_index := -1
 var _pending_touch_start_pointer := Vector2.ZERO
 var _pending_touch_can_drag := false
+var _pending_touch_is_pencil := false
+var _pending_touch_started_msec := 0
 var _active_touch_indices: Dictionary = {}
 var _timeline_touch_blocked := false
 
@@ -218,6 +226,36 @@ static func timeline_header_resize_intent(delta: Vector2) -> bool:
 	)
 
 
+static func timeline_touch_allowed_for_resize(
+	pointer_kind: int, major_radius: float, pencil_active_or_cooldown: bool
+) -> bool:
+	if pointer_kind == InputAdapter.PointerKind.PENCIL:
+		return true
+	if pencil_active_or_cooldown:
+		return false
+	if InputAdapter.is_palm_contact(pointer_kind, major_radius):
+		return false
+	return true
+
+
+static func timeline_header_resize_intent_for_pointer(
+	delta: Vector2, is_pencil: bool, elapsed_msec: int
+) -> bool:
+	var vertical := absf(delta.y)
+	var horizontal := absf(delta.x)
+	if is_pencil:
+		return (
+			vertical >= TIMELINE_PENCIL_RESIZE_DISTANCE
+			and vertical >= horizontal * TIMELINE_VERTICAL_INTENT_RATIO
+		)
+	if elapsed_msec > TIMELINE_FINGER_PALM_REST_MAX_MSEC:
+		return false
+	return (
+		vertical >= TIMELINE_FINGER_RESIZE_DISTANCE
+		and vertical >= horizontal * TIMELINE_FINGER_VERTICAL_INTENT_RATIO
+	)
+
+
 func _try_capture_workspace_resize(event: InputEventScreenTouch) -> bool:
 	return _try_capture_workspace_resize_at(event.position, event.index)
 
@@ -323,7 +361,7 @@ func _timeline_grip_at(viewport_point: Vector2) -> bool:
 	if module == null or not module.is_visible_in_tree():
 		return false
 	var local := module.get_global_transform_with_canvas().affine_inverse() * viewport_point
-	return module.is_timeline_resize_grip_point(local)
+	return module.is_timeline_header_resize_point(local)
 
 
 func _reset_timeline_height_to_default() -> bool:
@@ -380,10 +418,19 @@ func _try_capture_timeline_header_resize(event: InputEventScreenTouch) -> bool:
 		return false
 	if not _timeline_grip_at(event.position):
 		return false
+	var now_msec := Time.get_ticks_msec()
+	var pointer_info := InputAdapter.peek_touch_pointer_info(event.index)
+	var pointer_kind := int(pointer_info.get("kind", InputAdapter.PointerKind.DIRECT))
+	var major_radius := float(pointer_info.get("major_radius", 0.0))
+	var pencil_busy := InputAdapter.is_in_pencil_cooldown(now_msec, TIMELINE_PENCIL_COOLDOWN_MSEC)
+	if not timeline_touch_allowed_for_resize(pointer_kind, major_radius, pencil_busy):
+		return false
 	_pending_touch_module_id = Builtins.TIMELINE_ID
 	_pending_touch_index = event.index
 	_pending_touch_start_pointer = _viewport_point_to_host(event.position)
 	_pending_touch_can_drag = false
+	_pending_touch_is_pencil = pointer_kind == InputAdapter.PointerKind.PENCIL
+	_pending_touch_started_msec = now_msec
 	get_viewport().set_input_as_handled()
 	return true
 
@@ -405,7 +452,19 @@ func _handle_captured_screen_drag(event: InputEventScreenDrag) -> void:
 
 	var delta := pointer - _pending_touch_start_pointer
 	if _pending_touch_module_id == Builtins.TIMELINE_ID:
-		if timeline_header_resize_intent(delta):
+		var elapsed_msec := maxi(0, Time.get_ticks_msec() - _pending_touch_started_msec)
+		if (
+			not _pending_touch_is_pencil
+			and InputAdapter.is_in_pencil_cooldown(
+				Time.get_ticks_msec(), TIMELINE_PENCIL_COOLDOWN_MSEC
+			)
+		):
+			_clear_pending_touch()
+			return
+		if not _pending_touch_is_pencil and elapsed_msec > TIMELINE_FINGER_PALM_REST_MAX_MSEC:
+			_clear_pending_touch()
+			return
+		if timeline_header_resize_intent_for_pointer(delta, _pending_touch_is_pencil, elapsed_msec):
 			var module_id := _pending_touch_module_id
 			var start_pointer := _pending_touch_start_pointer
 			var touch_index := _pending_touch_index
@@ -637,6 +696,8 @@ func _clear_pending_touch() -> void:
 	_pending_touch_index = -1
 	_pending_touch_start_pointer = Vector2.ZERO
 	_pending_touch_can_drag = false
+	_pending_touch_is_pencil = false
+	_pending_touch_started_msec = 0
 
 
 func _module_point_to_host(module: WorkspaceModule, local_point: Vector2) -> Vector2:

@@ -32,6 +32,7 @@ public:
 	static PhospritePointerIdentity *get_singleton();
 
 	Dictionary consume_begin_info(int p_touch_id);
+	Dictionary peek_begin_info(int p_touch_id) const;
 	void clear_pending();
 	void enqueue_begin_info(int p_touch_id, int p_kind, float p_major_radius);
 
