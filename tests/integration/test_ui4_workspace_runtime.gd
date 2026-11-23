@@ -46,6 +46,7 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 	var dock_host := WorkspaceDockHost.new()
 	root.add_child(dock_host)
 	dock_host.size = root.size
+	dock_host.set_side_inset(Migration.WORKSPACE_SIDE_MARGIN)
 	check_true(dock_host.setup(manager), "dock host setup")
 	var surface := WorkspaceSurface.new()
 	root.add_child(surface)
@@ -84,14 +85,22 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 	var left := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.LEFT] as Control
 	var right := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.RIGHT] as Control
 	var bottom := dock_host._zone_hosts[WorkspaceDockLayout.DockZone.BOTTOM] as Control
-	check_eq(left.position.y, 0.0, "left palette begins at workspace top")
-	check_eq(left.size.y, dock_host.size.y, "left palette extends to bottom of screen")
+	var top_gap := WorkspaceDockHost.U_FRAME_TOP_GAP
+	check_eq(dock_host.get_side_inset(), 0.0, "UI4 flushes side docks to screen edges")
+	check_eq(left.position.x, 0.0, "left column sits flush against screen left edge")
+	check_eq(left.position.y, top_gap, "left column preserves top gap below top bar")
+	check_eq(
+		left.size.y,
+		dock_host.size.y - top_gap,
+		"left column extends from top gap to bottom of screen",
+	)
+	check_eq(right.position.y, top_gap, "right tools align to the same top gap")
 	check_eq(bottom.position.x, left.position.x + left.size.x, "timeline starts at palette edge")
 	check_eq(bottom.position.y, right.position.y + right.size.y, "right tools end at timeline")
 	check_eq(
-		bottom.size.x,
-		dock_host.size.x - bottom.position.x - dock_host.get_side_inset(),
-		"timeline fills the bottom space to the right",
+		bottom.position.x + bottom.size.x,
+		dock_host.size.x,
+		"timeline fills flush to the right screen edge with no gap",
 	)
 
 	for module_id in [Builtins.PALETTE_ID, Builtins.TOOLS_ID, Builtins.TIMELINE_ID]:
@@ -135,7 +144,9 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 		"bottom bar top edge resize succeeds"
 	)
 	check_true(bottom.size.y > timeline_height, "timeline height changes independently")
-	check_eq(left.size.y, dock_host.size.y, "left height stays full after timeline resize")
+	check_eq(
+		left.size.y, dock_host.size.y - top_gap, "left height stays full after timeline resize"
+	)
 
 	# Simulate a portrait-size iPad: no U-frame panel should intrude into another.
 	root.size = Vector2(768.0, 720.0)
@@ -151,11 +162,14 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 		tools_module.size.y <= right.size.y + 1.0,
 		"portrait right tools must stop at timeline top edge",
 	)
-	check_eq(left.size.y, dock_host.size.y, "portrait palette still spans full height")
+	check_eq(left.size.y, dock_host.size.y - top_gap, "portrait palette still spans full height")
 	check_eq(right.size.x, Migration.UI1_TOOLS_FIXED_WIDTH, "portrait Tools retains fixed width")
 
 	ui4.deactivate()
 	check_true(not dock_host.u_frame_layout_enabled, "UI4 geometry disabled on exit")
+	check_eq(
+		dock_host.get_side_inset(), Migration.WORKSPACE_SIDE_MARGIN, "side inset restores on exit"
+	)
 	check_true(
 		manager.get_instance(Builtins.PALETTE_ID).is_position_adjustment_enabled(),
 		"legacy palette positioning restored"

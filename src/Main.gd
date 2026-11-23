@@ -532,8 +532,13 @@ func set_mobile_fullscreen_safe_area() -> void:
 	var shell_roots: Array[Control] = [editor_root, project_gallery_root]
 	if is_fullscreen:
 		var safe_area := DisplayServer.get_display_safe_area()
-		var pos := safe_area.position / get_window().content_scale_factor
-		var shell_size := safe_area.size / get_window().content_scale_factor
+		var scale_factor := maxf(0.01, get_window().content_scale_factor)
+		var pos := safe_area.position / scale_factor
+		var shell_size := safe_area.size / scale_factor
+		var viewport_size := get_viewport_rect().size
+		# Preserve top/side safe insets, but extend flush to the screen bottom so
+		# no clear-color strip cuts across the bottom Timeline and left Palette.
+		shell_size.y = maxf(shell_size.y, viewport_size.y - pos.y)
 		for shell_root: Control in shell_roots:
 			shell_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 			shell_root.position = pos

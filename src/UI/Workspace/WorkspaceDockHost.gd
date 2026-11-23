@@ -18,6 +18,7 @@ const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.18)
 const TIMELINE_ID := &"animation_timeline"
 const TIMELINE_MAX_HEIGHT_RATIO := 0.45
 const TIMELINE_MIN_CANVAS_HEIGHT := 120.0
+const U_FRAME_TOP_GAP := 12.0
 
 var manager: WorkspaceModuleManager
 var layout: WorkspaceDockLayout
@@ -301,15 +302,17 @@ func get_edge_snap_rects() -> Dictionary:
 
 
 func get_content_rect() -> Rect2:
+	var top_gap := _resolved_u_frame_top_gap()
 	var top_h := _zone_extent(WorkspaceDockLayout.DockZone.TOP)
 	var bottom_h := _zone_extent(WorkspaceDockLayout.DockZone.BOTTOM)
 	var left_w := _zone_extent(WorkspaceDockLayout.DockZone.LEFT)
 	var right_w := _zone_extent(WorkspaceDockLayout.DockZone.RIGHT)
 	var inset := _resolved_side_inset()
 	return Rect2(
-		Vector2(inset + left_w, top_h),
+		Vector2(inset + left_w, top_gap + top_h),
 		Vector2(
-			maxf(0.0, size.x - inset * 2.0 - left_w - right_w), maxf(0.0, size.y - top_h - bottom_h)
+			maxf(0.0, size.x - inset * 2.0 - left_w - right_w),
+			maxf(0.0, size.y - top_gap - top_h - bottom_h)
 		)
 	)
 
@@ -382,22 +385,28 @@ func _layout_zones() -> void:
 	var middle_h := maxf(0.0, size.y - top_h - bottom_h)
 
 	if u_frame_layout_enabled:
-		# The palette spans the full height; timeline and tool options never overlap it.
+		# U-frame docks sit flush against left, right, and bottom edges while
+		# preserving the same top breathing gap as UI1/UI3 below the top bar.
+		var top_gap := _resolved_u_frame_top_gap()
 		var content_left := inset + left_w
-		_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
-		_set_host_rect(WorkspaceDockLayout.DockZone.LEFT, Rect2(inset, 0.0, left_w, size.y))
+		var u_middle_h := maxf(0.0, size.y - top_gap - top_h - bottom_h)
+		_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, top_gap, inner_width, top_h))
+		_set_host_rect(
+			WorkspaceDockLayout.DockZone.LEFT,
+			Rect2(inset, top_gap, left_w, maxf(0.0, size.y - top_gap))
+		)
 		_set_host_rect(
 			WorkspaceDockLayout.DockZone.BOTTOM,
 			Rect2(
 				content_left,
-				maxf(0.0, size.y - bottom_h),
+				maxf(top_gap, size.y - bottom_h),
 				maxf(0.0, size.x - content_left - inset),
 				bottom_h
 			)
 		)
 		_set_host_rect(
 			WorkspaceDockLayout.DockZone.RIGHT,
-			Rect2(maxf(inset, size.x - inset - right_w), top_h, right_w, middle_h)
+			Rect2(maxf(inset, size.x - inset - right_w), top_gap + top_h, right_w, u_middle_h)
 		)
 	else:
 		_set_host_rect(WorkspaceDockLayout.DockZone.TOP, Rect2(inset, 0.0, inner_width, top_h))
@@ -414,7 +423,15 @@ func _layout_zones() -> void:
 
 
 func _resolved_side_inset() -> float:
+	if u_frame_layout_enabled:
+		return 0.0
 	return minf(_side_inset, size.x * 0.5)
+
+
+func _resolved_u_frame_top_gap() -> float:
+	if not u_frame_layout_enabled:
+		return 0.0
+	return minf(U_FRAME_TOP_GAP, maxf(0.0, size.y - 120.0))
 
 
 func _zone_extent(zone: int) -> float:
