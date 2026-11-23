@@ -3,7 +3,6 @@ extends AcceptDialog
 const PixelTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const PixelStyle := preload("res://src/UI/DesignSystem/PhospritePixelStyle.gd")
 const Stage2Chrome := preload("res://src/UI/DesignSystem/PhospriteStage2Chrome.gd")
-const Stage2Icons := preload("res://src/UI/DesignSystem/PhospriteStage2Icons.gd")
 
 var pref_theme_base_color := Preference.new(
 	"theme_base_color",
@@ -681,7 +680,6 @@ func _setup_ipad_settings_pages() -> void:
 		button.custom_minimum_size.y = 40.0
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.text = _ipad_profile_title(id)
-		button.icon = Stage2Icons.icon(StringName("ui%d" % id))
 		button.expand_icon = false
 		button.pressed.connect(_ipad_change_ui_profile_id.bind(id))
 		_ipad_profile_buttons[id] = button
@@ -890,11 +888,11 @@ func _refresh_ipad_project_settings() -> void:
 func _ipad_profile_title(id: int) -> String:
 	match id:
 		1:
-			return tr("UI 1 · Classic Split")
+			return tr("Classic Split (Windows Paint)")
 		3:
-			return tr("UI 3 · Minimal Touch")
+			return tr("Minimal Touch (Procreate)")
 		4:
-			return tr("UI 4 · U-Frame Dock")
+			return tr("U-Frame Dock (Aseprite)")
 		_:
 			return "UI%d" % id
 

@@ -190,11 +190,25 @@ func test_floating_module_drag_moves_window_in_real_time_and_restores_on_cancel(
 
 
 func test_workspace_profiles_are_independent_without_animation_desk_label() -> void:
+	var zh_cn := FileAccess.get_file_as_string("res://Translations/zh_CN.po")
+	check_true(not zh_cn.contains("动画工作台"), "zh_CN removes Animation Workspace label")
+	check_true(zh_cn.contains("经典双栏 (Windows画图)"), "zh_CN labels classic split with Windows Paint")
+	check_true(zh_cn.contains("沉浸触控 (Procreate)"), "zh_CN labels minimal touch with Procreate")
+	check_true(zh_cn.contains("U型停靠 (Aseprite)"), "zh_CN labels U-frame dock with Aseprite")
 	for po_path in ["res://Translations/zh_CN.po", "res://Translations/zh_TW.po"]:
 		var text := FileAccess.get_file_as_string(po_path)
 		check_true(not text.contains("动画工作台"), "zh_CN removes Animation Workspace label")
 		check_true(not text.contains("動畫工作台"), "zh_TW removes Animation Workspace label")
-		check_true(text.contains("U-Frame Dock"), "translations include U-Frame Dock profile")
+		check_true(
+			text.contains("U-Frame Dock (Aseprite)"), "translations include U-Frame Dock (Aseprite)"
+		)
+	var top_src := FileAccess.get_file_as_string(
+		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
+	)
+	check_true(
+		not top_src.contains('Icons.icon(StringName("ui%d" % profile_id))'),
+		"Settings menu UI layout items omit leading profile icons",
+	)
 
 
 func test_topbar_timeline_and_dock_host_pixel_contracts() -> void:

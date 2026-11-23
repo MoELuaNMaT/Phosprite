@@ -413,7 +413,6 @@ func _setup_ipad_settings_menu() -> void:
 	for profile_id in [1, 3, 4]:
 		var label := _stage2_profile_title(profile_id)
 		popup.add_radio_check_item(label, STAGE2_PROFILE_ID_BASE + profile_id)
-		popup.set_item_icon(popup.item_count - 1, Icons.icon(StringName("ui%d" % profile_id)))
 	popup.add_separator()
 	_ipad_project_actions = _new_ipad_submenu(popup, tr("Project Operations"))
 	for entry in [
@@ -469,11 +468,11 @@ func _setup_ipad_settings_menu() -> void:
 func _stage2_profile_title(profile_id: int) -> String:
 	match profile_id:
 		1:
-			return tr("UI 1 · Classic Split")
+			return tr("Classic Split (Windows Paint)")
 		3:
-			return tr("UI 3 · Minimal Touch")
+			return tr("Minimal Touch (Procreate)")
 		4:
-			return tr("UI 4 · U-Frame Dock")
+			return tr("U-Frame Dock (Aseprite)")
 		_:
 			return "UI%d" % profile_id
 

@@ -5078,13 +5078,13 @@ msgstr ""
 msgid "Untitled"
 msgstr ""
 
-msgid "UI 1 · Classic Split"
+msgid "Classic Split (Windows Paint)"
 msgstr ""
 
-msgid "UI 3 · Minimal Touch"
+msgid "Minimal Touch (Procreate)"
 msgstr ""
 
-msgid "UI 4 · U-Frame Dock"
+msgid "U-Frame Dock (Aseprite)"
 msgstr ""
 
 msgid "Swap Colors"

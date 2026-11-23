@@ -5177,14 +5177,14 @@ msgstr "像素描边、阶梯圆角和硬边阴影。仅对 Phosprite 主题生�
 msgid "Untitled"
 msgstr "未命名"
 
-msgid "UI 1 · Classic Split"
-msgstr "UI 1 · 经典双栏"
+msgid "Classic Split (Windows Paint)"
+msgstr "经典双栏 (Windows画图)"
 
-msgid "UI 3 · Minimal Touch"
-msgstr "UI 3 · 沉浸触控"
+msgid "Minimal Touch (Procreate)"
+msgstr "沉浸触控 (Procreate)"
 
-msgid "UI 4 · U-Frame Dock"
-msgstr "UI 4 · U 型停靠"
+msgid "U-Frame Dock (Aseprite)"
+msgstr "U型停靠 (Aseprite)"
 
 msgid "Swap Colors"
 msgstr "交换颜色"
