@@ -4,7 +4,7 @@ const ADAPTER_SCRIPT := preload("res://src/UI/Timeline/LayerTouchAdapter.gd")
 
 
 class FakeTimeline:
-	extends Control
+	extends Panel
 	var timeline_scroll: ScrollContainer
 	var opacity_slider: ValueSlider
 	var layer_header_container: Control

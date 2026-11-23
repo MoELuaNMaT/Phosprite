@@ -493,11 +493,12 @@ func _is_blocked_by_header_or_slider(screen_position: Vector2) -> bool:
 func _is_touch_inside_visible_layer_row(screen_position: Vector2) -> bool:
 	if not is_instance_valid(_main_button):
 		return false
-	var row_rect := _main_button.get_global_rect()
+	if not _main_button.get_global_rect().has_point(screen_position):
+		return false
 	var scroll := _timeline_scroll()
 	if is_instance_valid(scroll) and scroll.size.x > 0.0 and scroll.size.y > 0.0:
-		row_rect = row_rect.intersection(scroll.get_global_rect())
-	return row_rect.has_area() and row_rect.has_point(screen_position)
+		return scroll.get_global_rect().has_point(screen_position)
+	return true
 
 
 func _select_layer_for_touch() -> void:
