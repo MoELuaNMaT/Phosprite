@@ -54,7 +54,7 @@ func test_tag_properties_does_not_auto_focus_name_input() -> void:
 
 func test_animation_tag_span_aligns_exactly_to_frame_range() -> void:
 	var tag := AnimationTag.new("Run", Color.WHITE, 2, 4)
-	var expected_cel := (
+	var expected_cel: int = (
 		Global.animation_timeline.cel_size if is_instance_valid(Global.animation_timeline) else 36
 	)
 	var pos := tag.get_position()

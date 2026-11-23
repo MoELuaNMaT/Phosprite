@@ -81,8 +81,10 @@ func frames_array() -> Array:
 
 func _frame_span_metrics() -> Vector2:
 	var timeline := Global.animation_timeline
-	if is_instance_valid(timeline) and is_instance_valid(timeline.frame_hbox):
-		var frame_hbox := timeline.frame_hbox
+	var frame_hbox := (
+		timeline.get("frame_hbox") as HBoxContainer if is_instance_valid(timeline) else null
+	)
+	if is_instance_valid(frame_hbox):
 		var from_idx := from - 1
 		var to_idx := to - 1
 		if from_idx >= 0 and to_idx >= from_idx and to_idx < frame_hbox.get_child_count():
