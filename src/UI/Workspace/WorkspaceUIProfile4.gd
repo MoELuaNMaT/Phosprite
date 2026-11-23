@@ -501,7 +501,7 @@ func _draw_preview_split_handle() -> void:
 	if mode == Tokens.LEGACY:
 		return
 	var sz := _preview_split_handle.size
-	var mid_y := 8.0
+	var mid_y := 4.0
 	var dot_col := Tokens.color(mode, &"text_muted")
 	var cx := roundi(sz.x * 0.5)
 	var cy := roundi(mid_y)
@@ -540,7 +540,7 @@ func _update_preview_split_handle() -> void:
 	var seam_host := host.get_global_transform_with_canvas().affine_inverse() * seam_global
 	var handle_w := maxf(40.0, palette_module.size.x - WorkspaceModule.INTERACTION_TARGET_SIZE)
 	var header_h := palette_module.get_header_height()
-	var top_pad := 6.0
+	var top_pad := 0.0
 	var handle_h := maxf(PREVIEW_SPLIT_GRAB_HEIGHT, top_pad + header_h)
 	_preview_split_handle.position = Vector2(seam_host.x, seam_host.y - top_pad)
 	_preview_split_handle.size = Vector2(handle_w, handle_h)
@@ -554,6 +554,27 @@ static func _handle_contains_viewport_point(handle: Control, viewport_pos: Vecto
 		handle.get_global_transform_with_canvas().affine_inverse() * viewport_pos
 	)
 	return Rect2(Vector2.ZERO, handle.size).has_point(local_pos)
+
+
+func _is_point_on_preview_fold_toggle(viewport_pos: Vector2) -> bool:
+	if surface == null or surface.manager == null:
+		return false
+	var preview_module := surface.manager.get_instance(Builtins.PREVIEW_ID)
+	if preview_module == null or not preview_module.is_visible_in_tree():
+		return false
+	var content := preview_module.get_content()
+	if content == null:
+		return false
+	var toggle_btn := (
+		content.get_node_or_null(^"VBox/PreviewControlsToggleRow/PreviewControlsToggleButton")
+		as Control
+	)
+	if not is_instance_valid(toggle_btn) or not toggle_btn.is_visible_in_tree():
+		return false
+	var local_pos: Vector2 = (
+		toggle_btn.get_global_transform_with_canvas().affine_inverse() * viewport_pos
+	)
+	return Rect2(Vector2(-4.0, -4.0), toggle_btn.size + Vector2(8.0, 8.0)).has_point(local_pos)
 
 
 func _viewport_y_to_host(viewport_pos: Vector2) -> float:
@@ -678,7 +699,10 @@ func _input(event: InputEvent) -> void:
 		if event is InputEventScreenTouch:
 			var touch := event as InputEventScreenTouch
 			if touch.pressed and not touch.canceled:
-				if _handle_contains_viewport_point(_preview_split_handle, touch.position):
+				if (
+					not _is_point_on_preview_fold_toggle(touch.position)
+					and _handle_contains_viewport_point(_preview_split_handle, touch.position)
+				):
 					_preview_split_drag_touch = touch.index
 					_begin_preview_split_drag(touch.position)
 					get_viewport().set_input_as_handled()
@@ -690,7 +714,10 @@ func _input(event: InputEvent) -> void:
 		elif event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION:
 			var mb := event as InputEventMouseButton
 			if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-				if _handle_contains_viewport_point(_preview_split_handle, mb.position):
+				if (
+					not _is_point_on_preview_fold_toggle(mb.position)
+					and _handle_contains_viewport_point(_preview_split_handle, mb.position)
+				):
 					_preview_split_drag_mouse = true
 					_begin_preview_split_drag(mb.position)
 					get_viewport().set_input_as_handled()

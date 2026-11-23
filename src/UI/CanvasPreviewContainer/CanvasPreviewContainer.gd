@@ -25,6 +25,8 @@ var _controls_divider: ColorRect
 var _controls_toggle_row: HBoxContainer
 var _controls_toggle_button: Button
 var _last_drawer_height := 42.0
+var _last_adapted_project_id := -1
+var _pending_reconcile_token := 0
 
 @onready
 var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
@@ -47,8 +49,10 @@ func _enter_tree() -> void:
 		Global.greyscale_view_changed.connect(_on_greyscale_view_changed)
 	if not Global.preview_view_controls_changed.is_connected(_sync_view_controls):
 		Global.preview_view_controls_changed.connect(_sync_view_controls)
-	if not Global.project_switched.is_connected(_sync_view_controls):
-		Global.project_switched.connect(_sync_view_controls)
+	if not Global.project_created.is_connected(_on_project_created):
+		Global.project_created.connect(_on_project_created)
+	if not Global.project_switched.is_connected(_on_project_switched):
+		Global.project_switched.connect(_on_project_switched)
 	if not Themes.theme_switched.is_connected(_refresh_preview_pixel_chrome):
 		Themes.theme_switched.connect(_refresh_preview_pixel_chrome)
 	if not Global.pixel_ui_unit_changed.is_connected(_refresh_preview_pixel_chrome):
@@ -65,6 +69,7 @@ func _ready() -> void:
 	_apply_controls_expanded_state()
 	_on_greyscale_view_changed(Global.greyscale_view)
 	_sync_view_controls()
+	_schedule_initial_canvas_adaptation()
 	if OS.get_name() == "iOS":
 		_reference_import_menu = PopupMenu.new()
 		_reference_import_menu.add_item(tr("Files"), 0)
@@ -78,8 +83,10 @@ func _exit_tree() -> void:
 		Global.greyscale_view_changed.disconnect(_on_greyscale_view_changed)
 	if Global.preview_view_controls_changed.is_connected(_sync_view_controls):
 		Global.preview_view_controls_changed.disconnect(_sync_view_controls)
-	if Global.project_switched.is_connected(_sync_view_controls):
-		Global.project_switched.disconnect(_sync_view_controls)
+	if Global.project_created.is_connected(_on_project_created):
+		Global.project_created.disconnect(_on_project_created)
+	if Global.project_switched.is_connected(_on_project_switched):
+		Global.project_switched.disconnect(_on_project_switched)
 	if Themes.theme_switched.is_connected(_refresh_preview_pixel_chrome):
 		Themes.theme_switched.disconnect(_refresh_preview_pixel_chrome)
 	if Global.pixel_ui_unit_changed.is_connected(_refresh_preview_pixel_chrome):
@@ -270,8 +277,9 @@ func set_controls_expanded(expanded: bool) -> void:
 		else -_last_drawer_height
 	)
 	_adjust_preview_height_downward(delta_y)
+	_pending_reconcile_token += 1
 	if target_viewport_h > 1.0:
-		_reconcile_viewport_height.call_deferred(target_viewport_h)
+		_reconcile_viewport_height.call_deferred(target_viewport_h, 2, _pending_reconcile_token)
 
 
 func workspace_module_initialized(_module: WorkspaceModule, _context: Dictionary) -> void:
@@ -280,6 +288,157 @@ func workspace_module_initialized(_module: WorkspaceModule, _context: Dictionary
 
 func workspace_module_mounted(_module: WorkspaceModule, _host: Control) -> void:
 	_ensure_collapsible_controls_ui.call_deferred()
+	_schedule_initial_canvas_adaptation()
+
+
+static func compute_adaptive_module_height(
+	canvas_size: Vector2,
+	module_width: float,
+	horizontal_chrome: float,
+	vertical_chrome: float,
+	min_module_height: float,
+	max_module_height: float
+) -> float:
+	var safe_min := maxf(min_module_height, 72.0 + maxf(0.0, vertical_chrome))
+	var safe_max := maxf(safe_min, max_module_height)
+	if canvas_size.x <= 0.0 or canvas_size.y <= 0.0 or module_width <= 0.0:
+		return clampf(min_module_height, safe_min, safe_max)
+	var viewport_w := maxf(64.0, module_width - maxf(0.0, horizontal_chrome))
+	var ideal_viewport_h := viewport_w * (canvas_size.y / canvas_size.x)
+	var desired_h := ideal_viewport_h + maxf(0.0, vertical_chrome)
+	return clampf(roundf(desired_h), safe_min, safe_max)
+
+
+func adapt_size_to_canvas(canvas_size: Vector2, force: bool = false) -> bool:
+	if canvas_size.x <= 0.0 or canvas_size.y <= 0.0 or not is_inside_tree():
+		return false
+	if Global.current_project != null:
+		var project_id := Global.current_project.get_instance_id()
+		if not force and _last_adapted_project_id == project_id:
+			return false
+		_last_adapted_project_id = project_id
+	var parent_module := get_parent() as WorkspaceModule
+	var surface := _resolve_workspace_surface()
+	if surface == null or parent_module == null or parent_module.definition == null:
+		_fit_preview_camera_after_layout.call_deferred(canvas_size, 2)
+		return false
+	var module_id := parent_module.definition.module_id
+	var placement := surface.get_module_placement(module_id)
+	if (
+		placement == WorkspaceSurface.Placement.COLLAPSED
+		or placement == WorkspaceSurface.Placement.NONE
+		or parent_module.is_content_collapsed()
+	):
+		return false
+	var min_h := parent_module.definition.minimum_size.y
+	var h_chrome := (
+		maxf(0.0, parent_module.size.x - preview_viewport_container.size.x)
+		if (
+			parent_module.size.x > 1.0
+			and is_instance_valid(preview_viewport_container)
+			and preview_viewport_container.size.x > 1.0
+		)
+		else 8.0
+	)
+	var v_chrome := _measure_vertical_chrome(parent_module)
+	var resized := false
+	if placement == WorkspaceSurface.Placement.DOCKED and surface.dock_host != null:
+		var zone := surface.dock_host.layout.get_module_zone(module_id)
+		var region_fill := surface.dock_host.layout.is_module_region_fill(module_id)
+		if (
+			not region_fill
+			and zone in [WorkspaceDockLayout.DockZone.LEFT, WorkspaceDockLayout.DockZone.RIGHT]
+		):
+			var cur_size := surface.dock_host.layout.get_module_size(module_id)
+			var module_w := (
+				parent_module.size.x
+				if parent_module.size.x > 1.0
+				else (cur_size.x if cur_size.x > 0.0 else parent_module.definition.preferred_size.x)
+			)
+			var zone_host := surface.dock_host.get_zone_host(zone)
+			var max_h := _max_docked_preview_height(surface, module_id, zone_host, min_h)
+			var target_h := compute_adaptive_module_height(
+				canvas_size, module_w, h_chrome, v_chrome, min_h, max_h
+			)
+			var target_w := cur_size.x if cur_size.x > 0.0 else module_w
+			surface.dock_host.set_module_size(module_id, Vector2(target_w, target_h))
+			_persist_ui4_preview_height_if_applicable(surface, module_id, target_h)
+			resized = true
+	elif placement == WorkspaceSurface.Placement.FLOATING:
+		var rect := surface.get_floating_rect(module_id)
+		var module_w := (
+			rect.size.x
+			if rect.size.x > 1.0
+			else parent_module.definition.get_constrained_preferred_size().x
+		)
+		var bounds := surface.get_floating_bounds()
+		var max_h := maxf(
+			min_h, minf(bounds.size.y * 0.62 if bounds.size.y > 0.0 else 460.0, 460.0)
+		)
+		var target_h := compute_adaptive_module_height(
+			canvas_size, module_w, h_chrome, v_chrome, min_h, max_h
+		)
+		surface.set_floating_rect(module_id, Rect2(rect.position, Vector2(module_w, target_h)))
+		resized = true
+	_fit_preview_camera_after_layout.call_deferred(canvas_size, 2)
+	return resized
+
+
+func _on_project_created(project: Project) -> void:
+	if project == null:
+		return
+	_last_adapted_project_id = -1
+	adapt_size_to_canvas.call_deferred(project.size, true)
+
+
+func _on_project_switched() -> void:
+	_sync_view_controls()
+	if Global.current_project != null:
+		adapt_size_to_canvas.call_deferred(Global.current_project.size, false)
+
+
+func _schedule_initial_canvas_adaptation() -> void:
+	if Global.headless_test_mode or Global.current_project == null:
+		return
+	if _last_adapted_project_id == Global.current_project.get_instance_id():
+		return
+	adapt_size_to_canvas.call_deferred(Global.current_project.size, false)
+
+
+func _measure_vertical_chrome(parent_module: WorkspaceModule) -> float:
+	if (
+		parent_module != null
+		and parent_module.size.y > 1.0
+		and is_instance_valid(preview_viewport_container)
+		and preview_viewport_container.size.y > 1.0
+	):
+		return maxf(0.0, parent_module.size.y - preview_viewport_container.size.y)
+	var header_h := parent_module.get_header_height() if parent_module != null else 28.0
+	var toggle_h := 24.0
+	var drawer_h := _measure_controls_drawer_height() if _controls_expanded else 0.0
+	return header_h + toggle_h + drawer_h + 6.0
+
+
+func _fit_preview_camera_after_layout(canvas_size: Vector2, remaining_passes: int) -> void:
+	if not is_inside_tree() or not is_instance_valid(camera):
+		return
+	if (
+		is_instance_valid(preview_viewport_container)
+		and preview_viewport_container.size.x > 1.0
+		and preview_viewport_container.size.y > 1.0
+	):
+		camera.fit_to_frame(canvas_size)
+	if remaining_passes > 1 and get_tree() != null:
+		_fit_preview_camera_next_frame(canvas_size, remaining_passes - 1)
+
+
+func _fit_preview_camera_next_frame(canvas_size: Vector2, remaining_passes: int) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.process_frame
+	if is_inside_tree():
+		_fit_preview_camera_after_layout(canvas_size, remaining_passes)
 
 
 static func _triangle_icon(pointing_up: bool) -> ImageTexture:
@@ -287,11 +446,11 @@ static func _triangle_icon(pointing_up: bool) -> ImageTexture:
 		return _arrow_up_icon
 	if not pointing_up and _arrow_down_icon != null:
 		return _arrow_down_icon
-	var img := Image.create_empty(9, 5, false, Image.FORMAT_RGBA8)
+	var img := Image.create_empty(11, 6, false, Image.FORMAT_RGBA8)
 	img.fill(Color.TRANSPARENT)
-	for row in range(5):
-		var inset := (4 - row) if pointing_up else row
-		for x in range(inset, 9 - inset):
+	for row in range(6):
+		var inset := (5 - row) if pointing_up else row
+		for x in range(inset, 11 - inset):
 			img.set_pixel(x, row, Color.WHITE)
 	var tex := ImageTexture.create_from_image(img)
 	if pointing_up:
@@ -329,7 +488,7 @@ func _ensure_collapsible_controls_ui() -> void:
 		btn.flat = true
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		btn.custom_minimum_size = Vector2(56.0, 18.0)
+		btn.custom_minimum_size = Vector2(64.0, 22.0)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -400,7 +559,11 @@ func _measure_controls_drawer_height() -> float:
 	return bar_h + 11.0
 
 
-func _reconcile_viewport_height(expected_viewport_h: float) -> void:
+func _reconcile_viewport_height(
+	expected_viewport_h: float, remaining_passes: int = 1, token: int = 0
+) -> void:
+	if token != 0 and token != _pending_reconcile_token:
+		return
 	if not is_instance_valid(preview_viewport_container) or not is_visible_in_tree():
 		return
 	var current_viewport_h := preview_viewport_container.size.y
@@ -409,6 +572,21 @@ func _reconcile_viewport_height(expected_viewport_h: float) -> void:
 		_adjust_preview_height_downward(diff)
 	if _controls_expanded and is_instance_valid(animation_bar) and animation_bar.size.y > 1.0:
 		_last_drawer_height = animation_bar.size.y + 11.0
+	if is_instance_valid(camera):
+		camera.update_transparent_checker_offset()
+	if remaining_passes > 1 and is_inside_tree():
+		_reconcile_viewport_height_next_frame(expected_viewport_h, remaining_passes - 1, token)
+
+
+func _reconcile_viewport_height_next_frame(
+	expected_viewport_h: float, remaining_passes: int, token: int
+) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.process_frame
+	if is_inside_tree():
+		_reconcile_viewport_height(expected_viewport_h, remaining_passes, token)
 
 
 func _resolve_workspace_surface() -> WorkspaceSurface:
@@ -426,6 +604,31 @@ func _resolve_workspace_surface() -> WorkspaceSurface:
 		if is_instance_valid(found):
 			return found
 	return null
+
+
+func _max_docked_preview_height(
+	surface: WorkspaceSurface, module_id: StringName, zone_host: Control, min_h: float
+) -> float:
+	var host_h := (
+		zone_host.size.y if is_instance_valid(zone_host) and zone_host.size.y > 0.0 else 640.0
+	)
+	var zone := surface.dock_host.layout.get_module_zone(module_id)
+	var zone_modules := surface.dock_host.layout.get_modules(zone)
+	var sibling_reserve := 240.0 if zone_modules.size() > 1 else 0.0
+	return maxf(min_h, host_h - sibling_reserve)
+
+
+func _persist_ui4_preview_height_if_applicable(
+	surface: WorkspaceSurface, module_id: StringName, target_h: float
+) -> void:
+	if surface == null or surface.dock_host == null:
+		return
+	if surface.dock_host.layout.get_module_zone(module_id) != WorkspaceDockLayout.DockZone.LEFT:
+		return
+	if surface.dock_host.layout.get_modules(WorkspaceDockLayout.DockZone.LEFT).size() <= 1:
+		return
+	if Global.config_cache != null:
+		Global.config_cache.set_value("ui4", "preview_height", target_h)
 
 
 func _adjust_preview_height_downward(delta_y: float) -> void:
@@ -447,9 +650,15 @@ func _adjust_preview_height_downward(delta_y: float) -> void:
 			return
 		if placement == WorkspaceSurface.Placement.DOCKED and surface.dock_host != null:
 			var cur_size := surface.dock_host.layout.get_module_size(module_id)
-			if cur_size != Vector2.ZERO:
-				var target_size := Vector2(cur_size.x, maxf(min_h, cur_size.y + delta_y))
-				surface.dock_host.set_module_size(module_id, target_size)
+			var base_h := parent_module.size.y if parent_module.size.y > 1.0 else cur_size.y
+			if cur_size != Vector2.ZERO or base_h > 0.0:
+				var zone := surface.dock_host.layout.get_module_zone(module_id)
+				var zone_host := surface.dock_host.get_zone_host(zone)
+				var max_h := _max_docked_preview_height(surface, module_id, zone_host, min_h)
+				var target_w := cur_size.x if cur_size.x > 0.0 else parent_module.size.x
+				var target_h := clampf(base_h + delta_y, min_h, max_h)
+				surface.dock_host.set_module_size(module_id, Vector2(target_w, target_h))
+				_persist_ui4_preview_height_if_applicable(surface, module_id, target_h)
 				return
 	size.y = maxf(custom_minimum_size.y, size.y + delta_y)
 
