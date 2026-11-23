@@ -227,9 +227,20 @@ func test_ui4_preview_palette_split_handle_drags_from_live_height_without_dead_z
 	drag_down.relative = Vector2(0.0, 60.0)
 	ui4._input(drag_down)
 	await tree.process_frame
+	var down_h := preview_module.size.y
+	var down_layout := dock_host.layout.get_module_size(Builtins.PREVIEW_ID)
 	check_true(
-		preview_module.size.y >= initial_h + 55.0,
-		"dragging down 60px immediately grows preview from live height without dead zone",
+		down_h >= initial_h + 55.0,
+		(
+			"dragging down 60px immediately grows preview (initial=%.1f down=%.1f layout=%.1f min=%.1f left=%.1f)"
+			% [
+				initial_h,
+				down_h,
+				down_layout.y,
+				preview_module.custom_minimum_size.y,
+				dock_host.get_zone_host(WorkspaceDockLayout.DockZone.LEFT).size.y,
+			]
+		),
 	)
 
 	var drag_up := InputEventScreenDrag.new()
@@ -238,9 +249,14 @@ func test_ui4_preview_palette_split_handle_drags_from_live_height_without_dead_z
 	drag_up.relative = Vector2(0.0, -40.0)
 	ui4._input(drag_up)
 	await tree.process_frame
+	var up_h := preview_module.size.y
+	var up_layout := dock_host.layout.get_module_size(Builtins.PREVIEW_ID)
 	check_true(
-		preview_module.size.y <= initial_h + 25.0 and preview_module.size.y >= initial_h + 15.0,
-		"dragging back up immediately shrinks preview proportionally",
+		up_h <= initial_h + 25.0 and up_h >= initial_h + 15.0,
+		(
+			"dragging back up immediately shrinks preview (initial=%.1f up=%.1f layout=%.1f min=%.1f)"
+			% [initial_h, up_h, up_layout.y, preview_module.custom_minimum_size.y]
+		),
 	)
 
 	var release := InputEventScreenTouch.new()
