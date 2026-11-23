@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://b6l0yorq5b46r" path="res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://c546tskdu53j1" path="res://src/UI/Canvas/CanvasPreview.tscn" id="5"]
 [ext_resource type="Script" uid="uid://ctqrsfsbx4kwk" path="res://src/UI/Canvas/CanvasCamera.gd" id="5_ge2km"]
-[ext_resource type="Texture2D" uid="uid://c7smxwfa8826j" path="res://assets/graphics/timeline/play.png" id="6"]
 [ext_resource type="Script" uid="uid://tfdhqto6j5j0" path="res://src/UI/Nodes/Sliders/ValueSlider.gd" id="8"]
 [ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/focus-centered.svg" id="tabler_focus-centered"]
 [ext_resource type="Texture2D" path="res://assets/graphics/ui/tabler/flip-horizontal.svg" id="tabler_flip-horizontal"]
@@ -68,43 +67,25 @@ index = 2
 
 [node name="Animation" type="HBoxContainer" parent="VBox" unique_id=1328469717]
 layout_mode = 2
-
-[node name="PlayButton" type="Button" parent="VBox/Animation" unique_id=1578705779 groups=["UIButtons"]]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(28, 34)
-layout_mode = 2
-size_flags_vertical = 4
-mouse_default_cursor_shape = 2
-toggle_mode = true
-
-[node name="TextureRect" type="TextureRect" parent="VBox/Animation/PlayButton" unique_id=514261216]
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -4.0
-offset_top = -7.0
-offset_right = 4.0
-offset_bottom = 7.0
-mouse_default_cursor_shape = 2
-texture = ExtResource("6")
+theme_override_constants/separation = 0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="VBox/Animation" unique_id=524830466]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 0
 
-[node name="PreviewViewButtons" type="HFlowContainer" parent="VBox/Animation"]
+[node name="PreviewViewButtons" type="HBoxContainer" parent="VBox/Animation"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 4
-theme_override_constants/v_separation = 4
+theme_override_constants/separation = 2
 
 [node name="CenterCanvasButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
@@ -116,8 +97,10 @@ tooltip_text = "Center Canvas"
 
 [node name="MirrorViewButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
@@ -130,8 +113,10 @@ tooltip_text = "Mirror View"
 
 [node name="ShowGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
@@ -144,8 +129,10 @@ tooltip_text = "Show Grid"
 
 [node name="ShowPixelGridButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
@@ -158,8 +145,10 @@ tooltip_text = "Show Pixel Grid"
 
 [node name="AddReferenceButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
 icon_alignment = 1
@@ -171,8 +160,9 @@ tooltip_text = "Add Reference Image"
 
 [node name="GrayscaleButton" type="Button" parent="VBox/Animation/PreviewViewButtons" groups=["UIButtons"]]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(34, 34)
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
 focus_mode = 0
 mouse_default_cursor_shape = 2
@@ -268,7 +258,6 @@ prefix = "End frame:"
 
 [connection signal="mouse_entered" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_entered"]
 [connection signal="mouse_exited" from="VBox/HBox/PreviewViewportContainer" to="." method="_on_PreviewViewportContainer_mouse_exited"]
-[connection signal="toggled" from="VBox/Animation/PlayButton" to="." method="_on_PlayButton_toggled"]
 [connection signal="pressed" from="VBox/Animation/PreviewViewButtons/CenterCanvasButton" to="." method="_on_center_canvas_pressed"]
 [connection signal="toggled" from="VBox/Animation/PreviewViewButtons/MirrorViewButton" to="." method="_on_mirror_view_toggled"]
 [connection signal="toggled" from="VBox/Animation/PreviewViewButtons/ShowGridButton" to="." method="_on_show_grid_toggled"]

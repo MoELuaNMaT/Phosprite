@@ -60,8 +60,8 @@ func test_preview_buttons_keep_icon_and_short_label_in_same_control() -> void:
 		"AddReferenceButton": "Ref",
 		"GrayscaleButton": "BW",
 	}
-	var flow := preview.get_node("VBox/Animation/PreviewViewButtons") as HFlowContainer
-	check_true(flow != null, "view buttons preserve the wrapping container")
+	var flow := preview.get_node("VBox/Animation/PreviewViewButtons") as HBoxContainer
+	check_true(flow != null, "view buttons use a single-row horizontal container")
 	for name in captions:
 		var button := flow.get_node(name) as Button
 		check_true(button != null, "%s exists" % name)
@@ -75,7 +75,12 @@ func test_preview_buttons_keep_icon_and_short_label_in_same_control() -> void:
 			"%s renders its caption under the icon" % name
 		)
 		check_eq(button.icon_alignment, HORIZONTAL_ALIGNMENT_CENTER, "%s icon is centered" % name)
-		check_eq(button.custom_minimum_size, Vector2(34, 34), "%s target is 34 by 34" % name)
+		check_eq(button.custom_minimum_size.y, 34.0, "%s target height is 34" % name)
+		check_eq(
+			button.size_flags_horizontal,
+			Control.SIZE_EXPAND_FILL,
+			"%s expands to fill single row" % name
+		)
 		check_eq(button.get_theme_font_size("font_size"), 9, "caption uses the small type size")
 		check_true(not button.tooltip_text.is_empty(), "%s preserves its full tooltip" % name)
 		var font := button.get_theme_font("font")

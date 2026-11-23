@@ -3,7 +3,6 @@ extends PanelContainer
 const NAVIGATION := preload("res://src/InputAdapter/CanvasInputAdapter.gd")
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
 const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
-const QIcons := preload("res://src/UI/DesignSystem/PhospriteQIcons.gd")
 
 static var _preview_bg_styles: Dictionary = {}
 static var _arrow_up_icon: ImageTexture
@@ -32,7 +31,6 @@ var _pending_reconcile_token := 0
 var preview_viewport_container := $VBox/HBox/PreviewViewportContainer as SubViewportContainer
 @onready var canvas_preview := $"%CanvasPreview" as Node2D
 @onready var camera := $"%CameraPreview" as CanvasCamera
-@onready var play_button := $"%PlayButton" as Button
 @onready var grayscale_button := $"%GrayscaleButton" as Button
 @onready var add_reference_button := $"%AddReferenceButton" as Button
 @onready var mirror_view_button := $"%MirrorViewButton" as Button
@@ -713,42 +711,17 @@ func _refresh_preview_pixel_chrome() -> void:
 		preview_viewport_container.custom_minimum_size = (
 			Vector2(0.0, 72.0) if pixel else Vector2.ZERO
 		)
-	var view_buttons := get_node_or_null(^"VBox/Animation/PreviewViewButtons") as HFlowContainer
+	var view_buttons := get_node_or_null(^"VBox/Animation/PreviewViewButtons") as HBoxContainer
 	if view_buttons != null:
 		var sep := 2 if pixel else 4
-		if view_buttons.get_theme_constant(&"h_separation") != sep:
-			view_buttons.add_theme_constant_override(&"h_separation", sep)
-		if view_buttons.get_theme_constant(&"v_separation") != sep:
-			view_buttons.add_theme_constant_override(&"v_separation", sep)
+		if view_buttons.get_theme_constant(&"separation") != sep:
+			view_buttons.add_theme_constant_override(&"separation", sep)
 		for child in view_buttons.get_children():
 			if child is Button:
 				var btn := child as Button
-				btn.custom_minimum_size = Vector2(34.0, 34.0) if pixel else Vector2(36.0, 48.0)
+				btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				btn.custom_minimum_size = Vector2(0.0, 34.0) if pixel else Vector2(0.0, 48.0)
 				Stage4.style_button(btn, mode)
-	if is_instance_valid(play_button):
-		Stage4.style_button(play_button, mode)
-		var play_tr := play_button.get_node_or_null(^"TextureRect") as TextureRect
-		if play_tr != null:
-			if pixel:
-				if not play_tr.has_meta(&"phosprite_legacy_play_tex"):
-					play_tr.set_meta(&"phosprite_legacy_play_tex", play_tr.texture)
-					play_tr.set_meta(&"phosprite_legacy_play_mod", play_tr.modulate)
-				var q_play := QIcons.standard_icon_1x(
-					&"pause" if play_button.button_pressed else &"play"
-				)
-				if q_play != null:
-					play_tr.set_meta(&"phosprite_q_icon_active", true)
-					play_tr.texture = q_play
-					play_tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-					play_tr.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-					play_tr.modulate = Stage4.icon_tint_for_button(mode, play_button)
-					play_tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			elif play_tr.has_meta(&"phosprite_legacy_play_tex"):
-				play_tr.texture = play_tr.get_meta(&"phosprite_legacy_play_tex") as Texture2D
-				play_tr.modulate = play_tr.get_meta(&"phosprite_legacy_play_mod") as Color
-				play_tr.remove_meta(&"phosprite_legacy_play_tex")
-				play_tr.remove_meta(&"phosprite_legacy_play_mod")
-				play_tr.remove_meta(&"phosprite_q_icon_active")
 
 
 ## Preview actions share the existing View menu handlers and global canvas state.
@@ -795,25 +768,7 @@ func _on_greyscale_view_changed(enabled: bool) -> void:
 		grayscale_button.set_pressed_no_signal(enabled)
 
 
-func _on_PlayButton_toggled(button_pressed: bool) -> void:
-	if button_pressed:
-		if canvas_preview.mode == canvas_preview.Mode.TIMELINE:
-			if Global.current_project.frames.size() <= 1:
-				play_button.button_pressed = false
-				return
-		else:
-			if start_frame.value == end_frame.value:
-				play_button.button_pressed = false
-				return
-		canvas_preview.animation_timer.start()
-		Global.change_button_texturerect(play_button.get_child(0), "pause.png")
-	else:
-		canvas_preview.animation_timer.stop()
-		Global.change_button_texturerect(play_button.get_child(0), "play.png")
-
-
 func _on_OptionButton_item_selected(index: int) -> void:
-	play_button.button_pressed = false
 	canvas_preview.mode = index
 	if index == 0:
 		$VBox/Animation/VBoxContainer/Options.visible = false

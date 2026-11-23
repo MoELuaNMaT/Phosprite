@@ -129,7 +129,7 @@ func test_preview_animation_mode_selector_is_removed() -> void:
 		spritesheet_options != null and not spritesheet_options.visible,
 		"unused spritesheet settings must remain hidden"
 	)
-	check_true(play_button != null, "Preview must retain the animation play button")
+	check_true(play_button == null, "Preview fold menu removes the redundant play button")
 	check_true(grayscale_button != null, "Preview must retain the grayscale button")
 	check_true(
 		preview_renderer != null and int(preview_renderer.get("mode")) == 0,

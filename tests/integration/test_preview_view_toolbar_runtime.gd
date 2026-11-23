@@ -6,8 +6,9 @@ const PREVIEW_SCENE := preload("res://src/UI/CanvasPreviewContainer/CanvasPrevie
 func test_preview_view_toolbar_wraps_with_window_width() -> void:
 	var preview := PREVIEW_SCENE.instantiate() as PanelContainer
 	tree.root.add_child(preview)
-	var toolbar := preview.get_node_or_null("%PreviewViewButtons") as HFlowContainer
-	check_true(toolbar != null, "Preview contains a wrapping view toolbar")
+	var toolbar := preview.get_node_or_null("%PreviewViewButtons") as HBoxContainer
+	check_true(toolbar != null, "Preview contains a single-row view toolbar")
+	check_true(preview.get_node_or_null("%PlayButton") == null, "Preview removes PlayButton")
 	if toolbar == null:
 		preview.queue_free()
 		return
@@ -40,14 +41,24 @@ func test_preview_view_toolbar_wraps_with_window_width() -> void:
 	preview.set_controls_expanded(true)
 	check_true(preview.is_controls_expanded(), "Preview controls re-expand downward")
 	check_true(preview.size.y > expanded_height - 1.0, "re-expanding restores Preview height")
-	preview.size = Vector2(720, 210)
-	await tree.process_frame
-	await tree.process_frame
-	var wide_lines := toolbar.get_line_count()
 	preview.size = Vector2(220, 210)
 	await tree.process_frame
 	await tree.process_frame
-	check_true(toolbar.get_line_count() > wide_lines, "narrow Preview wraps toolbar to extra rows")
+	var first_btn := toolbar.get_child(0) as Button
+	var last_btn := toolbar.get_child(toolbar.get_child_count() - 1) as Button
+	check_eq(toolbar.get_child_count(), 6, "Preview toolbar has all 6 action buttons")
+	check_almost_eq(
+		first_btn.position.y,
+		last_btn.position.y,
+		1.0,
+		"narrow Preview keeps all 6 buttons on a single row without wrapping",
+	)
+	check_almost_eq(
+		last_btn.position.x + last_btn.size.x,
+		toolbar.size.x,
+		2.0,
+		"6 buttons stretch across the full toolbar width",
+	)
 	check_true(
 		(toolbar.get_node_or_null("AddReferenceButton") as Button).pressed.is_connected(
 			Callable(preview, "_on_add_reference_pressed")
