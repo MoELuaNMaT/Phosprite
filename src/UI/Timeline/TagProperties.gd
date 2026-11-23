@@ -1,5 +1,8 @@
 extends ConfirmationDialog
 
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+
 var current_tag_id := 0
 var old_duration: float = 0
 @onready var delete_tag_button := add_button("Delete", true, "delete_tag")
@@ -45,14 +48,22 @@ func show_dialog(
 	else:
 		from_spinbox.value = (selected_frames[0] + 1)
 		to_spinbox.value = (selected_frames[-1] + 1)
-		color_picker_button.color = Color(randf(), randf(), randf())
+		color_picker_button.color = _default_tag_color()
 		user_data_text_edit.text = ""
 		delete_tag_button.visible = false
 	if popup_rect == Rect2i():
 		popup_centered_clamped()
 	else:
 		popup(popup_rect)
-	name_line_edit.grab_focus()
+	if name_line_edit.has_focus():
+		name_line_edit.release_focus()
+
+
+static func _default_tag_color() -> Color:
+	var mode := Stage4.active_mode()
+	if mode != PhospriteTokens.LEGACY:
+		return PhospriteTokens.color(mode, &"accent_primary")
+	return Color(randf(), randf(), randf())
 
 
 func _on_confirmed() -> void:

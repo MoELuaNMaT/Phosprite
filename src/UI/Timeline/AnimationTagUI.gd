@@ -2,26 +2,79 @@ extends Control
 
 enum Drag { NONE, FROM, TO }
 
+const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
+const PhospriteTokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
+
 var tag: AnimationTag
 var dragging_tag: AnimationTag
 var dragged_initial := 0
 var is_dragging := Drag.NONE
 
 @onready var line_2d := $Line2D as Line2D
-@onready var tag_properties := Global.control.find_child("TagProperties") as ConfirmationDialog
+@onready var tag_properties := (
+	Global.control.find_child("TagProperties") as ConfirmationDialog
+	if is_instance_valid(Global.control)
+	else null
+)
+
+
+func _enter_tree() -> void:
+	if not Themes.theme_switched.is_connected(_apply_tag_chrome):
+		Themes.theme_switched.connect(_apply_tag_chrome)
+
+
+func _exit_tree() -> void:
+	if Themes.theme_switched.is_connected(_apply_tag_chrome):
+		Themes.theme_switched.disconnect(_apply_tag_chrome)
 
 
 func _ready() -> void:
 	if not is_instance_valid(tag):
 		return
 	$Button.text = tag.name
-	$Button.modulate = tag.color
-	line_2d.default_color = tag.color
+	_apply_tag_chrome()
 	update_position_and_size()
 
 
+func _resolved_range_line_color() -> Color:
+	var mode := Stage4.active_mode()
+	if mode != PhospriteTokens.LEGACY:
+		return PhospriteTokens.color(mode, &"accent_primary")
+	return tag.color if is_instance_valid(tag) else Color("#E85D3F")
+
+
+func _apply_tag_chrome() -> void:
+	if not is_node_ready() or not is_instance_valid(line_2d):
+		return
+	var mode := Stage4.active_mode()
+	var pixel := mode != PhospriteTokens.LEGACY
+	var line_color := _resolved_range_line_color()
+	line_2d.default_color = line_color
+	line_2d.width = 2.0 if pixel else 1.0
+	var btn := get_node_or_null(^"Button") as Button
+	if btn != null and is_instance_valid(tag):
+		btn.modulate = Color.WHITE if pixel else tag.color
+		if pixel:
+			for col_name in [
+				&"font_color",
+				&"font_hover_color",
+				&"font_pressed_color",
+				&"font_focus_color",
+			]:
+				btn.add_theme_color_override(col_name, line_color)
+		else:
+			for col_name in [
+				&"font_color",
+				&"font_hover_color",
+				&"font_pressed_color",
+				&"font_focus_color",
+			]:
+				if btn.has_theme_color_override(col_name):
+					btn.remove_theme_color_override(col_name)
+
+
 func update_position_and_size(from_tag := tag) -> void:
-	if not is_instance_valid(line_2d):
+	if not is_instance_valid(line_2d) or not is_instance_valid(Global.animation_timeline):
 		return
 	position = from_tag.get_position()
 	custom_minimum_size.x = from_tag.get_minimum_size()
