@@ -550,7 +550,9 @@ func _update_preview_split_handle() -> void:
 static func _handle_contains_viewport_point(handle: Control, viewport_pos: Vector2) -> bool:
 	if not is_instance_valid(handle) or not handle.is_visible_in_tree():
 		return false
-	var local_pos := handle.get_global_transform_with_canvas().affine_inverse() * viewport_pos
+	var local_pos: Vector2 = (
+		handle.get_global_transform_with_canvas().affine_inverse() * viewport_pos
+	)
 	return Rect2(Vector2.ZERO, handle.size).has_point(local_pos)
 
 
