@@ -662,33 +662,75 @@ func _clear_source_outline() -> void:
 	_source_outline = null
 
 
-func _find_touch_target(screen_position: Vector2) -> Dictionary:
+func _is_blocked_by_opacity_or_header(screen_position: Vector2) -> bool:
 	if not is_instance_valid(_timeline):
+		return false
+	var slider := _timeline.get("opacity_slider") as ValueSlider
+	if is_instance_valid(slider) and slider.is_visible_in_tree():
+		if slider.state != ValueSlider.NORMAL:
+			return true
+		if slider.get_global_rect().grow(4.0).has_point(screen_position):
+			return true
+	var header := _timeline.get("layer_header_container") as Control
+	if is_instance_valid(header) and header.is_visible_in_tree():
+		if header.get_global_rect().has_point(screen_position):
+			return true
+	return false
+
+
+func _find_touch_target(screen_position: Vector2) -> Dictionary:
+	if not is_instance_valid(_timeline) or _is_blocked_by_opacity_or_header(screen_position):
 		return {}
+	var horizontal_clip := _horizontal_visible_rect()
 	var frame_hbox := _timeline.get("frame_hbox") as HBoxContainer
 	if is_instance_valid(frame_hbox):
 		for child in frame_hbox.get_children():
 			var frame_button := child as Control
-			if (
-				is_instance_valid(frame_button)
-				and frame_button.is_visible_in_tree()
-				and frame_button.get_global_rect().has_point(screen_position)
-			):
+			if not is_instance_valid(frame_button) or not frame_button.is_visible_in_tree():
+				continue
+			var frame_rect := frame_button.get_global_rect()
+			if horizontal_clip.has_area():
+				frame_rect = (
+					frame_rect
+					. intersection(
+						Rect2(
+							horizontal_clip.position.x,
+							frame_rect.position.y,
+							horizontal_clip.size.x,
+							frame_rect.size.y,
+						)
+					)
+				)
+			if frame_rect.has_area() and frame_rect.has_point(screen_position):
 				return {"kind": TouchTargetKind.FRAME, "control": frame_button}
 
 	var cel_vbox := _timeline.get("cel_vbox") as VBoxContainer
 	if is_instance_valid(cel_vbox):
+		var vertical_clip := _vertical_visible_rect()
 		for row in cel_vbox.get_children():
 			var cel_row := row as Control
 			if not is_instance_valid(cel_row) or not cel_row.is_visible_in_tree():
 				continue
 			for child in cel_row.get_children():
 				var cel_button := child as Control
-				if (
-					is_instance_valid(cel_button)
-					and cel_button.is_visible_in_tree()
-					and cel_button.get_global_rect().has_point(screen_position)
-				):
+				if not is_instance_valid(cel_button) or not cel_button.is_visible_in_tree():
+					continue
+				var cel_rect := cel_button.get_global_rect()
+				if vertical_clip.has_area():
+					cel_rect = cel_rect.intersection(vertical_clip)
+				if horizontal_clip.has_area():
+					cel_rect = (
+						cel_rect
+						. intersection(
+							Rect2(
+								horizontal_clip.position.x,
+								cel_rect.position.y,
+								horizontal_clip.size.x,
+								cel_rect.size.y,
+							)
+						)
+					)
+				if cel_rect.has_area() and cel_rect.has_point(screen_position):
 					return {"kind": TouchTargetKind.CEL, "control": cel_button}
 	return {}
 

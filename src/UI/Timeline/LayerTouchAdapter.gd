@@ -139,7 +139,9 @@ func _handle_ios_layer_touch(event: InputEventScreenTouch) -> bool:
 		return was_reordering
 
 	if event.pressed:
-		if not _main_button.get_global_rect().has_point(event.position):
+		if _is_blocked_by_header_or_slider(event.position):
+			return false
+		if not _is_touch_inside_visible_layer_row(event.position):
 			return false
 		_enter_ios_touch_layer_ui()
 		_ios_touch_candidates[event.index] = {
@@ -193,6 +195,10 @@ func _handle_ios_layer_drag(event: InputEventScreenDrag) -> bool:
 		return false
 	var candidate: Dictionary = _ios_touch_candidates[event.index]
 	if bool(candidate.get("cancelled", false)):
+		return false
+	if _is_opacity_slider_active():
+		candidate["cancelled"] = true
+		_ios_touch_candidates[event.index] = candidate
 		return false
 	if bool(candidate.get("swipe_selected", false)):
 		get_viewport().set_input_as_handled()
@@ -453,6 +459,45 @@ func _timeline_scroll() -> ScrollContainer:
 	if not is_instance_valid(Global.animation_timeline):
 		return null
 	return Global.animation_timeline.timeline_scroll as ScrollContainer
+
+
+func _is_opacity_slider_active() -> bool:
+	var timeline := Global.animation_timeline
+	if not is_instance_valid(timeline):
+		return false
+	var slider := timeline.get("opacity_slider") as ValueSlider
+	return (
+		is_instance_valid(slider)
+		and slider.is_visible_in_tree()
+		and slider.state != ValueSlider.NORMAL
+	)
+
+
+func _is_blocked_by_header_or_slider(screen_position: Vector2) -> bool:
+	var timeline := Global.animation_timeline
+	if not is_instance_valid(timeline):
+		return false
+	var slider := timeline.get("opacity_slider") as ValueSlider
+	if is_instance_valid(slider) and slider.is_visible_in_tree():
+		if slider.state != ValueSlider.NORMAL:
+			return true
+		if slider.get_global_rect().grow(4.0).has_point(screen_position):
+			return true
+	var header := timeline.get("layer_header_container") as Control
+	if is_instance_valid(header) and header.is_visible_in_tree():
+		if header.get_global_rect().has_point(screen_position):
+			return true
+	return false
+
+
+func _is_touch_inside_visible_layer_row(screen_position: Vector2) -> bool:
+	if not is_instance_valid(_main_button):
+		return false
+	var row_rect := _main_button.get_global_rect()
+	var scroll := _timeline_scroll()
+	if is_instance_valid(scroll) and scroll.size.x > 0.0 and scroll.size.y > 0.0:
+		row_rect = row_rect.intersection(scroll.get_global_rect())
+	return row_rect.has_area() and row_rect.has_point(screen_position)
 
 
 func _select_layer_for_touch() -> void:
