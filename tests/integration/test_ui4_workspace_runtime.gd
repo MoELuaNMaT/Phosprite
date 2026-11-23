@@ -162,3 +162,94 @@ func test_ui4_fixed_u_frame_geometry_and_resize_rules() -> void:
 	)
 	manager.destroy_all_modules()
 	root.free()
+
+
+func test_ui4_preview_palette_split_handle_drags_from_live_height_without_dead_zone() -> void:
+	var root := Control.new()
+	root.size = Vector2(1200.0, 800.0)
+	tree.root.add_child(root)
+	var manager := WorkspaceModuleManager.new()
+	root.add_child(manager)
+	check_true(Builtins.register_defaults(manager), "workspace modules register")
+	var preview_content := Control.new()
+	preview_content.custom_minimum_size = Vector2(200.0, 220.0)
+	check_true(
+		manager.adopt_module(Builtins.PREVIEW_ID, preview_content) != null, "preview adopted"
+	)
+	var palette_root := VBoxContainer.new()
+	var swatches := Control.new()
+	swatches.name = &"Palettes"
+	swatches.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette_root.add_child(swatches)
+	var picker := Control.new()
+	picker.name = &"Color Picker"
+	picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette_root.add_child(picker)
+	check_true(manager.adopt_module(Builtins.PALETTE_ID, palette_root) != null, "palette adopted")
+	for module_id in [Builtins.TOOLS_ID, Builtins.TIMELINE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]:
+		check_true(
+			manager.adopt_module(module_id, Control.new()) != null, "adopted: " + String(module_id)
+		)
+	var dock_host := WorkspaceDockHost.new()
+	root.add_child(dock_host)
+	dock_host.size = root.size
+	check_true(dock_host.setup(manager), "dock host setup")
+	var surface := WorkspaceSurface.new()
+	root.add_child(surface)
+	check_true(surface.setup(manager, dock_host), "surface setup")
+	var ui4 := Profile4.new()
+	root.add_child(ui4)
+	check_true(ui4.setup(root, surface), "UI4 setup")
+	check_true(ui4.activate(), "UI4 activates with preview + palette")
+	ui4._apply_live_palette_presentation()
+	await tree.process_frame
+	await tree.process_frame
+
+	var preview_module := manager.get_instance(Builtins.PREVIEW_ID)
+	var handle := ui4._preview_split_handle
+	check_true(is_instance_valid(handle) and handle.visible, "preview split handle is visible")
+	var initial_h := preview_module.size.y
+	check_true(
+		initial_h > Profile4.PREVIEW_HEIGHT,
+		"expanded preview content naturally exceeds default PREVIEW_HEIGHT",
+	)
+	var start_pos := handle.get_global_transform_with_canvas() * (handle.size * 0.5)
+	var press := InputEventScreenTouch.new()
+	press.index = 0
+	press.pressed = true
+	press.position = start_pos
+	ui4._input(press)
+	check_eq(ui4._preview_split_drag_touch, 0, "touch press captures preview split handle")
+
+	var drag_down := InputEventScreenDrag.new()
+	drag_down.index = 0
+	drag_down.position = start_pos + Vector2(0.0, 60.0)
+	drag_down.relative = Vector2(0.0, 60.0)
+	ui4._input(drag_down)
+	await tree.process_frame
+	check_true(
+		preview_module.size.y >= initial_h + 55.0,
+		"dragging down 60px immediately grows preview from live height without dead zone",
+	)
+
+	var drag_up := InputEventScreenDrag.new()
+	drag_up.index = 0
+	drag_up.position = start_pos + Vector2(0.0, 20.0)
+	drag_up.relative = Vector2(0.0, -40.0)
+	ui4._input(drag_up)
+	await tree.process_frame
+	check_true(
+		preview_module.size.y <= initial_h + 25.0 and preview_module.size.y >= initial_h + 15.0,
+		"dragging back up immediately shrinks preview proportionally",
+	)
+
+	var release := InputEventScreenTouch.new()
+	release.index = 0
+	release.pressed = false
+	release.position = drag_up.position
+	ui4._input(release)
+	check_eq(ui4._preview_split_drag_touch, -1, "touch release ends preview split drag")
+
+	ui4.deactivate()
+	manager.destroy_all_modules()
+	root.free()

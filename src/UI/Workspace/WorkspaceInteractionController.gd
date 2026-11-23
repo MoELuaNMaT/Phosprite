@@ -158,7 +158,10 @@ func _event_over_color_options_popup(event: InputEvent) -> bool:
 		for node in get_tree().get_nodes_in_group(group_name):
 			var popup := node as Control
 			if popup != null and popup.is_visible_in_tree():
-				if popup.get_global_rect().has_point(event.position):
+				var local_pos := (
+					popup.get_global_transform_with_canvas().affine_inverse() * event.position
+				)
+				if Rect2(Vector2.ZERO, popup.size).has_point(local_pos):
 					return true
 	return false
 
