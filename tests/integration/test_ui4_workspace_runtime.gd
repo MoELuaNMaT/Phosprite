@@ -232,7 +232,10 @@ func test_ui4_preview_palette_split_handle_drags_from_live_height_without_dead_z
 	check_true(
 		down_h >= initial_h + 55.0,
 		(
-			"dragging down 60px immediately grows preview (initial=%.1f down=%.1f layout=%.1f min=%.1f left=%.1f)"
+			(
+				"dragging down 60px immediately grows preview "
+				+ "(initial=%.1f down=%.1f layout=%.1f min=%.1f left=%.1f)"
+			)
 			% [
 				initial_h,
 				down_h,

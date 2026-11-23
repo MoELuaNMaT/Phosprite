@@ -119,6 +119,16 @@ func is_fixed_dock_module(module_id: StringName) -> bool:
 	return _floating_snap_policy_enabled and _fixed_dock_zones.has(module_id)
 
 
+func _is_stacked_fixed_zone(zone: int) -> bool:
+	var count := 0
+	for id_variant in _fixed_dock_zones:
+		if int(_fixed_dock_zones[id_variant]) == zone:
+			count += 1
+			if count > 1:
+				return true
+	return false
+
+
 func get_floating_bounds() -> Rect2:
 	if dock_host == null:
 		return Rect2()
@@ -216,8 +226,10 @@ func dock_module(
 	if _floating_snap_policy_enabled:
 		if is_fixed_dock_module(module_id):
 			zone = int(_fixed_dock_zones[module_id])
-			index = 0
-			region_fill = true
+			if index < 0:
+				index = 0
+			if not _is_stacked_fixed_zone(zone):
+				region_fill = true
 		else:
 			if not _can_float(module_id):
 				return false
