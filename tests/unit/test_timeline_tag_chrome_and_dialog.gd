@@ -50,3 +50,43 @@ func test_tag_properties_does_not_auto_focus_name_input() -> void:
 		)
 	dialog.hide()
 	dialog.queue_free()
+
+
+func test_animation_tag_span_aligns_exactly_to_frame_range() -> void:
+	var tag := AnimationTag.new("Run", Color.WHITE, 2, 4)
+	var expected_cel := (
+		Global.animation_timeline.cel_size if is_instance_valid(Global.animation_timeline) else 36
+	)
+	var pos := tag.get_position()
+	var width := tag.get_minimum_size()
+	if (
+		is_instance_valid(Global.animation_timeline)
+		and is_instance_valid(Global.animation_timeline.frame_hbox)
+		and Global.animation_timeline.frame_hbox.get_child_count() >= 4
+	):
+		var start_btn := Global.animation_timeline.frame_hbox.get_child(1) as Control
+		var end_btn := Global.animation_timeline.frame_hbox.get_child(3) as Control
+		if start_btn.size.x > 0.0 and end_btn.size.x > 0.0:
+			check_almost_eq(
+				pos.x, start_btn.position.x + 1.0, 0.5, "tag left edge matches start frame"
+			)
+			check_almost_eq(
+				float(width),
+				(end_btn.position.x + end_btn.size.x) - start_btn.position.x - 2.0,
+				1.0,
+				"tag width spans exact frame range",
+			)
+	else:
+		check_almost_eq(pos.x, float(expected_cel + 1), 0.5, "fallback left edge matches frame 2")
+		check_eq(width, 3 * expected_cel - 2, "fallback width spans 3 frames with 1px inset")
+	var tl_source := FileAccess.get_file_as_string("res://src/Classes/AnimationTag.gd")
+	check_has(
+		tl_source,
+		"var unscrolled_frame_x := frame_hbox.global_position.x + scroll_x",
+		"TagSpacer aligns directly to unscrolled FrameHBox global X",
+	)
+	check_has(
+		tl_source,
+		"hbox.custom_minimum_size.x = spacer_w + frame_hbox.size.x + extra_right",
+		"TagScroll HBoxContainer width includes TagSpacer plus FrameHBox width",
+	)

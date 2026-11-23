@@ -116,6 +116,8 @@ func _ready() -> void:
 	cel_size = loaded_cel_size
 	add_layer_list.get_popup().id_pressed.connect(on_add_layer_list_id_pressed)
 	frame_scroll_bar.value_changed.connect(_frame_scroll_changed)
+	if not frame_hbox.resized.is_connected(adjust_scroll_container):
+		frame_hbox.resized.connect(adjust_scroll_container.call_deferred)
 	animation_timer.wait_time = 1 / Global.current_project.fps
 	fps_spinbox.value = Global.current_project.fps
 	_fill_blend_modes_option_button()
@@ -400,12 +402,7 @@ func _on_LayerVBox_resized() -> void:
 
 
 func adjust_scroll_container() -> void:
-	tag_spacer.custom_minimum_size.x = (
-		frame_scroll_container.global_position.x - tag_scroll_container.global_position.x
-	)
-	tag_scroll_container.get_child(0).custom_minimum_size.x = frame_hbox.size.x
-	tag_container.custom_minimum_size = frame_hbox.size
-	tag_scroll_container.scroll_horizontal = frame_scroll_bar.value
+	AnimationTag.sync_timeline_tag_scroll(self)
 
 
 func _on_LayerFrameSplitContainer_gui_input(event: InputEvent) -> void:
@@ -439,8 +436,7 @@ func _cel_size_changed(value: int) -> void:
 		frame_id.custom_minimum_size.x = cel_size
 		frame_id.size.x = cel_size
 
-	for tag_c: Control in tag_container.get_children():
-		tag_c.update_position_and_size()
+	adjust_scroll_container.call_deferred()
 
 
 ## Fill the blend modes OptionButton with items
@@ -1635,6 +1631,7 @@ func _on_animation_tags_changed() -> void:
 		tag_container.move_child(tag_c, tag_position)
 
 	set_timeline_first_and_last_frames()
+	adjust_scroll_container.call_deferred()
 
 
 static func _should_show_tag_row(has_tags: bool, keyframe_enabled: bool, on_ios: bool) -> bool:
