@@ -60,6 +60,7 @@ func _enter_tree() -> void:
 	_sync_view_controls()
 	_apply_controls_expanded_state.call_deferred()
 	_refresh_preview_pixel_chrome.call_deferred()
+	_connect_preview_camera_zoom.call_deferred()
 
 
 func _ready() -> void:
@@ -67,6 +68,7 @@ func _ready() -> void:
 	_apply_controls_expanded_state()
 	_on_greyscale_view_changed(Global.greyscale_view)
 	_sync_view_controls()
+	_connect_preview_camera_zoom()
 	_schedule_initial_canvas_adaptation()
 	if OS.get_name() == "iOS":
 		_reference_import_menu = PopupMenu.new()
@@ -89,6 +91,8 @@ func _exit_tree() -> void:
 		Themes.theme_switched.disconnect(_refresh_preview_pixel_chrome)
 	if Global.pixel_ui_unit_changed.is_connected(_refresh_preview_pixel_chrome):
 		Global.pixel_ui_unit_changed.disconnect(_refresh_preview_pixel_chrome)
+	if is_instance_valid(camera) and camera.zoom_changed.is_connected(_sync_preview_zoom_header):
+		camera.zoom_changed.disconnect(_sync_preview_zoom_header)
 
 
 func _input(event: InputEvent) -> void:
@@ -286,7 +290,33 @@ func workspace_module_initialized(_module: WorkspaceModule, _context: Dictionary
 
 func workspace_module_mounted(_module: WorkspaceModule, _host: Control) -> void:
 	_ensure_collapsible_controls_ui.call_deferred()
+	_connect_preview_camera_zoom.call_deferred()
 	_schedule_initial_canvas_adaptation()
+
+
+static func format_zoom_label(zoom_scale: Vector2) -> String:
+	var pct := zoom_scale.x * 100.0
+	if pct <= 0.0:
+		return ""
+	if pct < 10.0:
+		return "%.1f%%" % pct
+	return "%d%%" % roundi(pct)
+
+
+func _connect_preview_camera_zoom() -> void:
+	if (
+		is_instance_valid(camera)
+		and not camera.zoom_changed.is_connected(_sync_preview_zoom_header)
+	):
+		camera.zoom_changed.connect(_sync_preview_zoom_header)
+	_sync_preview_zoom_header()
+
+
+func _sync_preview_zoom_header() -> void:
+	var parent_module := get_parent() as WorkspaceModule
+	if parent_module == null or not is_instance_valid(camera):
+		return
+	parent_module.set_header_subtitle(format_zoom_label(camera.zoom))
 
 
 static func compute_adaptive_module_height(

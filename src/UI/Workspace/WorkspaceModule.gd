@@ -54,6 +54,7 @@ var _position_adjustment_enabled := true
 var _header_accessory_layer: Node2D
 var _header_accessory: Control
 var _header_title_override := ""
+var _header_subtitle := ""
 var _header_chrome_visible := true
 var _horizontal_content_padding_override := -1
 
@@ -201,6 +202,17 @@ func set_header_title_override(title: String) -> void:
 
 func clear_header_title_override() -> void:
 	set_header_title_override("")
+
+
+func set_header_subtitle(subtitle: String) -> void:
+	if _header_subtitle == subtitle:
+		return
+	_header_subtitle = subtitle
+	queue_redraw()
+
+
+func get_header_subtitle() -> String:
+	return _header_subtitle
 
 
 ## Module identities stay in English; only rendered titles are localized.
@@ -565,15 +577,43 @@ func _draw() -> void:
 					Rect2(gx + c * (u + 2), gy + r * (u + 2), u, u), _visual_theme.border_color
 				)
 		grip_offset = float(u * 2 + 8)
+	var title_x := _visual_theme.CONTENT_PADDING + 1.0 + grip_offset
+	var available_title_w := maxf(0.0, title_width - grip_offset)
 	draw_string(
 		_visual_theme.default_font,
-		Vector2(_visual_theme.CONTENT_PADDING + 1.0 + grip_offset, baseline),
+		Vector2(title_x, baseline),
 		title,
 		HORIZONTAL_ALIGNMENT_LEFT,
-		title_width,
+		available_title_w,
 		_visual_theme.default_font_size,
 		_visual_theme.text_color
 	)
+	if not _header_subtitle.is_empty() and available_title_w > 0.0:
+		var title_drawn_w := minf(
+			available_title_w,
+			(
+				_visual_theme
+				. default_font
+				. get_string_size(
+					title, HORIZONTAL_ALIGNMENT_LEFT, -1, _visual_theme.default_font_size
+				)
+				. x
+			)
+		)
+		var sub_gap := 8.0
+		var sub_width := available_title_w - title_drawn_w - sub_gap
+		if sub_width > 12.0:
+			var sub_font_size := maxi(10, _visual_theme.default_font_size - 1)
+			var sub_baseline := header_height * 0.5 + sub_font_size * 0.35
+			draw_string(
+				_visual_theme.default_font,
+				Vector2(title_x + title_drawn_w + sub_gap, sub_baseline),
+				_header_subtitle,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				sub_width,
+				sub_font_size,
+				_visual_theme.muted_text_color
+			)
 	_draw_float_affordance()
 	_draw_collapse_affordance()
 	_draw_resize_affordance()

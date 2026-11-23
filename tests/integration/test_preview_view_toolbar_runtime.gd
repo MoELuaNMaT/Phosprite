@@ -1,6 +1,7 @@
 extends "res://tests/test_base.gd"
 
 const PREVIEW_SCENE := preload("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.tscn")
+const PREVIEW_SCRIPT := preload("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd")
 
 
 func test_preview_view_toolbar_wraps_with_window_width() -> void:
@@ -183,14 +184,13 @@ func test_preview_bottom_fold_expands_floating_module_downward_without_squeezing
 
 
 func test_preview_adaptive_height_matches_canvas_aspect_ratio() -> void:
-	var preview_script := load("res://src/UI/CanvasPreviewContainer/CanvasPreviewContainer.gd")
-	var h_square: float = preview_script.compute_adaptive_module_height(
+	var h_square: float = PREVIEW_SCRIPT.compute_adaptive_module_height(
 		Vector2(64.0, 64.0), 236.0, 8.0, 120.0, 110.0, 520.0
 	)
-	var h_4_3: float = preview_script.compute_adaptive_module_height(
+	var h_4_3: float = PREVIEW_SCRIPT.compute_adaptive_module_height(
 		Vector2(320.0, 240.0), 236.0, 8.0, 120.0, 110.0, 520.0
 	)
-	var h_3_4: float = preview_script.compute_adaptive_module_height(
+	var h_3_4: float = PREVIEW_SCRIPT.compute_adaptive_module_height(
 		Vector2(240.0, 320.0), 236.0, 8.0, 120.0, 110.0, 520.0
 	)
 	check_almost_eq(h_square, 228.0 + 120.0, 1.0, "1:1 canvas produces 1:1 preview viewport height")
@@ -200,7 +200,7 @@ func test_preview_adaptive_height_matches_canvas_aspect_ratio() -> void:
 	check_almost_eq(
 		h_3_4, roundf(228.0 * (4.0 / 3.0) + 120.0), 1.0, "3:4 canvas scales preview viewport to 3:4"
 	)
-	var h_extreme_tall: float = preview_script.compute_adaptive_module_height(
+	var h_extreme_tall: float = PREVIEW_SCRIPT.compute_adaptive_module_height(
 		Vector2(32.0, 512.0), 236.0, 8.0, 120.0, 110.0, 480.0
 	)
 	check_almost_eq(h_extreme_tall, 480.0, 0.5, "extreme portrait canvas clamps to max height")
@@ -368,3 +368,50 @@ func test_ui4_preview_bottom_fold_pushes_palette_down_without_squeezing_viewport
 		"expanding in UI4 does not squeeze preview viewport upward",
 	)
 	root.queue_free()
+
+
+func test_preview_header_displays_live_zoom_percentage_beside_title() -> void:
+	check_eq(PREVIEW_SCRIPT.format_zoom_label(Vector2(1.0, 1.0)), "100%", "1x zoom formats as 100%")
+	check_eq(
+		PREVIEW_SCRIPT.format_zoom_label(Vector2(2.5, 2.5)), "250%", "2.5x zoom formats as 250%"
+	)
+	check_eq(
+		PREVIEW_SCRIPT.format_zoom_label(Vector2(0.055, 0.055)),
+		"5.5%",
+		"sub-10% zoom keeps one decimal place",
+	)
+	var root := Control.new()
+	root.size = Vector2(1280.0, 800.0)
+	var manager := WorkspaceModuleManager.new()
+	var host := WorkspaceDockHost.new()
+	host.size = Vector2(1280.0, 800.0)
+	var surface := WorkspaceSurface.new()
+	surface.name = "WorkspaceSurface"
+	root.add_child(host)
+	root.add_child(surface)
+	var preview_def := WorkspaceBuiltinModules.create_definitions()[0]
+	check_true(manager.register_definition(preview_def), "preview definition registers")
+	check_true(host.setup(manager), "dock host initializes")
+	check_true(surface.setup(manager, host), "workspace surface initializes")
+	tree.root.add_child(root)
+	check_true(
+		surface.float_module(WorkspaceBuiltinModules.PREVIEW_ID, Rect2(120.0, 80.0, 328.0, 220.0)),
+		"preview floats on surface",
+	)
+	await tree.process_frame
+	await tree.process_frame
+	var module := manager.get_instance(WorkspaceBuiltinModules.PREVIEW_ID)
+	var preview := module.get_content() as PanelContainer
+	check_eq(
+		module.get_header_subtitle(),
+		PREVIEW_SCRIPT.format_zoom_label(preview.camera.zoom),
+		"preview header initializes subtitle from camera zoom",
+	)
+	preview.camera.zoom = Vector2(3.0, 3.0)
+	check_eq(
+		module.get_header_subtitle(),
+		"300%",
+		"changing preview camera zoom updates header subtitle immediately",
+	)
+	root.queue_free()
+	manager.free()
