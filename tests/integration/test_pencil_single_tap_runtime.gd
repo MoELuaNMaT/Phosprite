@@ -13,8 +13,12 @@ func test_pencil_single_tap_and_two_pixel_drag_draw_starting_pixel() -> void:
 	if not is_instance_valid(project) or not is_instance_valid(canvas):
 		return
 
-	var prev_tool := Tools.get_assigned_tool_name(MOUSE_BUTTON_LEFT)
-	var prev_color := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
+	var prev_tool: String = (
+		str(Tools._slots[MOUSE_BUTTON_LEFT].tool_node.name)
+		if is_instance_valid(Tools._slots[MOUSE_BUTTON_LEFT].tool_node)
+		else "Pencil"
+	)
+	var prev_color: Color = Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
 	var prev_pp := Tools.pixel_perfect
 	Tools.assign_tool("Pencil", MOUSE_BUTTON_LEFT)
 	Tools.assign_color(Color(1.0, 0.0, 0.0, 1.0), MOUSE_BUTTON_LEFT, false)

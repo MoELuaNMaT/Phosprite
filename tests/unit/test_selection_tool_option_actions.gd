@@ -9,7 +9,11 @@ func test_selection_actions_use_adaptive_icon_flow_for_all_selection_tools() -> 
 	if actions == null:
 		tool.free()
 		return
-	check_eq(actions.get_child_count(), 5, "heading, quick actions, wrap, modify, modify choices")
+	check_eq(
+		actions.get_child_count(),
+		6,
+		"heading, quick actions, wrap label, wrap, modify, modify choices"
+	)
 	check_true(actions.get_child(0) is Label, "actions have a clear section heading")
 	var quick := actions.get_node_or_null(^"QuickActions") as HFlowContainer
 	check_true(quick != null, "quick actions can wrap in a narrow tool options panel")
