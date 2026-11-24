@@ -286,3 +286,91 @@ func test_ui4_preview_palette_split_handle_drags_from_live_height_without_dead_z
 	ui4.deactivate()
 	manager.destroy_all_modules()
 	root.free()
+
+
+func test_ui4_palette_color_split_handle_tracks_finger_position_one_to_one() -> void:
+	var root := Control.new()
+	root.size = Vector2(1200.0, 800.0)
+	tree.root.add_child(root)
+	var manager := WorkspaceModuleManager.new()
+	root.add_child(manager)
+	check_true(Builtins.register_defaults(manager), "workspace modules register")
+	var preview_content := Control.new()
+	preview_content.custom_minimum_size = Vector2(200.0, 180.0)
+	check_true(
+		manager.adopt_module(Builtins.PREVIEW_ID, preview_content) != null, "preview adopted"
+	)
+	var palette_root := VBoxContainer.new()
+	var swatches := Control.new()
+	swatches.name = &"Palettes"
+	swatches.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette_root.add_child(swatches)
+	var sep := HSeparator.new()
+	palette_root.add_child(sep)
+	var picker := Control.new()
+	picker.name = &"Color Picker"
+	picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	palette_root.add_child(picker)
+	check_true(manager.adopt_module(Builtins.PALETTE_ID, palette_root) != null, "palette adopted")
+	for module_id in [Builtins.TOOLS_ID, Builtins.TIMELINE_ID, Builtins.RIGHT_TOOL_OPTIONS_ID]:
+		check_true(
+			manager.adopt_module(module_id, Control.new()) != null, "adopted: " + String(module_id)
+		)
+	var dock_host := WorkspaceDockHost.new()
+	root.add_child(dock_host)
+	dock_host.size = root.size
+	check_true(dock_host.setup(manager), "dock host setup")
+	var surface := WorkspaceSurface.new()
+	root.add_child(surface)
+	check_true(surface.setup(manager, dock_host), "surface setup")
+	var ui4 := Profile4.new()
+	root.add_child(ui4)
+	check_true(ui4.setup(root, surface), "UI4 setup")
+	check_true(ui4.activate(), "UI4 activates")
+	ui4._apply_live_palette_presentation()
+	await tree.process_frame
+	await tree.process_frame
+
+	var split_handle := ui4._split_handle
+	check_true(is_instance_valid(split_handle), "palette-color split handle exists")
+	var initial_seam_y: float = swatches.global_position.y + swatches.size.y
+	var start_pos := split_handle.get_global_transform_with_canvas() * (split_handle.size * 0.5)
+	var press := InputEventScreenTouch.new()
+	press.index = 0
+	press.pressed = true
+	press.position = start_pos
+	ui4._input(press)
+	check_eq(ui4._split_drag_touch, 0, "touch press captures palette-color split handle")
+
+	# Emulated mouse motion during an active touch drag must NOT double-move the split.
+	var emu_motion := InputEventMouseMotion.new()
+	emu_motion.device = InputEvent.DEVICE_ID_EMULATION
+	emu_motion.position = start_pos + Vector2(0.0, 50.0)
+	emu_motion.relative = Vector2(0.0, 50.0)
+	ui4._on_split_handle_input(emu_motion)
+
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = start_pos + Vector2(0.0, 50.0)
+	drag.relative = Vector2(0.0, 50.0)
+	ui4._input(drag)
+	await tree.process_frame
+	await tree.process_frame
+	var moved_seam_y: float = swatches.global_position.y + swatches.size.y
+	check_almost_eq(
+		moved_seam_y,
+		initial_seam_y + 50.0,
+		4.0,
+		"palette-color seam tracks finger 1:1 without double-scaling or drift",
+	)
+
+	var release := InputEventScreenTouch.new()
+	release.index = 0
+	release.pressed = false
+	release.position = drag.position
+	ui4._input(release)
+	check_eq(ui4._split_drag_touch, -1, "touch release ends palette-color split drag")
+
+	ui4.deactivate()
+	manager.destroy_all_modules()
+	root.queue_free()
