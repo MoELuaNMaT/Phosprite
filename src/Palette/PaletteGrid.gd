@@ -79,6 +79,7 @@ func _apply_stage4_swatch_spacing() -> void:
 	for swatch in swatches:
 		if is_instance_valid(swatch):
 			swatch.queue_redraw()
+	_on_resized()
 
 
 func _input(event: InputEvent) -> void:
@@ -283,9 +284,16 @@ func change_swatch_size(size_diff: Vector2) -> void:
 	_on_resized()
 
 
+static func compute_unlocked_columns(available_width: float, cell_width: float, h_sep: int) -> int:
+	var safe_cell := maxf(1.0, cell_width)
+	var safe_sep := float(maxi(0, h_sep))
+	return maxi(1, int(floor((available_width + safe_sep) / (safe_cell + safe_sep))))
+
+
 func _on_resized() -> void:
 	if not grid_locked:
-		columns = maxi(1, size.x / (swatch_size.x + 3))
+		var h_sep := maxi(0, get_theme_constant(&"h_separation"))
+		columns = compute_unlocked_columns(size.x, swatch_size.x, h_sep)
 
 
 func _on_palette_swatch_pressed(mouse_button: int, index: int) -> void:

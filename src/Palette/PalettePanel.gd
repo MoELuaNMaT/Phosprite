@@ -645,3 +645,8 @@ func _refresh_stage4_palette_chrome() -> void:
 			tr_node.remove_meta(&"phosprite_legacy_pal_exp")
 			tr_node.remove_meta(&"phosprite_legacy_pal_str")
 			tr_node.remove_meta(&"phosprite_q_icon_active")
+	var scroll_container := get_node_or_null(^"%ScrollContainer") as ScrollContainer
+	if is_instance_valid(scroll_container):
+		var v_bar := scroll_container.get_v_scroll_bar()
+		if is_instance_valid(v_bar):
+			v_bar.custom_minimum_size.x = 6.0 if mode != PhospriteTokens.LEGACY else 0.0

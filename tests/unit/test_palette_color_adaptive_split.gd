@@ -137,3 +137,26 @@ func test_expanded_color_options_compacts_palette_to_last_used_swatch_row() -> v
 		"last_color_bottom = maxf(last_color_bottom, swatch.position.y + swatch.size.y)",
 		"the automatic boundary must end immediately below the final non-empty swatch row",
 	)
+
+
+func test_palette_grid_columns_stay_at_six_when_vertical_scrollbar_appears() -> void:
+	check_eq(
+		PaletteGrid.compute_unlocked_columns(216.0, 32.0, 0),
+		6,
+		"216px pixel-mode palette grid fits 6 swatches per row without scrollbar",
+	)
+	check_eq(
+		PaletteGrid.compute_unlocked_columns(204.0, 32.0, 0),
+		6,
+		"204px pixel-mode palette grid still fits 6 swatches per row with scrollbar",
+	)
+	check_eq(
+		PaletteGrid.compute_unlocked_columns(192.0, 32.0, 0),
+		6,
+		"exact 6-swatch width keeps 6 columns without losing a column",
+	)
+	check_eq(
+		PaletteGrid.compute_unlocked_columns(207.0, 32.0, 3),
+		6,
+		"legacy mode with 3px h_separation accounts for n-1 gaps accurately",
+	)
