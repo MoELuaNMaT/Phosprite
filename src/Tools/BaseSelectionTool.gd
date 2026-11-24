@@ -70,6 +70,7 @@ func _apply_ios_compact_options() -> void:
 		&"ColorRect", &"ModeLabel", &"ModeButtons", &"SelectionActions"
 	]
 	if name == &"MagicWand":
+		visible_controls.append(&"ToleranceSliderOptionLabel")
 		visible_controls.append(&"ToleranceSlider")
 	for child in get_children():
 		if child is Control:
@@ -88,8 +89,7 @@ func _create_selection_actions() -> void:
 	var heading := Label.new()
 	heading.name = &"ActionsLabel"
 	heading.text = tr("Selection actions")
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_configure_sidebar_label(heading)
 	actions.add_child(heading)
 
 	# Flow rather than a fixed column: narrow panels wrap icons automatically.
@@ -140,6 +140,7 @@ func _create_selection_actions() -> void:
 	_selection_wrap_checkbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_selection_wrap_checkbox.toggled.connect(_on_selection_wrap_toggled)
 	actions.add_child(_selection_wrap_checkbox)
+	_stack_checkbox(_selection_wrap_checkbox)
 
 	_selection_modify_toggle = _make_selection_action_button(
 		"Modify selection", load("res://assets/graphics/mode_icons/mdi/border-color.svg"), "Modify"

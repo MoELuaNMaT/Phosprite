@@ -127,14 +127,88 @@ func test_pencil_single_tap_and_two_pixel_drag_draw_starting_pixel() -> void:
 		"DIRECT touch single tap must draw pixel (12,4), got %s" % str(image.get_pixel(12, 4))
 	)
 
-	# 4. Verify stacked PixelPerfect checkbox has comfortable iPad touch target
+	# 4. Verify stacked PixelPerfect checkbox is centered with hit halo and clickable title
 	var pencil_node: Node = Tools._slots[MOUSE_BUTTON_LEFT].tool_node
 	if is_instance_valid(pencil_node):
 		var pp_cb := pencil_node.get_node_or_null(^"PixelPerfect") as CheckBox
+		var pp_label := pencil_node.get_node_or_null(^"PixelPerfectOptionLabel") as Label
 		if is_instance_valid(pp_cb):
+			check_eq(
+				pp_cb.size_flags_horizontal,
+				Control.SIZE_SHRINK_CENTER,
+				"stacked checkbox must stay horizontally centered"
+			)
+			var hit_style := pp_cb.get_theme_stylebox(&"normal")
 			check_true(
-				pp_cb.custom_minimum_size.x >= 40.0 and pp_cb.custom_minimum_size.y >= 32.0,
-				"stacked PixelPerfect checkbox must expose at least 40x32 touch target"
+				hit_style.content_margin_left >= 14.0 and hit_style.content_margin_right >= 14.0,
+				"stacked checkbox must carry symmetric horizontal hit halo padding"
+			)
+			check_true(
+				hit_style.content_margin_top >= 8.0 and hit_style.content_margin_bottom >= 8.0,
+				"stacked checkbox must carry symmetric vertical hit halo padding"
+			)
+		if is_instance_valid(pp_label) and is_instance_valid(pp_cb):
+			check_eq(
+				pp_label.horizontal_alignment,
+				HORIZONTAL_ALIGNMENT_CENTER,
+				"checkbox option label must be centered"
+			)
+			check_eq(
+				pp_label.get_theme_font_size(&"font_size"),
+				12,
+				"option label must use the unified 12px Pencil font size"
+			)
+			var before_toggle := pp_cb.button_pressed
+			var lbl_tap := InputEventScreenTouch.new()
+			lbl_tap.pressed = true
+			pp_label.gui_input.emit(lbl_tap)
+			check_eq(
+				pp_cb.button_pressed,
+				not before_toggle,
+				"tapping the checkbox title label must toggle the checkbox"
+			)
+			pp_cb.set_pressed_no_signal(before_toggle)
+
+	# 5. Verify Selection and ColorPicker tools share centered alignment and unified 12px font size
+	Tools.assign_tool("RectSelect", MOUSE_BUTTON_LEFT)
+	var rect_node: Node = Tools._slots[MOUSE_BUTTON_LEFT].tool_node
+	if is_instance_valid(rect_node):
+		var actions_label := rect_node.get_node_or_null(^"SelectionActions/ActionsLabel") as Label
+		var wrap_cb := rect_node.get_node_or_null(^"SelectionActions/WrapStrokes") as CheckBox
+		var wrap_lbl := (
+			rect_node.get_node_or_null(^"SelectionActions/WrapStrokesOptionLabel") as Label
+		)
+		if is_instance_valid(actions_label):
+			check_eq(
+				actions_label.get_theme_font_size(&"font_size"),
+				12,
+				"Selection ActionsLabel must match Pencil's 12px font size"
+			)
+			check_eq(
+				actions_label.horizontal_alignment,
+				HORIZONTAL_ALIGNMENT_CENTER,
+				"Selection ActionsLabel must be centered"
+			)
+		if is_instance_valid(wrap_cb):
+			check_eq(
+				wrap_cb.size_flags_horizontal,
+				Control.SIZE_SHRINK_CENTER,
+				"Selection WrapStrokes checkbox must be centered"
+			)
+		check_true(
+			is_instance_valid(wrap_lbl),
+			"Selection WrapStrokes must have a stacked clickable title label"
+		)
+
+	Tools.assign_tool("ColorPicker", MOUSE_BUTTON_LEFT)
+	var picker_node: Node = Tools._slots[MOUSE_BUTTON_LEFT].tool_node
+	if is_instance_valid(picker_node):
+		var picker_box := picker_node.get_node_or_null(^"ColorPicker") as VBoxContainer
+		if is_instance_valid(picker_box):
+			check_eq(
+				picker_box.size_flags_horizontal,
+				Control.SIZE_EXPAND_FILL,
+				"ColorPicker VBoxContainer must expand across the column for centered alignment"
 			)
 
 	Tools.pixel_perfect = prev_pp

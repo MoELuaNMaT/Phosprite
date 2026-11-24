@@ -8,6 +8,9 @@ const MODE_ICON_BUTTON_SIZE := 32.0
 const COMPACT_OPTION_CONTROL_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const COMPACT_OPTION_LABEL_HEIGHT := 20.0
 const COMPACT_OPTION_ROW_HEIGHT := 28.0
+const OPTION_LABEL_FONT_SIZE := 12
+const CHECKBOX_HIT_PAD_X := 14.0
+const CHECKBOX_HIT_PAD_Y := 8.0
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
 
@@ -93,6 +96,10 @@ func _apply_stacked_option_layout(root: Node) -> void:
 			child.alignment = BoxContainer.ALIGNMENT_CENTER
 			_apply_stacked_option_layout(child)
 			continue
+		if child is VBoxContainer:
+			(child as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_apply_stacked_option_layout(child)
+			continue
 		if child is Container:
 			_apply_stacked_option_layout(child)
 
@@ -128,7 +135,7 @@ func _configure_sidebar_label(label: Label) -> void:
 	# Text may describe a long tool name/setting; never widen the shared sidebar.
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = 0.0
-	label.add_theme_font_size_override(&"font_size", 12)
+	label.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
@@ -192,6 +199,8 @@ func _stack_value_slider(slider: ValueSlider) -> void:
 
 
 func _stack_checkbox(checkbox: CheckBox) -> void:
+	checkbox.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
+	_apply_checkbox_hit_padding(checkbox)
 	if not _is_stacked_option_parent(checkbox.get_parent()):
 		return
 	var label_text := checkbox.text.strip_edges()
@@ -200,9 +209,38 @@ func _stack_checkbox(checkbox: CheckBox) -> void:
 	_insert_stacked_option_label(checkbox, label_text)
 	checkbox.text = ""
 	checkbox.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	checkbox.custom_minimum_size = Vector2(
-		maxf(checkbox.custom_minimum_size.x, 40.0), maxf(checkbox.custom_minimum_size.y, 32.0)
-	)
+	checkbox.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	checkbox.custom_minimum_size = Vector2.ZERO
+
+
+func _apply_checkbox_hit_padding(checkbox: CheckBox) -> void:
+	var hit_style := StyleBoxEmpty.new()
+	hit_style.content_margin_left = CHECKBOX_HIT_PAD_X
+	hit_style.content_margin_right = CHECKBOX_HIT_PAD_X
+	hit_style.content_margin_top = CHECKBOX_HIT_PAD_Y
+	hit_style.content_margin_bottom = CHECKBOX_HIT_PAD_Y
+	for style_name: StringName in [
+		&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled", &"focus"
+	]:
+		checkbox.add_theme_stylebox_override(style_name, hit_style)
+
+
+func _on_stacked_checkbox_label_gui_input(event: InputEvent, checkbox: CheckBox) -> void:
+	if not is_instance_valid(checkbox) or checkbox.disabled:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed and not touch.canceled:
+			checkbox.button_pressed = not checkbox.button_pressed
+			if get_viewport() != null:
+				get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
+			checkbox.button_pressed = not checkbox.button_pressed
+			if get_viewport() != null:
+				get_viewport().set_input_as_handled()
 
 
 func _is_stacked_option_parent(parent: Node) -> bool:
@@ -217,11 +255,17 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.name = StringName("%sOptionLabel" % control.name)
 	label.text = _format_option_label(raw_text)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override(&"font_size", 12)
+	label.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if control is CheckBox:
+		label.custom_minimum_size.y = maxf(label.custom_minimum_size.y, COMPACT_OPTION_LABEL_HEIGHT)
+		label.mouse_filter = Control.MOUSE_FILTER_STOP
+		label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		label.gui_input.connect(_on_stacked_checkbox_label_gui_input.bind(control as CheckBox))
+	else:
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.visible = control.visible
 	parent.add_child(label)
 	parent.move_child(label, control.get_index())
@@ -459,11 +503,15 @@ func _rebuild_compact_option_layout() -> void:
 			label.custom_minimum_size = Vector2(0.0, maxf(minimum.y, COMPACT_OPTION_LABEL_HEIGHT))
 			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			label.clip_text = false
 			label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+		elif control is CheckBox:
+			control.custom_minimum_size = Vector2.ZERO
+			control.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		else:
 			# UI3 shares UI1/UI4's 54px control footprint. Legacy tool scenes may
 			# request wider minima, which must not stretch the compact column.

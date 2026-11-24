@@ -14,6 +14,7 @@ script = ExtResource("2")
 
 [node name="ColorPicker" type="VBoxContainer" parent="." index="2" unique_id=991427137]
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Label" type="Label" parent="ColorPicker" index="0" unique_id=696880749]
 layout_mode = 2
@@ -50,6 +51,7 @@ popup/item_1/id = 1
 
 [node name="ExtractModeButtons" type="VBoxContainer" parent="ColorPicker" index="4"]
 layout_mode = 2
+size_flags_horizontal = 3
 alignment = 1
 
 [node name="TopColor" type="Button" parent="ColorPicker/ExtractModeButtons" index="0"]

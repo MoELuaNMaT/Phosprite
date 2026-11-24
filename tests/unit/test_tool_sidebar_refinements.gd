@@ -94,8 +94,18 @@ func test_ui3_compact_tool_options_use_vertical_property_stack() -> void:
 	)
 	check_has(
 		source,
-		"label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT",
-		"option names must sit above controls instead of forming a left-hand name column",
+		"label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER",
+		"option names must stay centered above controls across all workspace layouts",
+	)
+	check_has(
+		source,
+		"func _apply_checkbox_hit_padding(checkbox: CheckBox) -> void:",
+		"checkboxes must use symmetric StyleBoxEmpty padding so hit halos expand without off-centering",
+	)
+	check_has(
+		source,
+		"func _on_stacked_checkbox_label_gui_input(event: InputEvent, checkbox: CheckBox) -> void:",
+		"tapping a stacked checkbox title label must also toggle its checkbox",
 	)
 	check_has(
 		source,
