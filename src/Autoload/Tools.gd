@@ -1001,7 +1001,7 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 		and can_start_tool_at(position, MOUSE_BUTTON_LEFT)
 	):
 		active_button = MOUSE_BUTTON_LEFT
-		_active_last_document_position = draw_pos
+		_prepare_stroke_start(position, draw_pos)
 		_slots[active_button].tool_node.draw_start(draw_pos)
 	elif event.is_action_released(&"activate_left_tool") and active_button == MOUSE_BUTTON_LEFT:
 		var end_pos := draw_pos
@@ -1025,7 +1025,7 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 		)
 	):
 		active_button = MOUSE_BUTTON_RIGHT
-		_active_last_document_position = draw_pos
+		_prepare_stroke_start(position, draw_pos)
 		_slots[active_button].tool_node.draw_start(draw_pos)
 	elif (
 		(event.is_action_released(&"activate_right_tool") and active_button == MOUSE_BUTTON_RIGHT)
@@ -1096,6 +1096,17 @@ func handle_draw(position: Vector2i, event: InputEvent) -> void:
 ## and the [param image]'s pixel at [param position] is transparent.
 func check_alpha_lock(image: Image, position: Vector2i) -> bool:
 	return alpha_locked and is_zero_approx(image.get_pixelv(position).a)
+
+
+func _prepare_stroke_start(position: Vector2i, draw_pos: Vector2i) -> void:
+	# Button/touch press events carry no pressure or velocity payload. Reset stale
+	# lift-off dynamics so single taps and stroke-start pixels never inherit
+	# near-zero pressure/velocity from the end of a previous stroke.
+	pressure_buf = [0, 0]
+	pen_pressure = 1.0
+	mouse_velocity = 1.0
+	_last_position = position
+	_active_last_document_position = draw_pos
 
 
 func get_alpha_dynamic(strength := 1.0) -> float:

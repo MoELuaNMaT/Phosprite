@@ -22,8 +22,8 @@ const FINGER_LONG_PRESS_SECONDS := 0.5
 const FINGER_LONG_PRESS_SLOP_PX := 12.0
 const FINGER_LONG_PRESS_CANCEL_SECONDS := 0.2
 const LONG_PRESS_INDICATOR_CANVAS_LAYER := 100
-const TWO_FINGER_TAP_MAX_MS := 300
-const TWO_FINGER_TAP_SLOP_PX := 10.0
+const TWO_FINGER_TAP_MAX_MS := 450
+const TWO_FINGER_TAP_SLOP_PX := 24.0
 const PENCIL_COOLDOWN_MSEC := 500
 
 # P1-C2 uses small acquisition-only dead zones. Once a degree of freedom activates,
@@ -622,6 +622,8 @@ func _start_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> 
 		state["long_press_pick"] = false
 		state["direct_color_pick"] = false
 		_touches[touch_id] = state
+	if Tools.active_button != -1:
+		_cancel_active_tool()
 	_dispatch_content_press(canvas, screen_position)
 
 
@@ -670,6 +672,7 @@ func _end_content(canvas: Node2D, touch_id: int, screen_position: Vector2) -> vo
 	event.button_mask = 0
 	event.pressed = false
 	canvas.handle_adapter_tool_event(screen_position, event)
+	Tools.pen_inverted = false
 	_content_touch_id = -1
 	canvas.set_adapter_tool_preview_active(false)
 
@@ -1005,6 +1008,11 @@ func _update_navigation() -> void:
 		):
 			return
 		_two_finger_tap_valid = false
+		# Rebase navigation to the current pair/camera when a two-finger tap candidate
+		# graduates into pan/pinch so the canvas starts smoothly without a slop jump.
+		_set_navigation_geometry_baseline(geometry)
+		_capture_navigation_camera_baseline()
+		return
 	if not _navigation_pan_active:
 		_navigation_pan_active = navigation_pan_exceeds_dead_zone(
 			_navigation_baseline_centroid, centroid

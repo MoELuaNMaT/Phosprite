@@ -115,20 +115,20 @@ func test_adapter_does_not_subtract_editor_origin_from_ios_input() -> void:
 
 func test_two_finger_tap_thresholds_keep_undo_distinct_from_navigation() -> void:
 	check_true(
-		ADAPTER.two_finger_tap_within_duration(1000, 1250),
-		"a quick two-finger chord should remain eligible for undo",
+		ADAPTER.two_finger_tap_within_duration(1000, 1400),
+		"a natural iPad two-finger chord should remain eligible for undo",
 	)
 	check_true(
-		not ADAPTER.two_finger_tap_within_duration(1000, 1301),
+		not ADAPTER.two_finger_tap_within_duration(1000, 1451),
 		"a held two-finger gesture must leave tap recognition",
 	)
 	check_true(
-		ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(6, 6)),
-		"minor finger jitter must still count as a tap",
+		ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(16, 12)),
+		"natural finger-pad roll during a two-finger tap must still count as a tap",
 	)
 	check_true(
-		not ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(11, 0)),
-		"a moving pair must become pan or pinch instead of firing undo",
+		not ADAPTER.two_finger_tap_motion_within_slop(Vector2.ZERO, Vector2(25, 0)),
+		"a moving pair beyond tap slop must become pan or pinch instead of firing undo",
 	)
 	var src := FileAccess.get_file_as_string(ADAPTER_SOURCE)
 	check_has(
@@ -429,3 +429,35 @@ func test_ios_ci_builds_bridge_against_exact_godot_version() -> void:
 		not ('InputProbe="*res://src/PlatformServices/InputProbe.gd"' in workflow),
 		"the temporary B0 evidence probe must not ship in the P1-B runtime"
 	)
+
+
+func test_stroke_start_resets_stale_dynamics_and_last_position() -> void:
+	var tools_src := FileAccess.get_file_as_string("res://src/Autoload/Tools.gd")
+	check_has(
+		tools_src,
+		"func _prepare_stroke_start(position: Vector2i, draw_pos: Vector2i) -> void:",
+		"Tools must reset stale stroke-end dynamics before draw_start",
+	)
+	var prev_pressure := Tools.pen_pressure
+	var prev_velocity := Tools.mouse_velocity
+	var prev_buf := Tools.pressure_buf.duplicate()
+	var prev_last := Tools._last_position
+	var prev_doc_pos := Tools._active_last_document_position
+	Tools.pen_pressure = 0.0
+	Tools.mouse_velocity = 0.0
+	Tools.pressure_buf = [0.05, 0.08]
+	Tools._last_position = Vector2i(11, 10)
+	Tools._prepare_stroke_start(Vector2i(10, 10), Vector2i(10, 10))
+	check_eq(Tools.pen_pressure, 1.0, "stroke start must reset stale lift-off pressure to 1.0")
+	check_eq(Tools.mouse_velocity, 1.0, "stroke start must reset stale velocity to 1.0")
+	check_eq(Tools._last_position, Vector2i(10, 10), "stroke start must record initial pixel")
+	check_eq(
+		Tools._active_last_document_position,
+		Vector2i(10, 10),
+		"stroke start must record initial document position",
+	)
+	Tools.pen_pressure = prev_pressure
+	Tools.mouse_velocity = prev_velocity
+	Tools.pressure_buf = prev_buf
+	Tools._last_position = prev_last
+	Tools._active_last_document_position = prev_doc_pos
