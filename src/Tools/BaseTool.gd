@@ -200,6 +200,9 @@ func _stack_checkbox(checkbox: CheckBox) -> void:
 	_insert_stacked_option_label(checkbox, label_text)
 	checkbox.text = ""
 	checkbox.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	checkbox.custom_minimum_size = Vector2(
+		maxf(checkbox.custom_minimum_size.x, 40.0), maxf(checkbox.custom_minimum_size.y, 32.0)
+	)
 
 
 func _is_stacked_option_parent(parent: Node) -> bool:

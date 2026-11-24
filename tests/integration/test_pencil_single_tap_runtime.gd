@@ -15,6 +15,7 @@ func test_pencil_single_tap_and_two_pixel_drag_draw_starting_pixel() -> void:
 
 	var prev_tool := Tools.get_assigned_tool_name(MOUSE_BUTTON_LEFT)
 	var prev_color := Tools.get_assigned_color(MOUSE_BUTTON_LEFT)
+	var prev_pp := Tools.pixel_perfect
 	Tools.assign_tool("Pencil", MOUSE_BUTTON_LEFT)
 	Tools.assign_color(Color(1.0, 0.0, 0.0, 1.0), MOUSE_BUTTON_LEFT, false)
 
@@ -28,11 +29,14 @@ func test_pencil_single_tap_and_two_pixel_drag_draw_starting_pixel() -> void:
 		Vector2i(6, 4),
 		Vector2i(7, 4),
 		Vector2i(9, 4),
+		Vector2i(10, 4),
+		Vector2i(12, 4),
 	]
 	for p in test_pixels:
 		image.set_pixelv(p, Color(0, 0, 0, 0))
 
-	# 1. Single tap via adapter press + release (Pencil path)
+	# 1. Single tap via adapter press + release (Pencil path, pixel_perfect off)
+	Tools.pixel_perfect = false
 	var tap_pos := _viewport_pos_for_pixel(canvas, Vector2i(4, 4))
 	var press := InputEventMouseButton.new()
 	press.device = -1
@@ -64,7 +68,8 @@ func test_pencil_single_tap_and_two_pixel_drag_draw_starting_pixel() -> void:
 		"single-tap release must preserve pixel (4,4), got %s" % str(after_release_color)
 	)
 
-	# 2. Two-pixel drag (6,4) -> (7,4)
+	# 2. Two-pixel drag (6,4) -> (7,4) with pixel_perfect ON
+	Tools.pixel_perfect = true
 	var drag_start_pos := _viewport_pos_for_pixel(canvas, Vector2i(6, 4))
 	var drag_end_pos := _viewport_pos_for_pixel(canvas, Vector2i(7, 4))
 	var p2 := InputEventMouseButton.new()
@@ -103,5 +108,35 @@ func test_pencil_single_tap_and_two_pixel_drag_draw_starting_pixel() -> void:
 		"2-pixel drag must draw destination pixel (7,4), got %s" % str(image.get_pixel(7, 4))
 	)
 
+	# 3. Direct CanvasInputAdapter touch single-tap (DIRECT pending content -> release)
+	var adapter := CanvasInputAdapter.new()
+	adapter.initialize()
+	var touch_pos := _viewport_pos_for_pixel(canvas, Vector2i(12, 4))
+	var t_down := InputEventScreenTouch.new()
+	t_down.index = 0
+	t_down.pressed = true
+	t_down.position = touch_pos
+	adapter._handle_touch(canvas, t_down)
+	var t_up := InputEventScreenTouch.new()
+	t_up.index = 0
+	t_up.pressed = false
+	t_up.position = touch_pos
+	adapter._handle_touch(canvas, t_up)
+	check_true(
+		image.get_pixel(12, 4).a > 0.9,
+		"DIRECT touch single tap must draw pixel (12,4), got %s" % str(image.get_pixel(12, 4))
+	)
+
+	# 4. Verify stacked PixelPerfect checkbox has comfortable iPad touch target
+	var pencil_node: Node = Tools._slots[MOUSE_BUTTON_LEFT].tool_node
+	if is_instance_valid(pencil_node):
+		var pp_cb := pencil_node.get_node_or_null(^"PixelPerfect") as CheckBox
+		if is_instance_valid(pp_cb):
+			check_true(
+				pp_cb.custom_minimum_size.x >= 40.0 and pp_cb.custom_minimum_size.y >= 32.0,
+				"stacked PixelPerfect checkbox must expose at least 40x32 touch target"
+			)
+
+	Tools.pixel_perfect = prev_pp
 	Tools.assign_tool(prev_tool, MOUSE_BUTTON_LEFT)
 	Tools.assign_color(prev_color, MOUSE_BUTTON_LEFT, false)

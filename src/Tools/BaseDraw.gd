@@ -361,7 +361,8 @@ func draw_tool(pos: Vector2i) -> void:
 		if int(_stroke_dimensions.x) % 2 == 0:
 			pos.x += 1
 	_prepare_tool()
-	var coords_to_draw := _draw_tool(pos)
+	var single_point: Array[Vector2i] = [pos]
+	var coords_to_draw := get_coords_to_draw(single_point)
 	for coord in coords_to_draw:
 		_set_pixel_no_cache(coord)
 	if project.has_selection:
