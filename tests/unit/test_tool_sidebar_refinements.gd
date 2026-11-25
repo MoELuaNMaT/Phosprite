@@ -367,11 +367,10 @@ func test_all_tool_options_and_expanded_subpanels_stay_centered_within_sidebar_w
 						% [scene_path.get_file(), lbl.name]
 					)
 				)
-				var bold_font := lbl.get_theme_font(&"font") as FontVariation
 				check_true(
-					bold_font != null and bold_font.variation_embolden > 0.0,
+					not lbl.has_theme_font_override(&"font"),
 					(
-						"%s/%s label must use emboldened FontVariation"
+						"%s/%s label should keep crisp regular theme font"
 						% [scene_path.get_file(), lbl.name]
 					)
 				)

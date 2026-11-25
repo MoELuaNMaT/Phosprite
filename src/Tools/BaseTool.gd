@@ -11,11 +11,9 @@ const COMPACT_OPTION_ROW_HEIGHT := 28.0
 const OPTION_LABEL_FONT_SIZE := 13
 const OPTION_VALUE_FONT_SIZE := 11
 const SUB_OPTION_LABEL_FONT_SIZE := 11
-const OPTION_TITLE_EMBOLDEN := 0.55
-const SUB_OPTION_TITLE_EMBOLDEN := 0.4
 const SUB_OPTION_CONTROL_WIDTH := 46.0
-const OPTION_DIVIDER_MARGIN_TOP := 6
-const OPTION_DIVIDER_MARGIN_BOTTOM := 4
+const OPTION_DIVIDER_MARGIN_TOP := 4
+const OPTION_DIVIDER_MARGIN_BOTTOM := 2
 const OPTION_DIVIDER_MARGIN_X := 7
 const OPTION_DIVIDER_META := &"_phosprite_option_divider"
 const SUB_OPTION_PANEL_NAMES: Array[StringName] = [
@@ -29,12 +27,10 @@ const SUB_OPTION_PANEL_NAMES: Array[StringName] = [
 	&"TransformButtonsContainer",
 ]
 const CHECKBOX_HIT_PAD_X := 14.0
-const CHECKBOX_HIT_PAD_Y := 8.0
+const CHECKBOX_HIT_PAD_Y := 2.0
 
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
-
-static var _bold_font_cache: Dictionary = {}
 
 var is_moving := false
 var is_syncing := false
@@ -209,7 +205,6 @@ func _configure_sidebar_label(label: Label) -> void:
 	label.add_theme_font_size_override(
 		&"font_size", SUB_OPTION_LABEL_FONT_SIZE if is_sub else OPTION_LABEL_FONT_SIZE
 	)
-	_apply_bold_option_font(label, SUB_OPTION_TITLE_EMBOLDEN if is_sub else OPTION_TITLE_EMBOLDEN)
 	if is_sub:
 		var sub_color := _resolve_scheme_b_color(&"text_muted", Color(0.43, 0.41, 0.37, 1.0))
 		label.add_theme_color_override(&"font_color", sub_color)
@@ -223,50 +218,6 @@ func _is_inside_sub_option_panel(node: Node) -> bool:
 			return true
 		parent = parent.get_parent()
 	return false
-
-
-func _resolve_option_base_font(label: Label) -> Font:
-	if is_instance_valid(Global) and Global.theme_font != null:
-		return Global.theme_font
-	if (
-		is_instance_valid(Global)
-		and is_instance_valid(Global.control)
-		and Global.control.theme != null
-		and Global.control.theme.has_default_font()
-	):
-		return Global.control.theme.default_font
-	var bundled_pixel := PhospriteUIFont.load_bundled_pixel()
-	if bundled_pixel != null:
-		return bundled_pixel
-	var bundled_cjk := PhospriteUIFont.load_bundled_cjk()
-	if bundled_cjk != null:
-		return bundled_cjk
-	var theme_font := label.get_theme_font(&"font")
-	if theme_font != null:
-		return theme_font
-	return ThemeDB.fallback_font
-
-
-func _apply_bold_option_font(label: Label, embolden: float) -> void:
-	var base_font := _resolve_option_base_font(label)
-	if base_font == null:
-		return
-	var key := "%s:%.2f" % [str(base_font.get_instance_id()), embolden]
-	var variation := _bold_font_cache.get(key) as FontVariation
-	if variation == null:
-		variation = FontVariation.new()
-		variation.base_font = base_font
-		variation.variation_embolden = embolden
-		var fallbacks: Array[Font] = []
-		for fb in base_font.fallbacks:
-			if fb != null and not fallbacks.has(fb):
-				fallbacks.append(fb)
-		var bundled_cjk := PhospriteUIFont.load_bundled_cjk()
-		if bundled_cjk != null and bundled_cjk != base_font and not fallbacks.has(bundled_cjk):
-			fallbacks.append(bundled_cjk)
-		variation.fallbacks = fallbacks
-		_bold_font_cache[key] = variation
-	label.add_theme_font_override(&"font", variation)
 
 
 func _resolve_scheme_b_color(token: StringName, fallback: Color) -> Color:
@@ -492,7 +443,6 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.add_theme_font_size_override(
 		&"font_size", SUB_OPTION_LABEL_FONT_SIZE if is_sub else OPTION_LABEL_FONT_SIZE
 	)
-	_apply_bold_option_font(label, SUB_OPTION_TITLE_EMBOLDEN if is_sub else OPTION_TITLE_EMBOLDEN)
 	if is_sub:
 		var sub_color := _resolve_scheme_b_color(&"text_muted", Color(0.43, 0.41, 0.37, 1.0))
 		label.add_theme_color_override(&"font_color", sub_color)
@@ -500,7 +450,7 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.custom_minimum_size.x = 0.0
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if control is CheckBox:
-		label.custom_minimum_size.y = maxf(label.custom_minimum_size.y, COMPACT_OPTION_LABEL_HEIGHT)
+		label.custom_minimum_size.y = 0.0
 		label.mouse_filter = Control.MOUSE_FILTER_STOP
 		label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		label.gui_input.connect(_on_stacked_checkbox_label_gui_input.bind(control as CheckBox))
