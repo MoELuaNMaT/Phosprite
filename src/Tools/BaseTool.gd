@@ -225,10 +225,30 @@ func _is_inside_sub_option_panel(node: Node) -> bool:
 	return false
 
 
+func _resolve_option_base_font(label: Label) -> Font:
+	if is_instance_valid(Global) and Global.theme_font != null:
+		return Global.theme_font
+	if (
+		is_instance_valid(Global)
+		and is_instance_valid(Global.control)
+		and Global.control.theme != null
+		and Global.control.theme.has_default_font()
+	):
+		return Global.control.theme.default_font
+	var bundled_pixel := PhospriteUIFont.load_bundled_pixel()
+	if bundled_pixel != null:
+		return bundled_pixel
+	var bundled_cjk := PhospriteUIFont.load_bundled_cjk()
+	if bundled_cjk != null:
+		return bundled_cjk
+	var theme_font := label.get_theme_font(&"font")
+	if theme_font != null:
+		return theme_font
+	return ThemeDB.fallback_font
+
+
 func _apply_bold_option_font(label: Label, embolden: float) -> void:
-	var base_font := label.get_theme_font(&"font")
-	if base_font == null:
-		base_font = ThemeDB.fallback_font
+	var base_font := _resolve_option_base_font(label)
 	if base_font == null:
 		return
 	var key := "%s:%.2f" % [str(base_font.get_instance_id()), embolden]
@@ -237,6 +257,14 @@ func _apply_bold_option_font(label: Label, embolden: float) -> void:
 		variation = FontVariation.new()
 		variation.base_font = base_font
 		variation.variation_embolden = embolden
+		var fallbacks: Array[Font] = []
+		for fb in base_font.fallbacks:
+			if fb != null and not fallbacks.has(fb):
+				fallbacks.append(fb)
+		var bundled_cjk := PhospriteUIFont.load_bundled_cjk()
+		if bundled_cjk != null and bundled_cjk != base_font and not fallbacks.has(bundled_cjk):
+			fallbacks.append(bundled_cjk)
+		variation.fallbacks = fallbacks
 		_bold_font_cache[key] = variation
 	label.add_theme_font_override(&"font", variation)
 
