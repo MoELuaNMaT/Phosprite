@@ -31,9 +31,10 @@ const SUB_OPTION_PANEL_NAMES: Array[StringName] = [
 const CHECKBOX_HIT_PAD_X := 14.0
 const CHECKBOX_HIT_PAD_Y := 8.0
 
-static var _bold_font_cache: Dictionary = {}
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
+
+static var _bold_font_cache: Dictionary = {}
 
 var is_moving := false
 var is_syncing := false
