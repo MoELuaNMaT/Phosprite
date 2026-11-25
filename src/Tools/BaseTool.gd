@@ -86,6 +86,9 @@ func _apply_stacked_option_layout(root: Node) -> void:
 		if child is OptionButton:
 			_configure_sidebar_option_button(child)
 			continue
+		if child is ColorPickerButton:
+			_configure_sidebar_color_picker_button(child)
+			continue
 		if child is Label:
 			_configure_sidebar_label(child)
 			continue
@@ -94,10 +97,23 @@ func _apply_stacked_option_layout(root: Node) -> void:
 			continue
 		if child is HBoxContainer:
 			child.alignment = BoxContainer.ALIGNMENT_CENTER
+			(child as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			_apply_stacked_option_layout(child)
 			continue
 		if child is VBoxContainer:
 			(child as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_apply_stacked_option_layout(child)
+			continue
+		if child is HFlowContainer:
+			(child as HFlowContainer).alignment = FlowContainer.ALIGNMENT_CENTER
+			(child as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_apply_stacked_option_layout(child)
+			continue
+		if child is GridContainer:
+			var grid := child as GridContainer
+			grid.size_flags_horizontal = (
+				Control.SIZE_SHRINK_CENTER if grid.columns > 1 else Control.SIZE_EXPAND_FILL
+			)
 			_apply_stacked_option_layout(child)
 			continue
 		if child is Container:
@@ -117,16 +133,35 @@ func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
 
 func _configure_sidebar_vector_slider(slider: ValueSliderV2) -> void:
 	slider.grid_columns = 1
-	slider.slider_min_size = Vector2(SIDEBAR_CONTROL_WIDTH, SIDEBAR_VALUE_CONTROL_HEIGHT)
+	var component_width := SIDEBAR_CONTROL_WIDTH
+	if slider.show_ratio:
+		slider.add_theme_constant_override(&"separation", 2)
+		component_width = SIDEBAR_CONTROL_WIDTH - 18.0
+	slider.slider_min_size = Vector2(component_width, SIDEBAR_VALUE_CONTROL_HEIGHT)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for component in slider.get_sliders():
 		_configure_sidebar_value_slider(component)
+		component.custom_minimum_size.x = component_width
 
 
 func _configure_sidebar_option_button(option: OptionButton) -> void:
+	option.fit_to_longest_item = false
 	option.clip_text = true
+	option.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	option.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	option.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	option.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
 	option.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	option.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+	option.custom_minimum_size = Vector2(
+		SIDEBAR_CONTROL_WIDTH, maxf(option.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+	)
+
+
+func _configure_sidebar_color_picker_button(button: ColorPickerButton) -> void:
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.custom_minimum_size = Vector2(
+		SIDEBAR_CONTROL_WIDTH, maxf(button.custom_minimum_size.y, 32.0)
+	)
 
 
 func _configure_sidebar_label(label: Label) -> void:
@@ -140,17 +175,23 @@ func _configure_sidebar_label(label: Label) -> void:
 
 
 func _configure_sidebar_button(button: Button) -> void:
-	# Keep embedded brush preview buttons (Brush/Type) centered at their exact 32x32 square size.
+	# Keep embedded texture-icon buttons (Brush/Type, Transform, Confirm, Text style/align/AA)
+	# centered without stretching or widening the narrow sidebar.
 	if (
 		button.text.is_empty()
 		and button.icon == null
 		and (
 			button.get_node_or_null(^"Texture") is TextureRect
 			or button.get_node_or_null(^"Texture2D") is TextureRect
+			or button.get_node_or_null(^"TextureRect") is TextureRect
 		)
 	):
 		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		button.custom_minimum_size = Vector2(32.0, 32.0)
+		var parent := button.get_parent()
+		if parent is HBoxContainer or parent is GridContainer:
+			button.custom_minimum_size = Vector2(24.0, maxf(button.custom_minimum_size.y, 24.0))
+		else:
+			button.custom_minimum_size = Vector2(32.0, 32.0)
 		return
 	# Icon-only mode buttons should not inherit the wide text-button minimum.
 	# The shrink flag prevents VBox containers from stretching them horizontally.
@@ -161,21 +202,28 @@ func _configure_sidebar_button(button: Button) -> void:
 		return
 	if button.button_group != null:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.custom_minimum_size.x = minf(
 			maxf(button.custom_minimum_size.x, MODE_BUTTON_MIN_WIDTH), SIDEBAR_CONTROL_WIDTH
 		)
 		if button.tooltip_text.is_empty() and not button.text.is_empty():
 			button.tooltip_text = button.text
 		return
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL if button.icon == null else Control.SIZE_SHRINK_CENTER
 	)
 	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var btn_font_size := 11 if button.icon == null and button.text.length() >= 4 else 12
 	button.add_theme_font_size_override(&"font_size", btn_font_size)
-	if button.icon == null and not button.text.is_empty():
-		button.custom_minimum_size.y = 26.0
+	if button.icon != null and not button.text.is_empty():
+		button.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+	elif button.icon == null and not button.text.is_empty():
+		button.custom_minimum_size = Vector2(0.0, maxf(button.custom_minimum_size.y, 26.0))
 
 
 func _tool_drag_sensitivity(slider: ValueSlider) -> float:

@@ -82,7 +82,7 @@ global_decrement_action = "brush_size_decrement"
 
 [node name="GridContainer" type="GridContainer" parent="." index="4" unique_id=1005494357]
 layout_mode = 2
-columns = 2
+columns = 1
 
 [node name="FontLabel" type="Label" parent="GridContainer" index="0" unique_id=1307343024]
 layout_mode = 2
@@ -132,8 +132,9 @@ grow_vertical = 2
 texture = ExtResource("7_vnai6")
 stretch_mode = 3
 
-[node name="HorizontalAlignmentContainer" type="HBoxContainer" parent="." index="6" unique_id=1357713691]
+[node name="HorizontalAlignmentContainer" type="GridContainer" parent="." index="6" unique_id=1357713691]
 layout_mode = 2
+columns = 2
 
 [node name="HorizontalAlignmentLeftButton" type="Button" parent="HorizontalAlignmentContainer" index="0" unique_id=1685157862 groups=["UIButtons"]]
 unique_name_in_owner = true
@@ -205,8 +206,9 @@ grow_vertical = 2
 texture = ExtResource("11_wdbj6")
 stretch_mode = 3
 
-[node name="AntiAliasingButtonContainer" type="HBoxContainer" parent="." index="7" unique_id=304903914]
+[node name="AntiAliasingButtonContainer" type="GridContainer" parent="." index="7" unique_id=304903914]
 layout_mode = 2
+columns = 2
 
 [node name="AAOffButton" type="Button" parent="AntiAliasingButtonContainer" index="0" unique_id=1494774598 groups=["UIButtons"]]
 unique_name_in_owner = true

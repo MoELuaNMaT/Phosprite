@@ -113,26 +113,19 @@ func test_compact_topbar_exposes_full_effects_view_window_help_and_only_edit_in_
 	menu.free()
 
 
-func test_new_brush_removed_from_edit_but_keeps_command_id_and_pencil_entry() -> void:
+func test_new_brush_removed_from_edit_and_pencil_but_keeps_command_id() -> void:
 	var menu_source := FileAccess.get_file_as_string(
 		"res://src/UI/TopMenuContainer/TopMenuContainer.gd"
 	)
-	var pencil_source := FileAccess.get_file_as_string("res://src/Tools/DesignTools/Pencil.gd")
 	var pencil := PENCIL_SCENE.instantiate()
 	var new_brush := pencil.get_node_or_null(^"Brush/NewBrush") as Button
-	check_true(is_instance_valid(new_brush), "Pencil has New Brush near its brush controls")
-	if is_instance_valid(new_brush):
-		check_eq(new_brush.get_parent().name, &"Brush", "New Brush is grouped with brush")
-		check_true(new_brush.disabled, "New Brush requires a selection")
+	check_true(
+		not is_instance_valid(new_brush),
+		"Pencil omits the unused New Brush button from its tool options"
+	)
 	check_has(menu_source, 'if item != "New Brush":', "the Edit menu omits New Brush")
 	check_has(
 		menu_source, "i += 1", "the original Edit command ID sequence is kept for all other items"
-	)
-	check_has(pencil_source, "Global.canvas.selection.new_brush()", "Pencil reuses brush action")
-	check_has(
-		pencil_source,
-		"project.selection_changed.connect(_sync_new_brush_button)",
-		"Pencil updates button when the selection changes"
 	)
 	pencil.free()
 

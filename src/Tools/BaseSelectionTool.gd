@@ -152,6 +152,7 @@ func _create_selection_actions() -> void:
 
 	_selection_modify_group = HFlowContainer.new()
 	_selection_modify_group.name = &"ModifyActions"
+	_selection_modify_group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_selection_modify_group.visible = false
 	_selection_modify_group.add_theme_constant_override(&"h_separation", 4)
 	_selection_modify_group.add_theme_constant_override(&"v_separation", 4)
@@ -174,11 +175,13 @@ func _create_selection_actions() -> void:
 func _make_selection_action_button(label: String, icon: Texture2D, caption: String) -> Button:
 	var button := Button.new()
 	button.icon = icon
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	button.text = tr(caption)
 	button.add_theme_font_size_override(&"font_size", 9)
 	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.tooltip_text = tr(label)
 	button.custom_minimum_size = Vector2(36.0, 48.0)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

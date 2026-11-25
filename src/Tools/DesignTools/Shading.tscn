@@ -8,7 +8,6 @@
 script = ExtResource("2")
 
 [node name="LightenDarken" type="OptionButton" parent="." index="5" unique_id=2052667975]
-custom_minimum_size = Vector2(92, 0)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 selected = 0
@@ -79,7 +78,7 @@ max_value = 10.0
 allow_greater = true
 prefix = "Colors right:"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="ColorReplaceOptions/Settings" index="1" unique_id=1662666731]
+[node name="HBoxContainer" type="VBoxContainer" parent="ColorReplaceOptions/Settings" index="1" unique_id=1662666731]
 layout_mode = 2
 
 [node name="DarkenLabel" type="Label" parent="ColorReplaceOptions/Settings/HBoxContainer" index="0" unique_id=569241789]

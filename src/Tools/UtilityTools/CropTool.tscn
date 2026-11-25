@@ -14,7 +14,7 @@ script = ExtResource("3")
 layout_mode = 2
 text = "Mode:"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="." index="3" unique_id=421001220]
+[node name="HBoxContainer" type="VBoxContainer" parent="." index="3" unique_id=421001220]
 layout_mode = 2
 
 [node name="CropMode" type="OptionButton" parent="HBoxContainer" index="0" unique_id=2106684403]
@@ -92,7 +92,7 @@ layout_mode = 2
 layout_mode = 2
 text = "Aspect Ratio:"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="RatioContainer" index="1" unique_id=533082050]
+[node name="HBoxContainer" type="VBoxContainer" parent="RatioContainer" index="1" unique_id=533082050]
 layout_mode = 2
 
 [node name="RatioX" parent="RatioContainer/HBoxContainer" index="0" unique_id=1522669245 instance=ExtResource("2")]

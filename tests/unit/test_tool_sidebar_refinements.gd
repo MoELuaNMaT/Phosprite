@@ -272,3 +272,103 @@ func test_tool_name_moves_out_of_options_and_bucket_label_is_compact() -> void:
 		'msgid "Across Layers"\nmsgstr "跨图层"',
 		"Simplified Chinese Bucket UI must display the requested three-character label",
 	)
+
+
+func test_all_tool_options_and_expanded_subpanels_stay_centered_within_sidebar_width() -> void:
+	var tool_scenes := [
+		"res://src/Tools/DesignTools/Pencil.tscn",
+		"res://src/Tools/DesignTools/Eraser.tscn",
+		"res://src/Tools/DesignTools/Bucket.tscn",
+		"res://src/Tools/DesignTools/Gradient.tscn",
+		"res://src/Tools/DesignTools/Shading.tscn",
+		"res://src/Tools/DesignTools/LineTool.tscn",
+		"res://src/Tools/DesignTools/CurveTool.tscn",
+		"res://src/Tools/DesignTools/RectangleTool.tscn",
+		"res://src/Tools/DesignTools/EllipseTool.tscn",
+		"res://src/Tools/DesignTools/IsometricBoxTool.tscn",
+		"res://src/Tools/SelectionTools/RectSelect.tscn",
+		"res://src/Tools/SelectionTools/EllipseSelect.tscn",
+		"res://src/Tools/SelectionTools/Lasso.tscn",
+		"res://src/Tools/SelectionTools/PolygonSelect.tscn",
+		"res://src/Tools/SelectionTools/MagicWand.tscn",
+		"res://src/Tools/SelectionTools/ColorSelect.tscn",
+		"res://src/Tools/SelectionTools/PaintSelect.tscn",
+		"res://src/Tools/UtilityTools/ColorPicker.tscn",
+		"res://src/Tools/UtilityTools/CropTool.tscn",
+		"res://src/Tools/UtilityTools/Move.tscn",
+		"res://src/Tools/UtilityTools/Pan.tscn",
+		"res://src/Tools/UtilityTools/Text.tscn",
+		"res://src/Tools/UtilityTools/Zoom.tscn",
+		"res://src/Tools/UtilityTools/TilePropertyPainter.tscn",
+	]
+	for scene_path: String in tool_scenes:
+		var packed := load(scene_path) as PackedScene
+		check_true(packed != null, "%s must load cleanly" % scene_path)
+		if packed == null:
+			continue
+		var tool := packed.instantiate() as BaseTool
+		tool.prepare_stacked_option_layout()
+		if scene_path.ends_with("Pencil.tscn"):
+			check_true(
+				tool.get_node_or_null(^"Brush/NewBrush") == null,
+				"Pencil must not contain the removed NewBrush button"
+			)
+		var stack: Array[Node] = [tool]
+		while not stack.is_empty():
+			var node: Node = stack.pop_back()
+			if node is Popup:
+				continue
+			if node is Control and node != tool and node.name != &"Label":
+				(node as Control).visible = true
+			if node is OptionButton:
+				var opt := node as OptionButton
+				check_true(
+					not opt.fit_to_longest_item,
+					(
+						"%s/%s must disable fit_to_longest_item so dropdowns never widen sidebar"
+						% [scene_path.get_file(), opt.name]
+					)
+				)
+				check_true(
+					opt.clip_text, "%s/%s must enable clip_text" % [scene_path.get_file(), opt.name]
+				)
+				check_eq(
+					opt.alignment,
+					HORIZONTAL_ALIGNMENT_CENTER,
+					"%s/%s text must be centered" % [scene_path.get_file(), opt.name]
+				)
+				check_true(
+					opt.custom_minimum_size.x <= BaseTool.SIDEBAR_CONTROL_WIDTH,
+					"%s/%s min width must stay within 54px" % [scene_path.get_file(), opt.name]
+				)
+				check_eq(
+					opt.get_theme_font_size(&"font_size"),
+					BaseTool.OPTION_LABEL_FONT_SIZE,
+					"%s/%s must use unified 12px font size" % [scene_path.get_file(), opt.name]
+				)
+			elif node is Label and node.name != &"Label":
+				var lbl := node as Label
+				check_eq(
+					lbl.horizontal_alignment,
+					HORIZONTAL_ALIGNMENT_CENTER,
+					"%s/%s label must be centered" % [scene_path.get_file(), lbl.name]
+				)
+				check_eq(
+					lbl.get_theme_font_size(&"font_size"),
+					BaseTool.OPTION_LABEL_FONT_SIZE,
+					(
+						"%s/%s label must use unified 12px font size"
+						% [scene_path.get_file(), lbl.name]
+					)
+				)
+			for child in node.get_children():
+				stack.append(child)
+		var min_width := tool.get_combined_minimum_size().x
+		check_true(
+			min_width <= 60.0,
+			(
+				"%s expanded min width (%.1f) must fit inside the 56px tool options column"
+				% [scene_path.get_file(), min_width]
+			)
+		)
+		tool.free()

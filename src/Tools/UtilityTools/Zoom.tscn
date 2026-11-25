@@ -14,7 +14,6 @@ mouse_default_cursor_shape = 2
 text = "Mode:"
 
 [node name="ModeOptions" type="OptionButton" parent="." index="3" unique_id=1565823199]
-custom_minimum_size = Vector2(92, 0)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 item_count = 2

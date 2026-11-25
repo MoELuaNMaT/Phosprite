@@ -30,6 +30,7 @@ func _ready() -> void:
 	_touch_cancel_button.visible = false
 	_touch_cancel_button.pressed.connect(cancel_tool)
 	add_child(_touch_cancel_button)
+	_configure_sidebar_button(_touch_cancel_button)
 
 
 func _exit_tree() -> void:
