@@ -175,16 +175,24 @@ func _configure_sidebar_label(label: Label) -> void:
 
 
 func _configure_sidebar_button(button: Button) -> void:
-	# Keep embedded texture-icon buttons (Brush/Type, Transform, Confirm, Text style/align/AA)
-	# centered without stretching or widening the narrow sidebar.
+	# Keep embedded brush/pattern preview buttons centered at their exact 32x32 square size.
 	if (
 		button.text.is_empty()
 		and button.icon == null
 		and (
 			button.get_node_or_null(^"Texture") is TextureRect
 			or button.get_node_or_null(^"Texture2D") is TextureRect
-			or button.get_node_or_null(^"TextureRect") is TextureRect
 		)
+	):
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		button.custom_minimum_size = Vector2(32.0, 32.0)
+		return
+	# Keep embedded TextureRect icon buttons (Transform, Confirm, Text style/align/AA)
+	# centered without stretching or widening the narrow sidebar.
+	if (
+		button.text.is_empty()
+		and button.icon == null
+		and button.get_node_or_null(^"TextureRect") is TextureRect
 	):
 		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var parent := button.get_parent()
