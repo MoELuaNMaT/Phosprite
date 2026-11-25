@@ -343,8 +343,8 @@ func test_all_tool_options_and_expanded_subpanels_stay_centered_within_sidebar_w
 				)
 				check_eq(
 					opt.get_theme_font_size(&"font_size"),
-					BaseTool.OPTION_LABEL_FONT_SIZE,
-					"%s/%s must use unified 12px font size" % [scene_path.get_file(), opt.name]
+					BaseTool.OPTION_VALUE_FONT_SIZE,
+					"%s/%s must use 11px value font size" % [scene_path.get_file(), opt.name]
 				)
 			elif node is Label and node.name != &"Label":
 				var lbl := node as Label
@@ -353,11 +353,25 @@ func test_all_tool_options_and_expanded_subpanels_stay_centered_within_sidebar_w
 					HORIZONTAL_ALIGNMENT_CENTER,
 					"%s/%s label must be centered" % [scene_path.get_file(), lbl.name]
 				)
+				var is_sub := tool._is_inside_sub_option_panel(lbl)
+				var expected_size := (
+					BaseTool.SUB_OPTION_LABEL_FONT_SIZE
+					if is_sub
+					else BaseTool.OPTION_LABEL_FONT_SIZE
+				)
 				check_eq(
 					lbl.get_theme_font_size(&"font_size"),
-					BaseTool.OPTION_LABEL_FONT_SIZE,
+					expected_size,
 					(
-						"%s/%s label must use unified 12px font size"
+						"%s/%s label must use Scheme B font hierarchy"
+						% [scene_path.get_file(), lbl.name]
+					)
+				)
+				var bold_font := lbl.get_theme_font(&"font") as FontVariation
+				check_true(
+					bold_font != null and bold_font.variation_embolden > 0.0,
+					(
+						"%s/%s label must use emboldened FontVariation"
 						% [scene_path.get_file(), lbl.name]
 					)
 				)

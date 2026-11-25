@@ -8,9 +8,30 @@ const MODE_ICON_BUTTON_SIZE := 32.0
 const COMPACT_OPTION_CONTROL_MIN_WIDTH := SIDEBAR_CONTROL_WIDTH
 const COMPACT_OPTION_LABEL_HEIGHT := 20.0
 const COMPACT_OPTION_ROW_HEIGHT := 28.0
-const OPTION_LABEL_FONT_SIZE := 12
+const OPTION_LABEL_FONT_SIZE := 13
+const OPTION_VALUE_FONT_SIZE := 11
+const SUB_OPTION_LABEL_FONT_SIZE := 11
+const OPTION_TITLE_EMBOLDEN := 0.55
+const SUB_OPTION_TITLE_EMBOLDEN := 0.4
+const SUB_OPTION_CONTROL_WIDTH := 46.0
+const OPTION_DIVIDER_MARGIN_TOP := 6
+const OPTION_DIVIDER_MARGIN_BOTTOM := 4
+const OPTION_DIVIDER_MARGIN_X := 7
+const OPTION_DIVIDER_META := &"_phosprite_option_divider"
+const SUB_OPTION_PANEL_NAMES: Array[StringName] = [
+	&"DitherSettings",
+	&"AutoOutlineSettings",
+	&"HueShiftingOptions",
+	&"ColorReplaceOptions",
+	&"FillOptions",
+	&"FillPattern",
+	&"RatioContainer",
+	&"TransformButtonsContainer",
+]
 const CHECKBOX_HIT_PAD_X := 14.0
 const CHECKBOX_HIT_PAD_Y := 8.0
+
+static var _bold_font_cache: Dictionary = {}
 const PRECISION_TOOL_DRAG_SENSITIVITY := 0.25
 const PRECISION_BRUSH_SIZE_DRAG_SENSITIVITY := 0.1
 
@@ -67,8 +88,9 @@ func prepare_stacked_option_layout() -> void:
 	if _stacked_option_layout_prepared:
 		return
 	_stacked_option_layout_prepared = true
-	add_theme_constant_override(&"v_separation", 4)
+	add_theme_constant_override(&"v_separation", 2)
 	_apply_stacked_option_layout(self)
+	_insert_option_group_dividers()
 
 
 func _apply_stacked_option_layout(root: Node) -> void:
@@ -101,8 +123,13 @@ func _apply_stacked_option_layout(root: Node) -> void:
 			_apply_stacked_option_layout(child)
 			continue
 		if child is VBoxContainer:
-			(child as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			_apply_stacked_option_layout(child)
+			var vbox := child as VBoxContainer
+			vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			if vbox.name in SUB_OPTION_PANEL_NAMES:
+				_configure_sub_option_panel(vbox)
+			else:
+				vbox.add_theme_constant_override(&"separation", 2)
+			_apply_stacked_option_layout(vbox)
 			continue
 		if child is HFlowContainer:
 			(child as HFlowContainer).alignment = FlowContainer.ALIGNMENT_CENTER
@@ -126,8 +153,11 @@ func _configure_sidebar_value_slider(slider: ValueSlider) -> void:
 	slider.configure_tool_vertical_drag()
 	slider.drag_sensitivity = _tool_drag_sensitivity(slider)
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var target_width := (
+		SUB_OPTION_CONTROL_WIDTH if _is_inside_sub_option_panel(slider) else SIDEBAR_CONTROL_WIDTH
+	)
 	slider.custom_minimum_size = Vector2(
-		SIDEBAR_CONTROL_WIDTH, maxf(slider.custom_minimum_size.y, SIDEBAR_VALUE_CONTROL_HEIGHT)
+		target_width, maxf(slider.custom_minimum_size.y, SIDEBAR_VALUE_CONTROL_HEIGHT)
 	)
 
 
@@ -150,18 +180,22 @@ func _configure_sidebar_option_button(option: OptionButton) -> void:
 	option.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	option.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	option.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	option.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
+	option.add_theme_font_size_override(&"font_size", OPTION_VALUE_FONT_SIZE)
 	option.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var target_width := (
+		SUB_OPTION_CONTROL_WIDTH if _is_inside_sub_option_panel(option) else SIDEBAR_CONTROL_WIDTH
+	)
 	option.custom_minimum_size = Vector2(
-		SIDEBAR_CONTROL_WIDTH, maxf(option.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
+		target_width, maxf(option.custom_minimum_size.y, COMPACT_OPTION_ROW_HEIGHT)
 	)
 
 
 func _configure_sidebar_color_picker_button(button: ColorPickerButton) -> void:
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	button.custom_minimum_size = Vector2(
-		SIDEBAR_CONTROL_WIDTH, maxf(button.custom_minimum_size.y, 32.0)
+	var target_width := (
+		SUB_OPTION_CONTROL_WIDTH if _is_inside_sub_option_panel(button) else SIDEBAR_CONTROL_WIDTH
 	)
+	button.custom_minimum_size = Vector2(target_width, maxf(button.custom_minimum_size.y, 32.0))
 
 
 func _configure_sidebar_label(label: Label) -> void:
@@ -170,8 +204,120 @@ func _configure_sidebar_label(label: Label) -> void:
 	# Text may describe a long tool name/setting; never widen the shared sidebar.
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size.x = 0.0
-	label.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
+	var is_sub := _is_inside_sub_option_panel(label)
+	label.add_theme_font_size_override(
+		&"font_size", SUB_OPTION_LABEL_FONT_SIZE if is_sub else OPTION_LABEL_FONT_SIZE
+	)
+	_apply_bold_option_font(label, SUB_OPTION_TITLE_EMBOLDEN if is_sub else OPTION_TITLE_EMBOLDEN)
+	if is_sub:
+		var sub_color := _resolve_scheme_b_color(&"text_muted", Color(0.43, 0.41, 0.37, 1.0))
+		label.add_theme_color_override(&"font_color", sub_color)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _is_inside_sub_option_panel(node: Node) -> bool:
+	var parent := node.get_parent()
+	while parent != null and parent != self:
+		if parent.name in SUB_OPTION_PANEL_NAMES:
+			return true
+		parent = parent.get_parent()
+	return false
+
+
+func _apply_bold_option_font(label: Label, embolden: float) -> void:
+	var base_font := label.get_theme_font(&"font")
+	if base_font == null:
+		base_font = ThemeDB.fallback_font
+	if base_font == null:
+		return
+	var key := "%s:%.2f" % [str(base_font.get_instance_id()), embolden]
+	var variation := _bold_font_cache.get(key) as FontVariation
+	if variation == null:
+		variation = FontVariation.new()
+		variation.base_font = base_font
+		variation.variation_embolden = embolden
+		_bold_font_cache[key] = variation
+	label.add_theme_font_override(&"font", variation)
+
+
+func _resolve_scheme_b_color(token: StringName, fallback: Color) -> Color:
+	var mode := PhospriteStage4Chrome.active_mode()
+	if mode != PhospriteTokens.LEGACY:
+		return PhospriteTokens.color(mode, token)
+	return fallback
+
+
+func _configure_sub_option_panel(panel: VBoxContainer) -> void:
+	panel.add_theme_constant_override(&"separation", 4)
+	var draw_cb := Callable(self, "_draw_sub_option_accent").bind(panel)
+	if not panel.draw.is_connected(draw_cb):
+		panel.draw.connect(draw_cb)
+
+
+func _draw_sub_option_accent(panel: VBoxContainer) -> void:
+	if not is_instance_valid(panel) or panel.size.y < 6.0:
+		return
+	var accent := _resolve_scheme_b_color(&"accent_primary", Color(0.91, 0.36, 0.25, 1.0))
+	panel.draw_rect(Rect2(1.0, 2.0, 2.0, panel.size.y - 4.0), accent)
+
+
+func _insert_option_group_dividers() -> void:
+	_insert_dividers_in_container(self, true)
+	var brush := get_node_or_null(^"Brush") as VBoxContainer
+	if brush != null:
+		_insert_dividers_in_container(brush, false)
+
+
+func _insert_dividers_in_container(container: Container, is_root: bool) -> void:
+	var header := get_node_or_null(^"Label") as Control
+	var targets: Array[Control] = []
+	var saw_first_group := false
+	for child in container.get_children():
+		if child is not Control:
+			continue
+		var control := child as Control
+		if control == color_rect or control == header or control.has_meta(OPTION_DIVIDER_META):
+			continue
+		if control.name in SUB_OPTION_PANEL_NAMES:
+			continue
+		if control is Label:
+			if saw_first_group:
+				targets.append(control)
+			else:
+				saw_first_group = true
+		elif is_root and not saw_first_group:
+			saw_first_group = true
+	for target in targets:
+		_insert_divider_before(container, target)
+
+
+func _insert_divider_before(container: Container, target: Control) -> void:
+	var divider_name := StringName("%sGroupDivider" % target.name)
+	if container.get_node_or_null(NodePath(divider_name)) != null:
+		return
+	var wrapper := MarginContainer.new()
+	wrapper.name = divider_name
+	wrapper.set_meta(OPTION_DIVIDER_META, true)
+	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrapper.add_theme_constant_override(&"margin_top", OPTION_DIVIDER_MARGIN_TOP)
+	wrapper.add_theme_constant_override(&"margin_bottom", OPTION_DIVIDER_MARGIN_BOTTOM)
+	wrapper.add_theme_constant_override(&"margin_left", OPTION_DIVIDER_MARGIN_X)
+	wrapper.add_theme_constant_override(&"margin_right", OPTION_DIVIDER_MARGIN_X)
+	var line := ColorRect.new()
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.custom_minimum_size = Vector2(0.0, 1.0)
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.color = _resolve_scheme_b_color(&"border_subtle", Color(0.55, 0.52, 0.48, 0.45))
+	wrapper.add_child(line)
+	wrapper.visible = target.visible
+	container.add_child(wrapper)
+	container.move_child(wrapper, target.get_index())
+	target.visibility_changed.connect(
+		func():
+			if is_instance_valid(wrapper):
+				wrapper.visible = target.visible
+	)
 
 
 func _configure_sidebar_button(button: Button) -> void:
@@ -251,7 +397,9 @@ func _stack_value_slider(slider: ValueSlider) -> void:
 	_insert_stacked_option_label(slider, label_text)
 	slider.prefix = ""
 	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	slider.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+	slider.custom_minimum_size.x = (
+		SUB_OPTION_CONTROL_WIDTH if _is_inside_sub_option_panel(slider) else SIDEBAR_CONTROL_WIDTH
+	)
 
 
 func _stack_checkbox(checkbox: CheckBox) -> void:
@@ -311,9 +459,16 @@ func _insert_stacked_option_label(control: Control, raw_text: String) -> void:
 	label.name = StringName("%sOptionLabel" % control.name)
 	label.text = _format_option_label(raw_text)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override(&"font_size", OPTION_LABEL_FONT_SIZE)
+	var is_sub := _is_inside_sub_option_panel(control)
+	label.add_theme_font_size_override(
+		&"font_size", SUB_OPTION_LABEL_FONT_SIZE if is_sub else OPTION_LABEL_FONT_SIZE
+	)
+	_apply_bold_option_font(label, SUB_OPTION_TITLE_EMBOLDEN if is_sub else OPTION_TITLE_EMBOLDEN)
+	if is_sub:
+		var sub_color := _resolve_scheme_b_color(&"text_muted", Color(0.43, 0.41, 0.37, 1.0))
+		label.add_theme_color_override(&"font_color", sub_color)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size.x = SIDEBAR_CONTROL_WIDTH
+	label.custom_minimum_size.x = 0.0
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if control is CheckBox:
 		label.custom_minimum_size.y = maxf(label.custom_minimum_size.y, COMPACT_OPTION_LABEL_HEIGHT)
@@ -450,6 +605,9 @@ func _rebuild_horizontal_option_layout() -> void:
 	for child in _horizontal_original_order:
 		if not is_instance_valid(child) or child == color_rect or child == header:
 			continue
+		if child.has_meta(OPTION_DIVIDER_META):
+			child.visible = false
+			continue
 		candidates.append(child as Control)
 
 	var groups: Array[Dictionary] = []
@@ -537,6 +695,8 @@ func _rebuild_compact_option_layout() -> void:
 		if child is not Control or child == color_rect or child == header:
 			continue
 		var control := child as Control
+		if control.has_meta(OPTION_DIVIDER_META):
+			continue
 		if not _compact_child_state.has(control):
 			var state := {
 				"horizontal": control.size_flags_horizontal,

@@ -83,8 +83,9 @@ func _create_selection_actions() -> void:
 	var actions := VBoxContainer.new()
 	actions.name = &"SelectionActions"
 	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_theme_constant_override(&"separation", 4)
+	actions.add_theme_constant_override(&"separation", 2)
 	add_child(actions)
+	_insert_divider_before(self, actions)
 
 	var heading := Label.new()
 	heading.name = &"ActionsLabel"
