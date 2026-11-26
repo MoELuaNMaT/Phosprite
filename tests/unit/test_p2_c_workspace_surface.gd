@@ -899,37 +899,23 @@ func test_floating_top_snap_reserves_breathing_gap_below_top_bar() -> void:
 
 
 func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size() -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	var root := Control.new()
-	root.size = Vector2(1280.0, 800.0)
-	tree.root.add_child(root)
-
-	var manager := WorkspaceModuleManager.new()
-	var def := WorkspaceModuleDefinition.new()
-	def.module_id = &"resize_test_panel"
-	def.display_name = "Resize Test"
-	def.minimum_size = Vector2(180.0, 140.0)
-	def.preferred_size = Vector2(280.0, 220.0)
-	def.can_float = true
-	var content := Control.new()
-	content.custom_minimum_size = Vector2(240.0, 180.0)
-	check_true(manager.register_external_module(def, content), "register floating test module")
-
-	var surface := WorkspaceSurface.new()
-	surface.set_anchors_preset(Control.PRESET_FULL_RECT)
-	surface.size = Vector2(1280.0, 800.0)
-	root.add_child(surface)
-	surface.configure(manager)
-
-	var start_rect := Rect2(Vector2(600.0, 120.0), Vector2(300.0, 240.0))
-	check_true(surface.float_module(def.module_id, start_rect), "float test module")
-	var placed := surface.get_floating_rect(def.module_id)
+	var workspace := _make_workspace()
+	var surface: WorkspaceSurface = workspace["surface"]
+	var manager: WorkspaceModuleManager = workspace["manager"]
+	check_true(
+		surface.float_module(Builtins.PREVIEW_ID, Rect2(600.0, 120.0, 300.0, 240.0)),
+		"float Preview for corner resize test",
+	)
+	var preview := manager.get_instance(Builtins.PREVIEW_ID)
+	if preview != null and preview.content != null:
+		preview.content.custom_minimum_size = Vector2(260.0, 180.0)
+	var placed := surface.get_floating_rect(Builtins.PREVIEW_ID)
 
 	check_true(
 		(
 			surface
 			. resize_floating_rect(
-				def.module_id,
+				Builtins.PREVIEW_ID,
 				placed,
 				Vector2(200.0, 0.0),
 				WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
@@ -937,7 +923,7 @@ func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size()
 		),
 		"bottom-left shrink past live content min width must succeed",
 	)
-	var clamped := surface.get_floating_rect(def.module_id)
+	var clamped := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_almost_eq(
 		clamped.end.x,
 		placed.end.x,
@@ -945,7 +931,7 @@ func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size()
 		"bottom-left resize at live min width must keep right edge pinned",
 	)
 	check_true(
-		clamped.size.x >= 240.0,
+		clamped.size.x >= 260.0,
 		"bottom-left resize must respect live content minimum width",
 	)
 
@@ -953,7 +939,7 @@ func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size()
 		(
 			surface
 			. resize_floating_rect(
-				def.module_id,
+				Builtins.PREVIEW_ID,
 				clamped,
 				Vector2(40.0, 24.0),
 				WorkspaceModule.ResizeEdge.RIGHT | WorkspaceModule.ResizeEdge.BOTTOM,
@@ -961,7 +947,7 @@ func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size()
 		),
 		"bottom-right resize must still work after bottom-left resize",
 	)
-	var right_resized := surface.get_floating_rect(def.module_id)
+	var right_resized := surface.get_floating_rect(Builtins.PREVIEW_ID)
 	check_almost_eq(
 		right_resized.position.x,
 		clamped.position.x,
@@ -973,5 +959,4 @@ func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size()
 		"bottom-right resize must grow width cleanly",
 	)
 
-	tree.root.remove_child(root)
-	root.free()
+	_free_workspace(workspace)
