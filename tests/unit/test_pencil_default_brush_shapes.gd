@@ -131,7 +131,7 @@ func test_base_draw_uses_procedural_preview_and_real_hollow_square_stamp() -> vo
 	var source := FileAccess.get_file_as_string(BASE_DRAW_SOURCE)
 	check_has(
 		source,
-		"BrushShapes.create_preview_image(shape, _brush_size, Color.BLACK)",
+		"BrushShapes.create_preview_image(shape, icon_size, Color.BLACK)",
 		"size changes must regenerate the selected default brush preview procedurally",
 	)
 	check_has(
