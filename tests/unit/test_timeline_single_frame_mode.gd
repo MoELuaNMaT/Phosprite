@@ -311,6 +311,16 @@ func test_single_frame_cards_show_fixed_square_checkerboard_thumbnails() -> void
 	)
 	check_has(scene, "clip_text = true", "layer name must remain a single clipped line")
 	check_has(
+		scene,
+		"offset_top = 98.0",
+		"layer name band must start flush below the 98px preview box",
+	)
+	check_has(
+		scene,
+		"offset_bottom = -6.0",
+		"layer name must clear the bottom pixel border and lip to stay centered",
+	)
+	check_has(
 		source,
 		"preview_texture.texture = _cel.image_texture",
 		"thumbnail must reuse the current frame cel texture rather than render duplicate image data",
