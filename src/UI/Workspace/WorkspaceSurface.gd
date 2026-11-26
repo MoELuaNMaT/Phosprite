@@ -448,13 +448,18 @@ func restore_module(module_id: StringName) -> bool:
 	return true
 
 
-func set_floating_rect(module_id: StringName, requested_rect: Rect2) -> bool:
+func set_floating_rect(
+	module_id: StringName, requested_rect: Rect2, allow_snap: bool = true
+) -> bool:
 	if get_module_placement(module_id) != Placement.FLOATING:
 		return false
-	var rect := _constrain_floating_rect(module_id, requested_rect)
+	var rect := _constrain_floating_rect(module_id, requested_rect, allow_snap)
 	if not rect.has_area():
 		return false
 	_apply_floating_rect(module_id, rect)
+	var module := manager.get_instance(module_id) if manager != null else null
+	if module != null and module.size.x > 0.0 and module.size.y > 0.0:
+		rect = Rect2(module.position, module.size)
 	_floating_rects[module_id] = rect
 	_last_floating_rects[module_id] = rect
 	_floating_anchors[module_id] = _detect_snap_edges(rect)
@@ -482,11 +487,28 @@ func resize_floating_rect(
 		requested_size.y = start_rect.size.y + delta.y
 
 	var target_size := definition.get_constrained_size(requested_size)
+	var module := manager.get_instance(module_id) if manager != null else null
+	if module != null:
+		var live_min := module.get_combined_minimum_size()
+		target_size.x = maxf(target_size.x, live_min.x)
+		target_size.y = maxf(target_size.y, live_min.y)
 	var bounds := get_floating_bounds()
 	if bounds.size.x > 0.0:
-		target_size.x = minf(target_size.x, bounds.size.x)
+		var max_width := bounds.size.x
+		if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
+			max_width = maxf(0.0, start_rect.end.x - bounds.position.x)
+		elif resize_edges & WorkspaceModule.ResizeEdge.RIGHT:
+			max_width = maxf(0.0, bounds.end.x - start_rect.position.x)
+		if max_width > 0.0:
+			target_size.x = minf(target_size.x, max_width)
 	if bounds.size.y > 0.0:
-		target_size.y = minf(target_size.y, bounds.size.y)
+		var max_height := bounds.size.y
+		if resize_edges & WorkspaceModule.ResizeEdge.TOP:
+			max_height = maxf(0.0, start_rect.end.y - bounds.position.y)
+		elif resize_edges & WorkspaceModule.ResizeEdge.BOTTOM:
+			max_height = maxf(0.0, bounds.end.y - start_rect.position.y)
+		if max_height > 0.0:
+			target_size.y = minf(target_size.y, max_height)
 
 	var target_position := start_rect.position
 	if resize_edges & WorkspaceModule.ResizeEdge.LEFT:
@@ -494,7 +516,7 @@ func resize_floating_rect(
 	if resize_edges & WorkspaceModule.ResizeEdge.TOP:
 		target_position.y = start_rect.end.y - target_size.y
 	var rect := Rect2(target_position, target_size)
-	return set_floating_rect(module_id, rect)
+	return set_floating_rect(module_id, rect, false)
 
 
 func get_docked_resize_edges(module_id: StringName, local_point: Vector2) -> int:

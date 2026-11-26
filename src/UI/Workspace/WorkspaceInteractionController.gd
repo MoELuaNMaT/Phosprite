@@ -661,7 +661,10 @@ func _begin_resize(
 	if _resize_is_docked:
 		_resize_start_size = dock_host.layout.get_module_size(module_id)
 		return _resize_start_size != Vector2.ZERO
+	var module := manager.get_instance(module_id) if manager != null else null
 	var rect := surface.get_floating_rect(module_id)
+	if module != null and module.size.x > 0.0 and module.size.y > 0.0:
+		rect = Rect2(module.position, module.size)
 	if not rect.has_area():
 		_finish_resize()
 		return false
