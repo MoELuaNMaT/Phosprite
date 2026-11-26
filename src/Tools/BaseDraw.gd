@@ -51,6 +51,10 @@ var _is_using_mm_action := false
 
 
 func _ready() -> void:
+	_ensure_brush_glyph_overlay()
+	var brush_btn := get_node_or_null(^"Brush/Type") as Button
+	if brush_btn != null and not brush_btn.pressed.is_connected(_on_BrushType_pressed):
+		brush_btn.pressed.connect(_on_BrushType_pressed)
 	super._ready()
 	if tool_slot.button == MOUSE_BUTTON_RIGHT:
 		$Brush/BrushSize.allow_global_input_events = not Global.share_options_between_tools
@@ -61,12 +65,15 @@ func _ready() -> void:
 		Keychain.action_changed.connect(_update_mm_action)
 		Keychain.profile_switched.connect(func(_prof): _update_mm_action("mm_change_brush_size"))
 	else:
-		_mm_action = Keychain.actions[&"mm_change_brush_size"] as Keychain.MouseMovementInputAction
+		_mm_action = (
+			Keychain.actions.get(&"mm_change_brush_size") as Keychain.MouseMovementInputAction
+		)
 	Global.cel_switched.connect(update_brush)
 	Global.dynamics_changed.connect(_reset_dynamics)
 	Tools.color_changed.connect(_on_Color_changed)
-	Global.brushes_popup.brush_removed.connect(_on_Brush_removed)
-	_ensure_brush_glyph_overlay()
+	var popup := _resolve_brushes_popup()
+	if is_instance_valid(popup) and not popup.brush_removed.is_connected(_on_Brush_removed):
+		popup.brush_removed.connect(_on_Brush_removed)
 	call_deferred(&"update_brush")
 
 
@@ -97,12 +104,26 @@ func _input(event: InputEvent) -> void:
 		$Brush/BrushSize.value += brush_size_value
 
 
+func _resolve_brushes_popup() -> Popup:
+	if is_instance_valid(Global.brushes_popup):
+		return Global.brushes_popup
+	if is_instance_valid(Global.control):
+		var found := Global.control.find_child("BrushesPopup", true, false) as Popup
+		if is_instance_valid(found):
+			Global.brushes_popup = found
+			return found
+	return null
+
+
 func _on_BrushType_pressed() -> void:
-	if not Global.brushes_popup.brush_selected.is_connected(_on_Brush_selected):
-		Global.brushes_popup.brush_selected.connect(_on_Brush_selected, CONNECT_ONE_SHOT)
+	var popup := _resolve_brushes_popup()
+	if not is_instance_valid(popup):
+		return
+	if not popup.brush_selected.is_connected(_on_Brush_selected):
+		popup.brush_selected.connect(_on_Brush_selected, CONNECT_ONE_SHOT)
 	var tool_option_container := get_node_or_null("../../") as Control
 	var brush_button := $Brush/Type as Control
-	Global.brushes_popup.popup_for_button(brush_button, tool_option_container)
+	popup.popup_for_button(brush_button, tool_option_container)
 	Tools.flip_rotated.emit(_brush_flip_x, _brush_flip_y, _brush_transposed)
 
 
@@ -166,7 +187,14 @@ func get_config() -> Dictionary:
 func set_config(config: Dictionary) -> void:
 	var type: int = config.get("brush_type", _brush.type)
 	var index: int = config.get("brush_index", _brush.index)
-	_brush = Global.brushes_popup.get_brush(type, index)
+	var popup := _resolve_brushes_popup()
+	if is_instance_valid(popup):
+		_brush = popup.get_brush(type, index)
+	else:
+		var fallback := Brushes.get_default_brush()
+		if type in DEFAULT_GEOMETRIC_BRUSHES:
+			fallback.type = type
+		_brush = fallback
 	_brush_size = config.get("brush_size", _brush_size)
 	_brush_size_dynamics = _brush_size
 	_brush_density = config.get("brush_density", _brush_density)
@@ -261,11 +289,11 @@ func _ensure_brush_glyph_overlay() -> Control:
 		overlay = Control.new()
 		overlay.name = &"BrushGlyphOverlay"
 		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		overlay.z_index = 2
+		overlay.z_index = 1
 		overlay.draw.connect(_draw_brush_glyph_overlay.bind(overlay))
 		overlay.resized.connect(overlay.queue_redraw)
 		brush_btn.add_child(overlay)
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	return overlay
 
 

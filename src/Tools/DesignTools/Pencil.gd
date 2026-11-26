@@ -152,7 +152,9 @@ func _sync_auto_outline_ui() -> void:
 		_auto_outline_diagonals = project.auto_outline_diagonals
 	$AutoOutlineSettings/ColorRow/Color.color = _auto_outline_color
 	$AutoOutlineSettings/Thickness.value = _auto_outline_width
-	$AutoOutlineSettings/ShapeRow/Shape.select(1 if _auto_outline_diagonals else 0)
+	var shape_idx := 1 if _auto_outline_diagonals else 0
+	if $AutoOutlineSettings/ShapeRow/Shape.item_count > shape_idx:
+		$AutoOutlineSettings/ShapeRow/Shape.select(shape_idx)
 	_syncing_auto_outline = false
 
 

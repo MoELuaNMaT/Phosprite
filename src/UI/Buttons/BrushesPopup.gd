@@ -18,10 +18,21 @@ class Brush:
 
 
 func _ready() -> void:
+	_ensure_default_brushes_populated()
+	if not about_to_popup.is_connected(_sync_category_visibility):
+		about_to_popup.connect(_sync_category_visibility)
+	_sync_category_visibility()
+
+
+func _ensure_default_brushes_populated() -> void:
 	var container := (
-		get_node("Background/Brushes/Categories/DefaultBrushContainer") as GridContainer
+		get_node_or_null("Background/Brushes/Categories/DefaultBrushContainer") as GridContainer
 	)
+	if container == null:
+		return
 	container.columns = 4
+	if container.get_child_count() > 0:
+		return
 	_add_default_brush(
 		container,
 		PIXEL,
@@ -46,9 +57,6 @@ func _ready() -> void:
 		BrushShapes.Shape.HOLLOW_CIRCLE,
 		"Hollow circle brush",
 	)
-	if not about_to_popup.is_connected(_sync_category_visibility):
-		about_to_popup.connect(_sync_category_visibility)
-	_sync_category_visibility()
 
 
 static func is_ipad_brush_mode() -> bool:
@@ -97,6 +105,7 @@ func _sync_category_visibility() -> void:
 
 
 func popup_for_button(anchor_button: Control, fallback_container: Control = null) -> void:
+	_ensure_default_brushes_populated()
 	_sync_category_visibility()
 	var cats := get_node_or_null("Background/Brushes/Categories")
 	if cats == null:
@@ -149,7 +158,7 @@ func popup_for_button(anchor_button: Control, fallback_container: Control = null
 			pop_position.y = maxf(
 				vp_rect.position.y + 8.0, anchor_rect.position.y - pop_size.y - 4.0
 			)
-	popup_on_parent(Rect2(pop_position, pop_size))
+	popup_on_parent(Rect2i(Vector2i(pop_position.round()), Vector2i(pop_size.round())))
 
 
 func _add_default_brush(
@@ -162,8 +171,7 @@ func _add_default_brush(
 	var overlay := Control.new()
 	overlay.name = &"BrushGlyphOverlay"
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.z_index = 2
+	overlay.z_index = 1
 	overlay.draw.connect(
 		func():
 			BrushShapes.draw_preview_glyph(
@@ -172,6 +180,7 @@ func _add_default_brush(
 	)
 	overlay.resized.connect(overlay.queue_redraw)
 	button.add_child(overlay)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	container.add_child(button)
 	button.brush.index = button.get_index()
 	if is_instance_valid(Global.brushes_popup):
@@ -191,7 +200,8 @@ static func get_default_brush() -> Brush:
 
 
 static func create_button(image: Image) -> Node:
-	var button: BaseButton = preload("res://src/UI/Buttons/BrushButton.tscn").instantiate()
+	var button_scene := load("res://src/UI/Buttons/BrushButton.tscn") as PackedScene
+	var button: BaseButton = button_scene.instantiate()
 	var tex := ImageTexture.create_from_image(image)
 	button.get_node("BrushTexture").texture = tex
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND

@@ -396,7 +396,7 @@ func test_ipad_brush_popup_hides_pc_file_categories_and_keeps_preview_centered()
 	)
 	check_has(
 		base_draw_src,
-		"Global.brushes_popup.popup_for_button(brush_button, tool_option_container)",
+		"popup.popup_for_button(brush_button, tool_option_container)",
 		"Pencil and Eraser must open the compact iPad brush switcher instead of desktop column math",
 	)
 	check_has(
@@ -523,3 +523,16 @@ func test_brush_preview_buttons_render_black_scaled_glyph_and_keep_dark_border_o
 			"%s brush button must attach a visible direct-draw BrushGlyphOverlay" % scene_path,
 		)
 		tool.free()
+
+
+func test_brush_button_scene_has_no_circular_transparent_checker_preload() -> void:
+	var brush_btn_scene := FileAccess.get_file_as_string("res://src/UI/Buttons/BrushButton.tscn")
+	check_true(
+		not brush_btn_scene.contains("TransparentChecker.tscn"),
+		"BrushButton.tscn must not reference TransparentChecker.tscn (causes Parse Error: Busy deadlock)",
+	)
+	var popup_src := FileAccess.get_file_as_string(BRUSH_POPUP_SOURCE)
+	check_true(
+		not popup_src.contains('preload("res://src/UI/Buttons/BrushButton.tscn")'),
+		"BrushesPopup.gd must load BrushButton.tscn lazily rather than preload",
+	)
