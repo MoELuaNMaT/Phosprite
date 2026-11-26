@@ -490,6 +490,10 @@ func resize_floating_rect(
 	var module := manager.get_instance(module_id) if manager != null else null
 	if module != null:
 		var live_min := module.get_combined_minimum_size()
+		if is_instance_valid(module.content):
+			var content_min := module.content.get_combined_minimum_size()
+			live_min.x = maxf(live_min.x, content_min.x)
+			live_min.y = maxf(live_min.y, content_min.y)
 		target_size.x = maxf(target_size.x, live_min.x)
 		target_size.y = maxf(target_size.y, live_min.y)
 	var bounds := get_floating_bounds()
