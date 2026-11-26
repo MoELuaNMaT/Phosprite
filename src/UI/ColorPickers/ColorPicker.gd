@@ -5,6 +5,8 @@ signal color_options_toggled(expanded: bool)
 const TOUCH_TOOLTIP_META := &"phosprite_touch_tooltip"
 const TOUCH_MOUSE_FILTER_META := &"phosprite_touch_mouse_filter"
 const TOUCH_TAP_SLOP_PX := 12.0
+const ACTIVE_SWATCH_HIGHLIGHT_NAME := &"ActiveColorHighlight"
+const INACTIVE_SWATCH_ALPHA := 0.72
 const SETTINGS_ICON := preload("res://assets/graphics/misc/settings.svg")
 const Tokens := preload("res://src/UI/DesignSystem/PhospriteTokens.gd")
 const Stage4 := preload("res://src/UI/DesignSystem/PhospriteStage4Chrome.gd")
@@ -190,13 +192,80 @@ func _configure_tool_color_swatch(button: Button, swatch: ColorRect) -> void:
 	swatch.offset_right = -2.0
 	swatch.offset_bottom = -2.0
 	swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ensure_active_color_highlight(button)
+
+
+func _ensure_active_color_highlight(button: Button) -> Control:
+	var highlight := button.get_node_or_null(NodePath(ACTIVE_SWATCH_HIGHLIGHT_NAME)) as Control
+	if is_instance_valid(highlight):
+		return highlight
+	highlight = Control.new()
+	highlight.name = ACTIVE_SWATCH_HIGHLIGHT_NAME
+	highlight.set_anchors_preset(Control.PRESET_FULL_RECT)
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	highlight.z_index = 1
+	highlight.visible = false
+	highlight.draw.connect(_draw_active_color_highlight.bind(highlight))
+	button.add_child(highlight)
+	return highlight
+
+
+func _draw_active_color_highlight(highlight: Control) -> void:
+	if not is_instance_valid(highlight):
+		return
+	var rect_size := highlight.size
+	if rect_size.x < 8.0 or rect_size.y < 8.0:
+		return
+	var mode := Stage4.active_mode()
+	var accent := (
+		Tokens.color(mode, &"accent_primary")
+		if mode != Tokens.LEGACY
+		else Color(0.91, 0.36, 0.25, 1.0)
+	)
+	var keyline := Tokens.color(mode, &"elevated_surface") if mode == Tokens.SUNNY else Color.WHITE
+	# Outer coral selection ring + inner high-contrast keyline so the active swatch
+	# remains unmistakable even when painting with the exact same coral or dark color.
+	highlight.draw_rect(Rect2(Vector2(1.5, 1.5), rect_size - Vector2(3.0, 3.0)), accent, false, 3.0)
+	highlight.draw_rect(
+		Rect2(Vector2(3.5, 3.5), rect_size - Vector2(7.0, 7.0)), keyline, false, 1.5
+	)
+	var tri_size := 8.0
+	var corner := PackedVector2Array(
+		[
+			Vector2(rect_size.x - 1.0, 1.0),
+			Vector2(rect_size.x - 1.0 - tri_size, 1.0),
+			Vector2(rect_size.x - 1.0, 1.0 + tri_size),
+		]
+	)
+	highlight.draw_colored_polygon(corner, accent)
+	(
+		highlight
+		. draw_line(
+			Vector2(rect_size.x - 1.0 - tri_size, 1.0),
+			Vector2(rect_size.x - 1.0, 1.0 + tri_size),
+			keyline,
+			1.2,
+		)
+	)
+
+
+func _apply_active_color_button_visual(button: Button, active: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	button.set_pressed_no_signal(active)
+	button.modulate = Color.WHITE if active else Color(1.0, 1.0, 1.0, INACTIVE_SWATCH_ALPHA)
+	var highlight := _ensure_active_color_highlight(button)
+	highlight.visible = active
+	if active:
+		highlight.queue_redraw()
 
 
 func _sync_active_color_buttons() -> void:
 	if not is_instance_valid(left_color_button) or not is_instance_valid(right_color_button):
 		return
-	left_color_button.set_pressed_no_signal(Tools.picking_color_for == MOUSE_BUTTON_LEFT)
-	right_color_button.set_pressed_no_signal(Tools.picking_color_for == MOUSE_BUTTON_RIGHT)
+	var left_active := Tools.picking_color_for == MOUSE_BUTTON_LEFT
+	_apply_active_color_button_visual(left_color_button, left_active)
+	_apply_active_color_button_visual(right_color_button, not left_active)
 	if Tools._slots.has(MOUSE_BUTTON_LEFT):
 		left_color_rect.color = Tools._slots[MOUSE_BUTTON_LEFT].color
 	if Tools._slots.has(MOUSE_BUTTON_RIGHT):
@@ -731,6 +800,7 @@ func _refresh_warm_cartridge_chrome() -> void:
 	for btn in [left_color_button, right_color_button, expand_button]:
 		if is_instance_valid(btn):
 			Stage4.style_button(btn, mode)
+	_sync_active_color_buttons()
 	if is_instance_valid(expand_button):
 		if mode != Tokens.LEGACY:
 			var gear := QIcons.standard_icon_1x(&"settings")

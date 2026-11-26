@@ -126,6 +126,16 @@ func test_popup_preserves_palette_size_and_anchors_below_settings_button() -> vo
 			swatch_rect.size.y >= button_rect.size.y - 5.0,
 			"swatch fills the full available button height minus its 2px border",
 		)
+	var left_hl := editor.left_color_button.get_node_or_null(^"ActiveColorHighlight") as Control
+	var right_hl := editor.right_color_button.get_node_or_null(^"ActiveColorHighlight") as Control
+	check_true(
+		is_instance_valid(left_hl) and is_instance_valid(right_hl),
+		"both tool color swatches must have active highlight overlays",
+	)
+	if is_instance_valid(left_hl) and is_instance_valid(right_hl):
+		var left_selected := Tools.picking_color_for == MOUSE_BUTTON_LEFT
+		check_eq(left_hl.visible, left_selected, "active swatch highlight tracks left slot")
+		check_eq(right_hl.visible, not left_selected, "active swatch highlight tracks right slot")
 	var gear_rect: Rect2 = editor.expand_button.get_global_rect()
 	check_eq(
 		editor._color_control_action_at(gear_rect.get_center()),
