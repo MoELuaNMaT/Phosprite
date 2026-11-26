@@ -48,6 +48,13 @@ func _ready() -> void:
 	Palettes.palette_selected.connect(select_palette)
 	Tools.color_changed.connect(find_and_select_color)
 	resized.connect(_on_resized)
+	var scroll := get_parent() as ScrollContainer
+	if scroll != null:
+		if not scroll.resized.is_connected(_on_resized):
+			scroll.resized.connect(_on_resized)
+		var v_bar := scroll.get_v_scroll_bar()
+		if v_bar != null and not v_bar.visibility_changed.is_connected(_on_resized):
+			v_bar.visibility_changed.connect(_on_resized)
 	Themes.theme_switched.connect(_apply_stage4_swatch_spacing)
 	Global.pixel_ui_unit_changed.connect(_apply_stage4_swatch_spacing)
 	_apply_stage4_swatch_spacing()
@@ -290,10 +297,22 @@ static func compute_unlocked_columns(available_width: float, cell_width: float, 
 	return maxi(1, int(floor((available_width + safe_sep) / (safe_cell + safe_sep))))
 
 
+func _get_available_grid_width() -> float:
+	var scroll := get_parent() as ScrollContainer
+	if scroll != null and scroll.size.x > 0.0:
+		var v_bar := scroll.get_v_scroll_bar()
+		var bar_w := v_bar.size.x if (v_bar != null and v_bar.visible) else 0.0
+		return maxf(1.0, scroll.size.x - bar_w)
+	return size.x
+
+
 func _on_resized() -> void:
 	if not grid_locked:
 		var h_sep := maxi(0, get_theme_constant(&"h_separation"))
-		columns = compute_unlocked_columns(size.x, swatch_size.x, h_sep)
+		columns = compute_unlocked_columns(_get_available_grid_width(), swatch_size.x, h_sep)
+		var scroll := get_parent() as ScrollContainer
+		if scroll != null:
+			scroll.scroll_horizontal = 0
 
 
 func _on_palette_swatch_pressed(mouse_button: int, index: int) -> void:

@@ -160,3 +160,35 @@ func test_palette_grid_columns_stay_at_six_when_vertical_scrollbar_appears() -> 
 		6,
 		"legacy mode with 3px h_separation accounts for n-1 gaps accurately",
 	)
+
+
+func test_palette_scroll_never_ratchets_width_and_rewraps_on_shrink() -> void:
+	var panel_scene := FileAccess.get_file_as_string("res://src/Palette/PalettePanel.tscn")
+	check_has(
+		panel_scene,
+		"horizontal_scroll_mode = 3",
+		"Palette ScrollContainer must use SCROLL_MODE_SHOW_NEVER so wide rows never lock panel width",
+	)
+	var grid_script := FileAccess.get_file_as_string("res://src/Palette/PaletteGrid.gd")
+	check_has(
+		grid_script,
+		"scroll.resized.connect(_on_resized)",
+		"PaletteGrid must listen to parent ScrollContainer.resized to re-wrap when shrinking",
+	)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.size = Vector2(720.0, 200.0)
+	var grid := PaletteGrid.new()
+	grid.swatch_size = Vector2(32.0, 32.0)
+	grid.grid_locked = false
+	scroll.add_child(grid)
+	grid._on_resized()
+	var wide_cols := grid.columns
+	check_true(wide_cols >= 18, "wide palette should expand columns across available width")
+	scroll.size = Vector2(216.0, 200.0)
+	grid._on_resized()
+	check_true(
+		grid.columns < wide_cols and grid.columns <= 7,
+		"shrinking palette ScrollContainer must re-wrap swatches back into compact rows",
+	)
+	scroll.free()
