@@ -700,6 +700,12 @@ func test_ui1_floating_tools_width_lock_still_allows_vertical_resize_hit_target(
 		WorkspaceModule.ResizeEdge.BOTTOM,
 		"bottom-right handle remains available to resize fixed-width toolbar height",
 	)
+	var hit_bottom_left := module.get_resize_edges(Vector2(2.0, 158.0))
+	check_eq(
+		hit_bottom_left,
+		WorkspaceModule.ResizeEdge.BOTTOM,
+		"bottom-left handle also resizes fixed-width toolbar height only",
+	)
 	module.release_external_content()
 	module.free()
 	content.free()
@@ -806,8 +812,8 @@ func test_workspace_chrome_has_no_pop_out_and_keeps_multi_edge_resize_targets() 
 	)
 	check_eq(
 		preview.get_resize_edges(Vector2(2.0, preview.size.y - 2.0)),
-		WorkspaceModule.ResizeEdge.NONE,
-		"floating panel lower-left corner should not intercept resize",
+		WorkspaceModule.ResizeEdge.LEFT | WorkspaceModule.ResizeEdge.BOTTOM,
+		"lower-left handle should resize floating panel",
 	)
 	check_eq(
 		preview.get_resize_edges(preview.size - Vector2(2.0, 2.0)),

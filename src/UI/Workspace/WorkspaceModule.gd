@@ -457,26 +457,35 @@ func get_resize_edges(local_point: Vector2) -> int:
 	if _visual_state != &"floating" or _content_collapsed:
 		return ResizeEdge.NONE
 	# Floating panels move exclusively via their top header bar and resize
-	# exclusively via the bottom-right handle, preventing downward header drags
-	# from accidentally triggering a top-edge resize.
+	# via the bottom-left and bottom-right corner handles, preventing downward
+	# header drags from accidentally triggering a top-edge resize.
 	var outer := (
 		FLOATING_RESIZE_OUTER_HIT_SIZE
 		if _header_chrome_visible
 		else HEADERLESS_RESIZE_OUTER_HIT_SIZE
 	)
 	var header_floor := get_header_height() + 1.0 if _header_chrome_visible else 0.0
-	var min_x := maxf(0.0, size.x - CORNER_RESIZE_HIT_SIZE)
 	var min_y := maxf(header_floor, size.y - CORNER_RESIZE_HIT_SIZE)
-	var handle_rect := Rect2(
-		Vector2(min_x, min_y),
-		Vector2(size.x + outer - min_x, size.y + outer - min_y),
-	)
-	if not handle_rect.has_point(local_point):
-		return ResizeEdge.NONE
+	var handle_height := size.y + outer - min_y
 	var horz_unlocked := definition == null or not definition.is_horizontal_resize_locked()
-	if horz_unlocked:
-		return ResizeEdge.RIGHT | ResizeEdge.BOTTOM
-	return ResizeEdge.BOTTOM
+
+	var right_min_x := maxf(size.x * 0.5, size.x - CORNER_RESIZE_HIT_SIZE)
+	var right_handle := Rect2(
+		Vector2(right_min_x, min_y),
+		Vector2(size.x + outer - right_min_x, handle_height),
+	)
+	if right_handle.has_point(local_point):
+		return (ResizeEdge.RIGHT | ResizeEdge.BOTTOM) if horz_unlocked else ResizeEdge.BOTTOM
+
+	var left_max_x := minf(size.x * 0.5, CORNER_RESIZE_HIT_SIZE)
+	var left_handle := Rect2(
+		Vector2(-outer, min_y),
+		Vector2(left_max_x + outer, handle_height),
+	)
+	if left_handle.has_point(local_point):
+		return (ResizeEdge.LEFT | ResizeEdge.BOTTOM) if horz_unlocked else ResizeEdge.BOTTOM
+
+	return ResizeEdge.NONE
 
 
 func is_resize_point(local_point: Vector2) -> bool:
@@ -755,12 +764,22 @@ func _draw_resize_affordance() -> void:
 		var ry := roundi(size.y) - 6
 		for step in [Vector2i(0, 0), Vector2i(-4, 0), Vector2i(0, -4)]:
 			draw_rect(Rect2(rx + step.x, ry + step.y, 2, 2), _visual_theme.border_color)
+		var lx := 4
+		for step in [Vector2i(0, 0), Vector2i(4, 0), Vector2i(0, -4)]:
+			draw_rect(Rect2(lx + step.x, ry + step.y, 2, 2), _visual_theme.border_color)
 		return
 	var right_corner := size - Vector2(6.0, 6.0)
+	var left_corner := Vector2(6.0, size.y - 6.0)
 	for offset in [0.0, 5.0, 10.0]:
 		draw_line(
 			right_corner - Vector2(offset, 0.0),
 			right_corner - Vector2(0.0, offset),
+			_visual_theme.muted_text_color,
+			1.0
+		)
+		draw_line(
+			left_corner + Vector2(offset, 0.0),
+			left_corner - Vector2(0.0, offset),
 			_visual_theme.muted_text_color,
 			1.0
 		)
