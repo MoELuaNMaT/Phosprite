@@ -501,4 +501,20 @@ func test_brush_preview_buttons_render_black_scaled_glyph_and_keep_dark_border_o
 			Color.BLACK,
 			"%s 10px brush preview must draw black in the center" % scene_path,
 		)
+		var hollow_brush := Brushes.Brush.new()
+		hollow_brush.type = Brushes.HOLLOW_SQUARE
+		tool._brush = hollow_brush
+		tool._brush_size = 1
+		tool._refresh_default_brush_preview()
+		var img_hollow := preview_rect.texture.get_image()
+		check_eq(
+			img_hollow.get_pixel(img_hollow.get_width() / 2, img_hollow.get_height() / 2),
+			Color.WHITE,
+			"%s 1px hollow square preview must keep a visible white center" % scene_path,
+		)
+		check_eq(
+			img_hollow.get_pixel(2, 2),
+			Color.BLACK,
+			"%s 1px hollow square preview must draw a visible black outline" % scene_path,
+		)
 		tool.free()

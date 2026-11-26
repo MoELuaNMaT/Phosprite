@@ -9,6 +9,8 @@ const DEFAULT_GEOMETRIC_BRUSHES := [
 	Brushes.CIRCLE,
 	Brushes.FILLED_CIRCLE,
 ]
+const BRUSH_PREVIEW_MIN_ICON_SIZE := 9
+const BRUSH_PREVIEW_MAX_ICON_SIZE := 15
 
 var _brush := Brushes.get_default_brush()
 var _brush_size := 1
@@ -64,6 +66,7 @@ func _ready() -> void:
 	Global.dynamics_changed.connect(_reset_dynamics)
 	Tools.color_changed.connect(_on_Color_changed)
 	Global.brushes_popup.brush_removed.connect(_on_Brush_removed)
+	call_deferred(&"update_brush")
 
 
 func _input(event: InputEvent) -> void:
@@ -220,16 +223,26 @@ func update_brush() -> void:
 
 func _refresh_default_brush_preview() -> void:
 	var shape := _default_brush_shape(_brush.type)
-	var preview := BrushShapes.create_preview_image(shape, _brush_size, Color.BLACK)
+	var icon_size := clampi(
+		maxi(_brush_size, BRUSH_PREVIEW_MIN_ICON_SIZE),
+		BRUSH_PREVIEW_MIN_ICON_SIZE,
+		BRUSH_PREVIEW_MAX_ICON_SIZE,
+	)
+	var preview := BrushShapes.create_preview_image(shape, icon_size, Color.BLACK)
 	_brush_texture = ImageTexture.create_from_image(preview)
+	var brush_btn := $Brush/Type as Button
+	brush_btn.icon = null
+	brush_btn.text = ""
 	var preview_rect := $Brush/Type/Texture as TextureRect
 	preview_rect.visible = true
+	preview_rect.z_index = 1
 	preview_rect.modulate = Color.WHITE
 	preview_rect.self_modulate = Color.WHITE
 	preview_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	preview_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview_rect.texture = _brush_texture
+	preview_rect.queue_redraw()
 
 
 func _default_brush_shape(brush_type: int) -> BrushShapes.Shape:

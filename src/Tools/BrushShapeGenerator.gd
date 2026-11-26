@@ -34,7 +34,7 @@ static func create_preview_image(
 	var stamp_limit := maxi(1, safe_limit - padding * 2)
 	var stamp_size := mini(maxi(1, brush_size), stamp_limit)
 	var preview_size := stamp_size + padding * 2
-	var image := Image.create(preview_size, preview_size, false, Image.FORMAT_RGBA8)
+	var image := Image.create_empty(preview_size, preview_size, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
 	var offset := Vector2i.ONE * padding
 	for point in get_points(shape, stamp_size):

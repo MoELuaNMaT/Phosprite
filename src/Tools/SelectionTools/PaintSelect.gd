@@ -301,25 +301,33 @@ func update_brush() -> void:
 		Brushes.PIXEL:
 			_brush_texture = ImageTexture.create_from_image(
 				BrushShapes.create_preview_image(
-					BrushShapes.Shape.FILLED_SQUARE, _brush_size, Color.BLACK
+					BrushShapes.Shape.FILLED_SQUARE,
+					clampi(maxi(_brush_size, 9), 9, 15),
+					Color.BLACK
 				)
 			)
 		Brushes.HOLLOW_SQUARE:
 			_brush_texture = ImageTexture.create_from_image(
 				BrushShapes.create_preview_image(
-					BrushShapes.Shape.HOLLOW_SQUARE, _brush_size, Color.BLACK
+					BrushShapes.Shape.HOLLOW_SQUARE,
+					clampi(maxi(_brush_size, 9), 9, 15),
+					Color.BLACK
 				)
 			)
 		Brushes.CIRCLE:
 			_brush_texture = ImageTexture.create_from_image(
 				BrushShapes.create_preview_image(
-					BrushShapes.Shape.HOLLOW_CIRCLE, _brush_size, Color.BLACK
+					BrushShapes.Shape.HOLLOW_CIRCLE,
+					clampi(maxi(_brush_size, 9), 9, 15),
+					Color.BLACK
 				)
 			)
 		Brushes.FILLED_CIRCLE:
 			_brush_texture = ImageTexture.create_from_image(
 				BrushShapes.create_preview_image(
-					BrushShapes.Shape.FILLED_CIRCLE, _brush_size, Color.BLACK
+					BrushShapes.Shape.FILLED_CIRCLE,
+					clampi(maxi(_brush_size, 9), 9, 15),
+					Color.BLACK
 				)
 			)
 		Brushes.FILE, Brushes.RANDOM_FILE, Brushes.CUSTOM:
