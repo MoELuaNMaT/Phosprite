@@ -66,6 +66,7 @@ func _ready() -> void:
 	Global.dynamics_changed.connect(_reset_dynamics)
 	Tools.color_changed.connect(_on_Color_changed)
 	Global.brushes_popup.brush_removed.connect(_on_Brush_removed)
+	_ensure_brush_glyph_overlay()
 	call_deferred(&"update_brush")
 
 
@@ -194,6 +195,7 @@ func update_brush() -> void:
 		)
 		_brush_image.copy_from(tile_image)
 		_brush_texture = ImageTexture.create_from_image(_brush_image)
+		_set_brush_glyph_overlay_visible(false)
 	else:
 		match _brush.type:
 			Brushes.PIXEL, Brushes.HOLLOW_SQUARE, Brushes.CIRCLE, Brushes.FILLED_CIRCLE:
@@ -211,6 +213,7 @@ func update_brush() -> void:
 				_brush_texture = ImageTexture.create_from_image(_brush_image)
 				update_mirror_brush()
 				_stroke_dimensions = _brush_image.get_size()
+				_set_brush_glyph_overlay_visible(false)
 	_circle_tool_shortcut = []
 	_indicator = _create_brush_indicator()
 	_polylines = _create_polylines(_indicator)
@@ -243,6 +246,52 @@ func _refresh_default_brush_preview() -> void:
 	preview_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview_rect.texture = _brush_texture
 	preview_rect.queue_redraw()
+	var overlay := _ensure_brush_glyph_overlay()
+	if overlay != null:
+		overlay.visible = true
+		overlay.queue_redraw()
+
+
+func _ensure_brush_glyph_overlay() -> Control:
+	var brush_btn := get_node_or_null(^"Brush/Type") as Button
+	if brush_btn == null:
+		return null
+	var overlay := brush_btn.get_node_or_null(^"BrushGlyphOverlay") as Control
+	if overlay == null:
+		overlay = Control.new()
+		overlay.name = &"BrushGlyphOverlay"
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.z_index = 2
+		overlay.draw.connect(_draw_brush_glyph_overlay.bind(overlay))
+		overlay.resized.connect(overlay.queue_redraw)
+		brush_btn.add_child(overlay)
+	return overlay
+
+
+func _set_brush_glyph_overlay_visible(show_overlay: bool) -> void:
+	var brush_btn := get_node_or_null(^"Brush/Type") as Button
+	if brush_btn == null:
+		return
+	var overlay := brush_btn.get_node_or_null(^"BrushGlyphOverlay") as Control
+	if overlay != null:
+		overlay.visible = show_overlay
+		if show_overlay:
+			overlay.queue_redraw()
+
+
+func _draw_brush_glyph_overlay(overlay: Control) -> void:
+	if not is_instance_valid(overlay):
+		return
+	if _brush == null or _brush.type not in DEFAULT_GEOMETRIC_BRUSHES:
+		return
+	var shape := _default_brush_shape(_brush.type)
+	var icon_size := clampi(
+		maxi(_brush_size, BRUSH_PREVIEW_MIN_ICON_SIZE),
+		BRUSH_PREVIEW_MIN_ICON_SIZE,
+		BRUSH_PREVIEW_MAX_ICON_SIZE,
+	)
+	BrushShapes.draw_preview_glyph(overlay, overlay.size, shape, icon_size, Color.BLACK, 4.0)
 
 
 func _default_brush_shape(brush_type: int) -> BrushShapes.Shape:

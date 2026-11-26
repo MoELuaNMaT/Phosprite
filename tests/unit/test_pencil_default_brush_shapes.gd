@@ -517,4 +517,9 @@ func test_brush_preview_buttons_render_black_scaled_glyph_and_keep_dark_border_o
 			Color.BLACK,
 			"%s 1px hollow square preview must draw a visible black outline" % scene_path,
 		)
+		var glyph_overlay := brush_btn.get_node_or_null(^"BrushGlyphOverlay") as Control
+		check_true(
+			glyph_overlay != null and glyph_overlay.visible,
+			"%s brush button must attach a visible direct-draw BrushGlyphOverlay" % scene_path,
+		)
 		tool.free()

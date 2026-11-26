@@ -349,6 +349,15 @@ func update_brush() -> void:
 	preview_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview_rect.texture = _brush_texture
+	var overlay := _ensure_brush_glyph_overlay()
+	if overlay != null:
+		var is_default := (
+			_brush.type
+			in [Brushes.PIXEL, Brushes.HOLLOW_SQUARE, Brushes.CIRCLE, Brushes.FILLED_CIRCLE]
+		)
+		overlay.visible = is_default
+		if is_default:
+			overlay.queue_redraw()
 
 
 func _create_blended_brush_image(image: Image) -> Image:
@@ -408,3 +417,39 @@ func draw_indicator_at(pos: Vector2i, offset: Vector2i, color: Color) -> void:
 		var pool := PackedVector2Array(line)
 		canvas.draw_polyline(pool, color)
 	canvas.draw_set_transform(canvas.position, canvas.rotation, canvas.scale)
+
+
+func _ensure_brush_glyph_overlay() -> Control:
+	var brush_btn := get_node_or_null(^"Brush/Type") as Button
+	if brush_btn == null:
+		return null
+	var overlay := brush_btn.get_node_or_null(^"BrushGlyphOverlay") as Control
+	if overlay == null:
+		overlay = Control.new()
+		overlay.name = &"BrushGlyphOverlay"
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.z_index = 2
+		overlay.draw.connect(_draw_brush_glyph_overlay.bind(overlay))
+		overlay.resized.connect(overlay.queue_redraw)
+		brush_btn.add_child(overlay)
+	return overlay
+
+
+func _draw_brush_glyph_overlay(overlay: Control) -> void:
+	if not is_instance_valid(overlay) or _brush == null:
+		return
+	var shape := BrushShapes.Shape.FILLED_SQUARE
+	match _brush.type:
+		Brushes.PIXEL:
+			shape = BrushShapes.Shape.FILLED_SQUARE
+		Brushes.HOLLOW_SQUARE:
+			shape = BrushShapes.Shape.HOLLOW_SQUARE
+		Brushes.CIRCLE:
+			shape = BrushShapes.Shape.HOLLOW_CIRCLE
+		Brushes.FILLED_CIRCLE:
+			shape = BrushShapes.Shape.FILLED_CIRCLE
+		_:
+			return
+	var icon_size := clampi(maxi(_brush_size, 9), 9, 15)
+	BrushShapes.draw_preview_glyph(overlay, overlay.size, shape, icon_size, Color.BLACK, 4.0)

@@ -62,3 +62,35 @@ static func _get_hollow_square_points(size: int) -> Array[Vector2i]:
 		points.append(Vector2i(0, y))
 		points.append(Vector2i(size - 1, y))
 	return points
+
+
+static func draw_preview_glyph(
+	canvas: CanvasItem,
+	canvas_size: Vector2,
+	shape: Shape,
+	icon_size: int,
+	color := Color.BLACK,
+	inset := 4.0,
+) -> void:
+	var safe_size := canvas_size
+	if safe_size.x <= inset * 2.0 or safe_size.y <= inset * 2.0:
+		safe_size = Vector2(32.0, 32.0)
+	var inner_side := maxf(8.0, minf(safe_size.x, safe_size.y) - inset * 2.0)
+	var stamp_size := maxi(1, icon_size)
+	var cell := (
+		floorf(inner_side / float(stamp_size))
+		if inner_side >= float(stamp_size) * 2.0
+		else inner_side / float(stamp_size)
+	)
+	var glyph_side := cell * float(stamp_size)
+	var origin := Vector2(
+		floorf((safe_size.x - glyph_side) * 0.5),
+		floorf((safe_size.y - glyph_side) * 0.5),
+	)
+	var pixel_size := Vector2(ceilf(cell), ceilf(cell))
+	canvas.draw_rect(
+		Rect2(inset, inset, safe_size.x - inset * 2.0, safe_size.y - inset * 2.0), Color.WHITE
+	)
+	for point in get_points(shape, stamp_size):
+		if point.x >= 0 and point.y >= 0 and point.x < stamp_size and point.y < stamp_size:
+			canvas.draw_rect(Rect2(origin + Vector2(point) * cell, pixel_size), color)

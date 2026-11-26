@@ -159,6 +159,19 @@ func _add_default_brush(
 	var button := Brushes.create_button(image)
 	button.brush.type = type
 	button.tooltip_text = tooltip
+	var overlay := Control.new()
+	overlay.name = &"BrushGlyphOverlay"
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.z_index = 2
+	overlay.draw.connect(
+		func():
+			BrushShapes.draw_preview_glyph(
+				overlay, overlay.size, shape, DEFAULT_ICON_SIZE, Color.BLACK, 4.0
+			)
+	)
+	overlay.resized.connect(overlay.queue_redraw)
+	button.add_child(overlay)
 	container.add_child(button)
 	button.brush.index = button.get_index()
 	if is_instance_valid(Global.brushes_popup):
