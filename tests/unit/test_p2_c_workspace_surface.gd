@@ -932,7 +932,10 @@ func test_floating_corner_resize_pins_opposite_edge_and_respects_live_min_size()
 	)
 	check_true(
 		clamped.size.x >= 260.0,
-		"bottom-left resize must respect live content minimum width",
+		(
+			"bottom-left resize must respect live content minimum width (got %s, content=%s)"
+			% [str(clamped.size), str(preview != null and preview.content != null)]
+		),
 	)
 
 	check_true(
