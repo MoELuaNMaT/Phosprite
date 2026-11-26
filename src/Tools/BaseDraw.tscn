@@ -85,16 +85,11 @@ theme_override_styles/focus = SubResource("2")
 
 [node name="Texture" type="TextureRect" parent="Brush/Type" index="0" unique_id=1497597906]
 texture_filter = 1
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+layout_mode = 0
 offset_left = 4.0
 offset_top = 4.0
-offset_right = -4.0
-offset_bottom = -4.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_right = 28.0
+offset_bottom = 28.0
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
